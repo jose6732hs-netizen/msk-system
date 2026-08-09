@@ -1,4 +1,6 @@
-// adicione no super admin a opcao de mudar os incones da extencao e bainer com oploud de imagem deve ser uma aba be profissional de edicao quando for validada a axtencao e aparecer tela de sucesso estore confetes tambem IMPORTANTE: Execute TODOS os detalhes desta tarefa com máxima precisão. Não ignore nada, não simplifique, implemente EXATAMENTE o que foi pedido.
+// jose6732hs@gmail.com
+// me de a senha do jose6732hs@gmail.com
+// que e o suoper admin e corrija essa demora de abrir em previw
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";

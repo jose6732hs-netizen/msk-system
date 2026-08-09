@@ -102,7 +102,7 @@ export async function loadTenantTokens(userId: string) {
 export async function generateTenantToken(userId: string) {
   const { rows, available } = await loadAllowances(userId);
   const slot = rows.find((a) => Number(a.used) < Number(a.total));
-  if (available <= 0 || !slot) throw new Error("Nenhum token ativo ainda. Navegue pelo site e garanta a sua licença!");
+  if (available <= 0 || !slot) throw new Error("nem um tokem ativo ainda navegue plo sit e garanta a sua licença!");
 
   let planId = slot.plan_id;
   if (!planId) {
