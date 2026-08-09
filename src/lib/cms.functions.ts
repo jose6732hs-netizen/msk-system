@@ -116,7 +116,7 @@ export const uploadCmsAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
-    const formData = await context.request.formData();
+    const formData = await (context as any).request.formData();
     const file = formData.get("file") as File;
     const key = formData.get("key") as string;
     
