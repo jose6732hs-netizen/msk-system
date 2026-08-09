@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Infinity Credits - Secure Runtime</title>
+  <style>
+    :root {
+      --bg-main: #0a0d0f;
+      --bg-card: #111518;
+      --accent: #3b82f6;
+      --accent-dim: rgba(59, 130, 246, 0.1);
+      --accent-border: rgba(59, 130, 246, 0.24);
+      --text-primary: #e2e8f0;
+      --text-secondary: #94a3b8;
+      --error: #ef4444;
+      --warning-bg: rgba(239, 68, 68, 0.08);
+      --warning-border: rgba(239, 68, 68, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      background: var(--bg-main);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+    }
+
+    .panel {
+      width: min(420px, 100%);
+      background: linear-gradient(180deg, rgba(17, 21, 24, 0.95), rgba(8, 10, 12, 0.98));
+      border: 1px solid var(--accent-border);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 22px 45px rgba(2, 6, 23, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      box-shadow: 0 0 24px rgba(59, 130, 246, 0.35);
+    }
+
+    .brand h1 {
+      font-size: 14px;
+      color: #bfdbfe;
+      letter-spacing: 0.02em;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .status-card {
+      border: 1px solid var(--accent-border);
+      border-radius: 12px;
+      background: var(--accent-dim);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .status-title {
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      font-weight: 700;
+    }
+
+    .status-value {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #dbeafe;
+      min-height: 39px;
+    }
+
+    .progress {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(148, 163, 184, 0.14);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .progress-bar {
+      width: 18%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #2563eb, #34d399);
+      transition: width .3s ease;
+    }
+
+    .runtime-root {
+      width: 100%;
+      height: 100vh;
+      min-height: 100vh;
+      padding: 0;
+      margin: 0;
+      border: 0;
+      background: transparent;
+      overflow: hidden;
+    }
+
+    .error-box {
+      display: none;
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      z-index: 9999;
+      border: 1px solid var(--warning-border);
+      border-radius: 12px;
+      background: var(--warning-bg);
+      padding: 12px;
+      gap: 10px;
+      flex-direction: column;
+    }
+
+    .error-box.active {
+      display: flex;
+    }
+
+    .error-title {
+      color: #fca5a5;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
+    }
+
+    .error-text {
+      color: #fecaca;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 1px solid var(--accent-border);
+      background: rgba(15, 23, 42, 0.9);
+      color: #dbeafe;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(59, 130, 246, 0.5);
+    }
+
+    .btn.support {
+      background: linear-gradient(90deg, #16a34a, #22c55e);
+      color: #052e16;
+      border-color: rgba(34, 197, 94, 0.55);
+    }
+
+    .btn.retry {
+      background: linear-gradient(90deg, #1d4ed8, #2563eb);
+      color: #fff;
+      border-color: rgba(59, 130, 246, 0.6);
+    }
+
+    .diag {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+      border-top: 1px solid rgba(148, 163, 184, 0.2);
+      padding-top: 8px;
+      word-break: break-word;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <section id="runtimeRoot" class="runtime-root"></section>
+
+  <section id="errorBox" class="error-box" role="alert" aria-live="assertive">
+    <div class="error-title">Falha de Segurança</div>
+    <div id="errorText" class="error-text">
+      Não foi possível inicializar os módulos de segurança. Verifique sua conexão ou contate o suporte.
+    </div>
+    <div class="actions">
+      <button id="retryBtn" class="btn retry" type="button">Tentar novamente</button>
+      <a
+        id="supportBtn"
+        class="btn support"
+        href="https://chat.whatsapp.com/HcF04iHn3rbIWvXdCoxJLb"
+        target="_blank"
+        rel="noopener noreferrer"
+      >Falar com Suporte no WhatsApp</a>
+    </div>
+  </section>
+
+  <script src="acorn.js"></script>
+  <script src="interpreter.js"></script>
+  <script src="runtime-loader.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
