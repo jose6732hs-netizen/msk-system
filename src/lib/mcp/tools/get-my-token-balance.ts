@@ -1,5 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
+import { z } from "zod";
 import { notAuthenticated, supabaseForUser } from "../supabase";
+
 
 export default defineTool({
   name: "get_my_token_balance",
@@ -7,7 +9,15 @@ export default defineTool({
   description:
     "Return the signed-in user's token allowances (total, used, remaining, period end) and any active trial.",
   inputSchema: {},
+  outputSchema: {
+    remaining: z.number(),
+    totalGranted: z.number(),
+    totalUsed: z.number(),
+    allowances: z.array(z.any()),
+    trials: z.array(z.any()),
+  },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+
   handler: async (_input, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthenticated();
     const supabase = supabaseForUser(ctx);

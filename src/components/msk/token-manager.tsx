@@ -345,23 +345,43 @@ export function TokenManager() {
                         <div className="mt-4">
                           {left ? (
                             <div className="space-y-3">
-                              <div className="flex items-center gap-1.5">
-                                <TimeDisplay value={left.time.d} label="Dias" danger={left.expired} />
-                                <TimeDisplay value={left.time.h} label="Hrs" danger={left.expired} />
-                                <TimeDisplay value={left.time.m} label="Min" danger={left.expired} />
-                                <TimeDisplay value={left.time.s} label="Seg" danger={left.expired} />
-                              </div>
-                              <div className="relative h-2.5 w-full overflow-hidden rounded-full border border-white/5 bg-black/40">
-                                <div
-                                  className={`h-full transition-all duration-1000 ease-linear ${
-                                    left.expired ? "bg-destructive" : "bg-gradient-to-r from-primary/50 to-primary"
-                                  }`}
-                                  style={{ width: `${left.expired ? 100 : left.progress}%` }}
-                                />
-                              </div>
-                              <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">
-                                {left.expired ? "Licença expirada" : `Restam ${left.label}`}
-                              </p>
+                              {t.status === 'active' ? (
+                                <>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xl font-black text-primary animate-pulse">∞</span>
+                                    <span className="text-[0.6rem] font-black uppercase tracking-widest text-primary">MODO MSK ATIVADO</span>
+                                  </div>
+                                  <div className="relative h-2.5 w-full overflow-hidden rounded-full border border-primary/20 bg-black/40">
+                                    <div
+                                      className="h-full bg-gradient-to-r from-primary/50 to-primary animate-pulse shadow-[0_0_15px_rgba(var(--primary-rgb),0.6)]"
+                                      style={{ width: '100%' }}
+                                    />
+                                  </div>
+                                  <p className="text-[0.6rem] font-black uppercase tracking-widest text-primary shadow-primary/20">
+                                    Créditos ilimitados ativados
+                                  </p>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    <TimeDisplay value={left.time.d} label="Dias" danger={left.expired} />
+                                    <TimeDisplay value={left.time.h} label="Hrs" danger={left.expired} />
+                                    <TimeDisplay value={left.time.m} label="Min" danger={left.expired} />
+                                    <TimeDisplay value={left.time.s} label="Seg" danger={left.expired} />
+                                  </div>
+                                  <div className="relative h-2.5 w-full overflow-hidden rounded-full border border-white/5 bg-black/40">
+                                    <div
+                                      className={`h-full transition-all duration-1000 ease-linear ${
+                                        left.expired ? "bg-destructive" : "bg-gradient-to-r from-primary/50 to-primary"
+                                      }`}
+                                      style={{ width: `${left.expired ? 100 : left.progress}%` }}
+                                    />
+                                  </div>
+                                  <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">
+                                    {left.expired ? "Licença expirada" : `Restam ${left.label}`}
+                                  </p>
+                                </>
+                              )}
                             </div>
                           ) : (
                             <span className="inline-block rounded-full border border-white/5 bg-white/5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">

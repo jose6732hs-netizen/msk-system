@@ -1,12 +1,18 @@
 import { defineTool } from "@lovable.dev/mcp-js";
+import { z } from "zod";
 import { notAuthenticated, supabaseForUser } from "../supabase";
+
 
 export default defineTool({
   name: "list_plans",
   title: "List plans",
   description: "List the active plans sold by this app, with price, duration, device limits and highlights.",
   inputSchema: {},
+  outputSchema: {
+    plans: z.array(z.any()),
+  },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+
   handler: async (_input, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthenticated();
     const supabase = supabaseForUser(ctx);
