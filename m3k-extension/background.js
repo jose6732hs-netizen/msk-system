@@ -529,7 +529,7 @@ return true;
 });
 
 /* ===== MSK SISTEM LICENSE GATE (integrated into original build) ===== */
-const OFG_LICENSE_API='https://msk-extencsoes.lovable.app/api/public/license';
+const OFG_LICENSE_API='https://ini-joy-maker.lovable.app/api/public/license';
 const OFG_SUPPORT_URL=''; // Configure only the WhatsApp support URL here when available.
 async function ofgDeviceId(){
   const s=await chrome.storage.local.get('ofg_device_fingerprint');
@@ -649,7 +649,7 @@ let mskSupportUrl = '';
 
 async function fetchMskSettings() {
   try {
-    const r = await fetch('https://msk-extencsoes.lovable.app/api/public/cms');
+    const r = await fetch('https://ini-joy-maker.lovable.app/api/public/cms');
     const settings = await r.json();
     if (settings && settings.config && settings.config.support_url) {
       mskSupportUrl = settings.config.support_url;
