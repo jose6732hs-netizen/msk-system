@@ -1,11 +1,6 @@
 {
-  "version": 1,
-  "asset_id": "2cbae8ab-d110-4d2f-810e-bc8fe8cdcc65",
-  "project_id": "2763a21e-c47d-4e62-bc58-ab51fe5dc2d5",
-  "url": "/__l5e/assets-v1/2cbae8ab-d110-4d2f-810e-bc8fe8cdcc65/msk_sistem_licenciada.zip",
-  "r2_key": "a/v1/2763a21e-c47d-4e62-bc58-ab51fe5dc2d5/2cbae8ab-d110-4d2f-810e-bc8fe8cdcc65/msk_sistem_licenciada.zip",
-  "original_filename": "msk_sistem_licenciada.zip",
-  "size": 571132,
-  "content_type": "application/zip",
-  "created_at": "2026-08-09T21:00:30Z"
+  "name": "msk_sistem.zip",
+  "hash": "a79b0a6397f2dae823aaa179cfa0f284a8cb8a8b37cf552c37011513c9a1d7d8",
+  "contentType": "application/zip",
+  "size": 528570
 }
