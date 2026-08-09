@@ -1,0 +1,145 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { adminFinanceOverview, adminWithdrawalAction } from "@/lib/admin.functions";
+
+const brl = (v: unknown) =>
+  Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString("pt-BR") : "—");
+
+export function AdminFinanceTab() {
+  const qc = useQueryClient();
+  const loadFn = useServerFn(adminFinanceOverview);
+  const actionFn = useServerFn(adminWithdrawalAction);
+
+  const { data, isLoading } = useQuery({ queryKey: ["admin-finance"], queryFn: () => loadFn() });
+
+  async function act(withdrawalId: string, action: "approve" | "reject") {
+    try {
+      await actionFn({ data: { withdrawalId, action } });
+      await qc.invalidateQueries({ queryKey: ["admin-finance"] });
+      toast.success(action === "approve" ? "Saque pago." : "Saque rejeitado.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center p-10">
+        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const s = data?.stats;
+
+  return (
+    <div className="space-y-8">
+      <div className="grid gap-4 sm:grid-cols-4">
+        {[
+          ["Receita paga", brl(s?.revenue)],
+          ["Transações pagas", String(s?.paidCount ?? 0)],
+          ["Pendentes", String(s?.pending ?? 0)],
+          ["Saques a aprovar", String(s?.pendingWithdrawals ?? 0)],
+        ].map(([k, v]) => (
+          <div key={k} className="rounded-xl border border-border/60 p-4">
+            <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">{k}</p>
+            <p className="mt-1 text-xl font-bold text-primary">{v}</p>
+          </div>
+        ))}
+      </div>
+
+      <Section title="Saques">
+        {(data?.withdrawals ?? []).map((w: any) => (
+          <div
+            key={w.id}
+            className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 py-3 text-sm"
+          >
+            <span>{w.profiles?.email ?? "—"}</span>
+            <span>{brl(w.amount)}</span>
+            <span className="text-xs text-muted-foreground">{w.pix_key_type}</span>
+            <span className="text-xs text-primary">{w.status}</span>
+            {w.status === "PENDING" && (
+              <span className="flex gap-1">
+                <Button size="sm" variant="neon" onClick={() => act(w.id, "approve")}>
+                  Pagar
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => act(w.id, "reject")}>
+                  Rejeitar
+                </Button>
+              </span>
+            )}
+          </div>
+        ))}
+        {!data?.withdrawals.length && <Empty />}
+      </Section>
+
+      <Section title="Transações">
+        {(data?.transactions ?? []).map((t: any) => (
+          <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 py-3 text-sm">
+            <span className="font-mono text-xs">{t.identifier}</span>
+            <span>{t.profiles?.email ?? "—"}</span>
+            <span>{brl(t.amount)}</span>
+            <span className="text-xs text-muted-foreground">{t.purpose}</span>
+            <span className="text-xs text-primary">{t.status}</span>
+            <span className="text-xs text-muted-foreground">{fmt(t.created_at)}</span>
+          </div>
+        ))}
+        {!data?.transactions.length && <Empty />}
+      </Section>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Section title="Afiliados">
+          {(data?.affiliates ?? []).map((a: any) => (
+            <div key={a.id} className="flex items-center justify-between border-t border-border/50 py-3 text-sm">
+              <span>{a.profiles?.email ?? a.code}</span>
+              <span className="text-xs text-muted-foreground">{a.total_sales} vendas</span>
+              <span className="text-xs text-primary">{brl(a.available_balance)}</span>
+            </div>
+          ))}
+          {!data?.affiliates.length && <Empty />}
+        </Section>
+        <Section title="Revendedores">
+          {(data?.resellers ?? []).map((r: any) => (
+            <div key={r.id} className="flex items-center justify-between border-t border-border/50 py-3 text-sm">
+              <span>{r.profiles?.email ?? r.code}</span>
+              <span className="text-xs uppercase text-muted-foreground">{r.tier}</span>
+              <span className="text-xs text-primary">{brl(r.available_balance)}</span>
+            </div>
+          ))}
+          {!data?.resellers.length && <Empty />}
+        </Section>
+      </div>
+
+      <Section title="Auditoria">
+        {(data?.audit ?? []).map((a: any) => (
+          <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 py-2 text-xs">
+            <span className="font-mono text-primary">{a.action}</span>
+            <span className="text-muted-foreground">{a.resource ?? "—"}</span>
+            <span className={a.result === "success" ? "text-muted-foreground" : "text-destructive"}>
+              {a.result}
+            </span>
+            <span className="text-muted-foreground">{fmt(a.created_at)}</span>
+          </div>
+        ))}
+        {!data?.audit.length && <Empty />}
+      </Section>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground">{title}</h3>
+      <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+function Empty() {
+  return <p className="py-4 text-sm text-muted-foreground">Nenhum registro.</p>;
+}

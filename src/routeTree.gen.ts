@@ -10,33 +10,378 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as ApiDocsRouteImport } from './routes/api-docs'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DocumentacaoRouteImport } from './routes/documentacao'
+import { Route as PlanosRouteImport } from './routes/planos'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
+import { Route as AuthenticatedRevendedorRouteImport } from './routes/_authenticated/revendedor'
+import { Route as AfiliadoCodeRouteImport } from './routes/afiliado.$code'
+import { Route as ParceirosIndexRouteImport } from './routes/parceiros/index'
+import { Route as RSlugRouteImport } from './routes/r.$slug'
+import { Route as AuthenticatedParceiroIndexRouteImport } from './routes/_authenticated/parceiro/index'
+import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
+import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
+import { Route as ApiPublicCronRenewLicensesRouteImport } from './routes/api/public/cron/renew-licenses'
+import { Route as ApiPublicExtensionStatusRouteImport } from './routes/api/public/extension/status'
+import { Route as ApiPublicLicenseActivateRouteImport } from './routes/api/public/license/activate'
+import { Route as ApiPublicLicenseDeactivateRouteImport } from './routes/api/public/license/deactivate'
+import { Route as ApiPublicLicenseHeartbeatRouteImport } from './routes/api/public/license/heartbeat'
+import { Route as ApiPublicLicenseMeRouteImport } from './routes/api/public/license/me'
+import { Route as ApiPublicLicenseValidateRouteImport } from './routes/api/public/license/validate'
+import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/public/webhooks/amplopay'
+import { Route as ApiPublicWebhooksPaymentRouteImport } from './routes/api/public/webhooks/payment'
+import { Route as ApiPublicExtRuntimeBundleRouteImport } from './routes/api/public/ext/runtime/bundle'
+import { Route as ApiPublicExtRuntimeManifestRouteImport } from './routes/api/public/ext/runtime/manifest'
+import { Route as ApiPublicLicenseDeviceRemoveRouteImport } from './routes/api/public/license/device/remove'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDocsRoute = ApiDocsRouteImport.update({
+  id: '/api-docs',
+  path: '/api-docs',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DocumentacaoRoute = DocumentacaoRouteImport.update({
+  id: '/documentacao',
+  path: '/documentacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanosRoute = PlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPainelRoute = AuthenticatedPainelRouteImport.update({
+  id: '/painel',
+  path: '/painel',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRevendedorRoute = AuthenticatedRevendedorRouteImport.update({
+  id: '/revendedor',
+  path: '/revendedor',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AfiliadoCodeRoute = AfiliadoCodeRouteImport.update({
+  id: '/afiliado/$code',
+  path: '/afiliado/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParceirosIndexRoute = ParceirosIndexRouteImport.update({
+  id: '/parceiros/',
+  path: '/parceiros/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RSlugRoute = RSlugRouteImport.update({
+  id: '/r/$slug',
+  path: '/r/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedParceiroIndexRoute =
+  AuthenticatedParceiroIndexRouteImport.update({
+    id: '/parceiro/',
+    path: '/parceiro/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const ApiPublicOpenapiRoute = ApiPublicOpenapiRouteImport.update({
+  id: '/api/public/openapi',
+  path: '/api/public/openapi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExtRuntimeManifestRoute = ExtRuntimeManifestRouteImport.update({
+  id: '/ext/runtime/manifest',
+  path: '/ext/runtime/manifest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicCronRenewLicensesRoute =
+  ApiPublicCronRenewLicensesRouteImport.update({
+    id: '/api/public/cron/renew-licenses',
+    path: '/api/public/cron/renew-licenses',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicExtensionStatusRoute =
+  ApiPublicExtensionStatusRouteImport.update({
+    id: '/api/public/extension/status',
+    path: '/api/public/extension/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLicenseActivateRoute =
+  ApiPublicLicenseActivateRouteImport.update({
+    id: '/api/public/license/activate',
+    path: '/api/public/license/activate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLicenseDeactivateRoute =
+  ApiPublicLicenseDeactivateRouteImport.update({
+    id: '/api/public/license/deactivate',
+    path: '/api/public/license/deactivate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLicenseHeartbeatRoute =
+  ApiPublicLicenseHeartbeatRouteImport.update({
+    id: '/api/public/license/heartbeat',
+    path: '/api/public/license/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLicenseMeRoute = ApiPublicLicenseMeRouteImport.update({
+  id: '/api/public/license/me',
+  path: '/api/public/license/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicLicenseValidateRoute =
+  ApiPublicLicenseValidateRouteImport.update({
+    id: '/api/public/license/validate',
+    path: '/api/public/license/validate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWebhooksAmplopayRoute =
+  ApiPublicWebhooksAmplopayRouteImport.update({
+    id: '/api/public/webhooks/amplopay',
+    path: '/api/public/webhooks/amplopay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicWebhooksPaymentRoute =
+  ApiPublicWebhooksPaymentRouteImport.update({
+    id: '/api/public/webhooks/payment',
+    path: '/api/public/webhooks/payment',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicExtRuntimeBundleRoute =
+  ApiPublicExtRuntimeBundleRouteImport.update({
+    id: '/api/public/ext/runtime/bundle',
+    path: '/api/public/ext/runtime/bundle',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicExtRuntimeManifestRoute =
+  ApiPublicExtRuntimeManifestRouteImport.update({
+    id: '/api/public/ext/runtime/manifest',
+    path: '/api/public/ext/runtime/manifest',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLicenseDeviceRemoveRoute =
+  ApiPublicLicenseDeviceRemoveRouteImport.update({
+    id: '/api/public/license/device/remove',
+    path: '/api/public/license/device/remove',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api-docs': typeof ApiDocsRoute
+  '/auth': typeof AuthRoute
+  '/documentacao': typeof DocumentacaoRoute
+  '/planos': typeof PlanosRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/painel': typeof AuthenticatedPainelRoute
+  '/revendedor': typeof AuthenticatedRevendedorRoute
+  '/afiliado/$code': typeof AfiliadoCodeRoute
+  '/r/$slug': typeof RSlugRoute
+  '/parceiros/': typeof ParceirosIndexRoute
+  '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/parceiro/': typeof AuthenticatedParceiroIndexRoute
+  '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
+  '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
+  '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
+  '/api/public/license/deactivate': typeof ApiPublicLicenseDeactivateRoute
+  '/api/public/license/heartbeat': typeof ApiPublicLicenseHeartbeatRoute
+  '/api/public/license/me': typeof ApiPublicLicenseMeRoute
+  '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
+  '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
+  '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
+  '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
+  '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
+  '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api-docs': typeof ApiDocsRoute
+  '/auth': typeof AuthRoute
+  '/documentacao': typeof DocumentacaoRoute
+  '/planos': typeof PlanosRoute
+  '/admin': typeof AuthenticatedAdminRoute
+  '/painel': typeof AuthenticatedPainelRoute
+  '/revendedor': typeof AuthenticatedRevendedorRoute
+  '/afiliado/$code': typeof AfiliadoCodeRoute
+  '/r/$slug': typeof RSlugRoute
+  '/parceiros': typeof ParceirosIndexRoute
+  '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/parceiro': typeof AuthenticatedParceiroIndexRoute
+  '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
+  '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
+  '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
+  '/api/public/license/deactivate': typeof ApiPublicLicenseDeactivateRoute
+  '/api/public/license/heartbeat': typeof ApiPublicLicenseHeartbeatRoute
+  '/api/public/license/me': typeof ApiPublicLicenseMeRoute
+  '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
+  '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
+  '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
+  '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
+  '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
+  '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/api-docs': typeof ApiDocsRoute
+  '/auth': typeof AuthRoute
+  '/documentacao': typeof DocumentacaoRoute
+  '/planos': typeof PlanosRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/painel': typeof AuthenticatedPainelRoute
+  '/_authenticated/revendedor': typeof AuthenticatedRevendedorRoute
+  '/afiliado/$code': typeof AfiliadoCodeRoute
+  '/r/$slug': typeof RSlugRoute
+  '/parceiros/': typeof ParceirosIndexRoute
+  '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/_authenticated/parceiro/': typeof AuthenticatedParceiroIndexRoute
+  '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
+  '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
+  '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
+  '/api/public/license/deactivate': typeof ApiPublicLicenseDeactivateRoute
+  '/api/public/license/heartbeat': typeof ApiPublicLicenseHeartbeatRoute
+  '/api/public/license/me': typeof ApiPublicLicenseMeRoute
+  '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
+  '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
+  '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
+  '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
+  '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
+  '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/api-docs'
+    | '/auth'
+    | '/documentacao'
+    | '/planos'
+    | '/admin'
+    | '/painel'
+    | '/revendedor'
+    | '/afiliado/$code'
+    | '/r/$slug'
+    | '/parceiros/'
+    | '/api/public/openapi'
+    | '/ext/runtime/manifest'
+    | '/parceiro/'
+    | '/api/public/cron/renew-licenses'
+    | '/api/public/extension/status'
+    | '/api/public/license/activate'
+    | '/api/public/license/deactivate'
+    | '/api/public/license/heartbeat'
+    | '/api/public/license/me'
+    | '/api/public/license/validate'
+    | '/api/public/webhooks/amplopay'
+    | '/api/public/webhooks/payment'
+    | '/api/public/ext/runtime/bundle'
+    | '/api/public/ext/runtime/manifest'
+    | '/api/public/license/device/remove'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/api-docs'
+    | '/auth'
+    | '/documentacao'
+    | '/planos'
+    | '/admin'
+    | '/painel'
+    | '/revendedor'
+    | '/afiliado/$code'
+    | '/r/$slug'
+    | '/parceiros'
+    | '/api/public/openapi'
+    | '/ext/runtime/manifest'
+    | '/parceiro'
+    | '/api/public/cron/renew-licenses'
+    | '/api/public/extension/status'
+    | '/api/public/license/activate'
+    | '/api/public/license/deactivate'
+    | '/api/public/license/heartbeat'
+    | '/api/public/license/me'
+    | '/api/public/license/validate'
+    | '/api/public/webhooks/amplopay'
+    | '/api/public/webhooks/payment'
+    | '/api/public/ext/runtime/bundle'
+    | '/api/public/ext/runtime/manifest'
+    | '/api/public/license/device/remove'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/api-docs'
+    | '/auth'
+    | '/documentacao'
+    | '/planos'
+    | '/_authenticated/admin'
+    | '/_authenticated/painel'
+    | '/_authenticated/revendedor'
+    | '/afiliado/$code'
+    | '/r/$slug'
+    | '/parceiros/'
+    | '/api/public/openapi'
+    | '/ext/runtime/manifest'
+    | '/_authenticated/parceiro/'
+    | '/api/public/cron/renew-licenses'
+    | '/api/public/extension/status'
+    | '/api/public/license/activate'
+    | '/api/public/license/deactivate'
+    | '/api/public/license/heartbeat'
+    | '/api/public/license/me'
+    | '/api/public/license/validate'
+    | '/api/public/webhooks/amplopay'
+    | '/api/public/webhooks/payment'
+    | '/api/public/ext/runtime/bundle'
+    | '/api/public/ext/runtime/manifest'
+    | '/api/public/license/device/remove'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  ApiDocsRoute: typeof ApiDocsRoute
+  AuthRoute: typeof AuthRoute
+  DocumentacaoRoute: typeof DocumentacaoRoute
+  PlanosRoute: typeof PlanosRoute
+  AfiliadoCodeRoute: typeof AfiliadoCodeRoute
+  RSlugRoute: typeof RSlugRoute
+  ParceirosIndexRoute: typeof ParceirosIndexRoute
+  ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
+  ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
+  ApiPublicCronRenewLicensesRoute: typeof ApiPublicCronRenewLicensesRoute
+  ApiPublicExtensionStatusRoute: typeof ApiPublicExtensionStatusRoute
+  ApiPublicLicenseActivateRoute: typeof ApiPublicLicenseActivateRoute
+  ApiPublicLicenseDeactivateRoute: typeof ApiPublicLicenseDeactivateRoute
+  ApiPublicLicenseHeartbeatRoute: typeof ApiPublicLicenseHeartbeatRoute
+  ApiPublicLicenseMeRoute: typeof ApiPublicLicenseMeRoute
+  ApiPublicLicenseValidateRoute: typeof ApiPublicLicenseValidateRoute
+  ApiPublicWebhooksAmplopayRoute: typeof ApiPublicWebhooksAmplopayRoute
+  ApiPublicWebhooksPaymentRoute: typeof ApiPublicWebhooksPaymentRoute
+  ApiPublicExtRuntimeBundleRoute: typeof ApiPublicExtRuntimeBundleRoute
+  ApiPublicExtRuntimeManifestRoute: typeof ApiPublicExtRuntimeManifestRoute
+  ApiPublicLicenseDeviceRemoveRoute: typeof ApiPublicLicenseDeviceRemoveRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +393,232 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api-docs': {
+      id: '/api-docs'
+      path: '/api-docs'
+      fullPath: '/api-docs'
+      preLoaderRoute: typeof ApiDocsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/documentacao': {
+      id: '/documentacao'
+      path: '/documentacao'
+      fullPath: '/documentacao'
+      preLoaderRoute: typeof DocumentacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/planos': {
+      id: '/planos'
+      path: '/planos'
+      fullPath: '/planos'
+      preLoaderRoute: typeof PlanosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/painel': {
+      id: '/_authenticated/painel'
+      path: '/painel'
+      fullPath: '/painel'
+      preLoaderRoute: typeof AuthenticatedPainelRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/revendedor': {
+      id: '/_authenticated/revendedor'
+      path: '/revendedor'
+      fullPath: '/revendedor'
+      preLoaderRoute: typeof AuthenticatedRevendedorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/afiliado/$code': {
+      id: '/afiliado/$code'
+      path: '/afiliado/$code'
+      fullPath: '/afiliado/$code'
+      preLoaderRoute: typeof AfiliadoCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parceiros/': {
+      id: '/parceiros/'
+      path: '/parceiros'
+      fullPath: '/parceiros/'
+      preLoaderRoute: typeof ParceirosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r/$slug': {
+      id: '/r/$slug'
+      path: '/r/$slug'
+      fullPath: '/r/$slug'
+      preLoaderRoute: typeof RSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/parceiro/': {
+      id: '/_authenticated/parceiro/'
+      path: '/parceiro'
+      fullPath: '/parceiro/'
+      preLoaderRoute: typeof AuthenticatedParceiroIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/openapi': {
+      id: '/api/public/openapi'
+      path: '/api/public/openapi'
+      fullPath: '/api/public/openapi'
+      preLoaderRoute: typeof ApiPublicOpenapiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ext/runtime/manifest': {
+      id: '/ext/runtime/manifest'
+      path: '/ext/runtime/manifest'
+      fullPath: '/ext/runtime/manifest'
+      preLoaderRoute: typeof ExtRuntimeManifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/cron/renew-licenses': {
+      id: '/api/public/cron/renew-licenses'
+      path: '/api/public/cron/renew-licenses'
+      fullPath: '/api/public/cron/renew-licenses'
+      preLoaderRoute: typeof ApiPublicCronRenewLicensesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/extension/status': {
+      id: '/api/public/extension/status'
+      path: '/api/public/extension/status'
+      fullPath: '/api/public/extension/status'
+      preLoaderRoute: typeof ApiPublicExtensionStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/license/activate': {
+      id: '/api/public/license/activate'
+      path: '/api/public/license/activate'
+      fullPath: '/api/public/license/activate'
+      preLoaderRoute: typeof ApiPublicLicenseActivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/license/deactivate': {
+      id: '/api/public/license/deactivate'
+      path: '/api/public/license/deactivate'
+      fullPath: '/api/public/license/deactivate'
+      preLoaderRoute: typeof ApiPublicLicenseDeactivateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/license/heartbeat': {
+      id: '/api/public/license/heartbeat'
+      path: '/api/public/license/heartbeat'
+      fullPath: '/api/public/license/heartbeat'
+      preLoaderRoute: typeof ApiPublicLicenseHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/license/me': {
+      id: '/api/public/license/me'
+      path: '/api/public/license/me'
+      fullPath: '/api/public/license/me'
+      preLoaderRoute: typeof ApiPublicLicenseMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/license/validate': {
+      id: '/api/public/license/validate'
+      path: '/api/public/license/validate'
+      fullPath: '/api/public/license/validate'
+      preLoaderRoute: typeof ApiPublicLicenseValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/amplopay': {
+      id: '/api/public/webhooks/amplopay'
+      path: '/api/public/webhooks/amplopay'
+      fullPath: '/api/public/webhooks/amplopay'
+      preLoaderRoute: typeof ApiPublicWebhooksAmplopayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/payment': {
+      id: '/api/public/webhooks/payment'
+      path: '/api/public/webhooks/payment'
+      fullPath: '/api/public/webhooks/payment'
+      preLoaderRoute: typeof ApiPublicWebhooksPaymentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ext/runtime/bundle': {
+      id: '/api/public/ext/runtime/bundle'
+      path: '/api/public/ext/runtime/bundle'
+      fullPath: '/api/public/ext/runtime/bundle'
+      preLoaderRoute: typeof ApiPublicExtRuntimeBundleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/ext/runtime/manifest': {
+      id: '/api/public/ext/runtime/manifest'
+      path: '/api/public/ext/runtime/manifest'
+      fullPath: '/api/public/ext/runtime/manifest'
+      preLoaderRoute: typeof ApiPublicExtRuntimeManifestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/license/device/remove': {
+      id: '/api/public/license/device/remove'
+      path: '/api/public/license/device/remove'
+      fullPath: '/api/public/license/device/remove'
+      preLoaderRoute: typeof ApiPublicLicenseDeviceRemoveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
+  AuthenticatedRevendedorRoute: typeof AuthenticatedRevendedorRoute
+  AuthenticatedParceiroIndexRoute: typeof AuthenticatedParceiroIndexRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedPainelRoute: AuthenticatedPainelRoute,
+  AuthenticatedRevendedorRoute: AuthenticatedRevendedorRoute,
+  AuthenticatedParceiroIndexRoute: AuthenticatedParceiroIndexRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  ApiDocsRoute: ApiDocsRoute,
+  AuthRoute: AuthRoute,
+  DocumentacaoRoute: DocumentacaoRoute,
+  PlanosRoute: PlanosRoute,
+  AfiliadoCodeRoute: AfiliadoCodeRoute,
+  RSlugRoute: RSlugRoute,
+  ParceirosIndexRoute: ParceirosIndexRoute,
+  ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
+  ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
+  ApiPublicCronRenewLicensesRoute: ApiPublicCronRenewLicensesRoute,
+  ApiPublicExtensionStatusRoute: ApiPublicExtensionStatusRoute,
+  ApiPublicLicenseActivateRoute: ApiPublicLicenseActivateRoute,
+  ApiPublicLicenseDeactivateRoute: ApiPublicLicenseDeactivateRoute,
+  ApiPublicLicenseHeartbeatRoute: ApiPublicLicenseHeartbeatRoute,
+  ApiPublicLicenseMeRoute: ApiPublicLicenseMeRoute,
+  ApiPublicLicenseValidateRoute: ApiPublicLicenseValidateRoute,
+  ApiPublicWebhooksAmplopayRoute: ApiPublicWebhooksAmplopayRoute,
+  ApiPublicWebhooksPaymentRoute: ApiPublicWebhooksPaymentRoute,
+  ApiPublicExtRuntimeBundleRoute: ApiPublicExtRuntimeBundleRoute,
+  ApiPublicExtRuntimeManifestRoute: ApiPublicExtRuntimeManifestRoute,
+  ApiPublicLicenseDeviceRemoveRoute: ApiPublicLicenseDeviceRemoveRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

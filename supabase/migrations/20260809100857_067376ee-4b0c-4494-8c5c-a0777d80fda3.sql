@@ -1,0 +1,1 @@
+UPDATE public.payment_settings SET active = true WHERE provider = 'amplopay';

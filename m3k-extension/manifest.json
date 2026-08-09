@@ -1,0 +1,97 @@
+{
+  "manifest_version": 3,
+  "name": "MSK SISTEM",
+  "version": "32.5.0",
+  "description": "MSK SISTEM — extensão para Lovable.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "cookies"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "MSK SISTEM",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://lovable.dev/*",
+        "https://*.lovable.dev/*"
+      ],
+      "js": [
+        "license-gate.js"
+      ],
+      "css": [
+        "license-gate.css"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://lovable.dev/*",
+        "https://*.lovable.dev/*"
+      ],
+      "js": [
+        "branding.config.js",
+        "remote-branding.js",
+        "jszip.min.js",
+        "content-templates.js",
+        "content.js",
+        "overlay.js",
+        "overlay-suppressor.js"
+      ],
+      "css": [
+        "floating.css",
+        "ui-isolation.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://lovable.dev/*",
+        "https://*.lovable.dev/*"
+      ],
+      "js": [
+        "floating-shell.js"
+      ],
+      "css": [
+        "floating-shell.css",
+        "ui-isolation.css"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "*"
+      ],
+      "matches": [
+        "https://lovable.dev/*",
+        "https://*.lovable.dev/*"
+      ]
+    }
+  ]
+}
