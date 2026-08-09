@@ -13,7 +13,8 @@ import {
   Type,
   Image as ImageIcon,
   Upload,
-  Palette
+  Palette,
+  Users
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,7 +117,7 @@ export function AdminEditorTab() {
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {[
             { id: 'hero', label: 'Hero / Início', icon: Monitor },
-            { id: 'partners', label: 'Parceiros', icon: Monitor }, // Using Monitor as placeholder for Users if Users not imported
+            { id: 'partners', label: 'Parceiros', icon: Users },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
           ].map((s: any) => (
