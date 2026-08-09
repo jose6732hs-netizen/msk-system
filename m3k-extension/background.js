@@ -488,6 +488,9 @@ return true;
 /* ===== OFERROLGARCIA — Camada de Licenciamento ===== */
 async function openLicenseScreen(){
   const url = chrome.runtime.getURL('license.html');
+  const width = 450;
+  const height = 650;
+  
   try{
     const tabs = await chrome.tabs.query({url});
     if(tabs && tabs[0]){
@@ -496,7 +499,24 @@ async function openLicenseScreen(){
       return;
     }
   }catch(_){}
-  await chrome.tabs.create({url});
+
+  try {
+    const currentWin = await chrome.windows.getCurrent();
+    const left = Math.round(currentWin.left + (currentWin.width - width) / 2);
+    const top = Math.round(currentWin.top + (currentWin.height - height) / 2);
+    
+    await chrome.windows.create({
+      url,
+      type: 'popup',
+      width,
+      height,
+      left: Math.max(0, left),
+      top: Math.max(0, top),
+      focused: true
+    });
+  } catch(e) {
+    await chrome.tabs.create({url});
+  }
 }
 
 async function broadcastLicense(licensed){
