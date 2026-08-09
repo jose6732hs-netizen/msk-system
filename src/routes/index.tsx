@@ -1,4 +1,4 @@
-// as aplicacoes que eu te pedi e edicoes e pra ser aplicada nessa extencao aq oferrolgarcia-licenciada.zip
+// ddeixe ela  como a extncao disponivel tambem
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
