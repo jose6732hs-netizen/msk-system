@@ -153,6 +153,10 @@ export function TokenManager() {
   }
 
   async function onGenerate() {
+    if (available <= 0) {
+      window.location.href = "https://ini-joy-maker.lovable.app/planos";
+      return;
+    }
     setBusy(true);
     try {
       const res = await genFn();
@@ -227,12 +231,12 @@ export function TokenManager() {
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <Button variant="neon" onClick={onGenerate} disabled={busy || available <= 0}>
+                <Button variant="neon" onClick={onGenerate} disabled={busy}>
                   {busy ? <Loader2 className="animate-spin" /> : <Plus />} Gerar token
                 </Button>
                 {available <= 0 && (
                   <p className="text-sm text-destructive">
-                    Você atingiu o limite de tokens do seu plano.
+                    Nenhum token ativo ainda. Navegue pelo site e garanta a sua licença!
                   </p>
                 )}
               </div>
