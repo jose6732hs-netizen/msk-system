@@ -86,13 +86,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       {
         name: "description",
         content:
-          "Plataforma oficial de assinaturas e licenciamento da extensão Chrome Lovable MSK.",
+          "Plataforma oficial de assinaturas e licenciamento da extensão Chrome MSK SISTEM.",
       },
-      { name: "author", content: "Lovable MSK" },
+      { name: "author", content: "MSK SISTEM" },
       { property: "og:title", content: "MSK SUIT" },
       {
         property: "og:description",
-        content: "Assinaturas, licenças e dispositivos da extensão Lovable MSK.",
+        content: "Assinaturas, licenças e dispositivos da extensão MSK SISTEM.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
