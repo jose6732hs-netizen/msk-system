@@ -38,7 +38,7 @@
         "https://*.lovable.dev/*"
       ],
       "js": [
-        "license-gate.js"
+        "license-gate.js", "license-timer.js"
       ],
       "css": [
         "license-gate.css"
