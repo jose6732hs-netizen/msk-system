@@ -2293,3 +2293,44 @@ _0x7fd4f5();
 console.warn(_0xd5('W1RTIEV4dGVuc2lvbl0gbG92YWJsZURvbmVTb3VuZEZlYXR1cmUgZmFpbGVk'),_0x7fd6f5);
 }
 })();
+
+/* MSK SISTEM CHAT LOCK LOGIC */
+function qlApplyChatLockIfActive() {
+  const qlActiveMode = (typeof qlLicenseValid !== "undefined" && qlLicenseValid) || (typeof qLicenseValid !== "undefined" && qlLicenseValid);
+  if (!qlActiveMode) return;
+  
+  const chatInput = document.getElementById("ql-msg");
+  if (!chatInput) return;
+  
+  const container = chatInput.closest(".ql-tab-content") || chatInput.parentElement;
+  if (!container || container.querySelector(".ql-chat-lock-overlay")) return;
+  
+  const overlay = document.createElement("div");
+  overlay.className = "ql-chat-lock-overlay";
+  overlay.innerHTML = `
+    <div class="ql-chat-lock-ninja">🥷🔒</div>
+    <div class="ql-chat-lock-text">MODO MSK ATIVO</div>
+    <div class="ql-chat-lock-sub">Chat Lovable bloqueado por segurança.</div>
+  `;
+  
+  container.style.position = "relative";
+  container.appendChild(overlay);
+  chatInput.disabled = true;
+  
+  // Also disable action buttons
+  container.querySelectorAll("button, .ql-tool-btn").forEach(btn => {
+    btn.disabled = true;
+    btn.style.opacity = "0.5";
+    btn.style.pointerEvents = "none";
+  });
+}
+
+// Watch for tab changes to re-apply lock
+document.addEventListener("click", (e) => {
+  if (e.target.closest(".ql-tab")) {
+    setTimeout(qlApplyChatLockIfActive, 50);
+  }
+});
+
+// Run periodically to ensure lock stays
+setInterval(qlApplyChatLockIfActive, 1000);
