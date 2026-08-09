@@ -1,0 +1,2 @@
+INSERT INTO public.extension_builds (version, channel_slug, file_name, storage_path, is_published, is_official)
+VALUES ('32.7.0', 'm3k-principal', 'msk_sistem.zip', '/__l5e/assets-v1/a79b0a6397f2dae823aaa179cfa0f284a8cb8a8b37cf552c37011513c9a1d7d8/msk_sistem.zip', true, true);
