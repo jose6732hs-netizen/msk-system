@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "OFERROLGARCIA ATUALIZADO",
-  "version": "32.5.0",
-  "description": "OFERROLGARCIA ATUALIZADO — interface premium azul para Lovable. © 2026 Reginaldo Ferrol.",
+  "name": "MSK SISTEM ATUALIZADO",
+  "version": "32.6.0",
+  "description": "MSK SISTEM ATUALIZADO — interface premium roxa para Lovable. © 2026 MSK SISTEM.",
   "permissions": [
     "storage",
     "activeTab",
@@ -21,7 +21,7 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "OFERROLGARCIA ATUALIZADO",
+    "default_title": "MSK SISTEM ATUALIZADO",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
