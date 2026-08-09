@@ -1,4 +1,4 @@
-// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (NEON PURPLE + INFINITE CREDITS + CHAT LOCK)
+// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION)
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
