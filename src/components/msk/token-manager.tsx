@@ -236,7 +236,7 @@ export function TokenManager() {
                 </Button>
                 {available <= 0 && (
                   <p className="text-sm text-destructive">
-                    nem um tokem ativo ainda navegue plo sit e garanta  a sua etc
+                    Nenhum token ativo ainda! Navegue pelo site e garanta o seu acesso premium.
                   </p>
                 )}
               </div>
