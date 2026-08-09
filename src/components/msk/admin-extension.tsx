@@ -38,7 +38,8 @@ function ExtensionChannels() {
   const mutate = useMutation({
     mutationFn: (v: { id: string; enabled: boolean }) => save({ data: v }),
     onSuccess: (r) => {
-      toast.success(`${r.display_name}: ${r.enabled ? "ATIVADA" : "DESATIVADA"}.`);
+      const status = r.enabled ? "ATIVADO" : "DESATIVADO";
+      toast.success(`${r.display_name}: Canal ${status}. Este canal agora é a fonte para novos downloads.`);
       qc.invalidateQueries({ queryKey: ["extension-channels"] });
     },
     onError: (e: Error) => toast.error(e.message),
