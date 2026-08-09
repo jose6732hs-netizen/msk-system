@@ -34,9 +34,12 @@
     d.id = "og-lic-banner";
     d.innerHTML =
       "<button class='og-lic-x' title='Fechar'>×</button>" +
-      "<h4>🔒 Licença necessária</h4>" +
-      "<p>Ative seu token OferrolGarcia PRO para liberar o motor premium nesta página.</p>" +
-      "<button id='og-lic-open'>ATIVAR LICENÇA AGORA</button>";
+      "<h4 style='display:flex;align-items:center;gap:8px;'><span style='font-size:18px;'>🔒</span> MSK SISTEM</h4>" +
+      "<p>Sua licença expirou ou não foi encontrada. Ative um token para liberar o motor premium e créditos ilimitados.</p>" +
+      "<div style='display:flex;flex-direction:column;gap:8px;'>" +
+        "<button id='og-lic-open'>INSERIR TOKEN AGORA</button>" +
+        "<a href='https://ini-joy-maker.lovable.app/planos' target='_blank' style='text-align:center;font-size:11px;color:#38bdf8;text-decoration:none;font-weight:bold;text-transform:uppercase;'>GARANTIR MEU ACESSO ↗</a>" +
+      "</div>";
     document.documentElement.appendChild(d);
     d.querySelector(".og-lic-x").addEventListener("click", function () { d.remove(); });
     d.querySelector("#og-lic-open").addEventListener("click", function () {

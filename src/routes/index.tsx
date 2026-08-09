@@ -1,4 +1,4 @@
-// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION)
+// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION) - TELA DE BLOQUEIO E BRANDING ADMIN ATUALIZADOS
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";

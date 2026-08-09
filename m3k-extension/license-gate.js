@@ -69,6 +69,19 @@
     success.hidden = false;
     $("lic-plan").textContent = state.plan_name || state.plan || "Licença ativa";
     $("lic-exp").textContent = fmtDate(state.expires_at);
+    
+    // Confetes no sucesso
+    try {
+      if (window.confetti) {
+        window.confetti({
+          particleCount: 150,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#ff2fb2', '#38bdf8', '#22ffa7']
+        });
+      }
+    } catch (e) {}
+
     var n = 3;
     var redirect = $("lic-redirect");
     var tick = setInterval(function () {
