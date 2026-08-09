@@ -1,69 +1,69 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>OferrolGarcia — Ativação de Licença</title>
-<link rel="stylesheet" href="license.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MSK SISTEM — Ativação de Licença</title>
+  <link rel="stylesheet" href="license.css">
 </head>
 <body>
-<div class="lic-bg" aria-hidden="true"><span></span><span></span><span></span></div>
+  <div class="lic-bg" aria-hidden="true"><span></span><span></span><span></span></div>
 
-<main class="lic-shell">
-  <section class="lic-card" id="lic-card">
-    <header class="lic-head">
-      <img src="icons/icon128.png" alt="OferrolGarcia" class="lic-logo">
-      <div>
-        <h1>OferrolGarcia <b>PRO</b></h1>
-        <p>Ative sua licença para liberar o motor premium na Lovable.</p>
+  <main class="lic-shell">
+    <section class="lic-card" id="lic-card">
+      <header class="lic-head">
+        <img src="icons/icon128.png" alt="MSK SISTEM" class="lic-logo">
+        <div>
+          <h1>MSK SISTEM <b>PRO</b></h1>
+          <p>Ative sua licença para liberar o motor premium na Lovable.</p>
+        </div>
+        <span class="lic-ver" id="lic-ver">v0.0.0</span>
+      </header>
+
+      <div class="lic-status" id="lic-status" data-tone="idle">
+        <span class="lic-dot"></span>
+        <span id="lic-status-text">Aguardando token de acesso…</span>
       </div>
-      <span class="lic-ver" id="lic-ver">v0.0.0</span>
-    </header>
 
-    <div class="lic-status" id="lic-status" data-tone="idle">
-      <span class="lic-dot"></span>
-      <span id="lic-status-text">Aguardando token de acesso…</span>
-    </div>
+      <form class="lic-form" id="lic-form" autocomplete="off">
+        <label for="lic-token">TOKEN DE LICENÇA</label>
+        <div class="lic-input-wrap">
+          <input id="lic-token" name="token" type="text" spellcheck="false"
+                 placeholder="MSK-XXXX-XXXX-XXXX" aria-describedby="lic-msg">
+          <button type="button" class="lic-paste" id="lic-paste" title="Colar">Colar</button>
+        </div>
+        <p class="lic-msg" id="lic-msg" role="alert"></p>
 
-    <form class="lic-form" id="lic-form" autocomplete="off">
-      <label for="lic-token">TOKEN DE LICENÇA</label>
-      <div class="lic-input-wrap">
-        <input id="lic-token" name="token" type="text" spellcheck="false"
-               placeholder="MSK-XXXX-XXXX-XXXX" aria-describedby="lic-msg">
-        <button type="button" class="lic-paste" id="lic-paste" title="Colar">Colar</button>
-      </div>
-      <p class="lic-msg" id="lic-msg" role="alert"></p>
+        <button type="submit" class="lic-btn" id="lic-submit">
+          <span class="lic-btn-label">VALIDAR E ABRIR EXTENSÃO</span>
+          <span class="lic-spinner" hidden></span>
+        </button>
+      </form>
 
-      <button type="submit" class="lic-btn" id="lic-submit">
-        <span class="lic-btn-label">VALIDAR E ABRIR EXTENSÃO</span>
-        <span class="lic-spinner" hidden></span>
-      </button>
-    </form>
+      <ul class="lic-steps">
+        <li><b>1</b> Cole seu token de acesso</li>
+        <li><b>2</b> Validamos com o servidor MSK</li>
+        <li><b>3</b> A Lovable abre já liberada</li>
+      </ul>
 
-    <ul class="lic-steps">
-      <li><b>1</b> Cole seu token de acesso</li>
-      <li><b>2</b> Validamos com o servidor MSK</li>
-      <li><b>3</b> A Lovable abre já liberada</li>
-    </ul>
+      <footer class="lic-foot">
+        <a href="https://msk-sistem.lovable.app/planos" target="_blank" rel="noopener">Comprar licença ↗</a>
+        <a href="https://msk-sistem.lovable.app/painel" target="_blank" rel="noopener">Meus tokens ↗</a>
+        <span class="lic-id" id="lic-install" title="ID desta instalação"></span>
+      </footer>
+    </section>
 
-    <footer class="lic-foot">
-      <a href="https://msk-extencsoes.lovable.app/planos" target="_blank" rel="noopener">Comprar licença ↗</a>
-      <a href="https://msk-extencsoes.lovable.app/painel" target="_blank" rel="noopener">Meus tokens ↗</a>
-      <span class="lic-id" id="lic-install" title="ID desta instalação"></span>
-    </footer>
-  </section>
+    <section class="lic-card lic-success" id="lic-success" hidden>
+      <div class="lic-check" aria-hidden="true">✓</div>
+      <h2>Licença ativada</h2>
+      <p class="lic-plan" id="lic-plan"></p>
+      <p class="lic-exp" id="lic-exp"></p>
+      <p class="lic-redirect" id="lic-redirect">Abrindo a Lovable com a extensão liberada…</p>
+      <button class="lic-btn lic-btn-ghost" id="lic-open">ABRIR AGORA</button>
+    </section>
+  </main>
 
-  <section class="lic-card lic-success" id="lic-success" hidden>
-    <div class="lic-check" aria-hidden="true">✓</div>
-    <h2>Licença ativada</h2>
-    <p class="lic-plan" id="lic-plan"></p>
-    <p class="lic-exp" id="lic-exp"></p>
-    <p class="lic-redirect" id="lic-redirect">Abrindo a Lovable com a extensão liberada…</p>
-    <button class="lic-btn lic-btn-ghost" id="lic-open">ABRIR AGORA</button>
-  </section>
-</main>
-
-<script src="license-core.js"></script>
-<script src="license-gate.js"></script>
+  <script src="license-core.js"></script>
+  <script src="license-gate.js"></script>
 </body>
 </html>
