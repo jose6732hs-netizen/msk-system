@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import confetti from "canvas-confetti";
 import { 
   Monitor, 
   FileText, 
@@ -9,7 +10,10 @@ import {
   RefreshCw,
   Clock,
   Layout,
-  Type
+  Type,
+  Image as ImageIcon,
+  Upload,
+  Palette
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +21,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory } from "@/lib/cms.functions";
+import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
 
-type Section = 'hero' | 'partners' | 'features' | 'copy';
+type Section = 'hero' | 'partners' | 'features' | 'copy' | 'branding';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -27,9 +31,12 @@ export function AdminEditorTab() {
   const saveDraft = useServerFn(saveCmsDraft);
   const publishDraft = useServerFn(publishCmsDraft);
   const getHistory = useServerFn(getCmsHistory);
+  const uploadAsset = useServerFn(uploadCmsAsset);
 
   const [activeSection, setActiveSection] = useState<Section>('hero');
   const [localSettings, setLocalSettings] = useState<any>(null);
+  const [uploading, setUploading] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: settings, isLoading } = useQuery({
     queryKey: ["cms-content"],
@@ -70,6 +77,12 @@ export function AdminEditorTab() {
     try {
       await publishDraft({ data: { key } });
       toast.success("Conteúdo publicado com sucesso!");
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#39ff14', '#000000', '#ffffff']
+      });
       qc.invalidateQueries({ queryKey: ["cms-content"] });
       qc.invalidateQueries({ queryKey: ["cms-history"] });
     } catch (e) {
@@ -104,6 +117,7 @@ export function AdminEditorTab() {
           {[
             { id: 'hero', label: 'Hero / Início', icon: Monitor },
             { id: 'partners', label: 'Parceiros', icon: Users },
+            { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
           ].map((s: any) => (
             <button
@@ -208,6 +222,143 @@ export function AdminEditorTab() {
                 </Button>
                 <Button onClick={() => handlePublish('config')} variant="neon" className="flex-1 font-black">
                   <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'branding' && (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-[0.65rem] font-bold text-primary/80 leading-relaxed">
+                Aqui você configura os ícones e o banner que aparecem na extensão. As alterações afetam todos os usuários após a sincronização automática.
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground block">Ícone Principal (128x128)</label>
+                    <div className="flex items-center gap-4">
+                      <div className="h-20 w-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                        {localSettings.branding?.icon_url ? (
+                          <img src={localSettings.branding.icon_url} className="h-full w-full object-cover" />
+                        ) : (
+                          <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+                        )}
+                      </div>
+                      <Button 
+                        size="sm" 
+                        variant="neonOutline" 
+                        className="h-10 text-[0.65rem] font-black"
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = async (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) {
+                              setUploading('icon');
+                              try {
+                                const fd = new FormData();
+                                fd.append('file', file);
+                                fd.append('key', 'branding-icon');
+                                const res = await uploadAsset({ data: fd as any });
+                                updateSetting('branding', 'icon_url', res.url);
+                                toast.success("Ícone carregado!");
+                              } catch (err) {
+                                toast.error("Erro no upload");
+                              } finally {
+                                setUploading(null);
+                              }
+                            }
+                          };
+                          input.click();
+                        }}
+                        disabled={uploading === 'icon'}
+                      >
+                        {uploading === 'icon' ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-2" /> : <Upload className="h-3.5 w-3.5 mr-2" />}
+                        Mudar Ícone
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground block">Banner Promocional</label>
+                    <div className="aspect-video w-full rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group">
+                      {localSettings.branding?.banner_url ? (
+                        <img src={localSettings.branding.banner_url} className="h-full w-full object-cover" />
+                      ) : (
+                        <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
+                      )}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Button 
+                          size="sm" 
+                          variant="neon" 
+                          className="h-10 text-[0.65rem] font-black"
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'image/*';
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) {
+                                setUploading('banner');
+                                try {
+                                  const fd = new FormData();
+                                  fd.append('file', file);
+                                  fd.append('key', 'branding-banner');
+                                  const res = await uploadAsset({ data: fd as any });
+                                  updateSetting('branding', 'banner_url', res.url);
+                                  toast.success("Banner carregado!");
+                                } catch (err) {
+                                  toast.error("Erro no upload");
+                                } finally {
+                                  setUploading(null);
+                                }
+                              }
+                            };
+                            input.click();
+                          }}
+                          disabled={uploading === 'banner'}
+                        >
+                          {uploading === 'banner' ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-2" /> : <Upload className="h-3.5 w-3.5 mr-2" />}
+                          Mudar Banner
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Nome da Marca</label>
+                    <Input 
+                      value={localSettings.branding?.brand_name || 'MSK SISTEM'} 
+                      onChange={(e) => updateSetting('branding', 'brand_name', e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Cor Primária (Hex)</label>
+                    <div className="flex gap-2">
+                      <Input 
+                        value={localSettings.branding?.primary_color || '#39ff14'} 
+                        onChange={(e) => updateSetting('branding', 'primary_color', e.target.value)}
+                        className="font-mono"
+                      />
+                      <div 
+                        className="h-10 w-12 rounded-xl border border-white/10" 
+                        style={{ backgroundColor: localSettings.branding?.primary_color || '#39ff14' }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('branding')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+                </Button>
+                <Button onClick={() => handlePublish('branding')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Alterações
                 </Button>
               </div>
             </div>

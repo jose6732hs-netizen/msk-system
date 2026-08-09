@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { uploadPublicFile } from "./storage.server";
 
 export const getCmsContent = createServerFn({ method: "GET" })
   .handler(async () => {
@@ -109,4 +110,22 @@ export const getCmsHistory = createServerFn({ method: "GET" })
     
     if (error) throw new Error(error.message);
     return (data || []) as any[];
+  });
+
+export const uploadCmsAsset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const formData = await (context as any).request.formData();
+    const file = formData.get("file") as File;
+    const key = formData.get("key") as string;
+    
+    if (!file) throw new Error("No file uploaded");
+
+    const extension = file.name.split('.').pop();
+    const fileName = `cms/${key}-${Date.now()}.${extension}`;
+    
+    const url = await uploadPublicFile(file, fileName, "extension-builds");
+    
+    return { url };
   });
