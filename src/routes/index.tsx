@@ -1,4 +1,4 @@
-// deixe os conectores todos funcionandfo perfeitamente
+// ta nmuito lento o carregamento das paginas em previw e os conectores goglee apple discord git nao estao funcioando arrume isso
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
