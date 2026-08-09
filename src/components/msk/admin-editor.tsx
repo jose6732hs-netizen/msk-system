@@ -120,16 +120,16 @@ export function AdminEditorTab() {
             { id: 'partners', label: 'Parceiros', icon: Users },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
-          ].map((s: any) => (
+          ].map((item: any) => (
             <button
-              key={s.id}
-              onClick={() => setActiveSection(s.id)}
+              key={item.id}
+              onClick={() => setActiveSection(item.id)}
               className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[0.65rem] font-black uppercase tracking-widest transition-all ${
-                activeSection === s.id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+                activeSection === item.id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
               }`}
             >
-              <s.icon className="h-3.5 w-3.5" />
-              {s.label}
+              <item.icon className="h-3.5 w-3.5" />
+              {item.label}
             </button>
           ))}
         </div>
