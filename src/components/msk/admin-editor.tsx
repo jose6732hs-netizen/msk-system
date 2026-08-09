@@ -117,7 +117,7 @@ export function AdminEditorTab() {
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {[
             { id: 'hero', label: 'Hero / Início', icon: Monitor },
-            { id: 'partners', label: 'Parceiros', icon: Users },
+            { id: 'partners', label: 'Parceiros', icon: UsersIcon },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
           ].map((item: any) => (
@@ -461,7 +461,7 @@ export function AdminEditorTab() {
   );
 }
 
-function Users({ className }: { className?: string }) {
+function UsersIcon({ className }: { className?: string }) {
   return (
     <svg 
       xmlns="http://www.w3.org/2000/svg" 
