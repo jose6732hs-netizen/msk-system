@@ -528,7 +528,7 @@ _0x2cf6f1((_0x2ceef1&&_0x2ceef1[0]&&_0x2ceef1[0].result)||{ok:false,error:_0xd1(
 return true;
 });
 
-/* ===== OFERROLGARCIA LICENSE GATE (integrated into original build) ===== */
+/* ===== MSK SISTEM LICENSE GATE (integrated into original build) ===== */
 const OFG_LICENSE_API='https://msk-extencsoes.lovable.app/api/public/license';
 const OFG_SUPPORT_URL=''; // Configure only the WhatsApp support URL here when available.
 async function ofgDeviceId(){
