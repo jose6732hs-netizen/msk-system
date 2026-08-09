@@ -1,12 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
-// inicie esse prijeto
-// Painel Admin e landing page otimizados para mobile
-// Design premium com foco em centralização e responsividade total.
-
+// MSK SISTEM - Painel Admin e Landing Page
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
-import { Link } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { HeroCarousel } from "@/components/msk/hero-carousel";
 import { Hero3D } from "@/components/msk/hero-3d";
 import { HeroScene3D } from "@/components/msk/hero-scene-3d";
