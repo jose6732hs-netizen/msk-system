@@ -1,6 +1,6 @@
 // jose6732hs@gmail.com
- me de a senha do jose6732hs@gmail.com
- que e o suoper admin e corrija essa demora de abrir em previw
+// me de a senha do jose6732hs@gmail.com
+// que e o suoper admin e corrija essa demora de abrir em previw
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
