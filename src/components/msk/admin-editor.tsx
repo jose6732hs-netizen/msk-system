@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import confetti from "canvas-confetti";
 import { 
   Monitor, 
   FileText, 
@@ -76,6 +77,12 @@ export function AdminEditorTab() {
     try {
       await publishDraft({ data: { key } });
       toast.success("Conteúdo publicado com sucesso!");
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#39ff14', '#000000', '#ffffff']
+      });
       qc.invalidateQueries({ queryKey: ["cms-content"] });
       qc.invalidateQueries({ queryKey: ["cms-history"] });
     } catch (e) {
