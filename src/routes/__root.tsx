@@ -89,7 +89,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "Plataforma oficial de assinaturas e licenciamento da extensão Chrome MSK SISTEM.",
       },
       { name: "author", content: "MSK SISTEM" },
-      { property: "og:title", content: "MSK SUIT" },
+      { property: "og:title", content: "MSK SISTEM" },
       {
         property: "og:description",
         content: "Assinaturas, licenças e dispositivos da extensão MSK SISTEM.",
