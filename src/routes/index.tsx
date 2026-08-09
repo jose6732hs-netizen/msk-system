@@ -1,6 +1,4 @@
-// jose6732hs@gmail.com
-// me de a senha do jose6732hs@gmail.com
-// que e o suoper admin e corrija essa demora de abrir em previw
+// as aplicacoes que eu te pedi e edicoes e pra ser aplicada nessa extencao aq oferrolgarcia-licenciada.zip
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
