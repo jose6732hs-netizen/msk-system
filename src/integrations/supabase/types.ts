@@ -14,7 +14,207 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
+      extension_channels: {
+        Row: {
+          active: boolean | null
+          api_base_url: string
+          channel_number: number
+          channel_type: string
+          chrome_extension_id: string | null
+          created_at: string | null
+          display_name: string
+          enabled: boolean
+          id: string
+          message: string
+          metadata: Json | null
+          slug: string
+          updated_at: string | null
+          version: string
+        }
+        Insert: {
+          active?: boolean | null
+          api_base_url?: string
+          channel_number?: number
+          channel_type?: string
+          chrome_extension_id?: string | null
+          created_at?: string | null
+          display_name: string
+          enabled?: boolean
+          id?: string
+          message?: string
+          metadata?: Json | null
+          slug: string
+          updated_at?: string | null
+          version?: string
+        }
+        Update: {
+          active?: boolean | null
+          api_base_url?: string
+          channel_number?: number
+          channel_type?: string
+          chrome_extension_id?: string | null
+          created_at?: string | null
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          message?: string
+          metadata?: Json | null
+          slug?: string
+          updated_at?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
+      payment_settings: {
+        Row: {
+          active: boolean
+          api_base_url: string
+          created_at: string
+          id: string
+          provider: string
+          public_key_encrypted: string | null
+          public_key_last4: string | null
+          secret_key_encrypted: string | null
+          secret_key_last4: string | null
+          updated_at: string
+          updated_by: string | null
+          webhook_secret_encrypted: string | null
+        }
+        Insert: {
+          active?: boolean
+          api_base_url?: string
+          created_at?: string
+          id?: string
+          provider?: string
+          public_key_encrypted?: string | null
+          public_key_last4?: string | null
+          secret_key_encrypted?: string | null
+          secret_key_last4?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          webhook_secret_encrypted?: string | null
+        }
+        Update: {
+          active?: boolean
+          api_base_url?: string
+          created_at?: string
+          id?: string
+          provider?: string
+          public_key_encrypted?: string | null
+          public_key_last4?: string | null
+          secret_key_encrypted?: string | null
+          secret_key_last4?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          webhook_secret_encrypted?: string | null
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          active: boolean
+          affiliate_commission_rate: number
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          reseller_commission_rate: number
+          slug: string
+          sort_order: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          affiliate_commission_rate?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          reseller_commission_rate?: number
+          slug: string
+          sort_order?: number
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          affiliate_commission_rate?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          reseller_commission_rate?: number
+          slug?: string
+          sort_order?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reseller_tiers: {
+        Row: {
+          active: boolean
+          commission_rate: number
+          created_at: string
+          discount_rate: number
+          id: string
+          min_deposit: number
+          name: string
+          slug: string
+          sort_order: number
+          trials_granted: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          commission_rate?: number
+          created_at?: string
+          discount_rate?: number
+          id?: string
+          min_deposit?: number
+          name: string
+          slug: string
+          sort_order?: number
+          trials_granted?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          commission_rate?: number
+          created_at?: string
+          discount_rate?: number
+          id?: string
+          min_deposit?: number
+          name?: string
+          slug?: string
+          sort_order?: number
+          trials_granted?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +223,26 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      app_role:
+        | "admin"
+        | "user"
+        | "super_admin"
+        | "producer"
+        | "reseller"
+        | "affiliate"
+      device_status: "active" | "removed" | "blocked"
+      license_status:
+        | "active"
+        | "inactive"
+        | "expired"
+        | "revoked"
+        | "suspended"
+      subscription_status:
+        | "pending"
+        | "active"
+        | "cancelled"
+        | "expired"
+        | "past_due"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +369,24 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: [
+        "admin",
+        "user",
+        "super_admin",
+        "producer",
+        "reseller",
+        "affiliate",
+      ],
+      device_status: ["active", "removed", "blocked"],
+      license_status: ["active", "inactive", "expired", "revoked", "suspended"],
+      subscription_status: [
+        "pending",
+        "active",
+        "cancelled",
+        "expired",
+        "past_due",
+      ],
+    },
   },
 } as const
