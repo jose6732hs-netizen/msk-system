@@ -31,25 +31,30 @@ export function SiteHeader() {
     setDownloading(true);
     setDownloadProgress(0);
 
-    // Simulando barra de progresso de 0 a 100%
-    const interval = setInterval(() => {
-      setDownloadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + Math.floor(Math.random() * 10) + 5;
-      });
-    }, 200);
-
     try {
-      const res = await getExtensionDownload({ data: {} });
+      // Começa a buscar o link de download imediatamente
+      const downloadTask = getExtensionDownload({ data: {} });
       
-      // Aguarda o progresso chegar a 100% antes de iniciar o download real
-      while (true) {
-        if (downloadProgress >= 100) break;
-        await new Promise(r => setTimeout(r, 100));
-      }
+      // Simulando barra de progresso
+      let currentProgress = 0;
+      const interval = setInterval(() => {
+        currentProgress += Math.floor(Math.random() * 10) + 5;
+        if (currentProgress >= 95) {
+          // Trava em 95% até o downloadTask resolver
+          setDownloadProgress(95);
+        } else {
+          setDownloadProgress(currentProgress);
+        }
+      }, 200);
+
+      const res = await downloadTask;
+      
+      // Quando o link chega, termina o progresso até 100% rapidamente
+      clearInterval(interval);
+      setDownloadProgress(100);
+      
+      // Pequeno delay para o usuário ver o 100%
+      await new Promise(r => setTimeout(r, 300));
 
       const a = window.document.createElement("a");
       a.href = res.url;
@@ -60,7 +65,6 @@ export function SiteHeader() {
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
-      clearInterval(interval);
       setDownloading(false);
       setDownloadProgress(0);
     }
