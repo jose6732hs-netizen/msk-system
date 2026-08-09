@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { uploadPublicFile } from "./storage.server";
 
 export const getCmsContent = createServerFn({ method: "GET" })
   .handler(async () => {
