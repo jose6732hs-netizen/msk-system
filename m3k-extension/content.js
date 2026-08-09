@@ -2293,3 +2293,52 @@ _0x7fd4f5();
 console.warn(_0xd5('W1RTIEV4dGVuc2lvbl0gbG92YWJsZURvbmVTb3VuZEZlYXR1cmUgZmFpbGVk'),_0x7fd6f5);
 }
 })();
+
+/* MSK SISTEM - Credits & UI Lock enhancements */
+(function() {
+  function applyMskUiHacks() {
+    chrome.storage.local.get(['ofg_license_active'], (s) => {
+      if (!s.ofg_license_active) return;
+
+      // 1. Credits panel hack
+      // Lovable uses specific selectors for the balance. We'll watch for clicks.
+      document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.textContent && (target.textContent.includes('credits') || target.textContent.includes('créditos'))) {
+          setTimeout(() => {
+            // Find the balance display and override it
+            const balanceDisplays = document.querySelectorAll('div, span, button');
+            balanceDisplays.forEach(el => {
+              if (el.textContent && /^\d+\s*\/\s*\d+/.test(el.textContent.trim())) {
+                el.innerHTML = '<span style="color:#35e68a;font-weight:bold;">∞ / ∞ (MODO ILIMITADO MSK)</span>';
+              }
+            });
+          }, 500);
+        }
+      });
+
+      // 2. Chat Lock & MSK Mode label
+      const observer = new MutationObserver(() => {
+        // Find the composer/chat area
+        const composer = document.querySelector('textarea, [contenteditable="true"], .ts-native-composer-wrap');
+        if (composer && !document.getElementById('msk-mode-indicator')) {
+          const indicator = document.createElement('div');
+          indicator.id = 'msk-mode-indicator';
+          indicator.innerHTML = '<span style="margin-right:5px">🔒</span> MODO MSK ATIVADO';
+          indicator.style.cssText = 'position:absolute;top:-25px;right:10px;font-size:10px;color:#35e68a;font-weight:bold;letter-spacing:0.5px;';
+          
+          const parent = composer.parentElement;
+          if (parent) {
+            parent.style.position = 'relative';
+            parent.appendChild(indicator);
+          }
+        }
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
+  }
+
+  if (document.readyState === 'complete') applyMskUiHacks();
+  else window.addEventListener('load', applyMskUiHacks);
+})();
