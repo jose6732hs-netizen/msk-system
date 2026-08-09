@@ -30,7 +30,41 @@
           "type": "object",
           "properties": {}
         },
-        "outputSchema": null
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "type": "string"
+            },
+            "email": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "profile": {
+              "anyOf": [
+                {},
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "roles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "userId",
+            "email",
+            "roles"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
       },
       {
         "name": "list_my_licenses",
@@ -56,7 +90,19 @@
           "additionalProperties": false,
           "$schema": "http://json-schema.org/draft-07/schema#"
         },
-        "outputSchema": null
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "licenses": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "licenses"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
       },
       {
         "name": "get_my_token_balance",
@@ -72,7 +118,35 @@
           "type": "object",
           "properties": {}
         },
-        "outputSchema": null
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "remaining": {
+              "type": "number"
+            },
+            "totalGranted": {
+              "type": "number"
+            },
+            "totalUsed": {
+              "type": "number"
+            },
+            "allowances": {
+              "type": "array"
+            },
+            "trials": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "remaining",
+            "totalGranted",
+            "totalUsed",
+            "allowances",
+            "trials"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
       },
       {
         "name": "list_plans",
@@ -88,7 +162,19 @@
           "type": "object",
           "properties": {}
         },
-        "outputSchema": null
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "plans": {
+              "type": "array"
+            }
+          },
+          "required": [
+            "plans"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        }
       }
     ]
   }

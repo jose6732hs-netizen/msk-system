@@ -11,6 +11,9 @@ export default defineTool({
     status: z.string().optional().describe("Optional status filter, e.g. active, expired, revoked."),
     limit: z.number().int().optional().describe("Maximum number of licenses to return (default 20)."),
   },
+  outputSchema: {
+    licenses: z.array(z.any()),
+  },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ status, limit }, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthenticated();

@@ -1,12 +1,21 @@
 import { defineTool } from "@lovable.dev/mcp-js";
+import { z } from "zod";
 import { notAuthenticated, supabaseForUser } from "../supabase";
+
 
 export default defineTool({
   name: "get_my_account",
   title: "Get my account",
   description: "Return the signed-in user's profile (name, email, phone) and assigned roles.",
   inputSchema: {},
+  outputSchema: {
+    userId: z.string(),
+    email: z.string().nullable(),
+    profile: z.any().nullable(),
+    roles: z.array(z.string()),
+  },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+
   handler: async (_input, ctx) => {
     if (!ctx.isAuthenticated()) return notAuthenticated();
     const supabase = supabaseForUser(ctx);
