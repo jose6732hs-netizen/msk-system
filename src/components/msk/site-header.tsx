@@ -20,6 +20,7 @@ export function SiteHeader() {
   const navigate = useNavigate();
   const [signedIn, setSignedIn] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
   /** O pacote baixado é sempre o canal que o admin deixou ativo — nunca um zip fixo. */
   async function downloadExtension() {
@@ -28,8 +29,28 @@ export function SiteHeader() {
       return;
     }
     setDownloading(true);
+    setDownloadProgress(0);
+
+    // Simulando barra de progresso de 0 a 100%
+    const interval = setInterval(() => {
+      setDownloadProgress((prev) => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          return 100;
+        }
+        return prev + Math.floor(Math.random() * 10) + 5;
+      });
+    }, 200);
+
     try {
       const res = await getExtensionDownload({ data: {} });
+      
+      // Aguarda o progresso chegar a 100% antes de iniciar o download real
+      while (true) {
+        if (downloadProgress >= 100) break;
+        await new Promise(r => setTimeout(r, 100));
+      }
+
       const a = window.document.createElement("a");
       a.href = res.url;
       a.download = res.fileName;
@@ -39,7 +60,9 @@ export function SiteHeader() {
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
+      clearInterval(interval);
       setDownloading(false);
+      setDownloadProgress(0);
     }
   }
 
@@ -68,16 +91,29 @@ export function SiteHeader() {
           <Button
             variant="neonOutline"
             size="sm"
-            className="hidden sm:inline-flex"
+            className="hidden sm:inline-flex min-w-[140px] relative overflow-hidden"
             onClick={downloadExtension}
             disabled={downloading}
           >
-            {downloading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="mr-2 h-4 w-4" />
+            {downloading && (
+              <div 
+                className="absolute inset-0 bg-primary/20 transition-all duration-300"
+                style={{ width: `${downloadProgress}%` }}
+              />
             )}
-            Baixar Extensão
+            <span className="relative z-10 flex items-center">
+              {downloading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {downloadProgress}%
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Baixar Extensão
+                </>
+              )}
+            </span>
           </Button>
           {signedIn && <NotificationBell />}
           <CartSheet signedIn={signedIn} />
