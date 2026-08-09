@@ -104,7 +104,7 @@ export function AdminEditorTab() {
           {[
             { id: 'hero', label: 'Hero / Início', icon: Monitor },
             { id: 'partners', label: 'Parceiros', icon: Users },
-            { id: 'copy', label: 'Copies / Links', icon: Type },
+            { id: 'copy', label: 'Copies / Suporte', icon: Type },
           ].map((s: any) => (
             <button
               key={s.id}
