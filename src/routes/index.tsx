@@ -1,4 +1,4 @@
-// nem um tokem ativo ainda navegue plo sit e garanta a sua etc corrija isso nao e isso que deve ter vc colocou errado aprimore e deixe a extencao o arquio que pedi como do dowload
+// ao clicar em baixar quando da 100 a deve subir o arquivo baiando automatico caso contrario so fica 100% se tiver pronto pra baixar pois ta 100% e nao inicia o dowloada
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
