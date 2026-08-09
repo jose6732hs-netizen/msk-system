@@ -101,10 +101,7 @@ export async function loadTenantTokens(userId: string) {
 /** Gera um token pago consumindo 1 unidade do saldo contratado. */
 export async function generateTenantToken(userId: string) {
   const { rows, available } = await loadAllowances(userId);
-  if (available <= 0) throw new Error("Você atingiu o limite de tokens do seu plano.");
-
-  const slot = rows.find((a) => Number(a.used) < Number(a.total));
-  if (!slot) throw new Error("Você atingiu o limite de tokens do seu plano.");
+  if (available <= 0 || !slot) throw new Error("Nenhum token ativo ainda. Navegue pelo site e garanta a sua licença!");
 
   let planId = slot.plan_id;
   if (!planId) {

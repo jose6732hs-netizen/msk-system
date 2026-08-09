@@ -153,6 +153,10 @@ export function TokenManager() {
   }
 
   async function onGenerate() {
+    if (available <= 0) {
+      window.location.href = "https://ini-joy-maker.lovable.app/planos";
+      return;
+    }
     setBusy(true);
     try {
       const res = await genFn();
@@ -232,7 +236,7 @@ export function TokenManager() {
                 </Button>
                 {available <= 0 && (
                   <p className="text-sm text-destructive">
-                    Você atingiu o limite de tokens do seu plano.
+                    Nenhum token ativo ainda. Navegue pelo site e garanta a sua licença!
                   </p>
                 )}
               </div>

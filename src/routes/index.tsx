@@ -1,4 +1,4 @@
-// MSK SISTEM - Painel Admin e Landing Page
+// qual a senha e o email do super admin ?  e criei uma conta niva e disse iso nos tokens Você atingiu o limite de tokens do seu plano.\n\n porem deve aparecer apenas mensagem de  nem um tokem ativo ainda navegue plo sit e garanta  a sua etc  e se clicar em gerar tokem e nao  tiver no trial free ou  nos tokens normal dve redirecionar prar o sit ofertas
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
