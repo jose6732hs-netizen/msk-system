@@ -1,0 +1,14 @@
+SHA-256 — motor preservado (entrada == saída)
+
+background.js: 222f1264beebce16dd1bb11fad2abefd095e41e64c3af64922f5e2094175671b  OK
+branding.config.js: 13ffd4726cbb2e2331fb2aa4da80ccaea1cef843683a33f0dd5aaf239bc56c01  OK
+castle-v2.js: a6c31c44ec53532d96fef7d8ab2f488e87bec51640d24c7f757802e7478c6227  OK
+content-templates.js: bf58e9d2fffc5a41e76c1ba2cf1c82003f598e9cd594922e42ab6ebc4ea430f9  OK
+content.js: b47014e25f949a3f0a17c3235c511b2f8ee17e3e98aa8b15ab5f25c15f7531eb  OK
+jszip.min.js: acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e  OK
+overlay.js: 400d9fdbfeee490dffeb67c4f292036800ceb63005793f649456aee8ba97a2dc  OK
+pageHook.js: 5c945889cd0c3f7decc95ffbbe7414bb6f40e8a67ba7a14ef002ed6ab4c041cb  OK
+remote-branding.js: 9c03e0ed90bf4543f0c50751d0a00863929f9d69faf83cef4870ade24d82a7cd  OK
+sidepanel-templates.js: beb09cceaca7586af0efc1f274186e70e532deccdd68cf65772237a4f754ff04  OK
+sidepanel.js: 3fbf69ac2695f2767db9cc041b6899d24a4e8d91134236f5ab83b64c1bd86070  OK
+update-check.js: fe17c7a3400d35c913316075c445490f06af6302a355f4324ba486cba82e96eb  OK

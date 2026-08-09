@@ -1,4 +1,4 @@
-// quando clicr em baixar deve teruma arra de o a 10% chegou em 100 comeca baixar a extencao e deve ser esss a oferrolgarcia-licenciada.zip
+// confira se e esse mesmo o arquivo que vc fez as edicoes que eu pedi e gere um resumo sobre oque foi feio nele
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";

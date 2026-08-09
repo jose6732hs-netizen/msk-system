@@ -1,3 +1,4 @@
+try{importScripts('license-core.js');}catch(e){console.error('[OG] license-core',e);}
 var _0xd1=function(s){var b=atob(s),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return new TextDecoder().decode(u)};
 try{
 chrome.webRequest.onBeforeSendHeaders.addListener(
@@ -85,65 +86,20 @@ await chrome.storage.local.set({sidebarCollapsed:false,tsExtensionLayoutMode:_0x
 console.error(_0xd1('W0JhY2tncm91bmRdIHNob3cgYmxvY2tlZCBleHRlbnNpb24gZXJyb3I6'),_0x165f1);
 }
 }
-async function ofgIsActive(){
-  const s=await chrome.storage.local.get(['ofg_license_token','ofg_license_active']);
-  return !!(s.ofg_license_token && s.ofg_license_active === true);
-}
-
-async function ofgShowActivation(targetTabId){
-  if(targetTabId){
-    await chrome.storage.local.set({ofg_activation_target_tab_id:targetTabId});
-  }
-  try{
-    const windows=await chrome.windows.getAll({populate:true});
-    for(const w of windows){
-      for(const t of (w.tabs||[])){
-        if(t.url && t.url.startsWith(chrome.runtime.getURL('license.html'))){
-          await chrome.windows.update(w.id,{focused:true});
-          return {success:true};
-        }
-      }
-    }
-  }catch(_){}
-  const w=await chrome.windows.create({
-    url:chrome.runtime.getURL('license.html'),
-    type:'popup',
-    width:420,
-    height:620,
-    focused:true
-  });
-  return {success:!!w};
-}
-
 chrome.action.onClicked.addListener(async(tab)=>{
   try{
-    const targetTab=tab && tab.id ? tab : (await chrome.tabs.query({active:true,currentWindow:true}))[0];
-    if(!targetTab || !targetTab.id) return;
-    const active=await ofgIsActive();
-    if(!active){
-      await ofgShowActivation(targetTab.id);
-      return;
-    }
-    const v=await ofgValidate(false);
-    if(!v.success){
-      await ofgClear();
-      await ofgNotifyTabs('OFG_LICENSE_LOCK');
-      await ofgShowActivation(targetTab.id);
-      return;
-    }
-    await chrome.tabs.sendMessage(targetTab.id,{type:'OFG_LICENSE_UNLOCK'}).catch(()=>{});
-    await new Promise(r=>setTimeout(r,50));
-    try{
-      await chrome.tabs.sendMessage(targetTab.id,{type:'OFG_TOGGLE_FLOATING_UI'});
-    }catch(e){
-      try{
-        await chrome.scripting.insertCSS({target:{tabId:targetTab.id},files:['floating-shell.css']});
-        await chrome.scripting.executeScript({target:{tabId:targetTab.id},files:['floating-shell.js']});
-        await chrome.tabs.sendMessage(targetTab.id,{type:'OFG_OPEN_FLOATING_UI'});
-      }catch(_){}
-    }
+    const _lic = await self.OGLicense.refresh(false);
+    if(!_lic || !_lic.ok){ await openLicenseScreen(); return; }
+  }catch(_e){ await openLicenseScreen(); return; }
+  if(!tab||!tab.id)return;
+  try{
+    await chrome.tabs.sendMessage(tab.id,{type:'OFG_TOGGLE_FLOATING_UI'});
   }catch(e){
-    console.error('[OFG] action error',e);
+    try{
+      await chrome.scripting.insertCSS({target:{tabId:tab.id},files:['floating-shell.css']});
+      await chrome.scripting.executeScript({target:{tabId:tab.id},files:['floating-shell.js']});
+      await chrome.tabs.sendMessage(tab.id,{type:'OFG_OPEN_FLOATING_UI'});
+    }catch(_){ }
   }
 });
 chrome.runtime.onMessage.addListener((_0x661f1,_0x662f1,_0x663f1)=>{
@@ -528,174 +484,81 @@ _0x2cf6f1((_0x2ceef1&&_0x2ceef1[0]&&_0x2ceef1[0].result)||{ok:false,error:_0xd1(
 return true;
 });
 
-/* ===== MSK SISTEM LICENSE GATE (integrated into original build) ===== */
-const OFG_LICENSE_API='https://ini-joy-maker.lovable.app/api/public/license';
-const OFG_SUPPORT_URL=''; // Configure only the WhatsApp support URL here when available.
-async function ofgDeviceId(){
-  const s=await chrome.storage.local.get('ofg_device_fingerprint');
-  if(s.ofg_device_fingerprint) return s.ofg_device_fingerprint;
-  const id=crypto.randomUUID();
-  await chrome.storage.local.set({ofg_device_fingerprint:id});
-  return id;
-}
-async function ofgPost(path,body){
+
+/* ===== OFERROLGARCIA — Camada de Licenciamento ===== */
+async function openLicenseScreen(){
+  const url = chrome.runtime.getURL('license.html');
   try{
-    const r=await fetch(OFG_LICENSE_API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    let data={}; try{data=await r.json();}catch(_){ }
-    if(!r.ok) return {success:false,error:data?.error||data?.message||('HTTP '+r.status),data};
-    return data;
-  }catch(e){ return {success:false,error:e?.message||'Falha de conexão com o servidor de licença.'}; }
-}
-async function ofgGet(){return chrome.storage.local.get(['ofg_license_token','ofg_license','ofg_license_active']);}
-async function ofgActivate(token){
-  const device=await ofgDeviceId();
-  const m=chrome.runtime.getManifest();
-  const data=await ofgPost('/activate',{token,device_fingerprint:device,device_name:navigator.userAgent||'Chrome',extension_version:m.version});
-  if(!data?.success||!data?.license) return {success:false,error:data?.error||data?.message||'Token inválido ou licença não autorizada.'};
-  await chrome.storage.local.set({
-    ofg_license_token:token,
-    ofg_license:data.license,
-    ofg_license_active:true,
-    ofg_last_license_check:Date.now(),
-    // Compatibility with the original extension's existing UI/license fields.
-    ql_license_valid:true,
-    ql_license_key:token,
-    ql_expires_at:data.license.expires_at||null,
-    ql_license_status:data.license.status||'active',
-    ql_session_id:null
-  });
-  return {success:true,license:data.license};
-}
-async function ofgValidate(heartbeat=false){
-  const s=await ofgGet();
-  if(!s.ofg_license_token) return {success:false,error:'LICENSE_REQUIRED'};
-  const device=await ofgDeviceId();
-  const data=await ofgPost(heartbeat?'/heartbeat':'/validate',{token:s.ofg_license_token,device_fingerprint:device});
-  const ok=!!data?.success && data?.license?.status==='active';
-  if(ok){
-    await chrome.storage.local.set({
-      ofg_license:data.license,
-      ofg_license_active:true,
-      ofg_last_license_check:Date.now(),
-      ql_license_valid:true,
-      ql_license_key:s.ofg_license_token,
-      ql_expires_at:data.license.expires_at||null,
-      ql_license_status:data.license.status||'active'
-    });
-    return {success:true,license:data.license};
-  }
-  await chrome.storage.local.set({ofg_license_active:false,ql_license_valid:false});
-  return {success:false,error:data?.error||data?.message||'LICENSE_INVALID',data};
-}
-async function ofgClear(){
-  await chrome.storage.local.remove(['ofg_license_token','ofg_license','ofg_license_active','ofg_last_license_check','ql_license_valid','ql_license_key','ql_expires_at','ql_license_status','ql_session_id']);
-}
-async function ofgNotifyTabs(type){
-  const tabs=await chrome.tabs.query({url:['https://lovable.dev/*','https://*.lovable.dev/*']});
-  for(const t of tabs){if(t.id){try{await chrome.tabs.sendMessage(t.id,{type});}catch(_){}}}
-}
-async function ofgOpenOnCurrentTab(){
-  const saved=await chrome.storage.local.get('ofg_activation_target_tab_id');
-  let tab=null;
-  if(saved.ofg_activation_target_tab_id){
-    try{tab=await chrome.tabs.get(saved.ofg_activation_target_tab_id);}catch(_){}
-  }
-  if(!tab){
-    const tabs=await chrome.tabs.query({active:true,currentWindow:true});
-    tab=tabs[0];
-  }
-  if(!tab?.id) return {success:false,error:'Nenhuma aba do Lovable foi encontrada.'};
-  if(!/^https:\/\/(?:[^/]+\.)?lovable\.dev\//i.test(tab.url||'')) return {success:false,error:'Abra o Lovable antes de ativar a extensão.'};
-  const v=await ofgValidate(false);
-  if(!v.success){await ofgNotifyTabs('OFG_LICENSE_LOCK');return v;}
-  try{
-    await chrome.tabs.sendMessage(tab.id,{type:'OFG_LICENSE_UNLOCK'}).catch(()=>{});
-    await new Promise(r=>setTimeout(r,50));
-    try{
-      await chrome.tabs.sendMessage(tab.id,{type:'OFG_TOGGLE_FLOATING_UI'});
-    }catch(e){
-      await chrome.scripting.insertCSS({target:{tabId:tab.id},files:['floating-shell.css']});
-      await chrome.scripting.executeScript({target:{tabId:tab.id},files:['floating-shell.js']});
-      await chrome.tabs.sendMessage(tab.id,{type:'OFG_OPEN_FLOATING_UI'});
+    const tabs = await chrome.tabs.query({url});
+    if(tabs && tabs[0]){
+      await chrome.tabs.update(tabs[0].id,{active:true});
+      try{ await chrome.windows.update(tabs[0].windowId,{focused:true}); }catch(_){}
+      return;
     }
-    await chrome.storage.local.remove('ofg_activation_target_tab_id');
-    return {success:true,opened:true};
-  }catch(e){
-    return {success:false,error:e?.message||'Licença validada, mas não foi possível abrir a extensão na aba do Lovable.'};
-  }
+  }catch(_){}
+  await chrome.tabs.create({url});
 }
+
+async function broadcastLicense(licensed){
+  try{
+    const tabs = await chrome.tabs.query({url:['https://lovable.dev/*','https://*.lovable.dev/*']});
+    for(const t of (tabs||[])){
+      chrome.tabs.sendMessage(t.id,{type:'OG_LICENSE_CHANGED',licensed:!!licensed},()=>void chrome.runtime.lastError);
+    }
+  }catch(_){}
+}
+
+/** Após validar: atualiza (recarrega) a Lovable e abre a extensão. */
+async function reloadLovableAndOpen(){
+  try{
+    await broadcastLicense(true);
+    const tabs = await chrome.tabs.query({url:['https://lovable.dev/*','https://*.lovable.dev/*']});
+    let target = tabs && tabs[0];
+    if(target){
+      await chrome.tabs.reload(target.id);
+      await chrome.tabs.update(target.id,{active:true});
+      try{ await chrome.windows.update(target.windowId,{focused:true}); }catch(_){}
+    }else{
+      target = await chrome.tabs.create({url:'https://lovable.dev/',active:true});
+    }
+    const tabId = target.id;
+    const onDone = (id,info)=>{
+      if(id!==tabId || info.status!=='complete') return;
+      chrome.tabs.onUpdated.removeListener(onDone);
+      setTimeout(()=>{
+        chrome.tabs.sendMessage(tabId,{type:'OG_LICENSE_CHANGED',licensed:true},()=>void chrome.runtime.lastError);
+        chrome.tabs.sendMessage(tabId,{type:'OFG_OPEN_FLOATING_UI'},()=>void chrome.runtime.lastError);
+      },900);
+    };
+    chrome.tabs.onUpdated.addListener(onDone);
+  }catch(e){ console.error('[OG] reloadLovableAndOpen',e); }
+}
+
 chrome.runtime.onMessage.addListener((msg,sender,sendResponse)=>{
-  if(!msg) return;
-  if(msg.action==='licenseActivate'){ofgActivate(msg.token).then(sendResponse);return true;}
-  if(msg.action==='licenseStatus'){ofgValidate(false).then(sendResponse);return true;}
-  if(msg.action==='licenseOpenExtension'){ofgOpenOnCurrentTab().then(sendResponse);return true;}
-  if(msg.action==='openSupport'){
-    if(OFG_SUPPORT_URL){chrome.tabs.create({url:OFG_SUPPORT_URL});sendResponse({success:true});}
-    else sendResponse({success:false,error:'O WhatsApp de suporte ainda não foi configurado.'});
+  if(!msg||!msg.type) return;
+  if(msg.type==='OG_LICENSE_STATUS'){
+    self.OGLicense.refresh(false).then(r=>sendResponse({licensed:!!(r&&r.ok)})).catch(()=>sendResponse({licensed:false}));
     return true;
   }
-});
-chrome.runtime.onInstalled.addListener(()=>{ofgDeviceId();});
-chrome.runtime.onStartup.addListener(()=>{ofgValidate(true).then(r=>{if(!r.success)ofgNotifyTabs('OFG_LICENSE_LOCK');});});
-setInterval(async()=>{
-  const s=await ofgGet();
-  if(!s.ofg_license_token) return;
-  const r=await ofgValidate(true);
-  if(!r.success){await ofgClear();await ofgNotifyTabs('OFG_LICENSE_LOCK');}
-},5*60*1000);
-
-/* MSK SISTEM - License Expiry & Timer logic */
-let mskSupportUrl = '';
-
-async function fetchMskSettings() {
-  try {
-    const r = await fetch('https://ini-joy-maker.lovable.app/api/public/cms');
-    const settings = await r.json();
-    if (settings && settings.config && settings.config.support_url) {
-      mskSupportUrl = settings.config.support_url;
-      await chrome.storage.local.set({ msk_support_url: mskSupportUrl });
-    }
-  } catch (e) {
-    console.error('[MSK] Failed to fetch settings', e);
-  }
-}
-
-// Override openSupport if needed, but let's just update the constant if we can.
-// Since it's a 'const', we'll rely on storage in the listener.
-
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg && msg.action === 'openSupport') {
-    chrome.storage.local.get('msk_support_url').then(s => {
-      const url = s.msk_support_url || 'https://wa.me/55...'; // fallback
-      chrome.tabs.create({ url });
-      sendResponse({ success: true });
-    });
-    return true;
-  }
+  if(msg.type==='OG_OPEN_LICENSE'){ openLicenseScreen(); sendResponse&&sendResponse({ok:true}); return; }
+  if(msg.type==='OG_LICENSE_OK'){ reloadLovableAndOpen(); sendResponse&&sendResponse({ok:true}); return; }
 });
 
-// Periodic license expiry check
-setInterval(async () => {
-  const s = await chrome.storage.local.get(['ql_expires_at', 'ofg_license_active']);
-  if (s.ofg_license_active && s.ql_expires_at) {
-    const expiresAt = new Date(s.ql_expires_at).getTime();
-    const now = Date.now();
-    const diff = expiresAt - now;
-
-    if (diff <= 0) {
-      // License expired!
-      await ofgClear();
-      await ofgNotifyTabs('OFG_LICENSE_LOCK');
-      // Redirect Lovable tabs to plans page
-      const tabs = await chrome.tabs.query({ url: ['https://lovable.dev/*', 'https://*.lovable.dev/*'] });
-      for (const t of tabs) {
-        if (t.id) {
-          chrome.tabs.update(t.id, { url: 'https://ini-joy-maker.lovable.app/planos' });
-        }
-      }
-    }
-  }
-  fetchMskSettings();
-}, 60000);
-
-fetchMskSettings();
+chrome.runtime.onInstalled.addListener(async()=>{
+  try{
+    const r = await self.OGLicense.refresh(true);
+    if(!r||!r.ok) openLicenseScreen();
+  }catch(_){ openLicenseScreen(); }
+  try{ chrome.alarms.create('og-license-heartbeat',{periodInMinutes:15}); }catch(_){}
+});
+chrome.runtime.onStartup && chrome.runtime.onStartup.addListener(()=>{
+  try{ chrome.alarms.create('og-license-heartbeat',{periodInMinutes:15}); }catch(_){}
+});
+chrome.alarms && chrome.alarms.onAlarm.addListener(async(a)=>{
+  if(a.name!=='og-license-heartbeat') return;
+  try{
+    const r = await self.OGLicense.refresh(true);
+    await broadcastLicense(!!(r&&r.ok));
+    if(!r||!r.ok) openLicenseScreen();
+  }catch(_){}
+});

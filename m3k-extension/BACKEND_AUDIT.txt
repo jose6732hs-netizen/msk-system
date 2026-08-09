@@ -1,0 +1,8 @@
+OferrolGarcia — auditoria de backend
+
+Corrigido nesta build:
+- Publicar Projeto não usa mais o endpoint Supabase publish-project nem license_key; abre o Publicar nativo do Lovable.
+- Criar Projeto não exige mais ql_license_key; usa a sessão do Lovable.
+- Áudio possui fallback direto no popup/side panel.
+
+ATENÇÃO: o motor de envio/otimização/upload ainda contém chamadas ao projeto Supabase hyjsaialebpskwfvinig.supabase.co. Elas fazem parte do código funcional existente. Removê-las por completo sem substituir essas funções por implementações equivalentes muda o motor e pode quebrar envio/anexos/otimizador.

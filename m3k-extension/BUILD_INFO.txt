@@ -1,0 +1,8 @@
+OFERROLGARCIA ATUALIZADO v32.5.0
+HOTFIX DE ISOLAMENTO
+- Injeção limitada ao lovable.dev
+- all_frames=false para não tocar previews/iframes do projeto
+- Interface antiga lateral escondida
+- Sem padding/margem lateral na página
+- Janela flutuante independente; minimizar deixa apenas a bolinha OG
+- MutationObserver antigo agressivo substituído por observação somente de novos nós
