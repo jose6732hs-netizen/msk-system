@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+// inicie esse prijeto
 // Painel Admin e landing page otimizados para mobile
 // Design premium com foco em centralização e responsividade total.
 
