@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import banner1 from "@/assets/banner-ilimited.jpg.asset.json";
-import banner2 from "@/assets/banner-cheap.jpg.asset.json";
+import banner1 from "@/assets/banner1.jpg.asset.json";
+import banner2 from "@/assets/banner2.png.asset.json";
 
 const BANNERS = [
   {
