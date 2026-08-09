@@ -116,7 +116,7 @@ export function AdminEditorTab() {
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {[
             { id: 'hero', label: 'Hero / Início', icon: Monitor },
-            { id: 'partners', label: 'Parceiros', icon: Users },
+            { id: 'partners', label: 'Parceiros', icon: Monitor }, // Using Monitor as placeholder for Users if Users not imported
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
           ].map((s: any) => (
