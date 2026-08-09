@@ -1,4 +1,4 @@
-// ddeixe ela  como a extncao disponivel tambem
+// quando clicr em baixar deve teruma arra de o a 10% chegou em 100 comeca baixar a extencao e deve ser esss a oferrolgarcia-licenciada.zip
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
