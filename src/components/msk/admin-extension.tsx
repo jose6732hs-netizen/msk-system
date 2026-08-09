@@ -54,23 +54,73 @@ function ExtensionChannels() {
       {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
         <div className="grid gap-3 lg:grid-cols-3">
           {channels.map((channel) => (
-            <div key={channel.id} className="rounded-lg border border-border/60 bg-card/40 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="flex flex-wrap items-center gap-2 text-sm font-semibold">
-                    <span>{String(channel.channel_number).padStart(2, "0")} · {channel.display_name}</span>
+            <div 
+              key={channel.id} 
+              className={`rounded-2xl border transition-all duration-300 ${
+                channel.enabled 
+                  ? "border-primary/40 bg-primary/5 shadow-[0_0_20px_rgba(57,255,20,0.05)]" 
+                  : "border-border/60 bg-card/40"
+              } p-5 relative overflow-hidden group`}
+            >
+              {channel.enabled && (
+                <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 blur-[40px] -z-10 animate-pulse" />
+              )}
+              
+              <div className="flex items-start justify-between gap-3 relative z-10">
+                <div className="space-y-1">
+                  <p className="flex flex-wrap items-center gap-2 text-sm font-black uppercase tracking-widest">
+                    <span className={channel.enabled ? "text-primary" : "text-foreground"}>
+                      {String(channel.channel_number).padStart(2, "0")} · {channel.display_name}
+                    </span>
                     {channel.channel_number === newestNumber && (
                       <span className="rounded-full border border-primary/50 bg-primary/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-primary">
                         Novo
                       </span>
                     )}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">{channel.channel_type === "primary" ? "Principal" : "Reserva"} · v{channel.version}</p>
+                  <p className="text-[0.65rem] font-bold text-muted-foreground uppercase tracking-tight">
+                    {channel.channel_type === "primary" ? "🚀 Canal Principal" : "🛡️ Canal de Reserva"} · v{channel.version}
+                  </p>
                 </div>
-                <Switch checked={channel.enabled} disabled={mutate.isPending} onCheckedChange={(enabled) => mutate.mutate({ id: channel.id, enabled })} aria-label={`Ativar ${channel.display_name}`} />
+                <div className="flex flex-col items-end gap-2">
+                  <Switch 
+                    checked={channel.enabled} 
+                    disabled={mutate.isPending} 
+                    onCheckedChange={(enabled) => mutate.mutate({ id: channel.id, enabled })} 
+                    aria-label={`Ativar ${channel.display_name}`} 
+                  />
+                  <span className={`text-[0.6rem] font-black uppercase tracking-widest ${channel.enabled ? "text-primary animate-pulse" : "text-muted-foreground"}`}>
+                    {channel.enabled ? "Ativo" : "Inativo"}
+                  </span>
+                </div>
               </div>
-              <p className="mt-3 break-all font-mono text-[0.65rem] text-muted-foreground">{channel.chrome_extension_id ? `ID: ${channel.chrome_extension_id}` : "ID Chrome: não informado"}</p>
-              <p className={`mt-2 text-xs font-medium ${channel.enabled ? "text-primary" : "text-muted-foreground"}`}>{channel.enabled ? "ATIVA" : "DESATIVADA"}</p>
+
+              <div className="mt-4 space-y-3 relative z-10">
+                <div className="rounded-xl bg-background/40 p-3 border border-border/40">
+                  <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground mb-1">ID da Extensão (Chrome)</p>
+                  <code className="block break-all font-mono text-[0.65rem] text-primary/80 selection:bg-primary/20">
+                    {channel.chrome_extension_id || "Não configurado"}
+                  </code>
+                </div>
+
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <div className={`h-1.5 w-1.5 rounded-full ${channel.enabled ? "bg-primary animate-pulse" : "bg-muted"}`} />
+                    <span className="text-[0.65rem] font-bold text-muted-foreground uppercase">Status do Tráfego</span>
+                  </div>
+                  <span className="text-[0.65rem] font-black text-foreground uppercase">
+                    {channel.enabled ? "Recebendo" : "Bloqueado"}
+                  </span>
+                </div>
+              </div>
+
+              {channel.enabled && (
+                <div className="mt-4 pt-3 border-t border-primary/10">
+                  <p className="text-[0.6rem] font-bold text-primary/60 uppercase leading-tight italic">
+                    * Este canal é a fonte ativa para o botão de download no site.
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
