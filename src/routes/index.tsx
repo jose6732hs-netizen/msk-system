@@ -1,4 +1,4 @@
-// confira se e esse mesmo o arquivo que vc fez as edicoes que eu pedi e gere um resumo sobre oque foi feio nele
+// nem um tokem ativo ainda navegue plo sit e garanta a sua etc corrija isso nao e isso que deve ter vc colocou errado aprimore e deixe a extencao o arquio que pedi como do dowload
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
