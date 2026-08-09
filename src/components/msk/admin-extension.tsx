@@ -253,15 +253,28 @@ export function AdminExtensionTab() {
                     <td>{new Date(b.created_at).toLocaleString("pt-BR")}</td>
                     <td className="py-2 text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="glass"
-                          onClick={() =>
-                            toggle.mutate({ buildId: b.id, publish: !b.is_published })
-                          }
-                        >
-                          {b.is_published ? "Arquivar" : "Publicar"}
-                        </Button>
+                        {!b.is_published && (
+                          <Button
+                            size="sm"
+                            variant="neon"
+                            onClick={() =>
+                              toggle.mutate({ buildId: b.id, publish: true })
+                            }
+                          >
+                            Ativar
+                          </Button>
+                        )}
+                        {b.is_published && (
+                          <Button
+                            size="sm"
+                            variant="glass"
+                            onClick={() =>
+                              toggle.mutate({ buildId: b.id, publish: false })
+                            }
+                          >
+                            Arquivar
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="ghost"
