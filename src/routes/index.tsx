@@ -1,4 +1,4 @@
-// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION) - TELA DE BLOQUEIO E BRANDING ADMIN ATUALIZADOS - Super Admin: sempreteste552@gmail.com - EXTENSÃO ÚNICA E DOWNLOAD VERIFICADO 100% - ADMIN COM BOTÃO ATIVAR NAS EXTENSÕES
+// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION) - TELA DE BLOQUEIO E BRANDING ADMIN ATUALIZADOS - Super Admin: sempreteste552@gmail.com - EXTENSÃO ÚNICA E DOWNLOAD VERIFICADO 100% - ADMIN COM BOTÃO ATIVAR NAS EXTENSÕES E CARD DE CANAIS PROFISSIONAL
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
