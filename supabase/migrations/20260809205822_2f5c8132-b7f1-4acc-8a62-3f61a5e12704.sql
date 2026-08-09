@@ -1,0 +1,1 @@
+TRUNCATE TABLE public.extension_builds CASCADE;
