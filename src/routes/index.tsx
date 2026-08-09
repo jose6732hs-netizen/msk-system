@@ -1,4 +1,4 @@
-// MSK SISTEM - Painel Admin e Landing Page
+// deixe os conectores todos funcionandfo perfeitamente
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
