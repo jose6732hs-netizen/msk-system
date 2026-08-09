@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      affiliate_tiers: {
+        Row: {
+          badge_color: string
+          commission_rate: number
+          created_at: string | null
+          id: string
+          min_revenue: number
+          min_sales: number
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          badge_color?: string
+          commission_rate: number
+          created_at?: string | null
+          id?: string
+          min_revenue?: number
+          min_sales?: number
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          badge_color?: string
+          commission_rate?: number
+          created_at?: string | null
+          id?: string
+          min_revenue?: number
+          min_sales?: number
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string
@@ -220,7 +253,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      increment_affiliate_clicks: {
+        Args: { aff_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role:
