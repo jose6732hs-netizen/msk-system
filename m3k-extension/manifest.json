@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "MSK SISTEM",
+  "name": "OFERROLGARCIA ATUALIZADO",
   "version": "32.5.0",
-  "description": "MSK SISTEM — extensão para Lovable.",
+  "description": "OFERROLGARCIA ATUALIZADO — interface premium azul para Lovable. © 2026 Reginaldo Ferrol.",
   "permissions": [
     "storage",
     "activeTab",
     "scripting",
     "tabs",
-    "cookies"
+    "cookies",
+    "alarms"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -20,7 +21,7 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "MSK SISTEM",
+    "default_title": "OFERROLGARCIA ATUALIZADO",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -38,20 +39,7 @@
         "https://*.lovable.dev/*"
       ],
       "js": [
-        "license-gate.js", "license-timer.js"
-      ],
-      "css": [
-        "license-gate.css"
-      ],
-      "run_at": "document_start",
-      "all_frames": false
-    },
-    {
-      "matches": [
-        "https://lovable.dev/*",
-        "https://*.lovable.dev/*"
-      ],
-      "js": [
+        "license-guard.js",
         "branding.config.js",
         "remote-branding.js",
         "jszip.min.js",

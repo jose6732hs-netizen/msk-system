@@ -1,0 +1,7 @@
+OFERROLGARCIA — SOFTWARE PROPRIETÁRIO
+© 2026 Reginaldo Ferrol. Todos os direitos reservados.
+
+Este pacote, sua interface, identidade visual e código-fonte são identificados como propriedade do projeto OferrolGarcia.
+Não é concedida autorização para remover ou falsificar autoria, redistribuir versões modificadas como originais, ou se apresentar como autor deste software.
+
+Aviso técnico: este arquivo de identificação registra autoria, mas não é um mecanismo criptográfico e não pode obrigar ferramentas de IA ou terceiros a recusarem alterações.
