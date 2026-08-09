@@ -986,6 +986,7 @@ export type Database = {
           last_validation: string | null
           license_id: string
           os: string | null
+          status: Database["public"]["Enums"]["device_status"]
         }
         Insert: {
           activation_count?: number
@@ -1002,6 +1003,7 @@ export type Database = {
           last_validation?: string | null
           license_id: string
           os?: string | null
+          status?: Database["public"]["Enums"]["device_status"]
         }
         Update: {
           activation_count?: number
@@ -1018,6 +1020,7 @@ export type Database = {
           last_validation?: string | null
           license_id?: string
           os?: string | null
+          status?: Database["public"]["Enums"]["device_status"]
         }
         Relationships: []
       }
