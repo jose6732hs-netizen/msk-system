@@ -60,15 +60,7 @@ export type Database = {
           utm_term?: string | null
           visitor_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "affiliate_attributions_affiliate_id_fkey"
-            columns: ["affiliate_id"]
-            isOneToOne: false
-            referencedRelation: "affiliates"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       affiliate_balance_ledger: {
         Row: {
@@ -319,22 +311,7 @@ export type Database = {
           transaction_id?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "affiliate_conversions_affiliate_id_fkey"
-            columns: ["affiliate_id"]
-            isOneToOne: false
-            referencedRelation: "affiliates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "affiliate_conversions_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: true
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       affiliate_documents: {
         Row: {
@@ -370,15 +347,7 @@ export type Database = {
           status?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "affiliate_documents_affiliate_id_fkey"
-            columns: ["affiliate_id"]
-            isOneToOne: false
-            referencedRelation: "affiliates"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       affiliate_events: {
         Row: {
@@ -408,15 +377,7 @@ export type Database = {
           resource_id?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "affiliate_events_affiliate_id_fkey"
-            columns: ["affiliate_id"]
-            isOneToOne: false
-            referencedRelation: "affiliates"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       affiliate_referrals: {
         Row: {
@@ -679,6 +640,66 @@ export type Database = {
           },
         ]
       }
+      cms_drafts: {
+        Row: {
+          created_at: string | null
+          data: Json
+          id: string
+          key: string
+          published_at: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          data: Json
+          id?: string
+          key: string
+          published_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          id?: string
+          key?: string
+          published_at?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cms_history: {
+        Row: {
+          action: string
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           created_at: string
@@ -757,22 +778,7 @@ export type Database = {
           reseller_id?: string | null
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "downloads_build_id_fkey"
-            columns: ["build_id"]
-            isOneToOne: false
-            referencedRelation: "extension_builds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "downloads_reseller_id_fkey"
-            columns: ["reseller_id"]
-            isOneToOne: false
-            referencedRelation: "resellers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       extension_branding: {
         Row: {
@@ -814,15 +820,7 @@ export type Database = {
           title_color?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "extension_branding_reseller_id_fkey"
-            columns: ["reseller_id"]
-            isOneToOne: true
-            referencedRelation: "resellers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       extension_builds: {
         Row: {
@@ -974,6 +972,7 @@ export type Database = {
       }
       license_devices: {
         Row: {
+          activation_count: number
           browser: string | null
           created_at: string
           device_hash: string
@@ -984,11 +983,13 @@ export type Database = {
           installation_id: string | null
           last_ip_hash: string | null
           last_seen: string
+          last_validation: string | null
           license_id: string
           os: string | null
           status: Database["public"]["Enums"]["device_status"]
         }
         Insert: {
+          activation_count?: number
           browser?: string | null
           created_at?: string
           device_hash: string
@@ -999,11 +1000,13 @@ export type Database = {
           installation_id?: string | null
           last_ip_hash?: string | null
           last_seen?: string
+          last_validation?: string | null
           license_id: string
           os?: string | null
           status?: Database["public"]["Enums"]["device_status"]
         }
         Update: {
+          activation_count?: number
           browser?: string | null
           created_at?: string
           device_hash?: string
@@ -1014,19 +1017,12 @@ export type Database = {
           installation_id?: string | null
           last_ip_hash?: string | null
           last_seen?: string
+          last_validation?: string | null
           license_id?: string
           os?: string | null
           status?: Database["public"]["Enums"]["device_status"]
         }
-        Relationships: [
-          {
-            foreignKeyName: "license_devices_license_id_fkey"
-            columns: ["license_id"]
-            isOneToOne: false
-            referencedRelation: "licenses"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       license_events: {
         Row: {
@@ -1056,15 +1052,7 @@ export type Database = {
           metadata?: Json
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "license_events_license_id_fkey"
-            columns: ["license_id"]
-            isOneToOne: false
-            referencedRelation: "licenses"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       licenses: {
         Row: {
@@ -1225,38 +1213,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "notification_finance_affiliate_id_fkey"
-            columns: ["affiliate_id"]
-            isOneToOne: false
-            referencedRelation: "affiliates"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "notification_finance_notification_id_fkey"
             columns: ["notification_id"]
             isOneToOne: false
             referencedRelation: "notifications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notification_finance_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "plans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notification_finance_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "notification_finance_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: false
-            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]
@@ -1370,15 +1330,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "notifications_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "resellers"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       offers: {
         Row: {
@@ -1572,22 +1524,7 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "payments_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "plans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "payments_subscription_id_fkey"
-            columns: ["subscription_id"]
-            isOneToOne: false
-            referencedRelation: "subscriptions"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       plans: {
         Row: {
@@ -2171,22 +2108,7 @@ export type Database = {
           used?: number
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "token_allowances_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "plans"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "token_allowances_transaction_id_fkey"
-            columns: ["transaction_id"]
-            isOneToOne: false
-            referencedRelation: "transactions"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       transactions: {
         Row: {
@@ -2407,11 +2329,15 @@ export type Database = {
           event_id: string
           event_type: string
           id: string
+          payload: Json | null
           payload_hash: string
           processed: boolean
           processed_at: string | null
           processing_status: string
           provider: string
+          received_at: string
+          token_hash: string | null
+          transaction_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2419,11 +2345,15 @@ export type Database = {
           event_id: string
           event_type: string
           id?: string
+          payload?: Json | null
           payload_hash: string
           processed?: boolean
           processed_at?: string | null
           processing_status?: string
           provider: string
+          received_at?: string
+          token_hash?: string | null
+          transaction_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2431,11 +2361,15 @@ export type Database = {
           event_id?: string
           event_type?: string
           id?: string
+          payload?: Json | null
           payload_hash?: string
           processed?: boolean
           processed_at?: string | null
           processing_status?: string
           provider?: string
+          received_at?: string
+          token_hash?: string | null
+          transaction_id?: string | null
         }
         Relationships: []
       }

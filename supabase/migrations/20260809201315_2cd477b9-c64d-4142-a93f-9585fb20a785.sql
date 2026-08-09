@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.increment_affiliate_clicks(uuid) FROM authenticated;
