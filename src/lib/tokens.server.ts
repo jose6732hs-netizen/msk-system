@@ -101,6 +101,7 @@ export async function loadTenantTokens(userId: string) {
 /** Gera um token pago consumindo 1 unidade do saldo contratado. */
 export async function generateTenantToken(userId: string) {
   const { rows, available } = await loadAllowances(userId);
+  const slot = rows.find((a) => Number(a.used) < Number(a.total));
   if (available <= 0 || !slot) throw new Error("Nenhum token ativo ainda. Navegue pelo site e garanta a sua licença!");
 
   let planId = slot.plan_id;
