@@ -1,4 +1,4 @@
-// vc fex um painel de validacaoficou incrivel porem achei ruim que a tela de tokem abre uma tela gigante e deve abir uma tela do tamanho da extencao original e denteo da aba da lovable sem sair etc entendeu e quero que vc remova todas mencoes de oferrolgarcia e coloque msk sistem remova o link do yo… faca a edicao e salve esse arquivo como a extencao principal e unica
+// vc fex um painel de validacaoficou incrivel porem achei ruim que a  tela de tokem abre uma tela gigante e deve abir uma tela do tamanho da extencao original e denteo da aba da lovable sem sair etc  entendeu e quero que vc remova todas mencoes de oferrolgarcia e coloque msk sistem remova o link do yotube e quando a extencao estiver atvada adicione na aba crediros enche a barra com uma cor rocha neon e onde mostra a quantidade de creditos coloque um infinito pulsando e no chat da lovable adicione um cadeado bloqueando o chat lovable e coloque modo msk ativo e um ninja com cadeado em emoj bem profissional
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
