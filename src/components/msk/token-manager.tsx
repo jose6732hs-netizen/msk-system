@@ -231,7 +231,7 @@ export function TokenManager() {
               </div>
 
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <Button variant="neon" onClick={onGenerate} disabled={busy || available <= 0}>
+                <Button variant="neon" onClick={onGenerate} disabled={busy}>
                   {busy ? <Loader2 className="animate-spin" /> : <Plus />} Gerar token
                 </Button>
                 {available <= 0 && (
