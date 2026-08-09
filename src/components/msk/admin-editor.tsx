@@ -104,7 +104,7 @@ export function AdminEditorTab() {
           {[
             { id: 'hero', label: 'Hero / Início', icon: Monitor },
             { id: 'partners', label: 'Parceiros', icon: Users },
-            { id: 'copy', label: 'Copies / Links', icon: Type },
+            { id: 'copy', label: 'Copies / Suporte', icon: Type },
           ].map((s: any) => (
             <button
               key={s.id}
@@ -194,7 +194,22 @@ export function AdminEditorTab() {
           
           {activeSection === 'copy' && (
             <div className="space-y-4">
-               <p className="text-xs text-muted-foreground italic">Seção em desenvolvimento: Links rápidos e copies do funil de vendas.</p>
+              <div className="space-y-2">
+                <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">URL de Suporte (WhatsApp)</label>
+                <Input 
+                  placeholder="https://wa.me/55..."
+                  value={localSettings.config?.support_url || ''} 
+                  onChange={(e) => updateSetting('config', 'support_url', e.target.value)}
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('config')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar
+                </Button>
+                <Button onClick={() => handlePublish('config')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar
+                </Button>
+              </div>
             </div>
           )}
         </div>

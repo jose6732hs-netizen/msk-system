@@ -1,4 +1,4 @@
-/** Especificação OpenAPI 3.1 das rotas públicas do LOVABLE MSK. */
+/** Especificação OpenAPI 3.1 das rotas públicas do MSK SISTEM. */
 
 const licenseObject = {
   type: "object",
@@ -60,7 +60,7 @@ export function openApiSpec(origin: string) {
   return {
     openapi: "3.1.0",
     info: {
-      title: "LOVABLE MSK — API de Licenciamento",
+      title: "MSK SISTEM — API de Licenciamento",
       version: "1.0.0",
       description:
         "API pública consumida pela extensão Chrome. Toda decisão de acesso é do backend (fail-closed). " +

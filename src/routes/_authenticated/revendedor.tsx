@@ -19,13 +19,13 @@ import {
 export const Route = createFileRoute("/_authenticated/revendedor")({
   head: () => ({
     meta: [
-      { title: "Painel do revendedor — LOVABLE MSK" },
+      { title: "Painel do revendedor — MSK SISTEM" },
       {
         name: "description",
         content:
           "Gerencie saldo, níveis de revenda, licenças vendidas, testes gratuitos e a marca da sua extensão MSK.",
       },
-      { property: "og:title", content: "Painel do revendedor — LOVABLE MSK" },
+      { property: "og:title", content: "Painel do revendedor — MSK SISTEM" },
       { property: "og:description", content: "Saldo, licenças, trials e personalização de marca." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },

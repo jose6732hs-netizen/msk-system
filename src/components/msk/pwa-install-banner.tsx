@@ -167,7 +167,7 @@ export function PwaInstallBanner() {
                 <TutorialStep step="1" text="Abra o menu 'Compartilhar' do Safari." icon={<Share className="w-4 h-4" />} />
                 <TutorialStep step="2" text="Procure e toque em 'Adicionar à Tela de Início'." icon={<Plus className="w-4 h-4" />} />
                 <TutorialStep step="3" text="Toque em 'Adicionar' no canto superior." />
-                <TutorialStep step="4" text="Abra o MSK SUIT pela sua tela inicial." />
+                <TutorialStep step="4" text="Abra o MSK SISTEM pela sua tela inicial." />
               </div>
             ) : platform.os === 'android' ? (
               <div className="space-y-4">
@@ -178,7 +178,7 @@ export function PwaInstallBanner() {
             ) : (
               <div className="space-y-4">
                 <TutorialStep step="1" text="Clique no ícone de instalação na barra de endereços." />
-                <TutorialStep step="2" text="Ou abra o menu do navegador e procure por 'Instalar MSK SUIT'." />
+                <TutorialStep step="2" text="Ou abra o menu do navegador e procure por 'Instalar MSK SISTEM'." />
                 <TutorialStep step="3" text="Confirme para ter acesso direto pelo desktop." />
               </div>
             )}

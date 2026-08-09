@@ -1,5 +1,5 @@
 /**
- * Núcleo de licenciamento do LOVABLE MSK.
+ * Núcleo de licenciamento do MSK SISTEM.
  * Roda SOMENTE no servidor. Nunca importar em componentes.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";

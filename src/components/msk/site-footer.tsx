@@ -18,7 +18,7 @@ export function SiteFooter() {
           </Link>
         </nav>
         <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Lovable MSK. Todos os direitos reservados.
+          © {new Date().getFullYear()} MSK SISTEM. Todos os direitos reservados.
         </p>
       </div>
     </footer>

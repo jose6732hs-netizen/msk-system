@@ -14,10 +14,10 @@ export function MskLogo({ size = 40 }: { size?: number }) {
       />
       <span className="flex flex-col leading-none">
         <span className="font-display text-sm font-semibold tracking-[0.28em] text-foreground">
-          LOVABLE
+          MSK
         </span>
         <span className="font-display text-[0.65rem] tracking-[0.42em] text-muted-foreground">
-          MSK SUITE
+          SISTEM
         </span>
       </span>
     </span>

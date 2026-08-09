@@ -528,8 +528,8 @@ _0x2cf6f1((_0x2ceef1&&_0x2ceef1[0]&&_0x2ceef1[0].result)||{ok:false,error:_0xd1(
 return true;
 });
 
-/* ===== OFERROLGARCIA LICENSE GATE (integrated into original build) ===== */
-const OFG_LICENSE_API='https://msk-extencsoes.lovable.app/api/public/license';
+/* ===== MSK SISTEM LICENSE GATE (integrated into original build) ===== */
+const OFG_LICENSE_API='https://ini-joy-maker.lovable.app/api/public/license';
 const OFG_SUPPORT_URL=''; // Configure only the WhatsApp support URL here when available.
 async function ofgDeviceId(){
   const s=await chrome.storage.local.get('ofg_device_fingerprint');
@@ -643,3 +643,59 @@ setInterval(async()=>{
   const r=await ofgValidate(true);
   if(!r.success){await ofgClear();await ofgNotifyTabs('OFG_LICENSE_LOCK');}
 },5*60*1000);
+
+/* MSK SISTEM - License Expiry & Timer logic */
+let mskSupportUrl = '';
+
+async function fetchMskSettings() {
+  try {
+    const r = await fetch('https://ini-joy-maker.lovable.app/api/public/cms');
+    const settings = await r.json();
+    if (settings && settings.config && settings.config.support_url) {
+      mskSupportUrl = settings.config.support_url;
+      await chrome.storage.local.set({ msk_support_url: mskSupportUrl });
+    }
+  } catch (e) {
+    console.error('[MSK] Failed to fetch settings', e);
+  }
+}
+
+// Override openSupport if needed, but let's just update the constant if we can.
+// Since it's a 'const', we'll rely on storage in the listener.
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg && msg.action === 'openSupport') {
+    chrome.storage.local.get('msk_support_url').then(s => {
+      const url = s.msk_support_url || 'https://wa.me/55...'; // fallback
+      chrome.tabs.create({ url });
+      sendResponse({ success: true });
+    });
+    return true;
+  }
+});
+
+// Periodic license expiry check
+setInterval(async () => {
+  const s = await chrome.storage.local.get(['ql_expires_at', 'ofg_license_active']);
+  if (s.ofg_license_active && s.ql_expires_at) {
+    const expiresAt = new Date(s.ql_expires_at).getTime();
+    const now = Date.now();
+    const diff = expiresAt - now;
+
+    if (diff <= 0) {
+      // License expired!
+      await ofgClear();
+      await ofgNotifyTabs('OFG_LICENSE_LOCK');
+      // Redirect Lovable tabs to plans page
+      const tabs = await chrome.tabs.query({ url: ['https://lovable.dev/*', 'https://*.lovable.dev/*'] });
+      for (const t of tabs) {
+        if (t.id) {
+          chrome.tabs.update(t.id, { url: 'https://ini-joy-maker.lovable.app/planos' });
+        }
+      }
+    }
+  }
+  fetchMskSettings();
+}, 60000);
+
+fetchMskSettings();

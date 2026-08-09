@@ -22,6 +22,7 @@ import { Route as AfiliadoCodeRouteImport } from './routes/afiliado.$code'
 import { Route as ParceirosIndexRouteImport } from './routes/parceiros/index'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as AuthenticatedParceiroIndexRouteImport } from './routes/_authenticated/parceiro/index'
+import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
 import { Route as ApiPublicCronRenewLicensesRouteImport } from './routes/api/public/cron/renew-licenses'
@@ -102,6 +103,11 @@ const AuthenticatedParceiroIndexRoute =
     path: '/parceiro/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPublicCmsRoute = ApiPublicCmsRouteImport.update({
+  id: '/api/public/cms',
+  path: '/api/public/cms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicOpenapiRoute = ApiPublicOpenapiRouteImport.update({
   id: '/api/public/openapi',
   path: '/api/public/openapi',
@@ -196,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
   '/parceiros/': typeof ParceirosIndexRoute
+  '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/parceiro/': typeof AuthenticatedParceiroIndexRoute
@@ -224,6 +231,7 @@ export interface FileRoutesByTo {
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
   '/parceiros': typeof ParceirosIndexRoute
+  '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/parceiro': typeof AuthenticatedParceiroIndexRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
   '/parceiros/': typeof ParceirosIndexRoute
+  '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/_authenticated/parceiro/': typeof AuthenticatedParceiroIndexRoute
@@ -284,6 +293,7 @@ export interface FileRouteTypes {
     | '/afiliado/$code'
     | '/r/$slug'
     | '/parceiros/'
+    | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
     | '/parceiro/'
@@ -312,6 +322,7 @@ export interface FileRouteTypes {
     | '/afiliado/$code'
     | '/r/$slug'
     | '/parceiros'
+    | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
     | '/parceiro'
@@ -341,6 +352,7 @@ export interface FileRouteTypes {
     | '/afiliado/$code'
     | '/r/$slug'
     | '/parceiros/'
+    | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
     | '/_authenticated/parceiro/'
@@ -368,6 +380,7 @@ export interface RootRouteChildren {
   AfiliadoCodeRoute: typeof AfiliadoCodeRoute
   RSlugRoute: typeof RSlugRoute
   ParceirosIndexRoute: typeof ParceirosIndexRoute
+  ApiPublicCmsRoute: typeof ApiPublicCmsRoute
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
   ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
   ApiPublicCronRenewLicensesRoute: typeof ApiPublicCronRenewLicensesRoute
@@ -476,6 +489,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/parceiro/'
       preLoaderRoute: typeof AuthenticatedParceiroIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/cms': {
+      id: '/api/public/cms'
+      path: '/api/public/cms'
+      fullPath: '/api/public/cms'
+      preLoaderRoute: typeof ApiPublicCmsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/openapi': {
       id: '/api/public/openapi'
@@ -605,6 +625,7 @@ const rootRouteChildren: RootRouteChildren = {
   AfiliadoCodeRoute: AfiliadoCodeRoute,
   RSlugRoute: RSlugRoute,
   ParceirosIndexRoute: ParceirosIndexRoute,
+  ApiPublicCmsRoute: ApiPublicCmsRoute,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
   ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
   ApiPublicCronRenewLicensesRoute: ApiPublicCronRenewLicensesRoute,

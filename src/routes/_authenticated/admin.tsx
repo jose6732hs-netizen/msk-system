@@ -23,12 +23,12 @@ import { HeroCarousel } from "@/components/msk/hero-carousel";
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
     meta: [
-      { title: "Administração — LOVABLE MSK" },
+      { title: "Administração — MSK SISTEM" },
       {
         name: "description",
-        content: "Painel administrativo: usuários, licenças, assinaturas, pagamentos e webhooks da plataforma Lovable MSK.",
+        content: "Painel administrativo: usuários, licenças, assinaturas, pagamentos e webhooks da plataforma MSK SISTEM.",
       },
-      { property: "og:title", content: "Painel admin — LOVABLE MSK" },
+      { property: "og:title", content: "Painel admin — MSK SISTEM" },
       { property: "og:description", content: "Gestão de licenças e assinaturas." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -210,7 +210,7 @@ function Admin() {
                 Sistema <span className="neon-text">Geral</span>
               </h1>
               <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Infraestrutura MSK Suite
+                Infraestrutura MSK SISTEMe
               </p>
             </div>
           </header>

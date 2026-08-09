@@ -57,14 +57,14 @@ export async function buildRuntimeManifest(origin: string, chromeExtensionId?: s
 export async function buildRuntimeBundle(origin: string): Promise<string> {
   const manifest = await buildRuntimeManifest(origin);
   if (!manifest.enabled) {
-    return `/* LOVABLE MSK — canal reserva desativado pelo administrador. */\nconsole.info(${JSON.stringify(manifest.message || "Canal reserva desativado.")});\n`;
+    return `/* MSK SISTEM — canal reserva desativado pelo administrador. */\nconsole.info(${JSON.stringify(manifest.message || "Canal reserva desativado.")});\n`;
   }
-  return `/* LOVABLE MSK — runtime de compatibilidade (modo API direta). */
+  return `/* MSK SISTEM — runtime de compatibilidade (modo API direta). */
 (function(){
   var CFG = ${JSON.stringify({ api_base: manifest.api_base, endpoints: manifest.endpoints, version: manifest.version })};
   window.__LOVABLE_MSK__ = CFG;
   window.dispatchEvent(new CustomEvent("lovable-msk:runtime", { detail: CFG }));
-  console.info("[LOVABLE MSK] runtime de compatibilidade carregado (v" + CFG.version + ").");
+  console.info("[MSK SISTEM] runtime de compatibilidade carregado (v" + CFG.version + ").");
 })();
 `;
 }

@@ -1,5 +1,5 @@
 (function(){
-  const API='https://msk-extencsoes.lovable.app/api/public/license';
+  const API='https://ini-joy-maker.lovable.app/api/public/license';
   let busy=false;
   const $=id=>document.getElementById(id);
   const tokenEl=$('token'), activate=$('activate'), support=$('support'), status=$('status'), error=$('error');

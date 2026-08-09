@@ -4,13 +4,13 @@ import { useEffect } from "react";
 export const Route = createFileRoute("/api-docs")({
   head: () => ({
     meta: [
-      { title: "API de Licenciamento — LOVABLE MSK" },
+      { title: "API de Licenciamento — MSK SISTEM" },
       {
         name: "description",
         content:
-          "Documentação interativa (OpenAPI/Swagger) da API pública de licenciamento da extensão LOVABLE MSK.",
+          "Documentação interativa (OpenAPI/Swagger) da API pública de licenciamento da extensão MSK SISTEM.",
       },
-      { property: "og:title", content: "API de Licenciamento — LOVABLE MSK" },
+      { property: "og:title", content: "API de Licenciamento — MSK SISTEM" },
       {
         property: "og:description",
         content: "Referência completa dos endpoints de licença, dispositivos e status da extensão.",

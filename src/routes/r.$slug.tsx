@@ -7,8 +7,8 @@ export const Route = createFileRoute("/r/$slug")({
   loader: ({ params }) => fetchResellerPage({ data: { slug: params.slug } }),
   head: ({ loaderData, params }) => {
     const name = loaderData?.reseller.name ?? params.slug;
-    const title = `${name} · Licenças Lovable MSK`;
-    const description = `Compre sua licença da extensão Lovable MSK com ${name}. Ativação imediata e suporte oficial.`;
+    const title = `${name} · Licenças MSK SISTEM`;
+    const description = `Compre sua licença da extensão MSK SISTEM com ${name}. Ativação imediata e suporte oficial.`;
     return {
       meta: [
         { title },
@@ -59,7 +59,7 @@ function ResellerPublicPage() {
         </h1>
         <p className="mt-3 text-muted-foreground">
           {branding?.["description"] ??
-            "Revendedor autorizado da extensão Lovable MSK. Compre com ativação imediata."}
+            "Revendedor autorizado da extensão MSK SISTEM. Compre com ativação imediata."}
         </p>
         {data.latestVersion && (
           <p className="mt-2 text-xs text-muted-foreground">Versão atual: {data.latestVersion}</p>
