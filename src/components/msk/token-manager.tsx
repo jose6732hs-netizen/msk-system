@@ -489,7 +489,7 @@ export function TokenManager() {
                 <div className="flex-1">
                   <p className="text-lg font-black uppercase tracking-tight text-white mb-2">Status: Disponível</p>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    Experimente a potência total da MSK Suite agora mesmo. Duração de 15 minutos, renovável a cada 24 horas.
+                    Experimente a potência total da MSK SISTEMe agora mesmo. Duração de 15 minutos, renovável a cada 24 horas.
                   </p>
                 </div>
                 <Button 

@@ -50,13 +50,13 @@ type CartItem = {
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
-      { title: "Planos e preços — LOVABLE MSK" },
+      { title: "Planos e preços — MSK SISTEM" },
       {
         name: "description",
         content:
-          "Planos diário, mensal, anual e vitalício da extensão Lovable MSK, com licença liberada automaticamente após o pagamento.",
+          "Planos diário, mensal, anual e vitalício da extensão MSK SISTEM, com licença liberada automaticamente após o pagamento.",
       },
-      { property: "og:title", content: "Planos LOVABLE MSK" },
+      { property: "og:title", content: "Planos MSK SISTEM" },
       {
         property: "og:description",
         content: "Escolha entre acesso diário, mensal, anual ou vitalício.",

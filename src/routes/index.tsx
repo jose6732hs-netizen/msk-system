@@ -12,10 +12,10 @@ import { MskLogo } from "@/components/msk/logo";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "MSK SUIT — Sua Assistente Premium para Lovable" },
+      { title: "MSK SISTEM — Sua Assistente Premium para Lovable" },
       {
         name: "description",
-        content: "A plataforma definitiva para gerenciar licenças, dispositivos e otimizar seu fluxo de trabalho com a MSK Suite.",
+        content: "A plataforma definitiva para gerenciar licenças, dispositivos e otimizar seu fluxo de trabalho com a MSK SISTEMe.",
       },
       { property: "og:image", content: bannerAsset.url },
       { name: "twitter:image", content: bannerAsset.url },

@@ -7,8 +7,8 @@ import { getVisitorId, paths, storeAffiliateRef } from "@/lib/urls";
 
 export const Route = createFileRoute("/afiliado/$code")({
   head: ({ params }) => {
-    const title = "Convite exclusivo — LOVABLE MSK";
-    const description = `Você foi convidado por um parceiro (${params.code}) para ativar a extensão Lovable MSK com licença imediata.`;
+    const title = "Convite exclusivo — MSK SISTEM";
+    const description = `Você foi convidado por um parceiro (${params.code}) para ativar a extensão MSK SISTEM com licença imediata.`;
     return {
       meta: [
         { title },

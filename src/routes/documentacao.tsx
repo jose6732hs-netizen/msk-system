@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/documentacao")({
   head: () => ({
     meta: [
-      { title: "API de licenciamento — LOVABLE MSK" },
+      { title: "API de licenciamento — MSK SISTEM" },
       {
         name: "description",
         content:
-          "Contrato da API REST usada pela extensão Chrome Lovable MSK: ativação, validação, heartbeat e gerenciamento de dispositivos.",
+          "Contrato da API REST usada pela extensão Chrome MSK SISTEM: ativação, validação, heartbeat e gerenciamento de dispositivos.",
       },
-      { property: "og:title", content: "Documentação da API — LOVABLE MSK" },
+      { property: "og:title", content: "Documentação da API — MSK SISTEM" },
       {
         property: "og:description",
         content: "Endpoints de ativação, validação e heartbeat da licença.",

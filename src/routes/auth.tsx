@@ -70,14 +70,14 @@ export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
   head: () => ({
     meta: [
-      { title: "Entrar ou criar conta — LOVABLE MSK" },
+      { title: "Entrar ou criar conta — MSK SISTEM" },
       {
         name: "description",
         content:
-          "Acesse o painel da sua licença Lovable MSK, veja seu token e gerencie dispositivos.",
+          "Acesse o painel da sua licença MSK SISTEM, veja seu token e gerencie dispositivos.",
       },
-      { property: "og:title", content: "Acesso — LOVABLE MSK" },
-      { property: "og:description", content: "Entre na plataforma Lovable MSK." },
+      { property: "og:title", content: "Acesso — MSK SISTEM" },
+      { property: "og:description", content: "Entre na plataforma MSK SISTEM." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

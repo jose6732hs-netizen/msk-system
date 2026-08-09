@@ -26,13 +26,13 @@ import { HeroCarousel } from "@/components/msk/hero-carousel";
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
     meta: [
-      { title: "Meu painel — LOVABLE MSK" },
+      { title: "Meu painel — MSK SISTEM" },
       {
         name: "description",
         content:
-          "Veja o status da sua licença, copie seu token e gerencie os dispositivos conectados à extensão Lovable MSK.",
+          "Veja o status da sua licença, copie seu token e gerencie os dispositivos conectados à extensão MSK SISTEM.",
       },
-      { property: "og:title", content: "Painel do assinante — LOVABLE MSK" },
+      { property: "og:title", content: "Painel do assinante — MSK SISTEM" },
       { property: "og:description", content: "Licença, token e dispositivos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
