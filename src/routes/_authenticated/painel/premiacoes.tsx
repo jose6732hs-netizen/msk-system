@@ -98,8 +98,30 @@ const levels = [
 ];
 
 function AwardsPage() {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setDirection(1);
+      setActiveIndex((prev) => (prev + 1) % levels.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const paginate = (newDirection: number) => {
+    setDirection(newDirection);
+    setActiveIndex((prev) => (prev + newDirection + levels.length) % levels.length);
+  };
+
+  const getVisibleLevels = () => {
+    const prev = (activeIndex - 1 + levels.length) % levels.length;
+    const next = (activeIndex + 1) % levels.length;
+    return [prev, activeIndex, next];
+  };
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-[#050505] text-white overflow-x-hidden">
       <header className="border-b border-border/60 bg-background/70 backdrop-blur-xl sticky top-0 z-50">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
           <Link to="/painel" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
@@ -127,6 +149,100 @@ function AwardsPage() {
           </p>
         </motion.div>
 
+        {/* Professional 3D Carousel Section */}
+        <section className="relative h-[500px] mb-20 flex items-center justify-center perspective-1000">
+          <div className="relative w-full max-w-4xl flex items-center justify-center">
+            <AnimatePresence initial={false} custom={direction} mode="popLayout">
+              {getVisibleLevels().map((levelIdx, position) => {
+                const level = levels[levelIdx];
+                const isCenter = position === 1;
+                const isLeft = position === 0;
+                
+                return (
+                  <motion.div
+                    key={`${levelIdx}-${position}`}
+                    initial={{ 
+                      opacity: 0, 
+                      scale: 0.8,
+                      x: direction > 0 ? (isCenter ? 100 : 200) : (isCenter ? -100 : -200),
+                      rotateY: isLeft ? 45 : -45,
+                      zIndex: 0
+                    }}
+                    animate={{ 
+                      opacity: isCenter ? 1 : 0.4, 
+                      scale: isCenter ? 1 : 0.75,
+                      x: isCenter ? 0 : (isLeft ? -280 : 280),
+                      rotateY: isCenter ? 0 : (isLeft ? 35 : -35),
+                      zIndex: isCenter ? 20 : 10,
+                    }}
+                    exit={{ 
+                      opacity: 0, 
+                      scale: 0.5,
+                      x: direction > 0 ? -300 : 300,
+                    }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30
+                    }}
+                    className={`absolute w-[280px] md:w-[320px] aspect-[9/16] rounded-3xl overflow-hidden border border-white/10 glass-dark group cursor-pointer ${isCenter ? 'shadow-[0_0_50px_rgba(var(--primary-rgb),0.2)]' : ''}`}
+                    onClick={() => !isCenter && paginate(isLeft ? -1 : 1)}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
+                    <img 
+                      src={level.image} 
+                      alt={level.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    />
+                    
+                    <div className="absolute bottom-0 left-0 right-0 p-6 z-20 transform translate-y-2 group-hover:translate-y-0 transition-transform">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-primary text-xs font-black px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                          {level.threshold}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black uppercase tracking-tighter mb-1">{level.title}</h3>
+                      <p className="text-white/60 text-[10px] font-medium leading-tight">
+                        {level.description}
+                      </p>
+                    </div>
+
+                    {!isCenter && (
+                      <div className="absolute inset-0 bg-black/40 z-30 backdrop-blur-[2px] pointer-events-none" />
+                    )}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </div>
+
+          {/* Navigation Controls */}
+          <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 flex items-center gap-8 z-40">
+            <button 
+              onClick={() => paginate(-1)}
+              className="w-12 h-12 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:border-primary/50 transition-all text-white/50 hover:text-white"
+            >
+              <ChevronLeft size={24} />
+            </button>
+            
+            <div className="flex gap-2">
+              {levels.map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`h-1.5 transition-all duration-300 rounded-full ${i === activeIndex ? 'w-8 bg-primary' : 'w-2 bg-white/10'}`} 
+                />
+              ))}
+            </div>
+
+            <button 
+              onClick={() => paginate(1)}
+              className="w-12 h-12 rounded-full border border-white/10 bg-white/5 flex items-center justify-center hover:bg-primary/20 hover:border-primary/50 transition-all text-white/50 hover:text-white"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+        </section>
+
         {/* Copy Section */}
         <motion.div 
           initial={{ opacity: 0 }}
@@ -141,32 +257,6 @@ function AwardsPage() {
             Do primeiro passo ao topo, o reconhecimento é proporcional ao seu desempenho."
           </p>
         </motion.div>
-
-        {/* Levels Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-20">
-          {levels.map((level, idx) => (
-            <motion.div
-              key={level.threshold}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * idx }}
-              className={`group relative overflow-hidden rounded-[2rem] border ${level.borderColor} bg-gradient-to-br ${level.color} p-8 hover:border-primary/40 transition-all duration-500 ${level.glowColor}`}
-            >
-              <div className="flex justify-between items-start mb-6">
-                <div className="bg-white/5 rounded-2xl p-4 group-hover:bg-primary/10 transition-colors">
-                  <level.icon size={32} className="text-primary" />
-                </div>
-                <span className="text-2xl font-black text-primary/40 group-hover:text-primary transition-colors">
-                  {level.threshold}
-                </span>
-              </div>
-              <h3 className="text-xl font-bold mb-2 uppercase tracking-tight">{level.title}</h3>
-              <p className="text-white/40 text-sm font-medium leading-relaxed">
-                {level.description}
-              </p>
-            </motion.div>
-          ))}
-        </div>
 
         {/* CTA Section */}
         <motion.section 
