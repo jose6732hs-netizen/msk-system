@@ -15,11 +15,6 @@ import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
 const DEFAULT_BANNERS = [
   { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK" },
   { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA" },
-  { url: bannerInf.url, alt: "Acesso Ilimitado Liberado" },
-  { url: bannerInt.url, alt: "Cansado de ser interrompido?" },
-  { url: bannerNoC.url, alt: "Chega de ficar sem créditos" },
-  { url: banner1.url, alt: "MSK Sistem Lovable Ilimitado" },
-  { url: banner2.url, alt: "MSK Sistem - O Mais Barato do Mercado" },
 ];
 
 export function HeroCarousel() {
@@ -68,7 +63,7 @@ export function HeroCarousel() {
         ))}
       </div>
 
-      <div className="absolute inset-y-0 left-4 flex items-center opacity-100 transition-opacity z-30">
+      <div className="absolute inset-y-0 left-4 flex items-center opacity-0 group-hover:opacity-100 transition-opacity z-30">
         <Button 
           size="icon" 
           variant="neonOutline" 
@@ -83,7 +78,7 @@ export function HeroCarousel() {
         </Button>
       </div>
 
-      <div className="absolute inset-y-0 right-4 flex items-center opacity-100 transition-opacity z-30">
+      <div className="absolute inset-y-0 right-4 flex items-center opacity-0 group-hover:opacity-100 transition-opacity z-30">
         <Button 
           size="icon" 
           variant="neon" 
