@@ -361,6 +361,20 @@ export async function settlePaidTransaction(transactionId: string) {
     });
     licenseId = issued.licenseId;
 
+    // Assinar os dados da licença para entrega segura
+    const { signData } = await import("./license.server");
+    const signature = await signData(JSON.stringify({ 
+      licenseId: issued.licenseId, 
+      token: issued.token,
+      userId: tx.user_id 
+    }));
+    
+    // Podemos armazenar a assinatura ou enviá-la no log
+    await supabaseAdmin.from("licenses").update({ 
+      metadata: { signature } 
+    } as any).eq("id", issued.licenseId);
+
+
     // Saldo de tokens do tenant conforme a quantidade adquirida (1 já emitido acima).
     const quantity = Math.max(
       1,

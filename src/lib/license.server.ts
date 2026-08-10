@@ -37,6 +37,30 @@ function toHex(buf: ArrayBuffer) {
     .join("");
 }
 
+export async function signData(data: string): Promise<string> {
+  const keyMaterial = new TextEncoder().encode(encKey());
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyMaterial,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return toHex(sig);
+}
+
+export async function verifySignature(data: string, signature: string): Promise<boolean> {
+  try {
+    const expected = await signData(data);
+    return signature === expected;
+  } catch {
+    return false;
+  }
+}
+
+
+
 /** Hash com pepper do servidor — só o hash é usado para lookup/validação. */
 export async function hashToken(token: string): Promise<string> {
   const data = new TextEncoder().encode(`${encKey()}::${token.trim().toUpperCase()}`);
