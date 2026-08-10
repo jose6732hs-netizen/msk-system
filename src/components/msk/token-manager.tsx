@@ -139,8 +139,39 @@ export function TokenManager() {
     queryFn: () => fetchOverview(),
     enabled: hasSession === true,
     retry: false,
-    refetchInterval: hasSession === true ? 30000 : false,
+    refetchInterval: (hasSession === true) ? (query) => {
+      const data = query.state.data as any;
+      const hasExpired = data?.tokens?.some((t: any) => t.status === 'expired');
+      if (hasExpired) return false; // Para o auto-refresh se algo expirou para evitar loops de recarga se implementarmos reload
+      return 30000;
+    } : false,
   });
+
+  // Identificação por IP e Atualização Automática ao Expirar
+  useEffect(() => {
+    if (!data?.tokens) return;
+    
+    const hasActiveBefore = tokens.some(t => t.status === 'active');
+    const hasExpiredNow = data.tokens.some((t: any) => t.status === 'expired');
+    
+    // Se tínhamos algo ativo e agora expirou, recarrega a página para refletir o estado bloqueado se necessário
+    // ou apenas para garantir que a UI está fresca.
+    if (hasExpiredNow && data.tokens.length > 0) {
+      const lastStatus = localStorage.getItem('msk_last_license_status');
+      const currentStatus = JSON.stringify(data.tokens.map((t: any) => ({ id: t.id, status: t.status })));
+      
+      if (lastStatus && lastStatus !== currentStatus) {
+        localStorage.setItem('msk_last_license_status', currentStatus);
+        // Só atualiza se houver mudança real para 'expired'
+        if (data.tokens.some((t: any) => t.status === 'expired')) {
+           toast.error("Sua licença expirou. Atualizando painel...");
+           setTimeout(() => window.location.reload(), 2000);
+        }
+      } else if (!lastStatus) {
+        localStorage.setItem('msk_last_license_status', currentStatus);
+      }
+    }
+  }, [data?.tokens, tokens]);
 
   const now = useServerNow(data?.server_time);
   const allowance = data?.allowance;
