@@ -226,7 +226,7 @@ export async function grantTrial(input: { userId: string; planId?: string | null
 
   const result = await issueStandaloneLicense({
     userId: input.userId,
-    planId,
+    planId: planId!,
     durationMinutes: cfg.duration_minutes,
     type: "trial",
     resellerId: input.resellerId ?? null,
