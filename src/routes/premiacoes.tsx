@@ -204,30 +204,29 @@ function AwardsPage() {
                       stiffness: 300,
                       damping: 30
                     }}
-                    className={`absolute w-[200px] md:w-[240px] aspect-[9/16] rounded-3xl overflow-hidden border border-white/10 glass-dark group cursor-pointer ${isCenter ? 'shadow-[0_0_50px_rgba(var(--primary-rgb),0.2)]' : ''}`}
+                    className={`absolute w-[200px] md:w-[240px] aspect-[9/16] group cursor-pointer ${isCenter ? 'drop-shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)]' : ''}`}
                     onClick={() => !isCenter && paginate(isLeft ? -1 : 1)}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
                     <img 
                       src={level.image} 
                       alt={level.title}
-                      className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-110"
+                      className="w-full h-auto object-contain transition-transform duration-700 group-hover:scale-110 drop-shadow-2xl"
                     />
                     
-                    <div className="absolute bottom-0 left-0 right-0 p-6 z-20 transform translate-y-2 group-hover:translate-y-0 transition-transform">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-primary text-xs font-black px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                    <div className="absolute bottom-4 left-0 right-0 p-4 z-20 text-center">
+                      <div className="flex justify-center items-center gap-2 mb-1">
+                        <span className="text-primary text-[10px] font-black px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
                           {level.threshold}
                         </span>
                       </div>
-                      <h3 className="text-lg font-black uppercase tracking-tighter mb-1">{level.title}</h3>
+                      <h3 className="text-base font-black uppercase tracking-tighter mb-0.5">{level.title}</h3>
                       <p className="text-white/60 text-[10px] font-medium leading-tight">
                         {level.description}
                       </p>
                     </div>
 
                     {!isCenter && (
-                      <div className="absolute inset-0 bg-black/40 z-30 backdrop-blur-[2px] pointer-events-none" />
+                      <div className="absolute inset-0 bg-black/20 z-30 pointer-events-none rounded-3xl" />
                     )}
                   </motion.div>
                 );
