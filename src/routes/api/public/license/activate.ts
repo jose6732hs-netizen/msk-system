@@ -147,13 +147,27 @@ export const Route = createFileRoute("/api/public/license/activate")({
             .eq("id", existing.id);
         }
 
+        // Se for o primeiro uso (activated_at nulo), define a expiração a partir de agora
+        const updates: any = {
+          status: "active",
+          last_validation: new Date().toISOString(),
+        };
+        
+        if (!license.activated_at) {
+          updates.activated_at = new Date().toISOString();
+          // Se a licença tiver uma duração definida (ex: teste/trial), calcula a expiração baseada no agora
+          // Caso contrário (vitalícia), mantém o comportamento original.
+          // O backend já define um 'expires_at' inicial como fallback em commerce.server.ts, 
+          // mas aqui recalculamos para ser justo com o tempo de uso real.
+          if (license.expires_at && license.starts_at) {
+            const duration = new Date(license.expires_at).getTime() - new Date(license.starts_at).getTime();
+            updates.expires_at = new Date(Date.now() + duration).toISOString();
+          }
+        }
+
         await supabaseAdmin
           .from("licenses")
-          .update({
-            status: "active",
-            activated_at: new Date().toISOString(),
-            last_validation: new Date().toISOString(),
-          })
+          .update(updates)
           .eq("id", license.id);
 
         await logEvent({
