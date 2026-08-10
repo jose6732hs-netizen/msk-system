@@ -158,6 +158,7 @@ export async function listActiveChannels() {
       display_name: c.display_name,
       channel_number: c.channel_number ?? 1,
       channel_type: c.channel_type ?? "stable",
+      enabled: c.enabled ?? true,
       version: c.version ?? "1.0.0",
       message: c.message,
       public_zip: (c.metadata?.["public_zip"] as string | undefined) ?? null,
@@ -189,7 +190,9 @@ async function buildForChannel(slug: string) {
 /** Download livre (sem exigir licença) — apenas do canal ativado no admin. */
 export async function issueDownloadLink(userId: string, channelSlug?: string | null) {
   const channels = await listActiveChannels();
-  const channel = channelSlug ? channels.find((c) => c.slug === channelSlug) : channels[0];
+  const channel = channelSlug 
+    ? channels.find((c) => c.slug === channelSlug) 
+    : channels.find((c) => c.enabled !== false) || channels[0];
 
   const build = await buildForChannel(channel?.slug ?? channelSlug ?? "");
 
