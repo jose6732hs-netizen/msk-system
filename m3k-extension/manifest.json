@@ -45,6 +45,7 @@
         "remote-branding.js",
         "jszip.min.js",
         "content-templates.js",
+        "lovable-infinity.js",
         "content.js",
         "overlay.js",
         "overlay-suppressor.js"
