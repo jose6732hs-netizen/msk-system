@@ -83,10 +83,17 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
           .replace(/^sha256=/, "")
           .trim();
         const expected = await hmacHex(secret, rawBody);
-        if (!provided || (!timingSafeEqual(provided.toLowerCase(), expected) && !timingSafeEqual(provided, secret))) {
+        const expectedLegacy = await hmacHex(secret, rawBody.replace(/[\n\r\t]/g, ""));
+        
+        const isMatch = timingSafeEqual(provided.toLowerCase(), expected) || 
+                       timingSafeEqual(provided, secret) || 
+                       timingSafeEqual(provided.toLowerCase(), expectedLegacy);
+
+        if (!provided || !isMatch) {
           await logAudit({ action: "webhook.invalid_signature", resource: "amplopay", result: "failure" });
           return json({ error: "INVALID_SIGNATURE" }, 401);
         }
+
 
         let payload: AmploWebhook;
         try {
