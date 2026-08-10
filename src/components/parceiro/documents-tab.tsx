@@ -21,7 +21,9 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const requiredDocs = [
-    { id: 'selfie', name: 'Selfie com Documento (Frente e Verso)' },
+    { id: 'selfie', name: 'Selfie com Documento' },
+    { id: 'document_front', name: 'Documento (Frente)' },
+    { id: 'document_back', name: 'Documento (Verso)' },
   ];
 
   const handleUpload = (id: string, file: File) => {
@@ -85,6 +87,8 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
       await submitDocs({
         data: {
           selfie: filePaths['selfie'],
+          document_front: filePaths['document_front'],
+          document_back: filePaths['document_back'],
         }
       });
 

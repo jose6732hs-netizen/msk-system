@@ -100,12 +100,14 @@ export const refreshAffiliateBalance = createServerFn({ method: "POST" })
     });
   });
 
-/** Envia documentos para análise de afiliação (Simplificado: apenas selfie com documento). */
+/** Envia documentos para análise de afiliação (Campos separados: selfie, frente, verso). */
 export const submitAffiliateDocuments = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => 
     z.object({
       selfie: z.string(),
+      document_front: z.string(),
+      document_back: z.string(),
     }).parse(d)
   )
   .handler(async ({ context, data }) => {
@@ -120,9 +122,10 @@ export const submitAffiliateDocuments = createServerFn({ method: "POST" })
 
     const now = new Date().toISOString();
 
-    // Inserir o documento de selfie
     const docs = [
       { affiliate_id: affiliate.id, type: 'SELFIE', file_path: data.selfie, status: 'PENDING' },
+      { affiliate_id: affiliate.id, type: 'DOC_FRONT', file_path: data.document_front, status: 'PENDING' },
+      { affiliate_id: affiliate.id, type: 'DOC_BACK', file_path: data.document_back, status: 'PENDING' },
     ];
 
     const { error: docsError } = await supabaseAdmin
@@ -131,7 +134,6 @@ export const submitAffiliateDocuments = createServerFn({ method: "POST" })
 
     if (docsError) throw docsError;
 
-    // Atualizar status da afiliação
     const { error: affiliateError } = await supabaseAdmin
       .from("affiliates")
       .update({ 
