@@ -194,7 +194,7 @@ export function AdminEditorTab() {
                   variant="neonOutline"
                   onClick={() => {
                     const currentBanners = (localSettings as any).hero?.banners || [];
-                    updateSetting('hero', 'banners', [...currentBanners, { url: '', alt: '' }]);
+                    updateSetting('hero', 'banners', [...currentBanners, { url: '', alt: '', active: true, order: currentBanners.length }]);
                   }}
                 >
                   + Adicionar Banner
@@ -268,8 +268,32 @@ export function AdminEditorTab() {
                               newBanners[index].alt = e.target.value;
                               updateSetting('hero', 'banners', newBanners);
                             }}
-                            className="text-[0.7rem]"
+                            className="text-[0.7rem] flex-1"
                           />
+                          <Input 
+                            type="number"
+                            placeholder="Ordem"
+                            value={banner.order || 0}
+                            onChange={(e) => {
+                              const newBanners = [...(localSettings as any).hero.banners];
+                              newBanners[index].order = parseInt(e.target.value) || 0;
+                              updateSetting('hero', 'banners', newBanners);
+                            }}
+                            className="text-[0.7rem] w-16"
+                          />
+                          <div className="flex items-center gap-2 px-2">
+                            <input 
+                              type="checkbox"
+                              checked={banner.active !== false}
+                              onChange={(e) => {
+                                const newBanners = [...(localSettings as any).hero.banners];
+                                newBanners[index].active = e.target.checked;
+                                updateSetting('hero', 'banners', newBanners);
+                              }}
+                              className="w-4 h-4 accent-primary"
+                            />
+                            <span className="text-[0.6rem] font-bold uppercase text-muted-foreground">Ativo</span>
+                          </div>
                           <Button 
                             size="icon" 
                             variant="ghost" 
@@ -405,7 +429,11 @@ export function AdminEditorTab() {
                                   const fd = new FormData();
                                   fd.append('file', file);
                                   fd.append('key', `tutorial-video-${index}`);
+                                  
+                                  // Mock progress since uploadCmsAsset is a server function call
+                                  // In a real scenario, we'd use XHR or a specialized hook for progress
                                   const res = await uploadAsset({ data: fd as any });
+                                  
                                   const newVideos = [...(localSettings as any).tutorials.videos];
                                   newVideos[index].url = res.url;
                                   updateSetting('tutorials', 'videos', newVideos);
@@ -421,7 +449,13 @@ export function AdminEditorTab() {
                           }}
                           disabled={uploading === `video-${index}`}
                         >
-                          {uploading === `video-${index}` ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          {uploading === `video-${index}` ? (
+                            <div className="relative h-4 w-4">
+                              <RefreshCw className="h-4 w-4 animate-spin text-primary" />
+                              <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">100</div>
+                            </div>
+                          ) : <Upload className="h-3.5 w-3.5" />}
+                        </Button>
                         </Button>
                       </div>
                       <div className="flex items-center gap-2 py-1">
