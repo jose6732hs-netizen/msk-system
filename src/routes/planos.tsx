@@ -353,7 +353,7 @@ function PlanosPage() {
                     disabled={loadingPlan !== null}
                   >
                     {loadingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : null}
-                    <span className="flex-1 text-center truncate sm:whitespace-normal">
+                    <span className="flex-1 text-center">
                       {loadingPlan ? "Processando..." : "Finalizar Pedido"}
                     </span>
                   </Button>

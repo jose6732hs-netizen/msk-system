@@ -40,13 +40,13 @@ export function AffiliateHeader({
           : "bg-transparent border-transparent py-4"
       )}
     >
-      <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
+      <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-2 md:gap-4">
         {/* Lado Esquerdo: Saldo */}
         <div className="flex flex-col">
           <span className="text-xs font-medium text-white/40 uppercase tracking-widest">Saldo Disponível</span>
           <div className="flex items-center gap-3">
             <h2 className={cn(
-              "text-2xl font-bold tracking-tighter transition-all duration-500 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent",
+              "text-lg sm:text-2xl font-bold tracking-tighter transition-all duration-500 bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent truncate max-w-[120px] sm:max-w-none",
               !showBalance && "blur-md select-none"
             )}>
               R$ {balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}

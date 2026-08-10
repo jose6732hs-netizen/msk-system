@@ -44,14 +44,14 @@ export function HeroCarousel() {
   if (!banners.length) return null;
 
   return (
-    <div className="relative w-full max-w-6xl mx-auto overflow-hidden sm:rounded-[2.5rem] border-y sm:border border-primary/20 group aspect-video sm:aspect-[2.4/1]">
+    <div className="relative w-full max-w-6xl mx-auto overflow-hidden rounded-[1.5rem] sm:rounded-[2.5rem] border border-primary/20 group aspect-video sm:aspect-[2.4/1]">
       <div 
         className="flex transition-transform duration-700 ease-in-out h-full"
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
         {banners.map((banner: any, i: number) => (
           <div key={i} className="min-w-full h-full relative p-0 sm:p-2">
-            <div className="w-full h-full overflow-hidden sm:rounded-[2rem]">
+            <div className="w-full h-full overflow-hidden rounded-[1rem] sm:rounded-[2rem]">
               <img 
                 src={banner.url} 
                 alt={banner.alt} 

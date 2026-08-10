@@ -112,7 +112,7 @@ function Admin() {
   const stats = data?.stats;
 
   return (
-    <div className="min-h-screen bg-background/50 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-[#050505] flex flex-col lg:flex-row">
       {/* Sidebar Desktop */}
       <aside className="hidden w-64 flex-col border-r border-border/60 bg-card/30 backdrop-blur-xl lg:flex">
         <div className="flex h-16 items-center border-b border-border/60 px-6">
@@ -200,11 +200,11 @@ function Admin() {
         )}
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-10">
-          <div className="mb-10">
+          <div className="mb-8">
             <HeroCarousel />
           </div>
 
-          <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 className="text-3xl font-black uppercase tracking-tight sm:text-4xl">
                 Sistema <span className="neon-text">Geral</span>
@@ -215,7 +215,7 @@ function Admin() {
             </div>
           </header>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5 sm:gap-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
             {[
               ["Total de Afiliados", stats?.users, Users, "text-blue-400"],
               ["Afiliados Ativos", stats?.activeLicenses, Zap, "text-yellow-400"],
@@ -260,7 +260,7 @@ function Admin() {
             </div>
           ) : (
             <div className="mt-8">
-              <div className="glass flex h-auto w-full flex-nowrap gap-1 overflow-x-auto p-1 no-scrollbar sm:flex-wrap pb-2 mb-4">
+              <div className="glass flex h-auto w-full flex-nowrap gap-1 overflow-x-auto p-1 scrollbar-hide sm:flex-wrap pb-2 mb-4">
                 {[
                   { value: "licenses", label: "Licenças", color: "" },
                   { value: "editor", label: "Editor", color: "text-primary" },
@@ -293,7 +293,7 @@ function Admin() {
               </div>
 
               {/* Tab Contents */}
-              <div className="glass mt-4 overflow-x-auto rounded-2xl p-4">
+              <div className="glass mt-4 overflow-x-auto rounded-[2rem] p-6 scrollbar-hide">
                 {activeTab === "licenses" && (
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">

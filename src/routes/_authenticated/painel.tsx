@@ -119,7 +119,7 @@ function Painel() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-[#050505]">
       <header className="border-b border-border/60 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto grid h-16 max-w-6xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-5">
           <Link to="/" className="min-w-0">
@@ -201,7 +201,7 @@ function Painel() {
       )}
 
 
-      <main className="mx-auto max-w-6xl px-5 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-10">
+      <main className="mx-auto max-w-6xl px-4 sm:px-5 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-10">
         <div className="mb-8">
           <HeroCarousel />
         </div>
@@ -243,10 +243,10 @@ function Painel() {
             </div>
           </div>
         ) : (
-          <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+          <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
             
-            <section className="glass rounded-2xl p-7">
+            <section className="glass rounded-[2rem] p-6 md:p-8">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold">Sua licença</h2>
                 <span
@@ -292,7 +292,7 @@ function Painel() {
               </dl>
             </section>
 
-            <section className="glass rounded-2xl p-7">
+            <section className="glass rounded-[2rem] p-6 md:p-8">
               <h2 className="text-lg font-semibold">Plano Atual</h2>
               {data?.subscription ? (
                 <>
@@ -314,7 +314,7 @@ function Painel() {
               </Button>
             </section>
 
-            <section className="glass rounded-2xl p-7 sm:hidden">
+            <section className="glass rounded-[2rem] p-6 md:p-8 sm:hidden">
                <h2 className="text-lg font-semibold mb-4 text-center">Progresso da Conta</h2>
                <div className="w-full bg-white/5 rounded-full h-4 border border-white/10 overflow-hidden relative">
                   <div className="bg-primary h-full w-[75%] transition-all duration-1000" />
@@ -326,7 +326,7 @@ function Painel() {
 
             <ExtensionDownloadCard />
 
-            <section className="glass rounded-2xl p-7 lg:col-span-2">
+            <section className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3">
               <h2 className="text-lg font-semibold">Dispositivos conectados</h2>
               {data?.devices.length ? (
                 <ul className="mt-4 divide-y divide-border/60">
@@ -355,7 +355,7 @@ function Painel() {
               )}
             </section>
 
-            <section className="glass rounded-2xl p-7 lg:col-span-2">
+            <section className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3">
               <h2 className="text-lg font-semibold">Histórico</h2>
               <ul className="mt-4 space-y-2 text-sm">
                 {(data?.events ?? []).map((e: any) => (

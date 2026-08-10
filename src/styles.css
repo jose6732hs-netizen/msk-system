@@ -213,13 +213,14 @@
   display: none !important;
 }
 
-.custom-scrollbar-hidden {
+.scrollbar-hide {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.custom-scrollbar-hidden::-webkit-scrollbar {
+.scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
 
 /* Ocultar barra de rolagem global mas permitir scroll profissional */
 html {

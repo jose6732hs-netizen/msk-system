@@ -87,7 +87,7 @@ function AffiliateDashboard() {
   const { stats, affiliate, goal, sales } = data;
 
   return (
-    <div className="min-h-screen bg-[#050505]/70 text-white selection:bg-primary selection:text-white">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-primary selection:text-white">
       <AffiliateHeader 
         balance={stats.availableBalance}
         goalCurrent={goal.current}
@@ -134,7 +134,7 @@ function AffiliateDashboard() {
             </section>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard 
                 label="Cliques Totais" 
                 value={stats.clicks.toLocaleString()} 
