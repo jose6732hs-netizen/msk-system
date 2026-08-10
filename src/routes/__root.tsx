@@ -162,7 +162,10 @@ function RootComponent() {
 
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);
+    // App carregou com sucesso: libera nova tentativa de recuperação em deploys futuros.
+    const t = setTimeout(() => sessionStorage.removeItem("msk_chunk_reload"), 5000);
     return () => {
+      clearTimeout(t);
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onRejection);
     };
