@@ -43,6 +43,7 @@ export function PanelCarousel() {
       const timer = setInterval(next, 5000);
       return () => clearInterval(timer);
     }
+    return undefined;
   }, [next, banners.length]);
 
   if (!banners || banners.length === 0) return null;
