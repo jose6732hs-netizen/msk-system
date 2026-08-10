@@ -98,13 +98,13 @@ function PartnersPage() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild variant="neon" size="lg" className="h-16 px-12 text-xl font-black group rounded-2xl">
+              <Button asChild variant="neon" size="lg" className="h-16 px-6 sm:px-12 text-base sm:text-xl font-black group rounded-2xl w-full sm:w-auto flex items-center justify-center whitespace-normal text-center leading-tight">
                 <Link 
                   to={Route.useSearch()['mode'] === 'signup' ? '/auth' : '/parceiro'} 
                   search={{ next: '/parceiro', mode: 'signup' } as any}
                 >
-                  Quero me tornar afiliado agora
-                  <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                  <span className="truncate sm:whitespace-normal">Quero me tornar afiliado agora</span>
+                  <ArrowRight className="ml-2 w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform shrink-0" />
                 </Link>
               </Button>
                 <button 
@@ -232,7 +232,7 @@ function PartnersPage() {
               </p>
               
               <div className="flex flex-col items-center gap-8">
-                <Button asChild variant="secondary" size="lg" className="h-20 md:h-24 px-6 md:px-20 text-xl md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full sm:w-auto rounded-3xl shadow-2xl whitespace-normal leading-tight text-center">
+                <Button asChild variant="secondary" size="lg" className="h-auto py-6 md:h-24 px-6 md:px-20 text-lg md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full sm:w-auto rounded-3xl shadow-2xl whitespace-normal leading-tight text-center flex items-center justify-center min-h-[4rem]">
                   <Link 
                     to={Route.useSearch()['mode'] === 'signup' ? '/auth' : '/parceiro'} 
                     search={{ next: '/parceiro', mode: 'signup' } as any}
