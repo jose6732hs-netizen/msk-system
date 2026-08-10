@@ -121,7 +121,60 @@
     }
   });
 
+  // Função para tornar o popup arrastável
+  function makeDraggable(shell, handle) {
+    var isDragging = false;
+    var offsetX, offsetY;
+
+    // Recuperar posição salva
+    chrome.storage.local.get(['licPopupPosition'], function(result) {
+      if (result.licPopupPosition) {
+        shell.style.left = result.licPopupPosition.left;
+        shell.style.top = result.licPopupPosition.top;
+        shell.style.transform = 'none'; // Remove centralização automática
+      }
+    });
+
+    handle.addEventListener('mousedown', function(e) {
+      if (e.target.closest('a') || e.target.closest('button')) return;
+      isDragging = true;
+      offsetX = e.clientX - shell.getBoundingClientRect().left;
+      offsetY = e.clientY - shell.getBoundingClientRect().top;
+      shell.style.transition = 'none';
+      document.body.style.cursor = 'move';
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (!isDragging) return;
+      var left = e.clientX - offsetX;
+      var top = e.clientY - offsetY;
+      
+      shell.style.left = left + 'px';
+      shell.style.top = top + 'px';
+      shell.style.transform = 'none';
+    });
+
+    document.addEventListener('mouseup', function() {
+      if (!isDragging) return;
+      isDragging = false;
+      shell.style.transition = 'transform 0.1s ease-out';
+      document.body.style.cursor = 'default';
+
+      // Salvar posição
+      chrome.storage.local.set({
+        licPopupPosition: {
+          left: shell.style.left,
+          top: shell.style.top
+        }
+      });
+    });
+  }
+
   (async function init() {
+    var shell = document.querySelector('.lic-shell');
+    var handle = document.querySelector('.lic-head');
+    if (shell && handle) makeDraggable(shell, handle);
+
     try { $("lic-ver").textContent = "v" + chrome.runtime.getManifest().version; } catch (e) {}
     var id = await L.getInstallationId();
     $("lic-install").textContent = "ID " + id.slice(-10);
