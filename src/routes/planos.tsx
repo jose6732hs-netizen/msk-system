@@ -185,9 +185,12 @@ function PlanosPage() {
   }
 
   async function checkout() {
-    const item = cart[0];
-    if (!item) return;
-    await payItem(item);
+    if (!cart.length) return;
+    
+    // Se o checkout for via carrinho, o backend já processa o total
+    // mas precisamos garantir que o payer dialog e o fluxo de subscribe
+    // usem o contexto de checkout em lote.
+    await subscribe("", "Checkout Carrinho", false);
   }
 
 
@@ -226,13 +229,13 @@ function PlanosPage() {
       setPayer({ planId, planName });
       return;
     }
-    setLoadingPlan(planId);
+    setLoadingPlan(planId || "checkout-bulk");
     try {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
       const result = await startPixCheckout({
         data: {
-          planId,
+          planId: planId || undefined,
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
           document: billing.document,
@@ -246,7 +249,8 @@ function PlanosPage() {
       }
       const createdAt = new Date().toISOString();
       const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-      setPixByPlan((c) => ({ ...c, [planId]: { createdAt, expiresAt, transactionId: result.transactionId } }));
+      const planKey = planId || "checkout-bulk";
+      setPixByPlan((c) => ({ ...c, [planKey]: { createdAt, expiresAt, transactionId: result.transactionId } }));
       track("pix_generated", { label: planName, value: result.amount });
       setPix({
         transactionId: result.transactionId,
@@ -344,11 +348,14 @@ function PlanosPage() {
                   
                   <Button 
                     variant="neon" 
-                    className="w-full h-14 text-[0.7rem] sm:text-[0.75rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] mt-6 shadow-xl shadow-primary/20 rounded-2xl flex items-center justify-center whitespace-normal leading-tight px-4"
+                    className="w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.75rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] mt-6 shadow-xl shadow-primary/20 rounded-2xl flex items-center justify-center whitespace-normal leading-tight px-4 break-words overflow-hidden"
                     onClick={() => checkout()}
                     disabled={loadingPlan !== null}
                   >
-                    {loadingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : "Finalizar Pedido"}
+                    {loadingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : null}
+                    <span className="flex-1 text-center truncate sm:whitespace-normal">
+                      {loadingPlan ? "Processando..." : "Finalizar Pedido"}
+                    </span>
                   </Button>
 
                 </div>

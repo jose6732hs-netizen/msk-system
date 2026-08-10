@@ -171,10 +171,10 @@ function Index() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button asChild variant="neon" size="lg" className="px-8">
-                  <Link to="/parceiros" preload="intent">Quero participar</Link>
+                  <Link to="/parceiros" search={{}} preload="intent">Quero participar</Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="px-8 border-white/10 bg-white/5 text-white hover:bg-white/10">
-                  <Link to="/parceiros" preload="intent">Ver detalhes</Link>
+                  <Link to="/parceiros" search={{}} preload="intent">Ver detalhes</Link>
                 </Button>
               </div>
             </motion.section>

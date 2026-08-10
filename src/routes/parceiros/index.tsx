@@ -11,6 +11,9 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/parceiros/")({
+  validateSearch: (search: Record<string, unknown>): { mode?: string | undefined } => ({
+    mode: (search['mode'] as string | undefined) || undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Programa de Afiliados Lovable - Ganhe Renda Extra com IA" },
@@ -97,8 +100,8 @@ function PartnersPage() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button asChild variant="neon" size="lg" className="h-16 px-12 text-xl font-black group rounded-2xl">
                 <Link 
-                  to={Route.useSearch()?.mode === 'signup' ? '/auth' : '/parceiro'} 
-                  search={{ next: '/parceiro', mode: 'signup' }}
+                  to={Route.useSearch()['mode'] === 'signup' ? '/auth' : '/parceiro'} 
+                  search={{ next: '/parceiro', mode: 'signup' } as any}
                 >
                   Quero me tornar afiliado agora
                   <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -231,8 +234,8 @@ function PartnersPage() {
               <div className="flex flex-col items-center gap-8">
                 <Button asChild variant="secondary" size="lg" className="h-20 md:h-24 px-6 md:px-20 text-xl md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full sm:w-auto rounded-3xl shadow-2xl whitespace-normal leading-tight text-center">
                   <Link 
-                    to={Route.useSearch()?.mode === 'signup' ? '/auth' : '/parceiro'} 
-                    search={{ next: '/parceiro', mode: 'signup' }}
+                    to={Route.useSearch()['mode'] === 'signup' ? '/auth' : '/parceiro'} 
+                    search={{ next: '/parceiro', mode: 'signup' } as any}
                   >
                     Quero começar a indicar agora
                   </Link>

@@ -164,9 +164,9 @@ export function PixDialog({
             </button>
           </div>
 
-          <div className="grid lg:grid-cols-[1fr_400px] flex-1">
+          <div className="grid lg:grid-cols-[1fr_400px] flex-1 overflow-y-auto">
             {/* Left Content - Details */}
-            <div className="p-6 sm:p-10 border-r border-white/5">
+            <div className="p-6 sm:p-10 border-r border-white/5 overflow-hidden">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
                 <div className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 border border-white/10">
                   <Clock className="h-3.5 w-3.5 text-primary" />
@@ -193,11 +193,11 @@ export function PixDialog({
                   </div>
                 )}
                 <div>
-                  <h2 className="text-3xl sm:text-5xl font-black tracking-tighter text-foreground uppercase leading-tight mb-2">
+                  <h2 className="text-2xl sm:text-5xl font-black tracking-tighter text-foreground uppercase leading-tight mb-2 break-words">
                     {pix.planName ?? "Assinatura Pro"}
                   </h2>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl sm:text-6xl font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)]">{brl(pix.amount)}</span>
+                    <span className="text-4xl sm:text-6xl font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)] whitespace-nowrap">{brl(pix.amount)}</span>
                     <span className="text-[0.65rem] font-black text-muted-foreground uppercase tracking-[0.2em]">Pagamento Único</span>
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export function PixDialog({
             </div>
 
             {/* Right Content - Payment Actions */}
-            <div className="p-6 sm:p-10 bg-black/20 flex flex-col justify-center">
+            <div className="p-6 sm:p-10 bg-black/20 flex flex-col justify-center min-h-[500px] lg:min-h-0">
               {status === "PAID" ? (
                 <div className="flex flex-col items-center justify-center text-center py-10">
                   <div className="h-20 w-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.3)]">

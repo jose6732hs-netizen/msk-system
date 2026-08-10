@@ -366,6 +366,7 @@ function MobileNavigation() {
                 </Link>
                 <Link
                   to="/parceiros"
+                  search={{}}
                   className="block border-b border-white/5 p-4 text-sm font-bold"
                   onClick={() => setOpen(false)}
                 >
