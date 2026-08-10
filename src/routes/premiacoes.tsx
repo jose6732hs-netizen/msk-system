@@ -15,11 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { MskLogo } from "@/components/msk/logo";
 import award1kAsset from "@/assets/award-1k.png.asset.json";
+import award500kAsset from "@/assets/award-500k.png.asset.json";
+import award1mAsset from "@/assets/award-1m.png.asset.json";
+import award5mAsset from "@/assets/award-5m.png.asset.json";
 const award10kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-10k.png" };
 const award100kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-100k.png" };
-const award500kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-500k.png" };
-const award1mAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-1m.png" };
-const award5mAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-5m.png" };
 
 export const Route = createFileRoute("/premiacoes")({
   head: () => ({
