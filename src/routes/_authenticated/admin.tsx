@@ -298,7 +298,7 @@ function Admin() {
                           : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
                       )}
                     >
-                      <tab.Icon className={cn("h-3.5 w-3.5", !activeTab === tab.value && tab.color)} />
+                      <tab.Icon className={cn("h-3.5 w-3.5", activeTab !== tab.value && tab.color)} />
                       {tab.label}
                     </button>
                   ))}
