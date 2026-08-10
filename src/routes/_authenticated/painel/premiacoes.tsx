@@ -155,6 +155,7 @@ function AwardsPage() {
             <AnimatePresence initial={false} custom={direction} mode="popLayout">
               {getVisibleLevels().map((levelIdx, position) => {
                 const level = levels[levelIdx];
+                if (!level) return null;
                 const isCenter = position === 1;
                 const isLeft = position === 0;
                 
