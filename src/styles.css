@@ -1,5 +1,13 @@
 @import "tailwindcss" source(none);
 @source "../src";
+
+@utility scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
 @import "tw-animate-css";
 
 @keyframes carousel-loop {
