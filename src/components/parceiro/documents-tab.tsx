@@ -21,11 +21,7 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const requiredDocs = [
-    { id: 'rg_front', name: 'RG / CNH (Frente)' },
-    { id: 'rg_back', name: 'RG / CNH (Verso)' },
-    { id: 'cpf', name: 'CPF' },
-    { id: 'address', name: 'Comprovante de Residência' },
-    { id: 'selfie', name: 'Selfie com Documento' },
+    { id: 'selfie', name: 'Selfie com Documento (Frente e Verso)' },
   ];
 
   const handleUpload = (id: string, file: File) => {
@@ -42,11 +38,25 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
 
   const allUploaded = requiredDocs.every(doc => uploads[doc.id]);
 
+  const [exportProgress, setExportProgress] = useState(0);
+
   const handleSubmit = async () => {
     if (!allUploaded) return;
     setIsSubmitting(true);
+    setExportProgress(0);
 
     try {
+      // Simulação de "Exportando"
+      const interval = setInterval(() => {
+        setExportProgress(prev => {
+          if (prev >= 95) {
+            clearInterval(interval);
+            return 95;
+          }
+          return prev + Math.floor(Math.random() * 15) + 5;
+        });
+      }, 200);
+
       const filePaths: Record<string, string> = {};
       
       // 1. Upload each file to storage
@@ -66,13 +76,14 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
         filePaths[doc.id] = filePath;
       }
 
+      // Finaliza o progresso
+      clearInterval(interval);
+      setExportProgress(100);
+      await new Promise(r => setTimeout(r, 500));
+
       // 2. Submit paths to server
       await submitDocs({
         data: {
-          rgFront: filePaths['rg_front'],
-          rgBack: filePaths['rg_back'],
-          cpf: filePaths['cpf'],
-          address: filePaths['address'],
           selfie: filePaths['selfie'],
         }
       });
@@ -82,6 +93,7 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Erro ao enviar documentos");
+      setExportProgress(0);
     } finally {
       setIsSubmitting(false);
     }
@@ -156,7 +168,17 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
 
       {/* Actions & Footer */}
       <div className="flex flex-col items-center gap-8 py-8">
-        <div className="flex flex-col sm:flex-row gap-4 w-full max-w-md">
+        <div className="flex flex-col gap-4 w-full max-w-md">
+          {isSubmitting && (
+            <div className="space-y-2 mb-2">
+              <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-primary">
+                <span>Exportando documentos...</span>
+                <span>{exportProgress}%</span>
+              </div>
+              <Progress value={exportProgress} className="h-2 bg-white/5" />
+            </div>
+          )}
+
           <Button 
             variant="neon" 
             className="flex-1 h-14 text-lg font-bold rounded-xl"
@@ -166,7 +188,7 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 animate-spin" size={20} />
-                Enviando...
+                {exportProgress === 100 ? 'Finalizando...' : 'Exportando...'}
               </>
             ) : status === 'PENDING' ? 'Em Análise' : 'Enviar Documentos'}
           </Button>

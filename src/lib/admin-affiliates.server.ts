@@ -225,3 +225,27 @@ export async function saveAppUrl(url: string, actorId: string) {
   await logAudit({ userId: actorId, action: "settings.app_url_updated", resource: "app_settings" });
   return { ok: true };
 }
+
+export async function approveAffiliateDocs(affiliateId: string, approve: boolean, reason: string | undefined, actorId: string) {
+  const status = approve ? "APPROVED" : "REJECTED";
+  const { error } = await supabaseAdmin
+    .from("affiliates")
+    .update({ 
+      verification_status: status,
+      verification_notes: reason || null,
+      verification_processed_at: new Date().toISOString()
+    } as any)
+    .eq("id", affiliateId);
+
+  if (error) throw error;
+
+  await logAudit({
+    userId: actorId,
+    action: approve ? "affiliate.docs_approved" : "affiliate.docs_rejected",
+    resource: "affiliates",
+    resourceId: affiliateId,
+    metadata: { reason },
+  });
+
+  return { ok: true };
+}

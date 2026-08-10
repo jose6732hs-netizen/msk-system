@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet } from "lucide-react";
+import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet, FileText, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ import {
   adminSaveAffiliateGoals,
   adminSaveAppUrl,
   adminUpdateAffiliate,
+  adminApproveAffiliateDocs,
 } from "@/lib/admin-affiliates.functions";
 
 const brl = (v: unknown) =>
@@ -297,6 +298,26 @@ function AffiliateRow({
 }
 
 function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> }) {
+  const qc = useQueryClient();
+  const approveDocs = useServerFn(adminApproveAffiliateDocs);
+  const [busy, setBusy] = useState(false);
+
+  async function handleDocAction(approve: boolean) {
+    const reason = !approve ? window.prompt("Motivo da rejeição:") : undefined;
+    if (!approve && reason === null) return;
+
+    setBusy(true);
+    try {
+      await approveDocs({ data: { affiliateId: affiliate["id"], approve, reason: reason || undefined } });
+      toast.success(approve ? "Documentos aprovados!" : "Documentos rejeitados.");
+      qc.invalidateQueries({ queryKey: ["admin-affiliates"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const brl = (v: unknown) =>
     Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -402,6 +423,36 @@ function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> 
                 </div>
               </div>
             </div>
+
+            {affiliate["verification_status"] === "PENDING" && (
+              <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
+                <h5 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-primary">
+                  <FileText className="h-4 w-4" />
+                  Verificação de Documentos
+                </h5>
+                <p className="text-xs text-white/60 mb-4">O afiliado enviou documentos para análise.</p>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="neon" 
+                    className="flex-1 h-10 font-black text-[0.65rem] uppercase tracking-widest"
+                    onClick={() => handleDocAction(true)}
+                    disabled={busy}
+                  >
+                    {busy ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <CheckCircle2 className="h-3 w-3 mr-2" />}
+                    Aprovar
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    className="flex-1 h-10 font-black text-[0.65rem] uppercase tracking-widest"
+                    onClick={() => handleDocAction(false)}
+                    disabled={busy}
+                  >
+                    {busy ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <X className="h-3 w-3 mr-2" />}
+                    Rejeitar
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {affiliate["notes"] && (
               <div className="rounded-xl border border-white/5 bg-white/5 p-4">
