@@ -104,19 +104,21 @@ function AuthPage() {
 
   useEffect(() => {
     // Se vier do botão de afiliado, inicia no modo pré-cadastro
-    const isAffiliate = search.next?.includes('parceiro') || 
-                        search.mode === 'signup' ||
-                        document.referrer.includes('/parceiros');
+    const isAffiliateFlow = search.next?.includes('parceiro') || 
+                            search.mode === 'pre-signup' ||
+                            search.mode === 'signup' ||
+                            document.referrer.includes('/parceiros');
 
     if (search.mode) {
       setMode(search.mode as Mode);
       if (search.mode === 'signup' || search.mode === 'login') {
         setShowForm(true);
       }
-    } else if (isAffiliate) {
+    } else if (isAffiliateFlow) {
       setMode("pre-signup");
     }
-  }, [search.next]);
+  }, [search.next, search.mode]);
+
 
   async function resendVerification() {
     if (!email) return;
