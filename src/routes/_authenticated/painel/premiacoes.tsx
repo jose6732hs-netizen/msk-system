@@ -43,6 +43,7 @@ const levels = [
     color: "from-green-500/20 to-green-500/5",
     borderColor: "border-green-500/20",
     glowColor: "shadow-[0_0_20px_rgba(34,197,94,0.1)]",
+    image: "/images/award-10k.png", // Usando a 10k como placeholder já que não veio a 1k
   },
   {
     threshold: "10K",
@@ -52,6 +53,7 @@ const levels = [
     color: "from-yellow-500/20 to-yellow-500/5",
     borderColor: "border-yellow-500/20",
     glowColor: "shadow-[0_0_20px_rgba(234,179,8,0.1)]",
+    image: "/images/award-10k.png",
   },
   {
     threshold: "100K",
@@ -61,6 +63,7 @@ const levels = [
     color: "from-red-500/20 to-red-500/5",
     borderColor: "border-red-500/20",
     glowColor: "shadow-[0_0_20px_rgba(239,68,68,0.1)]",
+    image: "/images/award-100k.png",
   },
   {
     threshold: "500K",
@@ -70,6 +73,7 @@ const levels = [
     color: "from-blue-500/20 to-blue-500/5",
     borderColor: "border-blue-500/20",
     glowColor: "shadow-[0_0_20px_rgba(59,130,246,0.1)]",
+    image: "/images/award-500k.png",
   },
   {
     threshold: "1M",
@@ -79,6 +83,7 @@ const levels = [
     color: "from-cyan-500/20 to-cyan-500/5",
     borderColor: "border-cyan-500/20",
     glowColor: "shadow-[0_0_20px_rgba(6,182,212,0.1)]",
+    image: "/images/award-1m.png",
   },
   {
     threshold: "5M",
@@ -88,6 +93,7 @@ const levels = [
     color: "from-primary/20 to-primary/5",
     borderColor: "border-primary/20",
     glowColor: "shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]",
+    image: "/images/award-5m.png",
   },
 ];
 
