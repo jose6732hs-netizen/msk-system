@@ -138,6 +138,36 @@ function RootComponent() {
   useTracking(); // Traqueamento profissional de PageViews em todas as rotas
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
+  // Recupera automaticamente de chunks antigos em cache após um novo deploy.
+  useEffect(() => {
+    const isStaleChunk = (msg?: string) =>
+      !!msg &&
+      (msg.includes("Failed to fetch dynamically imported module") ||
+        msg.includes("error loading dynamically imported module") ||
+        msg.includes("Importing a module script failed"));
+
+    const recover = () => {
+      const key = "msk_chunk_reload";
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      window.location.reload();
+    };
+
+    const onError = (e: ErrorEvent) => {
+      if (isStaleChunk(e.message)) recover();
+    };
+    const onRejection = (e: PromiseRejectionEvent) => {
+      if (isStaleChunk((e.reason as Error | undefined)?.message)) recover();
+    };
+
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+
   // Login/cadastro: céu mais vivo. Painéis/dashboards: bem discreto.
   const isAuth = pathname.startsWith("/auth");
   const isBoard =
