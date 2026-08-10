@@ -79,6 +79,7 @@ export function AdminEditorTab() {
 
   const handlePublish = async (key: string) => {
     try {
+      console.log('Publishing CMS content for key:', key, localSettings[key]);
       await publishDraft({ data: { key } });
       toast.success("Conteúdo publicado com sucesso!");
       confetti({
@@ -87,10 +88,11 @@ export function AdminEditorTab() {
         origin: { y: 0.6 },
         colors: ['#39ff14', '#000000', '#ffffff']
       });
-      qc.invalidateQueries({ queryKey: ["cms-content"] });
-      qc.invalidateQueries({ queryKey: ["cms-history"] });
-    } catch (e) {
-      toast.error("Erro ao publicar");
+      await qc.invalidateQueries({ queryKey: ["cms-content"] });
+      await qc.invalidateQueries({ queryKey: ["cms-history"] });
+    } catch (e: any) {
+      console.error('Error publishing CMS content:', e);
+      toast.error(`Erro ao publicar: ${e.message || 'Erro desconhecido'}`);
     }
   };
 
@@ -436,7 +438,16 @@ export function AdminEditorTab() {
                                   
                                   const newVideos = [...(localSettings as any).tutorials.videos];
                                   newVideos[index].url = res.url;
-                                  updateSetting('tutorials', 'videos', newVideos);
+                                  
+                                  // Immediately update local state so the preview reflects the change
+                                  setLocalSettings((prev: any) => ({
+                                    ...prev,
+                                    tutorials: {
+                                      ...(prev?.tutorials || {}),
+                                      videos: newVideos
+                                    }
+                                  }));
+                                  
                                   toast.success("Vídeo carregado com sucesso!");
                                 } catch (err) {
                                   toast.error("Erro no upload do vídeo");

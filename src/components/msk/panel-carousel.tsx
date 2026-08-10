@@ -1,33 +1,52 @@
 import { useState, useEffect, useCallback } from "react";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getCmsContent } from "@/lib/cms.functions";
 import bannerAfiliado from "@/assets/banner-afiliado.png.asset.json";
 import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
 import mainPromoAsset from "@/assets/main-promo.png.asset.json";
 import bannerConquista from "@/assets/banner-afiliado-conquista.png.asset.json";
 
-const PANEL_BANNERS = [
-  { url: mainPromoAsset.url, alt: "Crie sites sem limitações" },
-  { url: bannerConquista.url, alt: "Seu resultado tem valor" },
-  { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK" },
-  { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA" },
+const DEFAULT_BANNERS = [
+  { url: mainPromoAsset.url, alt: "Crie sites sem limitações", active: true, order: 0 },
+  { url: bannerConquista.url, alt: "Seu resultado tem valor", active: true, order: 1 },
+  { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK", active: true, order: 2 },
+  { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA", active: true, order: 3 },
 ];
 
 export function PanelCarousel() {
   const [current, setCurrent] = useState(0);
+  const getCms = useServerFn(getCmsContent);
+
+  const { data: settings } = useQuery({
+    queryKey: ["cms-content"],
+    queryFn: () => getCms(),
+  });
+
+  const allBanners = (settings as any)?.hero?.banners || DEFAULT_BANNERS;
+  const banners = allBanners
+    .filter((b: any) => b.active !== false)
+    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
 
   const next = useCallback(() => {
-    setCurrent((curr) => (curr === PANEL_BANNERS.length - 1 ? 0 : curr + 1));
-  }, []);
+    setCurrent((curr) => (curr >= banners.length - 1 ? 0 : curr + 1));
+  }, [banners.length]);
 
   const prev = () => {
-    setCurrent((curr) => (curr === 0 ? PANEL_BANNERS.length - 1 : curr - 1));
+    setCurrent((curr) => (curr === 0 ? banners.length - 1 : curr - 1));
   };
 
   useEffect(() => {
-    const timer = setInterval(next, 5000);
-    return () => clearInterval(timer);
-  }, [next]);
+    if (banners.length > 0) {
+      const timer = setInterval(next, 5000);
+      return () => clearInterval(timer);
+    }
+    return undefined;
+  }, [next, banners.length]);
+
+  if (!banners || banners.length === 0) return null;
 
   return (
     <div className="relative w-full max-w-6xl mx-auto overflow-hidden rounded-[1.5rem] sm:rounded-[2.5rem] border border-primary/20 group aspect-video sm:aspect-[2.4/1]">
@@ -35,7 +54,7 @@ export function PanelCarousel() {
         className="flex transition-transform duration-700 ease-in-out h-full"
         style={{ transform: `translateX(-${current * 100}%)` }}
       >
-        {PANEL_BANNERS.map((banner: any, i: number) => (
+        {banners.map((banner: any, i: number) => (
           <div key={i} className="min-w-full h-full relative p-0 sm:p-2">
             <div className="w-full h-full overflow-hidden rounded-[1rem] sm:rounded-[2rem]">
               <img 
@@ -80,7 +99,7 @@ export function PanelCarousel() {
       </div>
 
       <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-        {PANEL_BANNERS.map((_: any, i: number) => (
+        {banners.map((_: any, i: number) => (
           <button
             key={i}
             onClick={() => setCurrent(i)}
