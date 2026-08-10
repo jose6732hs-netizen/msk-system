@@ -452,7 +452,7 @@ function PlanosPage() {
 
                       <Button
                         variant={highlighted ? "neon" : "neonOutline"}
-                        className={`w-full h-14 text-[0.8rem] font-black uppercase tracking-[0.25em] rounded-2xl transition-all duration-500 ${
+                        className={`w-full h-14 text-[0.7rem] sm:text-[0.8rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] rounded-2xl transition-all duration-500 whitespace-normal leading-tight px-3 ${
                           highlighted ? "shadow-2xl shadow-primary/40 bg-gradient-to-r from-primary via-accent to-primary bg-[length:200%_auto] animate-[shimmer_3s_linear_infinite]" : "hover:bg-primary/10"
                         }`}
                         disabled={loadingPlan === plan.id}

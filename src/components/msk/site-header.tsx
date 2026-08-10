@@ -24,8 +24,9 @@ export function SiteHeader() {
 
   /** O pacote baixado é sempre o canal que o admin deixou ativo — nunca um zip fixo. */
   async function downloadExtension() {
-    if (!signedIn) {
-      void navigate({ to: "/auth" });
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      void navigate({ to: "/auth", search: { next: window.location.pathname } });
       return;
     }
     setDownloading(true);
