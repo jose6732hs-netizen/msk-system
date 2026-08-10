@@ -31,7 +31,7 @@ export const startPixCheckout = createServerFn({ method: "POST" })
       userId: context.userId,
       email: email(context.claims),
       name: name(context.claims),
-      planId: data.planId,
+      planId: data.planId, // O servidor aceita string | undefined agora
       affiliateCode: data.affiliateCode ?? null,
       resellerCode: data.resellerCode ?? null,
       document: data.document,
