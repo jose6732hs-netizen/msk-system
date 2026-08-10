@@ -64,14 +64,32 @@ export function HeroCarousel() {
         ))}
       </div>
 
-      <div className="absolute inset-y-0 left-4 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button size="icon" variant="neonOutline" onClick={prev} className="rounded-full w-10 h-10 bg-background/20 backdrop-blur-sm">
-          <ChevronLeft className="h-6 w-6" />
+      <div className="absolute inset-y-0 left-4 flex items-center opacity-100 transition-opacity z-30">
+        <Button 
+          size="icon" 
+          variant="neonOutline" 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            prev();
+          }} 
+          className="rounded-full w-10 h-10 bg-background/20 backdrop-blur-sm border-primary/50 hover:bg-primary/20"
+        >
+          <ChevronLeft className="h-6 w-6 text-primary" />
         </Button>
       </div>
 
-      <div className="absolute inset-y-0 right-4 flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button size="icon" variant="neon" onClick={next} className="rounded-full w-10 h-10">
+      <div className="absolute inset-y-0 right-4 flex items-center opacity-100 transition-opacity z-30">
+        <Button 
+          size="icon" 
+          variant="neon" 
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            next();
+          }} 
+          className="rounded-full w-10 h-10"
+        >
           <ChevronRight className="h-6 w-6" />
         </Button>
       </div>
