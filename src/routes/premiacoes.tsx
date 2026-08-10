@@ -178,7 +178,7 @@ function AwardsPage() {
                     animate={{ 
                       opacity: isCenter ? 1 : 0.4, 
                       scale: isCenter ? 1 : 0.75,
-                      x: isCenter ? 0 : (isLeft ? -280 : 280),
+                      x: isCenter ? 0 : (isLeft ? -200 : 200),
                       rotateY: isCenter ? 0 : (isLeft ? 35 : -35),
                       zIndex: isCenter ? 20 : 10,
                     }}
