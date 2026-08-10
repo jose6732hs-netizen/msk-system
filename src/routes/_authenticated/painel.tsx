@@ -21,7 +21,7 @@ import { MskLogo } from "@/components/msk/logo";
 import { getAccount, getMyToken, removeMyDevice, cancelMySubscription } from "@/lib/account.functions";
 import { ExtensionDownloadCard } from "@/components/msk/extension-download";
 import { TokenManager } from "@/components/msk/token-manager";
-import { HeroCarousel } from "@/components/msk/hero-carousel";
+import { PanelCarousel } from "@/components/msk/panel-carousel";
 
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
@@ -203,7 +203,7 @@ function Painel() {
 
       <main className="mx-auto max-w-6xl px-4 sm:px-5 py-6 pb-[calc(7rem+env(safe-area-inset-bottom))] lg:pb-10">
         <div className="mb-8">
-          <HeroCarousel />
+          <PanelCarousel />
         </div>
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
