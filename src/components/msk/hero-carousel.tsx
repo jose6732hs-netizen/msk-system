@@ -45,7 +45,7 @@ export function HeroCarousel() {
   if (!banners.length) return null;
 
   return (
-    <div className="relative w-full max-w-6xl mx-auto overflow-hidden sm:rounded-[2.5rem] border-y sm:border border-primary/20 group aspect-[16/9] sm:aspect-[2.4/1]">
+    <div className="relative w-full max-w-6xl mx-auto overflow-hidden sm:rounded-[2.5rem] border-y sm:border border-primary/20 group aspect-video sm:aspect-[2.4/1]">
       <div 
         className="flex transition-transform duration-700 ease-in-out h-full"
         style={{ transform: `translateX(-${current * 100}%)` }}
@@ -56,9 +56,9 @@ export function HeroCarousel() {
               <img 
                 src={banner.url} 
                 alt={banner.alt} 
-                className="w-full h-full object-cover rounded-none"
+                className="w-full h-full object-contain rounded-none bg-black/20"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent opacity-60 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/40 via-transparent to-transparent opacity-60 pointer-events-none" />
             </div>
           </div>
         ))}
