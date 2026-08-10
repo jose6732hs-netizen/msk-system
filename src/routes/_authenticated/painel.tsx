@@ -66,8 +66,17 @@ function Painel() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["account"],
-    queryFn: () => fetchAccount(),
+    queryFn: async () => {
+      const account = await fetchAccount();
+      const cms = await fetchAccount.context.queryClient.ensureQueryData({
+        queryKey: ["cms-content"],
+        queryFn: () => getCms(),
+      });
+      return { ...account, cms };
+    },
   });
+
+  const getCms = useServerFn(getCmsContent);
 
   const license = data?.license as any;
   const plan = license?.plans;
@@ -211,6 +220,44 @@ function Painel() {
         <div className="mb-8">
           <PanelCarousel />
         </div>
+
+        {/* Tutoriais Aba no Painel */}
+        <section className="mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Eye className="h-4 w-4 text-primary" />
+            </div>
+            <h2 className="text-xl font-bold uppercase tracking-tighter">Tutoriais e Explicações</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {((data as any)?.cms?.tutorials?.videos || []).length > 0 ? (
+              (data as any).cms.tutorials.videos.map((video: any, i: number) => (
+                <div key={i} className="glass rounded-2xl overflow-hidden border border-white/5 group bg-white/[0.02]">
+                  <div className="aspect-video bg-black/40 relative">
+                    <iframe
+                      src={video.url.includes('youtube.com') || video.url.includes('youtu.be') 
+                        ? video.url.replace('watch?v=', 'embed/') 
+                        : video.url.includes('vimeo.com') 
+                          ? video.url.replace('vimeo.com/', 'player.vimeo.com/video/') 
+                          : video.url}
+                      className="w-full h-full"
+                      allowFullScreen
+                    />
+                  </div>
+                  <div className="p-4">
+                    <h4 className="font-bold text-sm uppercase tracking-tighter mb-1 line-clamp-1">{video.title}</h4>
+                    <p className="text-[10px] text-white/50 line-clamp-2">{video.description}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full p-8 text-center glass rounded-2xl border border-white/5">
+                <p className="text-xs text-white/30 uppercase tracking-widest font-black">Nenhum tutorial postado ainda</p>
+              </div>
+            )}
+          </div>
+        </section>
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>

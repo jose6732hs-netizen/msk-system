@@ -25,7 +25,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
 
-type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding';
+type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -124,6 +124,7 @@ export function AdminEditorTab() {
             { id: 'partners', label: 'Parceiros', icon: Users },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
+            { id: 'tutorials', label: 'Tutoriais / Explicações', icon: FileText },
           ].map((item: any) => (
             <button
               key={item.id}
@@ -341,6 +342,81 @@ export function AdminEditorTab() {
                 </Button>
                 <Button onClick={() => handlePublish('config')} variant="neon" className="flex-1 font-black">
                   <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'tutorials' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Vídeos de Tutoriais / Explicações</label>
+                <Button 
+                  size="sm" 
+                  variant="neonOutline"
+                  onClick={() => {
+                    const currentVideos = (localSettings as any).tutorials?.videos || [];
+                    updateSetting('tutorials', 'videos', [...currentVideos, { url: '', title: '', description: '' }]);
+                  }}
+                >
+                  + Adicionar Vídeo
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {((localSettings as any).tutorials?.videos || []).map((video: any, index: number) => (
+                  <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
+                    <div className="grid grid-cols-1 gap-3">
+                      <Input 
+                        placeholder="Título do Vídeo"
+                        value={video.title}
+                        onChange={(e) => {
+                          const newVideos = [...(localSettings as any).tutorials.videos];
+                          newVideos[index].title = e.target.value;
+                          updateSetting('tutorials', 'videos', newVideos);
+                        }}
+                      />
+                      <Input 
+                        placeholder="Link do Vídeo (YouTube, Vimeo ou Link Direto)"
+                        value={video.url}
+                        onChange={(e) => {
+                          const newVideos = [...(localSettings as any).tutorials.videos];
+                          newVideos[index].url = e.target.value;
+                          updateSetting('tutorials', 'videos', newVideos);
+                        }}
+                      />
+                      <Textarea 
+                        placeholder="Descrição curta"
+                        value={video.description}
+                        onChange={(e) => {
+                          const newVideos = [...(localSettings as any).tutorials.videos];
+                          newVideos[index].description = e.target.value;
+                          updateSetting('tutorials', 'videos', newVideos);
+                        }}
+                        className="min-h-[60px]"
+                      />
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        className="text-red-500 w-fit"
+                        onClick={() => {
+                          const newVideos = (localSettings as any).tutorials.videos.filter((_: any, i: number) => i !== index);
+                          updateSetting('tutorials', 'videos', newVideos);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Remover
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('tutorials')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+                </Button>
+                <Button onClick={() => handlePublish('tutorials')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Tutoriais
                 </Button>
               </div>
             </div>
