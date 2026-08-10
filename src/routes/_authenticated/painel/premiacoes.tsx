@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MskLogo } from "@/components/msk/logo";
+import award1kAsset from "@/assets/award-1k.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/painel/premiacoes")({
   head: () => ({
@@ -43,7 +44,7 @@ const levels = [
     color: "from-green-500/20 to-green-500/5",
     borderColor: "border-green-500/20",
     glowColor: "shadow-[0_0_20px_rgba(34,197,94,0.1)]",
-    image: "/images/award-10k.png", // Usando a 10k como placeholder já que não veio a 1k
+    image: award1kAsset.url,
   },
   {
     threshold: "10K",
