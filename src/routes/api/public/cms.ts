@@ -21,7 +21,14 @@ export const Route = createFileRoute('/api/public/cms')({
           settings[item.key] = item.value;
         });
 
-        return new Response(JSON.stringify(settings), {
+        const { signData } = await import("@/lib/license.server");
+        const responseData = {
+          settings,
+          timestamp: Date.now()
+        };
+        const signature = await signData(JSON.stringify(responseData));
+
+        return new Response(JSON.stringify({ ...responseData, signature }), {
           headers: { 
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': '*' 
@@ -31,3 +38,4 @@ export const Route = createFileRoute('/api/public/cms')({
     }
   }
 });
+

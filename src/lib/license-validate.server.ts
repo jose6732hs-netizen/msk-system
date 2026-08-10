@@ -122,7 +122,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     device_hash: deviceHash,
   });
 
-  return jsonResponse({
+  const responseData = {
     success: active,
     valid: active,
     status: license.status.toUpperCase(),
@@ -136,5 +136,14 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       max_devices: license.max_devices,
       features: active ? (license.plans?.features ?? LOCKED) : LOCKED,
     },
+    timestamp: Date.now(),
+  };
+
+  const { signData } = await import("./license.server");
+  const signature = await signData(JSON.stringify(responseData));
+
+  return jsonResponse({
+    ...responseData,
+    signature,
   });
 }

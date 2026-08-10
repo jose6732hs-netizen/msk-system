@@ -37,6 +37,19 @@ function toHex(buf: ArrayBuffer) {
     .join("");
 }
 
+export async function signData(data: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(encKey()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
+  return toHex(sig);
+}
+
+
 /** Hash com pepper do servidor — só o hash é usado para lookup/validação. */
 export async function hashToken(token: string): Promise<string> {
   const data = new TextEncoder().encode(`${encKey()}::${token.trim().toUpperCase()}`);
