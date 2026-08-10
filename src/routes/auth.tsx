@@ -148,17 +148,23 @@ function AuthPage() {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
-        // Se já estiver logado E o usuário for afiliado (não está no pre-signup), redireciona pro painel de parceiro
-        // Senão, se apenas logado, vai pro painel normal. 
-        // A chave aqui é NÃO redirecionar se estivermos explicitamente tentando ver a copy (pre-signup)
+        if (search.next?.includes('parceiro')) {
+          try {
+            const { enrollAsAffiliate } = await import("@/lib/enrollment.functions");
+            await enrollAsAffiliate();
+          } catch (e) {
+            console.error("Erro ao inscrever afiliado:", e);
+          }
+        }
+        
         if (mode !== "pre-signup") {
-          navigate({ to: "/painel" });
+          navigate({ to: search.next || "/painel" });
         }
       }
     });
-  }, [navigate, mode]);
+  }, [navigate, mode, search.next]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -168,7 +174,13 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         await attachRef();
-        navigate({ to: "/painel" });
+        
+        if (search.next?.includes('parceiro')) {
+          const { enrollAsAffiliate } = await import("@/lib/enrollment.functions");
+          await enrollAsAffiliate();
+        }
+        
+        navigate({ to: search.next || "/painel" });
       } else if (mode === "signup") {
         const { error } = await supabase.auth.signUp({
           email,
@@ -180,6 +192,11 @@ function AuthPage() {
         });
         if (error) throw error;
         await attachRef();
+
+        // Se estiver se cadastrando via fluxo de afiliado, já garantimos o registro no DB
+        // O trigger no banco ou o linkAffiliateReferral podem lidar com isso, 
+        // mas chamamos explicitamente se o usuário for redirecionado.
+        
         setMode("verify");
         toast.success("Verifique seu e-mail para confirmar o cadastro.");
       } else {
@@ -214,13 +231,15 @@ function AuthPage() {
 
       if (provider === "google") {
         const { lovable } = await import("@/integrations/lovable");
-        await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+        await lovable.auth.signInWithOAuth("google", { 
+          redirect_uri: `${window.location.origin}/auth${search.next ? `?next=${encodeURIComponent(search.next)}` : ''}` 
+        });
         return;
       }
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: `${window.location.origin}/auth` },
+        options: { redirectTo: `${window.location.origin}/auth${search.next ? `?next=${encodeURIComponent(search.next)}` : ''}` },
       });
       if (error) throw error;
     } catch (err) {
