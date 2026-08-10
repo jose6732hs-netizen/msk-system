@@ -92,7 +92,7 @@ export function AffiliateHeader({
              size="sm" 
              className="h-9 px-3 hidden md:flex text-white/40 hover:text-primary hover:bg-primary/10 gap-2 font-bold"
            >
-             <Link to="/_authenticated/painel/premiacoes">
+             <Link to="/painel/premiacoes">
                <Award size={16} /> Premiações
              </Link>
            </Button>
@@ -113,12 +113,12 @@ export function AffiliateHeader({
                </Button>
              </SheetTrigger>
              <SheetContent side="right" className="bg-[#0A0A0A] border-white/10 text-white">
-                <nav className="flex flex-col gap-6 mt-12">
-                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</Link>
-                   <Link to="/_authenticated/painel/premiacoes" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Premiações</Link>
-                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
-                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</Link>
-                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</Link>
+                 <nav className="flex flex-col gap-6 mt-12">
+                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</Link>
+                   <Link to="/painel/premiacoes" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Premiações</Link>
+                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
+                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</Link>
+                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</Link>
                    <div className="h-px bg-white/10 my-4" />
                    <Button variant="neon" className="w-full" onClick={() => (window as any).openWalletModal?.()}>
                       Carteira Digital

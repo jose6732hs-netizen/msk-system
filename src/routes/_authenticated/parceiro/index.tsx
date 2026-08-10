@@ -265,7 +265,7 @@ function AffiliateDashboard() {
           </TabsContent>
 
           <TabsContent value="awards" className="focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Link to="/_authenticated/painel/premiacoes" className="block group">
+            <Link to="/painel/premiacoes" className="block group">
               <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center space-y-8 hover:border-primary/40 transition-all relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full -mr-32 -mt-32 group-hover:bg-primary/10 transition-colors" />
                 <div className="relative z-10">
