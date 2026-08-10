@@ -385,7 +385,12 @@ export function AdminEditorTab() {
           )}
 
           {activeSection === 'tutorials' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Vídeos Tutoriais</h4>
+              </div>
+
               <div className="flex items-center justify-between">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Vídeos de Tutoriais / Explicações</label>
                 <Button 
@@ -534,7 +539,12 @@ export function AdminEditorTab() {
           )}
 
           {activeSection === 'branding' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Branding da Extensão</h4>
+              </div>
+
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-[0.65rem] font-bold text-primary/80 leading-relaxed">
                 Aqui você configura os ícones e o banner que aparecem na extensão. As alterações afetam todos os usuários após a sincronização automática.
               </div>

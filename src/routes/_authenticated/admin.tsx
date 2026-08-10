@@ -306,9 +306,13 @@ function Admin() {
               </div>
 
               {/* Tab Contents */}
-              <div className="glass mt-4 overflow-x-auto rounded-[2rem] p-6 scrollbar-hide">
+              <div className="glass mt-4 overflow-x-auto rounded-[2rem] p-6 scrollbar-hide animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[500px]">
                 {activeTab === "licenses" && (
                   <div className="overflow-x-auto">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="h-8 w-1 bg-primary rounded-full" />
+                      <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Licenças Ativas</h4>
+                    </div>
                     <table className="w-full text-left text-sm">
                       <thead className="text-[0.65rem] uppercase tracking-widest text-muted-foreground border-b border-border/50">
                         <tr>
@@ -348,7 +352,7 @@ function Admin() {
                                   l.status === 'suspended' ? 'text-destructive border-destructive/30 bg-destructive/10' :
                                   'text-red-500 border-red-500/30 bg-red-500/10'
                                 )}>
-                                  {isExpired && l.status === 'active' ? 'Expirado' : l.status}
+                                  {isExpired && l.status === 'active' ? 'Expirado' : (l.status as string)}
                                 </span>
                               </td>
                               <td className="p-4 text-xs">
