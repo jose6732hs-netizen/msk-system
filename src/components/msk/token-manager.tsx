@@ -259,13 +259,13 @@ export function TokenManager() {
                 />
               </div>
 
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <Button variant="neon" onClick={onGenerate} disabled={busy}>
+              <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-4">
+                <Button variant="neon" onClick={onGenerate} disabled={busy} className="w-full sm:w-auto font-black uppercase tracking-widest text-[0.7rem] py-5 rounded-xl">
                   {busy ? <Loader2 className="animate-spin" /> : <Plus />} Gerar token
                 </Button>
                 {available <= 0 && (
-                  <p className="text-sm text-destructive">
-                    Nenhum token ativo ainda! Navegue pelo site e garanta o seu acesso premium.
+                  <p className="text-[0.7rem] font-bold text-destructive uppercase tracking-tighter sm:max-w-[200px] leading-tight">
+                    Nenhum token ativo! Navegue e garanta seu acesso premium.
                   </p>
                 )}
               </div>
