@@ -101,7 +101,7 @@ function PartnersPage() {
               <Button asChild variant="neon" size="lg" className="h-16 px-12 text-xl font-black group rounded-2xl">
                 <Link 
                   to={Route.useSearch()['mode'] === 'signup' ? '/auth' : '/parceiro'} 
-                  search={{ next: '/parceiro', mode: 'signup' }}
+                  search={{ next: '/parceiro', mode: 'signup' } as any}
                 >
                   Quero me tornar afiliado agora
                   <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
@@ -235,7 +235,7 @@ function PartnersPage() {
                 <Button asChild variant="secondary" size="lg" className="h-20 md:h-24 px-6 md:px-20 text-xl md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full sm:w-auto rounded-3xl shadow-2xl whitespace-normal leading-tight text-center">
                   <Link 
                     to={Route.useSearch()['mode'] === 'signup' ? '/auth' : '/parceiro'} 
-                    search={{ next: '/parceiro', mode: 'signup' }}
+                    search={{ next: '/parceiro', mode: 'signup' } as any}
                   >
                     Quero começar a indicar agora
                   </Link>
