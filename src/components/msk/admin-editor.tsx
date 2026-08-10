@@ -119,7 +119,7 @@ export function AdminEditorTab() {
           </Button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar rounded-2xl bg-black/20 p-2 border border-white/5 shadow-inner">
           {[
             { id: 'hero', label: 'Hero / Texto', icon: Monitor },
             { id: 'banners', label: 'Banners Landing', icon: ImageIcon },
@@ -131,8 +131,10 @@ export function AdminEditorTab() {
             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[0.65rem] font-black uppercase tracking-widest transition-all ${
-                activeSection === item.id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+              className={`flex items-center gap-2 shrink-0 rounded-xl px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition-all ${
+                activeSection === item.id 
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                  : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
               }`}
             >
               <item.icon className="h-3.5 w-3.5" />
@@ -142,8 +144,14 @@ export function AdminEditorTab() {
         </div>
 
         <div className="glass rounded-3xl p-6 space-y-6">
+          
           {activeSection === 'hero' && (
-            <div className="space-y-4">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Configuração da Hero</h4>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
@@ -188,7 +196,8 @@ export function AdminEditorTab() {
           )}
           
           {activeSection === 'banners' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
               <div className="flex items-center justify-between">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Gerenciar Banners da Landing</label>
                 <Button 
@@ -205,15 +214,16 @@ export function AdminEditorTab() {
 
               <div className="space-y-4">
                 {((localSettings as any).hero?.banners || []).map((banner: any, index: number) => (
-                  <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
+                  <div key={index} className="glass group rounded-2xl p-4 border border-white/5 space-y-4 hover:border-primary/30 transition-all hover:bg-white/5">
                     <div className="flex items-start gap-4">
-                      <div className="h-20 w-32 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                      <div className="h-24 w-40 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group/img">
                         {banner.url ? (
-                          <img src={banner.url} className="h-full w-full object-cover" />
+                          <img src={banner.url} className="h-full w-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
                         ) : (
                           <ImageIcon className="h-6 w-6 text-muted-foreground/30" />
                         )}
                       </div>
+
                       <div className="flex-1 space-y-3">
                         <div className="flex gap-2">
                           <Input 
@@ -324,9 +334,10 @@ export function AdminEditorTab() {
               </div>
             </div>
           )}
-
+          
           {activeSection === 'partners' && (
-            <div className="space-y-4">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Chamada Parceiros</label>
                 <Input 
@@ -353,7 +364,8 @@ export function AdminEditorTab() {
           )}
           
           {activeSection === 'copy' && (
-            <div className="space-y-4">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">URL de Suporte (WhatsApp)</label>
                 <Input 
@@ -374,7 +386,12 @@ export function AdminEditorTab() {
           )}
 
           {activeSection === 'tutorials' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Vídeos Tutoriais</h4>
+              </div>
+
               <div className="flex items-center justify-between">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Vídeos de Tutoriais / Explicações</label>
                 <Button 
@@ -392,8 +409,23 @@ export function AdminEditorTab() {
 
               <div className="space-y-4">
                 {((localSettings as any).tutorials?.videos || []).map((video: any, index: number) => (
-                  <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
+                  <div key={index} className="glass group rounded-2xl p-4 border border-white/5 space-y-4 hover:border-primary/30 transition-all hover:bg-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[0.6rem] font-black uppercase tracking-widest text-primary/70">Tutorial #{index + 1}</span>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-7 w-7 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                        onClick={() => {
+                          const newVideos = (localSettings as any).tutorials.videos.filter((_: any, i: number) => i !== index);
+                          updateSetting('tutorials', 'videos', newVideos);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                     <div className="grid grid-cols-1 gap-3">
+
                       <Input 
                         placeholder="Título do Vídeo"
                         value={video.title}
@@ -493,22 +525,12 @@ export function AdminEditorTab() {
                           newVideos[index].description = e.target.value;
                           updateSetting('tutorials', 'videos', newVideos);
                         }}
-                        className="min-h-[60px]"
+                        className="min-h-[60px] bg-black/20"
                       />
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-red-500 w-fit"
-                        onClick={() => {
-                          const newVideos = (localSettings as any).tutorials.videos.filter((_: any, i: number) => i !== index);
-                          updateSetting('tutorials', 'videos', newVideos);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Remover
-                      </Button>
                     </div>
                   </div>
                 ))}
+
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -523,7 +545,12 @@ export function AdminEditorTab() {
           )}
 
           {activeSection === 'branding' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Branding da Extensão</h4>
+              </div>
+
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-[0.65rem] font-bold text-primary/80 leading-relaxed">
                 Aqui você configura os ícones e o banner que aparecem na extensão. As alterações afetam todos os usuários após a sincronização automática.
               </div>

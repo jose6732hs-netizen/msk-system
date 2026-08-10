@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Activity, Clock, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare } from "lucide-react";
+import { Activity, Clock, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGatewayTab } from "@/components/msk/admin-gateway";
@@ -120,24 +120,27 @@ function Admin() {
             <MskLogo size={32} />
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 p-4 scrollbar-hide overflow-y-auto">
           {[
             { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
             { value: "affiliates", label: "Afiliados", Icon: Users },
-            { value: "subs", label: "Assinaturas", Icon: Zap },
+            { value: "subs", label: "Ofertas", Icon: Zap },
             { value: "finance", label: "Financeiro", Icon: TrendingUp },
-            { value: "editor", label: "Editor", Icon: Activity },
+            { value: "editor", label: "Editor Site", Icon: Activity },
             { value: "tracking", label: "Analytics", Icon: TrendingUp },
+            { value: "extension", label: "Extensão", Icon: Monitor },
             { value: "gateway", label: "Gateway", Icon: ShieldAlert },
-            { value: "logs", label: "Logs", Icon: Clock },
+            { value: "logs", label: "Auditoria", Icon: Clock },
           ].map(({ value, label, Icon }) => (
             <button
               key={value}
               type="button"
               onClick={() => setActiveTab(value)}
               className={cn(
-                "w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all border-none shadow-none",
-                activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                "w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-[0.7rem] font-black uppercase tracking-widest transition-all",
+                activeTab === value 
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
               )}
             >
               <Icon className="h-4 w-4" />
@@ -260,42 +263,59 @@ function Admin() {
             </div>
           ) : (
             <div className="mt-8">
-              <div className="glass flex h-auto w-full flex-nowrap gap-1 overflow-x-auto p-1 scrollbar-hide sm:flex-wrap pb-2 mb-4">
-                {[
-                  { value: "licenses", label: "Licenças", color: "" },
-                  { value: "editor", label: "Editor", color: "text-primary" },
-                  { value: "tracking", label: "Analytics", color: "text-emerald-400" },
-                  ...(role?.superAdmin ? [{ value: "tokens", label: "Gerar token", color: "" }] : []),
-                  { value: "users", label: "Usuários", color: "" },
-                  { value: "subs", label: "Assinaturas", color: "" },
-                  { value: "payments", label: "Pagamentos", color: "" },
-                  { value: "webhooks", label: "Webhooks", color: "" },
-                  { value: "logs", label: "Auditoria", color: "" },
-                  { value: "gateway", label: "Gateway", color: "text-cyan-400" },
-                  { value: "finance", label: "Financeiro", color: "text-yellow-400" },
-                  { value: "extension", label: "Extensão", color: "" },
-                  { value: "affiliates", label: "Afiliados", color: "" },
-                  { value: "push", label: "🔔 Testes / Push", color: "text-orange-400" },
+              <div className="flex flex-col gap-6 mt-8">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest">Painel Administrativo</h3>
+                    <p className="text-[0.6rem] text-muted-foreground uppercase font-bold">Gestão completa da infraestrutura</p>
+                  </div>
+                </div>
 
-                ].map((tab) => (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-bold transition-all shrink-0 min-w-[100px]",
-                      activeTab === tab.value ? "bg-primary/20 text-foreground" : "text-muted-foreground",
-                      tab.color
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                <div className="glass flex h-auto w-full flex-nowrap gap-1 overflow-x-auto p-1.5 scrollbar-hide sm:flex-wrap rounded-2xl border border-white/5">
+                  {[
+                    { value: "licenses", label: "Licenças", Icon: Zap },
+                    { value: "editor", label: "Editor Site", Icon: Activity, color: "text-primary" },
+                    { value: "tracking", label: "Analytics", Icon: TrendingUp, color: "text-emerald-400" },
+                    ...(role?.superAdmin ? [{ value: "tokens", label: "Gerar Token", Icon: MessageSquare }] : []),
+                    { value: "users", label: "Usuários", Icon: Users },
+                    { value: "subs", label: "Assinaturas", Icon: Zap },
+                    { value: "payments", label: "Pagamentos", Icon: DollarSign },
+                    { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
+                    { value: "logs", label: "Auditoria", Icon: Clock },
+                    { value: "gateway", label: "Gateway", Icon: ShieldAlert, color: "text-cyan-400" },
+                    { value: "finance", label: "Financeiro", Icon: TrendingUp, color: "text-yellow-400" },
+                    { value: "extension", label: "Extensão", Icon: LayoutDashboard },
+                    { value: "affiliates", label: "Afiliados", Icon: Users },
+                    { value: "push", label: "Push / Testes", Icon: MessageSquare, color: "text-orange-400" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition-all shrink-0",
+                        activeTab === tab.value 
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      )}
+                    >
+                      <tab.Icon className={cn("h-3.5 w-3.5", activeTab !== tab.value && tab.color)} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Tab Contents */}
-              <div className="glass mt-4 overflow-x-auto rounded-[2rem] p-6 scrollbar-hide">
+              <div className="glass mt-4 overflow-x-auto rounded-[2rem] p-6 scrollbar-hide animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[500px]">
                 {activeTab === "licenses" && (
                   <div className="overflow-x-auto">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="h-8 w-1 bg-primary rounded-full" />
+                      <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Licenças Ativas</h4>
+                    </div>
                     <table className="w-full text-left text-sm">
                       <thead className="text-[0.65rem] uppercase tracking-widest text-muted-foreground border-b border-border/50">
                         <tr>
@@ -335,7 +355,7 @@ function Admin() {
                                   l.status === 'suspended' ? 'text-destructive border-destructive/30 bg-destructive/10' :
                                   'text-red-500 border-red-500/30 bg-red-500/10'
                                 )}>
-                                  {isExpired && l.status === 'active' ? 'Expirado' : l.status}
+                                  {isExpired && l.status === 'active' ? 'Expirado' : (l.status as string)}
                                 </span>
                               </td>
                               <td className="p-4 text-xs">
