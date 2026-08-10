@@ -4,7 +4,7 @@
 (function (root) {
   "use strict";
 
-  var API_BASE = "https://msk-extencsoes.lovable.app";
+  var API_BASE = window.location.origin.includes('localhost') ? 'http://localhost:8080' : "https://ini-joy-maker.lovable.app";
   var EP = {
     validate: API_BASE + "/api/public/license/validate",
     heartbeat: API_BASE + "/api/public/license/heartbeat",
