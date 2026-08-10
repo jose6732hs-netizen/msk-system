@@ -24,11 +24,7 @@ export function SiteHeader() {
 
   /** O pacote baixado é sempre o canal que o admin deixou ativo — nunca um zip fixo. */
   async function downloadExtension() {
-    const { data: sessionData } = await supabase.auth.getSession();
-    if (!sessionData.session) {
-      void navigate({ to: "/auth", search: { next: window.location.pathname } });
-      return;
-    }
+    // A opção de baixar a extensão agora é livre (não precisa de login)
     setDownloading(true);
     setDownloadProgress(0);
 
@@ -115,7 +111,7 @@ export function SiteHeader() {
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  Baixar Extensão
+                  Baixar Extensão Grátis
                 </>
               )}
             </span>
@@ -185,7 +181,7 @@ export function SiteHeader() {
                   }} 
                   className="text-left text-primary"
                 >
-                  Baixar Extensão
+                  Baixar Extensão Grátis
                 </button>
               </nav>
             </SheetContent>
