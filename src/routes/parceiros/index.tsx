@@ -4,12 +4,13 @@ import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-
+import { 
   Check, ArrowRight, Zap, TrendingUp, ShieldCheck, HeartHandshake, 
   Wallet, History, Users, MessageSquare, Flame, Rocket, Target,
   Eye, HelpCircle, Layout, Share2, DollarSign, PieChart, Activity
 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 export const Route = createFileRoute("/parceiros/")({
   validateSearch: (search: Record<string, unknown>): { mode?: string | undefined } => ({
