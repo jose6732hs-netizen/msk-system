@@ -155,7 +155,8 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
-                  value={(localSettings as any).hero?.title ?? (initialSettings as any).hero?.title ?? 'Pare de ser interrompido no meio da criação'} 
+                  value={(localSettings as any).hero?.title ?? ''} 
+                  placeholder={settings?.hero?.title || 'Pare de ser interrompido no meio da criação'}
                   onChange={(e) => updateSetting('hero', 'title', e.target.value)}
                   className="bg-background/50"
                 />
@@ -163,7 +164,8 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo</label>
                 <Textarea 
-                  value={(localSettings as any).hero?.subtitle ?? (initialSettings as any).hero?.subtitle ?? 'Acesso completo à extensão Lovable com créditos infinitos. Crie apps, landing pages e sistemas o dia inteiro sem travar, sem contar crédito e sem perder o ritmo.'} 
+                  value={(localSettings as any).hero?.subtitle ?? ''} 
+                  placeholder={settings?.hero?.subtitle || 'Acesso completo à extensão Lovable com créditos infinitos...'}
                   onChange={(e) => updateSetting('hero', 'subtitle', e.target.value)}
                   className="bg-background/50 min-h-[100px]"
                 />
@@ -341,14 +343,16 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Chamada Parceiros</label>
                 <Input 
-                  value={(localSettings as any).partners_teaser?.title ?? (initialSettings as any).partners_teaser?.title ?? 'Revenda e ganhe comissões recorrentes'} 
+                  value={(localSettings as any).partners_teaser?.title ?? ''} 
+                  placeholder={settings?.partners_teaser?.title || 'Revenda e ganhe comissões recorrentes'}
                   onChange={(e) => updateSetting('partners_teaser', 'title', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo Parceiros</label>
                 <Textarea 
-                  value={(localSettings as any).partners_teaser?.subtitle ?? (initialSettings as any).partners_teaser?.subtitle ?? 'Entre para o programa de parceiros Infinity e transforme sua audiência em renda. Estrutura simples, pagamentos via PIX e suporte total.'} 
+                  value={(localSettings as any).partners_teaser?.subtitle ?? ''} 
+                  placeholder={settings?.partners_teaser?.subtitle || 'Entre para o programa de parceiros Infinity...'}
                   onChange={(e) => updateSetting('partners_teaser', 'subtitle', e.target.value)}
                 />
               </div>
