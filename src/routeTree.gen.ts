@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DocumentacaoRouteImport } from './routes/documentacao'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PlanosRouteImport } from './routes/planos'
+import { Route as PremiacoesRouteImport } from './routes/premiacoes'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -76,6 +77,11 @@ const McpRoute = McpRouteImport.update({
 const PlanosRoute = PlanosRouteImport.update({
   id: '/planos',
   path: '/planos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PremiacoesRoute = PremiacoesRouteImport.update({
+  id: '/premiacoes',
+  path: '/premiacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotmcpChar93ListToolsRoute =
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/premiacoes': typeof PremiacoesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/premiacoes': typeof PremiacoesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
   '/planos': typeof PlanosRoute
+  '/premiacoes': typeof PremiacoesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
@@ -345,6 +354,7 @@ export interface FileRouteTypes {
     | '/documentacao'
     | '/mcp'
     | '/planos'
+    | '/premiacoes'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/documentacao'
     | '/mcp'
     | '/planos'
+    | '/premiacoes'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/documentacao'
     | '/mcp'
     | '/planos'
+    | '/premiacoes'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/admin'
@@ -453,6 +465,7 @@ export interface RootRouteChildren {
   DocumentacaoRoute: typeof DocumentacaoRoute
   McpRoute: typeof McpRoute
   PlanosRoute: typeof PlanosRoute
+  PremiacoesRoute: typeof PremiacoesRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AfiliadoCodeRoute: typeof AfiliadoCodeRoute
@@ -527,6 +540,13 @@ declare module '@tanstack/react-router' {
       path: '/planos'
       fullPath: '/planos'
       preLoaderRoute: typeof PlanosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/premiacoes': {
+      id: '/premiacoes'
+      path: '/premiacoes'
+      fullPath: '/premiacoes'
+      preLoaderRoute: typeof PremiacoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.mcp/list-tools': {
@@ -755,6 +775,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocumentacaoRoute: DocumentacaoRoute,
   McpRoute: McpRoute,
   PlanosRoute: PlanosRoute,
+  PremiacoesRoute: PremiacoesRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,

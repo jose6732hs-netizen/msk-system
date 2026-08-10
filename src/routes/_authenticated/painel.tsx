@@ -127,7 +127,7 @@ function Painel() {
           </Link>
           <div className="hidden items-center gap-2 sm:flex">
             <Button asChild variant="ghost" size="sm">
-              <Link to="/painel/premiacoes">Premiações</Link>
+              <Link to="/premiacoes">Premiações</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
               <Link to="/documentacao">Documentação</Link>
@@ -185,7 +185,7 @@ function Painel() {
             <Link to="/parceiro" search={{}} preload="intent" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
               Afiliados
             </Link>
-            <Link to="/painel/premiacoes" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
+            <Link to="/premiacoes" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
               Premiações
             </Link>
             <Link to="/documentacao" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
