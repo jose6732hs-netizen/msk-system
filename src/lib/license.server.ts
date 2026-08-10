@@ -324,8 +324,8 @@ export async function issueOrRenewLicense(params: {
       token_encrypted: await encryptToken(token),
       token_last4: token.slice(-4),
       token_preview: maskToken(token),
-      status: "active",
-      activated_at: now.toISOString(),
+      status: "inactive",
+      activated_at: null,
       expires_at: addDays(now),
       max_devices: plan.max_devices,
     })
