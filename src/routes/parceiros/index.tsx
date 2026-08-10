@@ -12,7 +12,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 export const Route = createFileRoute("/parceiros/")({
   validateSearch: (search: Record<string, unknown>) => ({
-    mode: (search.mode as string) || undefined,
+    mode: search.mode as string | undefined,
   }),
   head: () => ({
     meta: [
