@@ -189,7 +189,9 @@ async function buildForChannel(slug: string) {
 /** Download livre (sem exigir licença) — apenas do canal ativado no admin. */
 export async function issueDownloadLink(userId: string, channelSlug?: string | null) {
   const channels = await listActiveChannels();
-  const channel = channelSlug ? channels.find((c) => c.slug === channelSlug) : channels[0];
+  const channel = channelSlug 
+    ? channels.find((c) => c.slug === channelSlug) 
+    : channels.find((c) => c.enabled !== false) || channels[0];
 
   const build = await buildForChannel(channel?.slug ?? channelSlug ?? "");
 
