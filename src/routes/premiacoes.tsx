@@ -15,11 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { MskLogo } from "@/components/msk/logo";
 import award1kAsset from "@/assets/award-1k.png.asset.json";
+import award500kAsset from "@/assets/award-500k.png.asset.json";
+import award1mAsset from "@/assets/award-1m.png.asset.json";
+import award5mAsset from "@/assets/award-5m.png.asset.json";
 const award10kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-10k.png" };
 const award100kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-100k.png" };
-const award500kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-500k.png" };
-const award1mAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-1m.png" };
-const award5mAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-5m.png" };
 
 export const Route = createFileRoute("/premiacoes")({
   head: () => ({
@@ -178,7 +178,7 @@ function AwardsPage() {
                     animate={{ 
                       opacity: isCenter ? 1 : 0.4, 
                       scale: isCenter ? 1 : 0.75,
-                      x: isCenter ? 0 : (isLeft ? -280 : 280),
+                      x: isCenter ? 0 : (isLeft ? -200 : 200),
                       rotateY: isCenter ? 0 : (isLeft ? 35 : -35),
                       zIndex: isCenter ? 20 : 10,
                     }}
@@ -192,14 +192,14 @@ function AwardsPage() {
                       stiffness: 300,
                       damping: 30
                     }}
-                    className={`absolute w-[280px] md:w-[320px] aspect-[9/16] rounded-3xl overflow-hidden border border-white/10 glass-dark group cursor-pointer ${isCenter ? 'shadow-[0_0_50px_rgba(var(--primary-rgb),0.2)]' : ''}`}
+                    className={`absolute w-[200px] md:w-[240px] aspect-[9/16] rounded-3xl overflow-hidden border border-white/10 glass-dark group cursor-pointer ${isCenter ? 'shadow-[0_0_50px_rgba(var(--primary-rgb),0.2)]' : ''}`}
                     onClick={() => !isCenter && paginate(isLeft ? -1 : 1)}
                   >
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
                     <img 
                       src={level.image} 
                       alt={level.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                      className="w-full h-full object-contain p-4 transition-transform duration-700 group-hover:scale-110"
                     />
                     
                     <div className="absolute bottom-0 left-0 right-0 p-6 z-20 transform translate-y-2 group-hover:translate-y-0 transition-transform">
