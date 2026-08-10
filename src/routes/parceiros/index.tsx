@@ -1,9 +1,10 @@
+// oi - MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION) - AFILIADO FLOW CORRIGIDO (SIGNUP REDIRECT) - TUTORIAIS COM SUPORTE A REDIRECIONAMENTO E PLAYER ROXO NEON - CENTRAL DE AFILIADOS SINCRONIZADA COM AUTH PRE-SIGNUP
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { 
+
   Check, ArrowRight, Zap, TrendingUp, ShieldCheck, HeartHandshake, 
   Wallet, History, Users, MessageSquare, Flame, Rocket, Target,
   Eye, HelpCircle, Layout, Share2, DollarSign, PieChart, Activity
