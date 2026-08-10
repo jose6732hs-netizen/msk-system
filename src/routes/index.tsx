@@ -276,7 +276,7 @@ function Index() {
               </div>
               
               <div className="flex flex-col items-center gap-6 w-full">
-                <Button asChild variant="neon" size="lg" className="px-6 sm:px-12 h-16 text-sm sm:text-xl w-full sm:w-auto whitespace-normal sm:whitespace-nowrap text-center leading-tight">
+                <Button asChild variant="neon" size="lg" className="px-4 py-6 sm:px-12 h-auto sm:h-16 text-sm sm:text-xl w-full sm:w-auto whitespace-normal sm:whitespace-nowrap text-center leading-tight flex items-center justify-center min-h-[4.5rem] sm:min-h-0">
                   <Link to="/auth">Quero meu acesso ilimitado agora</Link>
                 </Button>
                 <p className="text-sm text-muted-foreground">Teste com tranquilidade. Se não fizer sentido, basta cancelar.</p>
