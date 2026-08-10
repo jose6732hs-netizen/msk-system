@@ -343,12 +343,12 @@ function Admin() {
                               </td>
                               <td className="p-4 text-right">
                                 <div className="flex justify-end gap-1">
-                                  <Button size="icon" variant="ghost" className="h-8 w-8 text-cyan-400" onClick={() => { setIssued({ token: "...", email: l.profiles?.email || "", licenseId: l.id }); setActiveTab("tokens"); }}>
+                                  <Button size="icon" variant="ghost" className="h-8 w-8 text-cyan-400" title="Copiar Dados de Entrega" onClick={() => { setIssued({ token: "Carregando...", email: l.profiles?.email || "", licenseId: l.id }); setActiveTab("tokens"); }}>
                                     <MessageSquare className="h-4 w-4" />
                                   </Button>
                                   {l.status !== 'revoked' && (
                                     <>
-                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => act(l.id, "extend")}>
+                                      <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" title="Estender 30 Dias" onClick={() => act(l.id, "extend")}>
                                         <Clock className="h-4 w-4" />
                                       </Button>
                                       <Button size="sm" variant="destructive" className="h-8 px-2 text-[10px] font-bold uppercase" onClick={() => act(l.id, "block")}>Bloquear</Button>
