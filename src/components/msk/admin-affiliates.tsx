@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet } from "lucide-react";
+import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet, FileText, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -308,7 +308,7 @@ function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> 
 
     setBusy(true);
     try {
-      await approveDocs({ data: { affiliateId: affiliate.id, approve, reason: reason || undefined } });
+      await approveDocs({ data: { affiliateId: affiliate["id"], approve, reason: reason || undefined } });
       toast.success(approve ? "Documentos aprovados!" : "Documentos rejeitados.");
       qc.invalidateQueries({ queryKey: ["admin-affiliates"] });
     } catch (e) {
