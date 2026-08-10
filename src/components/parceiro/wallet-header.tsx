@@ -114,11 +114,11 @@ export function AffiliateHeader({
              </SheetTrigger>
              <SheetContent side="right" className="bg-[#0A0A0A] border-white/10 text-white">
                  <nav className="flex flex-col gap-6 mt-12">
-                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</Link>
-                   <Link to="/premiacoes" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Premiações</Link>
-                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
-                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</Link>
-                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</Link>
+                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</Link>
+                    <Link to="/premiacoes" className="text-xl font-bold hover:text-primary transition-colors">Premiações</Link>
+                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
+                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</Link>
+                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</Link>
                    <div className="h-px bg-white/10 my-4" />
                    <Button variant="neon" className="w-full" onClick={() => (window as any).openWalletModal?.()}>
                       Carteira Digital
