@@ -356,8 +356,9 @@ export function AdminEditorTab() {
                   variant="neonOutline"
                   onClick={() => {
                     const currentVideos = (localSettings as any).tutorials?.videos || [];
-                    updateSetting('tutorials', 'videos', [...currentVideos, { url: '', title: '', description: '' }]);
+                    updateSetting('tutorials', 'videos', [...currentVideos, { url: '', title: '', description: '', is_redirect: false }]);
                   }}
+
                 >
                   + Adicionar Vídeo
                 </Button>
@@ -385,6 +386,23 @@ export function AdminEditorTab() {
                           updateSetting('tutorials', 'videos', newVideos);
                         }}
                       />
+                      <div className="flex items-center gap-2 py-1">
+                        <input 
+                          type="checkbox"
+                          id={`redirect-${index}`}
+                          checked={video.is_redirect || false}
+                          onChange={(e) => {
+                            const newVideos = [...(localSettings as any).tutorials.videos];
+                            newVideos[index].is_redirect = e.target.checked;
+                            updateSetting('tutorials', 'videos', newVideos);
+                          }}
+                          className="w-4 h-4 accent-primary"
+                        />
+                        <label htmlFor={`redirect-${index}`} className="text-[0.65rem] font-bold uppercase text-white/70 cursor-pointer">
+                          Redirecionar para link externo ao invés de exibir no painel
+                        </label>
+                      </div>
+
                       <Textarea 
                         placeholder="Descrição curta"
                         value={video.description}
