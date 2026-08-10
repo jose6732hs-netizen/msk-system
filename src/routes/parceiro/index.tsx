@@ -20,11 +20,12 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentsTab } from "@/components/parceiro/documents-tab";
+import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/parceiro/")({
+export const Route = createFileRoute("/parceiro/")({
   component: AffiliateDashboard,
 });
 
@@ -111,6 +112,11 @@ function AffiliateDashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-10 focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Carousel Banner */}
+            <div className="w-full">
+              <PanelCarousel />
+            </div>
+
             {/* Welcome Section */}
             <section>
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
