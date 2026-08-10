@@ -33,7 +33,11 @@ export function HeroCarousel() {
     queryFn: () => getCms(),
   });
 
-  const banners = (settings as any)?.hero?.banners || DEFAULT_BANNERS;
+  const allBanners = (settings as any)?.hero?.banners || DEFAULT_BANNERS;
+  const banners = allBanners
+    .map((b: any, index: number) => ({ ...b, originalIndex: index }))
+    .filter((b: any) => b.active !== false)
+    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => {
