@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Activity, Clock, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor } from "lucide-react";
+import { Activity, Clock, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGatewayTab } from "@/components/msk/admin-gateway";
@@ -14,6 +14,22 @@ import { AdminAffiliatesTab } from "@/components/msk/admin-affiliates";
 import { AdminTokenGenerator } from "@/components/msk/admin-token-generator";
 import { AdminTrackingTab } from "@/components/msk/admin-tracking";
 import { AdminEditorTab } from "@/components/msk/admin-editor";
+import award1kAsset from "@/assets/award-1k.png.asset.json";
+import award500kAsset from "@/assets/award-500k.png.asset.json";
+import award1mAsset from "@/assets/award-1m.png.asset.json";
+import award5mAsset from "@/assets/award-5m.png.asset.json";
+import awardsHeroAsset from "@/assets/awards-hero.png.asset.json";
+import award100kNewAsset from "@/assets/award-100k-new.png.asset.json";
+import award10kNewAsset from "@/assets/award-10k-new.png.asset.json";
+
+const levels = [
+  { threshold: "1K", title: "Pulseira de Silicone", description: "Primeiro passo. Você começou.", image: award1kAsset.url },
+  { threshold: "10K", title: "Barra de Ouro", description: "Já está no jogo de verdade.", image: award10kNewAsset.url },
+  { threshold: "100K", title: "Rubi Natural", description: "Nível de quem leva a sério.", image: award100kNewAsset.url },
+  { threshold: "500K", title: "Safira Azul", description: "Elite. Resultados consistentes.", image: award500kAsset.url },
+  { threshold: "1M", title: "Diamante Brilhante", description: "Milhão conquistado. Nível máximo.", image: award1mAsset.url },
+  { threshold: "5M", title: "Diamante Raro", description: "Lenda. Quem chegou no topo.", image: award5mAsset.url },
+];
 import { AdminPushTestsTab } from "@/components/msk/admin-push-tests";
 
 import { MskLogo } from "@/components/msk/logo";
@@ -127,6 +143,7 @@ function Admin() {
             { value: "subs", label: "Ofertas", Icon: Zap },
             { value: "finance", label: "Financeiro", Icon: TrendingUp },
             { value: "editor", label: "Editor Site", Icon: Activity },
+            { value: "awards", label: "Premiações", Icon: Trophy },
             { value: "tracking", label: "Analytics", Icon: TrendingUp },
             { value: "extension", label: "Extensão", Icon: Monitor },
             { value: "gateway", label: "Gateway", Icon: ShieldAlert },
@@ -278,6 +295,7 @@ function Admin() {
                   {[
                     { value: "licenses", label: "Licenças", Icon: Zap },
                     { value: "editor", label: "Editor Site", Icon: Activity, color: "text-primary" },
+                    { value: "awards", label: "Premiações", Icon: Trophy, color: "text-yellow-400" },
                     { value: "tracking", label: "Analytics", Icon: TrendingUp, color: "text-emerald-400" },
                     ...(role?.superAdmin ? [{ value: "tokens", label: "Gerar Token", Icon: MessageSquare }] : []),
                     { value: "users", label: "Usuários", Icon: Users },
@@ -391,6 +409,41 @@ function Admin() {
                 {activeTab === "affiliates" && <AdminAffiliatesTab />}
                 {activeTab === "extension" && <AdminExtensionTab />}
                 {activeTab === "push" && <AdminPushTestsTab />}
+                {activeTab === "awards" && (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="h-8 w-1 bg-yellow-400 rounded-full" />
+                      <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Premiações e Recompensas</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      <div className="glass rounded-3xl p-6 border border-white/5 space-y-4">
+                        <div className="aspect-video rounded-2xl bg-black/20 overflow-hidden relative group">
+                          <img src={awardsHeroAsset.url} className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Button size="sm" variant="neonOutline">Trocar Hero</Button>
+                          </div>
+                        </div>
+                        <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Banner Principal Premiações</p>
+                      </div>
+                      {levels.map((level, i) => (
+                        <div key={i} className="glass rounded-3xl p-6 border border-white/5 flex flex-col items-center text-center space-y-3">
+                          <div className="h-24 w-24 relative">
+                            <img src={level.image} className="w-full h-full object-contain" />
+                            <div className="absolute -top-2 -right-2 bg-primary text-black text-[8px] font-black px-2 py-0.5 rounded-full">{level.threshold}</div>
+                          </div>
+                          <div>
+                            <h5 className="text-xs font-black uppercase tracking-widest">{level.title}</h5>
+                            <p className="text-[0.6rem] text-muted-foreground mt-1">{level.description}</p>
+                          </div>
+                          <div className="flex gap-2 w-full pt-2">
+                            <Button size="sm" variant="ghost" className="flex-1 text-[8px] font-black uppercase border border-white/5">Editar</Button>
+                            <Button size="sm" variant="ghost" className="flex-1 text-[8px] font-black uppercase border border-white/5 text-red-500">Remover</Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {activeTab === "finance" && <AdminFinanceTab />}
                 {activeTab === "users" && (
