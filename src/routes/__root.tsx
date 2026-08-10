@@ -147,7 +147,7 @@ function RootComponent() {
         msg.includes("Importing a module script failed"));
 
     const recover = () => {
-      const key = "msk_chunk_reload";
+      const key = `msk_chunk_reload:${window.location.pathname}`;
       if (sessionStorage.getItem(key)) return;
       sessionStorage.setItem(key, "1");
       // Cache-buster: força o navegador a buscar o HTML/manifest novos.
@@ -166,7 +166,12 @@ function RootComponent() {
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);
     // App carregou com sucesso: libera nova tentativa de recuperação em deploys futuros.
-    const t = setTimeout(() => sessionStorage.removeItem("msk_chunk_reload"), 5000);
+    const t = setTimeout(() => {
+      Object.keys(sessionStorage)
+        .filter((k) => k.startsWith("msk_chunk_reload"))
+        .forEach((k) => sessionStorage.removeItem(k));
+    }, 5000);
+
     return () => {
       clearTimeout(t);
       window.removeEventListener("error", onError);
