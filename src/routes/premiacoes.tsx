@@ -146,14 +146,24 @@ function AwardsPage() {
           initial="initial"
           animate="animate"
           variants={fadeInUp}
-          className="text-center mb-16 space-y-4"
+          className="text-center mb-16 space-y-8"
         >
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase neon-text">
-            Central de Premiações
-          </h1>
-          <p className="text-xl text-white/60 max-w-2xl mx-auto font-medium">
-            Seu desempenho é reconhecido. Quanto maior o resultado, maior a recompensa.
-          </p>
+          <motion.img 
+            src={awardsHeroAsset.url} 
+            alt="Seu Resultado Tem Valor" 
+            className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl shadow-primary/10"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.7 }}
+          />
+          <div className="space-y-4">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter uppercase neon-text">
+              Central de Premiações
+            </h1>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto font-medium">
+              Seu desempenho é reconhecido. Quanto maior o resultado, maior a recompensa.
+            </p>
+          </div>
         </motion.div>
 
         {/* Professional 3D Carousel Section */}
