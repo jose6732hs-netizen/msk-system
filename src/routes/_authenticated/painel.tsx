@@ -133,7 +133,7 @@ function Painel() {
               <Link to="/planos" preload="intent">Planos</Link>
             </Button>
             <Button asChild variant="ghost" size="sm">
-              <Link to="/parceiros" preload="intent">Afiliados</Link>
+              <Link to="/parceiros" search={{}} preload="intent">Afiliados</Link>
             </Button>
             <Button variant="neonOutline" size="sm" onClick={signOut}>
               <LogOut /> Sair
@@ -179,7 +179,7 @@ function Painel() {
             <Link to="/planos" preload="intent" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
               Planos
             </Link>
-            <Link to="/parceiros" preload="intent" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
+            <Link to="/parceiros" search={{}} preload="intent" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
               Afiliados
             </Link>
             <Link to="/documentacao" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
