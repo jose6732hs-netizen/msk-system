@@ -372,6 +372,15 @@ function MobileNavigation() {
                 >
                   Programa de Afiliados
                 </Link>
+                {signedIn && (
+                  <Link
+                    to="/painel/premiacoes"
+                    className="block border-b border-white/5 p-4 text-sm font-bold"
+                    onClick={() => setOpen(false)}
+                  >
+                    Central de Premiações
+                  </Link>
+                )}
                 {isAdmin && (
                   <Link
                     to="/api-docs"
