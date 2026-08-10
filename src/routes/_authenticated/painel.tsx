@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { getCmsContent } from "@/lib/cms.functions";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -64,19 +65,17 @@ function Painel() {
   const [menuOpen, setMenuOpen] = useState(false);
 
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["account"],
-    queryFn: async () => {
-      const account = await fetchAccount();
-      const cms = await fetchAccount.context.queryClient.ensureQueryData({
-        queryKey: ["cms-content"],
-        queryFn: () => getCms(),
-      });
-      return { ...account, cms };
-    },
+  const getCms = useServerFn(getCmsContent);
+
+  const { data: cms } = useSuspenseQuery({
+    queryKey: ["cms-content"],
+    queryFn: () => getCms(),
   });
 
-  const getCms = useServerFn(getCmsContent);
+  const { data, isLoading } = useQuery({
+    queryKey: ["account"],
+    queryFn: () => fetchAccount(),
+  });
 
   const license = data?.license as any;
   const plan = license?.plans;
@@ -231,8 +230,8 @@ function Painel() {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {((data as any)?.cms?.tutorials?.videos || []).length > 0 ? (
-              (data as any).cms.tutorials.videos.map((video: any, i: number) => (
+            {(cms?.['tutorials']?.videos || []).length > 0 ? (
+              (cms['tutorials'].videos as any[]).map((video: any, i: number) => (
                 <div key={i} className="glass rounded-2xl overflow-hidden border border-white/5 group bg-white/[0.02]">
                   <div className="aspect-video bg-black/40 relative">
                     <iframe

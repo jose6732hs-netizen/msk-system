@@ -27,7 +27,7 @@ function HowItWorks() {
     queryFn: () => getCms(),
   });
 
-  const videos = cms?.tutorials?.videos || [];
+  const videos = cms?.['tutorials']?.videos || [];
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
