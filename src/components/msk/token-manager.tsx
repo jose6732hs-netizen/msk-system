@@ -146,12 +146,15 @@ export function TokenManager() {
       return 30000;
     } : false,
   });
+  const now = useServerNow(data?.server_time);
+  const allowance = data?.allowance;
+  const trial = data?.trial;
+  const tokens = useMemo(() => data?.tokens ?? [], [data]);
 
   // Identificação por IP e Atualização Automática ao Expirar
   useEffect(() => {
     if (!data?.tokens) return;
     
-    const hasActiveBefore = tokens.some(t => t.status === 'active');
     const hasExpiredNow = data.tokens.some((t: any) => t.status === 'expired');
     
     // Se tínhamos algo ativo e agora expirou, recarrega a página para refletir o estado bloqueado se necessário
@@ -172,11 +175,6 @@ export function TokenManager() {
       }
     }
   }, [data?.tokens, tokens]);
-
-  const now = useServerNow(data?.server_time);
-  const allowance = data?.allowance;
-  const trial = data?.trial;
-  const tokens = useMemo(() => data?.tokens ?? [], [data]);
 
   async function copy(value: string) {
     await navigator.clipboard.writeText(value);
