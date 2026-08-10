@@ -120,24 +120,27 @@ function Admin() {
             <MskLogo size={32} />
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-4">
+        <nav className="flex-1 space-y-1 p-4 scrollbar-hide overflow-y-auto">
           {[
             { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
             { value: "affiliates", label: "Afiliados", Icon: Users },
-            { value: "subs", label: "Assinaturas", Icon: Zap },
+            { value: "subs", label: "Ofertas", Icon: Zap },
             { value: "finance", label: "Financeiro", Icon: TrendingUp },
-            { value: "editor", label: "Editor", Icon: Activity },
+            { value: "editor", label: "Editor Site", Icon: Activity },
             { value: "tracking", label: "Analytics", Icon: TrendingUp },
+            { value: "extension", label: "Extensão", Icon: Monitor },
             { value: "gateway", label: "Gateway", Icon: ShieldAlert },
-            { value: "logs", label: "Logs", Icon: Clock },
+            { value: "logs", label: "Auditoria", Icon: Clock },
           ].map(({ value, label, Icon }) => (
             <button
               key={value}
               type="button"
               onClick={() => setActiveTab(value)}
               className={cn(
-                "w-full flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all border-none shadow-none",
-                activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                "w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-[0.7rem] font-black uppercase tracking-widest transition-all",
+                activeTab === value 
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
               )}
             >
               <Icon className="h-4 w-4" />
