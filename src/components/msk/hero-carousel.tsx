@@ -10,9 +10,11 @@ import bannerInf from "@/assets/banner_infinite.png.asset.json";
 import bannerInt from "@/assets/banner_interrupted.png.asset.json";
 import bannerNoC from "@/assets/banner_no_credits.png.asset.json";
 import bannerAfiliado from "@/assets/banner-afiliado.png.asset.json";
+import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
 
 const DEFAULT_BANNERS = [
   { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK" },
+  { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA" },
   { url: bannerInf.url, alt: "Acesso Ilimitado Liberado" },
   { url: bannerInt.url, alt: "Cansado de ser interrompido?" },
   { url: bannerNoC.url, alt: "Chega de ficar sem créditos" },
