@@ -192,7 +192,7 @@ export function AdminEditorTab() {
                   size="sm" 
                   variant="neonOutline"
                   onClick={() => {
-                    const currentBanners = localSettings.hero?.banners || [];
+                    const currentBanners = (localSettings as any).hero?.banners || [];
                     updateSetting('hero', 'banners', [...currentBanners, { url: '', alt: '' }]);
                   }}
                 >
@@ -201,7 +201,7 @@ export function AdminEditorTab() {
               </div>
 
               <div className="space-y-4">
-                {(localSettings.hero?.banners || []).map((banner: any, index: number) => (
+                {((localSettings as any).hero?.banners || []).map((banner: any, index: number) => (
                   <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
                     <div className="flex items-start gap-4">
                       <div className="h-20 w-32 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
@@ -217,7 +217,7 @@ export function AdminEditorTab() {
                             placeholder="URL da Imagem"
                             value={banner.url}
                             onChange={(e) => {
-                              const newBanners = [...localSettings.hero.banners];
+                              const newBanners = [...(localSettings as any).hero.banners];
                               newBanners[index].url = e.target.value;
                               updateSetting('hero', 'banners', newBanners);
                             }}
@@ -240,7 +240,7 @@ export function AdminEditorTab() {
                                     fd.append('file', file);
                                     fd.append('key', `landing-banner-${index}`);
                                     const res = await uploadAsset({ data: fd as any });
-                                    const newBanners = [...localSettings.hero.banners];
+                                    const newBanners = [...(localSettings as any).hero.banners];
                                     newBanners[index].url = res.url;
                                     updateSetting('hero', 'banners', newBanners);
                                     toast.success("Imagem carregada!");
@@ -263,7 +263,7 @@ export function AdminEditorTab() {
                             placeholder="Texto Alternativo (Alt)"
                             value={banner.alt}
                             onChange={(e) => {
-                              const newBanners = [...localSettings.hero.banners];
+                              const newBanners = [...(localSettings as any).hero.banners];
                               newBanners[index].alt = e.target.value;
                               updateSetting('hero', 'banners', newBanners);
                             }}
@@ -274,7 +274,7 @@ export function AdminEditorTab() {
                             variant="ghost" 
                             className="shrink-0 text-red-500 hover:text-red-400 hover:bg-red-500/10"
                             onClick={() => {
-                              const newBanners = localSettings.hero.banners.filter((_: any, i: number) => i !== index);
+                              const newBanners = (localSettings as any).hero.banners.filter((_: any, i: number) => i !== index);
                               updateSetting('hero', 'banners', newBanners);
                             }}
                           >
