@@ -73,9 +73,12 @@ export const publishCmsDraft = createServerFn({ method: "POST" })
       .select("*")
       .eq("key", data.key)
       .eq("status", "draft")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
-    if (draftErr || !draft) throw new Error("Draft not found");
+    if (draftErr) throw new Error(`Database error fetching draft: ${draftErr.message}`);
+    if (!draft) throw new Error(`Draft not found for key: ${data.key}. Certifique-se de "Salvar Rascunho" antes de publicar.`);
 
     const { error: setErr } = await (supabaseAdmin as any)
       .from("app_settings")
@@ -83,9 +86,9 @@ export const publishCmsDraft = createServerFn({ method: "POST" })
         key: data.key,
         value: draft.data,
         updated_at: new Date().toISOString()
-      });
+      }, { onConflict: 'key' });
     
-    if (setErr) throw new Error(setErr.message);
+    if (setErr) throw new Error(`Database error publishing to app_settings: ${setErr.message}`);
 
     await (supabaseAdmin as any)
       .from("cms_drafts")
