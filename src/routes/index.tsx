@@ -1,4 +1,4 @@
-// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION) - TELA DE BLOQUEIO E BRANDING ADMIN ATUALIZADOS - Super Admin: sempreteste552@gmail.com - EXTENSÃO ÚNICA E DOWNLOAD VERIFICADO 100% - ADMIN COM BOTÃO ATIVAR NAS EXTENSÕES E CARD DE CANAIS PROFISSIONAL - msk_sistem_licenciada.zip essa deve ser a ynica - CORREÇÃO 'OBJECT NOT FOUND' NO DOWNLOAD REALIZADA - TELA DE LICENÇA AGORA ABRE EM POPUP CENTRALIZADO - LOGO E BANNERS ATUALIZADOS
+// MSK SISTEM ATUALIZADA - MODO MSK ATIVO (WEB & EXTENSION) - TELA DE BLOQUEIO E BRANDING ADMIN ATUALIZADOS - Super Admin: sempreteste552@gmail.com - EXTENSÃO ÚNICA E DOWNLOAD VERIFICADO 100% - ADMIN COM BOTÃO ATIVAR NAS EXTENSÕES E CARD DE CANAIS PROFISSIONAL - msk_sistem_licenciada.zip essa deve ser a ynica - CORREÇÃO 'OBJECT NOT FOUND' NO DOWNLOAD REALIZADA - TELA DE LICENÇA AGORA ABRE EM POPUP CENTRALIZADO - LOGO E BANNERS ATUALIZADOS - AJUSTE DE BOTÕES QUEBRADOS EM TABLETS REALIZADO
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
@@ -98,10 +98,10 @@ function Index() {
 
 
             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 w-full justify-center md:justify-start">
-              <Button asChild variant="neon" size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center">
+              <Button asChild variant="neon" size="lg" className="px-4 py-6 sm:px-6 sm:h-14 text-[13px] sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center min-h-[4rem] sm:min-h-0">
                 <Link to={cms['hero']?.cta_link || "/auth"}>{cms['hero']?.cta_text || "Quero créditos infinitos agora"}</Link>
               </Button>
-              <Button asChild variant="neonOutline" size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center">
+              <Button asChild variant="neonOutline" size="lg" className="px-4 py-6 sm:px-6 sm:h-14 text-[13px] sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center min-h-[4rem] sm:min-h-0">
                 <Link to="/planos" preload="intent">Ver Planos e Preços</Link>
               </Button>
             </motion.div>
@@ -276,7 +276,7 @@ function Index() {
               </div>
               
               <div className="flex flex-col items-center gap-6 w-full">
-                <Button asChild variant="neon" size="lg" className="px-6 sm:px-12 h-16 text-sm sm:text-xl w-full sm:w-auto whitespace-normal sm:whitespace-nowrap text-center leading-tight">
+                <Button asChild variant="neon" size="lg" className="px-4 py-6 sm:px-12 h-auto sm:h-16 text-sm sm:text-xl w-full sm:w-auto whitespace-normal sm:whitespace-nowrap text-center leading-tight flex items-center justify-center min-h-[4.5rem] sm:min-h-0">
                   <Link to="/auth">Quero meu acesso ilimitado agora</Link>
                 </Button>
                 <p className="text-sm text-muted-foreground">Teste com tranquilidade. Se não fizer sentido, basta cancelar.</p>
