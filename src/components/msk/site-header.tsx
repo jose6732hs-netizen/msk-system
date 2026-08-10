@@ -111,7 +111,7 @@ export function SiteHeader() {
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  Baixar Extensão
+                  Baixar Extensão Grátis
                 </>
               )}
             </span>
