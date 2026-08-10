@@ -105,8 +105,7 @@ function AuthPage() {
   useEffect(() => {
     // Se vier do botão de afiliado, inicia no modo pré-cadastro
     const isAffiliate = search.next?.includes('parceiro') || 
-                        window.location.hash === '#afiliado' || 
-                        window.location.href.includes('#afiliado') ||
+                        search.mode === 'signup' ||
                         document.referrer.includes('/parceiros');
 
     if (search.mode) {
