@@ -494,9 +494,9 @@ export function AdminEditorTab() {
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-2" /> Remover
-                      </Button>
+                        </Button>
+                      </div>
                     </div>
-                  </div>
                 ))}
               </div>
 
@@ -525,8 +525,6 @@ export function AdminEditorTab() {
                       <div className="h-20 w-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
                         {((localSettings as any).branding?.icon_url ?? (initialSettings as any).branding?.icon_url) ? (
                           <img src={(localSettings as any).branding?.icon_url ?? (initialSettings as any).branding?.icon_url} className="h-full w-full object-cover" />
-
-
                         ) : (
                           <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
                         )}
@@ -572,8 +570,6 @@ export function AdminEditorTab() {
                     <div className="aspect-video w-full rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group">
                       {((localSettings as any).branding?.banner_url ?? (initialSettings as any).branding?.banner_url) ? (
                         <img src={(localSettings as any).branding?.banner_url ?? (initialSettings as any).branding?.banner_url} className="h-full w-full object-cover" />
-
-
                       ) : (
                         <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
                       )}
