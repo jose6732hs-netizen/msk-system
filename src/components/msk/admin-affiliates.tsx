@@ -431,6 +431,32 @@ function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> 
                   Verificação de Documentos
                 </h5>
                 <p className="text-xs text-white/60 mb-4">O afiliado enviou documentos para análise.</p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  {(affiliate["documents"] || []).map((doc: any) => (
+                    <div key={doc.id} className="space-y-2">
+                      <p className="text-[10px] font-bold uppercase text-white/40">{doc.type}</p>
+                      <div className="aspect-square rounded-xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group/img">
+                        {doc.file_path ? (
+                          <>
+                            <img src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/affiliate-docs/${doc.file_path}`} className="w-full h-full object-cover" />
+                            <a 
+                              href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/affiliate-docs/${doc.file_path}`} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center"
+                            >
+                              <ExternalLink className="h-6 w-6 text-white" />
+                            </a>
+                          </>
+                        ) : (
+                          <FileText className="h-8 w-8 text-white/20" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
                 <div className="flex gap-3">
                   <Button 
                     variant="neon" 
@@ -439,7 +465,7 @@ function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> 
                     disabled={busy}
                   >
                     {busy ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <CheckCircle2 className="h-3 w-3 mr-2" />}
-                    Aprovar
+                    Aprovar Tudo
                   </Button>
                   <Button 
                     variant="destructive" 
@@ -448,7 +474,7 @@ function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> 
                     disabled={busy}
                   >
                     {busy ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <X className="h-3 w-3 mr-2" />}
-                    Rejeitar
+                    Rejeitar Tudo
                   </Button>
                 </div>
               </div>
