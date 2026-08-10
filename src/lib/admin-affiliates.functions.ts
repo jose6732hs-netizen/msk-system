@@ -102,6 +102,15 @@ export const adminSaveAffiliateGoals = createServerFn({ method: "POST" })
     return saveAffiliateGoals(data, context.userId);
   });
 
+export const adminApproveAffiliateDocs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ affiliateId: z.string().uuid(), approve: z.boolean(), reason: z.string().optional() }).parse(d))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { approveAffiliateDocs } = await import("./admin-affiliates.server");
+    return approveAffiliateDocs(data.affiliateId, data.approve, data.reason, context.userId);
+  });
+
 export const adminSaveAppUrl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ url: z.string().url() }).parse(d))
