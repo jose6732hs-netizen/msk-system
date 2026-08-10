@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import { 
   Trophy, 
   Target, 
@@ -8,7 +9,8 @@ import {
   Star, 
   Gem, 
   ChevronRight,
-  ArrowLeft
+  ArrowLeft,
+  ChevronLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MskLogo } from "@/components/msk/logo";
