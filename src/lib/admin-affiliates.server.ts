@@ -23,7 +23,7 @@ export async function loadAdminAffiliates(search = "") {
   const userIds = list.map((a) => a["user_id"]);
   const affiliateIds = list.map((a) => a["id"]);
 
-  const [{ data: profiles }, { data: referrals }, { data: conversions }, { data: commissions }] = await Promise.all([
+  const [{ data: profiles }, { data: referrals }, { data: conversions }, { data: commissions }, { data: documents }] = await Promise.all([
     userIds.length
       ? supabaseAdmin.from("profiles").select("id,name,email").in("id", userIds)
       : { data: [] as Record<string, any>[] },
@@ -36,9 +36,18 @@ export async function loadAdminAffiliates(search = "") {
     affiliateIds.length
       ? supabaseAdmin.from("affiliate_commissions").select("affiliate_id, amount, status").in("affiliate_id", affiliateIds)
       : { data: [] as Record<string, any>[] },
+    affiliateIds.length
+      ? supabaseAdmin.from("affiliate_documents").select("*").in("affiliate_id", affiliateIds)
+      : { data: [] as Record<string, any>[] },
   ]);
 
   const byUser = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  const docsByAffiliate = new Map<string, any[]>();
+  (documents ?? []).forEach(d => {
+    const list = docsByAffiliate.get(d["affiliate_id"]) || [];
+    list.push(d);
+    docsByAffiliate.set(d["affiliate_id"], list);
+  });
   
   const statsMap = new Map<string, { signups: number; customers: number; revenue: number; commission: number; pending: number; paid: number }>();
   
@@ -86,6 +95,7 @@ export async function loadAdminAffiliates(search = "") {
         commission_generated: stats?.commission ?? 0,
         commission_pending: stats?.pending ?? a["pending_balance"] ?? 0,
         commission_paid: stats?.paid ?? a["total_paid"] ?? 0,
+        documents: docsByAffiliate.get(a["id"]) || [],
       };
       return row;
     })
@@ -238,6 +248,12 @@ export async function approveAffiliateDocs(affiliateId: string, approve: boolean
     .eq("id", affiliateId);
 
   if (error) throw error;
+
+  // Also update status for all documents of this affiliate
+  await supabaseAdmin
+    .from("affiliate_documents")
+    .update({ status } as any)
+    .eq("affiliate_id", affiliateId);
 
   await logAudit({
     userId: actorId,
