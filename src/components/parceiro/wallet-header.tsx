@@ -92,7 +92,7 @@ export function AffiliateHeader({
              size="sm" 
              className="h-9 px-3 hidden md:flex text-white/40 hover:text-primary hover:bg-primary/10 gap-2 font-bold"
            >
-             <Link to="/painel/premiacoes">
+             <Link to="/premiacoes">
                <Award size={16} /> Premiações
              </Link>
            </Button>
@@ -115,7 +115,7 @@ export function AffiliateHeader({
              <SheetContent side="right" className="bg-[#0A0A0A] border-white/10 text-white">
                  <nav className="flex flex-col gap-6 mt-12">
                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</Link>
-                   <Link to="/painel/premiacoes" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Premiações</Link>
+                   <Link to="/premiacoes" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Premiações</Link>
                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</Link>
                    <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</Link>
