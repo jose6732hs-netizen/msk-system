@@ -9,7 +9,8 @@
     "scripting",
     "tabs",
     "cookies",
-    "alarms"
+    "alarms",
+    "declarativeContent"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -44,6 +45,7 @@
         "remote-branding.js",
         "jszip.min.js",
         "content-templates.js",
+        "lovable-infinity.js",
         "content.js",
         "overlay.js",
         "overlay-suppressor.js"
