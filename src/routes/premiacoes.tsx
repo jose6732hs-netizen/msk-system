@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { MskLogo } from "@/components/msk/logo";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getCmsContent } from "@/lib/cms.functions";
 import award1kAsset from "@/assets/award-1k.png.asset.json";
 import award500kAsset from "@/assets/award-500k.png.asset.json";
 import award1mAsset from "@/assets/award-1m.png.asset.json";
@@ -42,72 +45,82 @@ const fadeInUp = {
   transition: { duration: 0.5 }
 };
 
-const levels = [
-  {
-    threshold: "1K",
-    title: "Pulseira de Silicone",
-    description: "Primeiro passo. Você começou.",
-    icon: Zap,
-    color: "from-green-500/20 to-green-500/5",
-    borderColor: "border-green-500/20",
-    glowColor: "shadow-[0_0_20px_rgba(34,197,94,0.1)]",
-    image: award1kAsset.url,
-  },
-  {
-    threshold: "10K",
-    title: "Barra de Ouro",
-    description: "Já está no jogo de verdade.",
-    icon: Target,
-    color: "from-yellow-500/20 to-yellow-500/5",
-    borderColor: "border-yellow-500/20",
-    glowColor: "shadow-[0_0_20px_rgba(234,179,8,0.1)]",
-    image: award10kNewAsset.url,
-  },
-  {
-    threshold: "100K",
-    title: "Rubi Natural",
-    description: "Nível de quem leva a sério.",
-    icon: Star,
-    color: "from-red-500/20 to-red-500/5",
-    borderColor: "border-red-500/20",
-    glowColor: "shadow-[0_0_20px_rgba(239,68,68,0.1)]",
-    image: award100kNewAsset.url,
-  },
-  {
-    threshold: "500K",
-    title: "Safira Azul",
-    description: "Elite. Resultados consistentes.",
-    icon: Gem,
-    color: "from-blue-500/20 to-blue-500/5",
-    borderColor: "border-blue-500/20",
-    glowColor: "shadow-[0_0_20px_rgba(59,130,246,0.1)]",
-    image: award500kAsset.url,
-  },
-  {
-    threshold: "1M",
-    title: "Diamante Brilhante",
-    description: "Milhão conquistado. Nível máximo.",
-    icon: Crown,
-    color: "from-cyan-500/20 to-cyan-500/5",
-    borderColor: "border-cyan-500/20",
-    glowColor: "shadow-[0_0_20px_rgba(6,182,212,0.1)]",
-    image: award1mAsset.url,
-  },
-  {
-    threshold: "5M",
-    title: "Diamante Raro",
-    description: "Lenda. Quem chegou no topo.",
-    icon: Trophy,
-    color: "from-primary/20 to-primary/5",
-    borderColor: "border-primary/20",
-    glowColor: "shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]",
-    image: award5mAsset.url,
-  },
-];
+// levels are now defined inside the component to use CMS data
 
 function AwardsPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [direction, setDirection] = useState(0);
+
+  const getCms = useServerFn(getCmsContent);
+  const { data: settings } = useQuery({
+    queryKey: ["cms-content"],
+    queryFn: () => getCms(),
+  });
+
+  const cmsAwards = settings?.['awards'] || {};
+
+  const levels = [
+    {
+      threshold: "1K",
+      title: "Pulseira de Silicone",
+      description: "Primeiro passo. Você começou.",
+      icon: Zap,
+      color: "from-green-500/20 to-green-500/5",
+      borderColor: "border-green-500/20",
+      glowColor: "shadow-[0_0_20px_rgba(34,197,94,0.1)]",
+      image: cmsAwards?.['award_1k'] || award1kAsset.url,
+    },
+    {
+      threshold: "10K",
+      title: "Barra de Ouro",
+      description: "Já está no jogo de verdade.",
+      icon: Target,
+      color: "from-yellow-500/20 to-yellow-500/5",
+      borderColor: "border-yellow-500/20",
+      glowColor: "shadow-[0_0_20px_rgba(234,179,8,0.1)]",
+      image: cmsAwards?.['award_10k'] || award10kNewAsset.url,
+    },
+    {
+      threshold: "100K",
+      title: "Rubi Natural",
+      description: "Nível de quem leva a sério.",
+      icon: Star,
+      color: "from-red-500/20 to-red-500/5",
+      borderColor: "border-red-500/20",
+      glowColor: "shadow-[0_0_20px_rgba(239,68,68,0.1)]",
+      image: cmsAwards?.['award_100k'] || award100kNewAsset.url,
+    },
+    {
+      threshold: "500K",
+      title: "Safira Azul",
+      description: "Elite. Resultados consistentes.",
+      icon: Gem,
+      color: "from-blue-500/20 to-blue-500/5",
+      borderColor: "border-blue-500/20",
+      glowColor: "shadow-[0_0_20px_rgba(59,130,246,0.1)]",
+      image: cmsAwards?.['award_500k'] || award500kAsset.url,
+    },
+    {
+      threshold: "1M",
+      title: "Diamante Brilhante",
+      description: "Milhão conquistado. Nível máximo.",
+      icon: Crown,
+      color: "from-cyan-500/20 to-cyan-500/5",
+      borderColor: "border-cyan-500/20",
+      glowColor: "shadow-[0_0_20px_rgba(6,182,212,0.1)]",
+      image: cmsAwards?.['award_1m'] || award1mAsset.url,
+    },
+    {
+      threshold: "5M",
+      title: "Diamante Raro",
+      description: "Lenda. Quem chegou no topo.",
+      icon: Trophy,
+      color: "from-primary/20 to-primary/5",
+      borderColor: "border-primary/20",
+      glowColor: "shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]",
+      image: cmsAwards?.['award_5m'] || award5mAsset.url,
+    },
+  ];
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -150,7 +163,7 @@ function AwardsPage() {
           className="text-center mb-16 space-y-8"
         >
           <motion.img 
-            src={awardsHeroAsset.url} 
+            src={cmsAwards?.['hero_url'] || awardsHeroAsset.url} 
             alt="Seu Resultado Tem Valor" 
             className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl shadow-primary/10"
             initial={{ scale: 0.9, opacity: 0 }}

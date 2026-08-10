@@ -15,7 +15,8 @@ import {
   Upload,
   Palette,
   Users,
-  Trash2
+  Trash2,
+  Trophy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +26,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
 
-type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials';
+type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -125,6 +126,7 @@ export function AdminEditorTab() {
             { id: 'banners', label: 'Banners Landing', icon: ImageIcon },
             { id: 'partners', label: 'Parceiros', icon: Users },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
+            { id: 'awards', label: 'Premiações / Placas', icon: Trophy },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
             { id: 'tutorials', label: 'Tutoriais / Explicações', icon: FileText },
           ].map((item: any) => (
@@ -155,8 +157,9 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
-                  value={(localSettings as any).hero?.title ?? ''} 
-                  placeholder={(settings as any)?.hero?.title || 'Pare de ser interrompido no meio da criação'}
+                  value={(localSettings as any).hero?.['title'] ?? ''} 
+                  placeholder={(settings as any)?.hero?.['title'] || 'Pare de ser interrompido no meio da criação'}
+
                   onChange={(e) => updateSetting('hero', 'title', e.target.value)}
                   className="bg-background/50"
                 />
@@ -164,8 +167,9 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo</label>
                 <Textarea 
-                  value={(localSettings as any).hero?.subtitle ?? ''} 
-                  placeholder={(settings as any)?.hero?.subtitle || 'Acesso completo à extensão Lovable com créditos infinitos...'}
+                  value={(localSettings as any).hero?.['subtitle'] ?? ''} 
+                  placeholder={(settings as any)?.hero?.['subtitle'] || 'Acesso completo à extensão Lovable com créditos infinitos...'}
+
                   onChange={(e) => updateSetting('hero', 'subtitle', e.target.value)}
                   className="bg-background/50 min-h-[100px]"
                 />
@@ -174,14 +178,14 @@ export function AdminEditorTab() {
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Texto CTA</label>
                   <Input 
-                    value={(localSettings as any).hero?.cta_text ?? (initialSettings as any).hero?.cta_text ?? 'Quero créditos infinitos agora'} 
+                    value={(localSettings as any).hero?.['cta_text'] ?? (initialSettings as any).hero?.['cta_text'] ?? 'Quero créditos infinitos agora'} 
                     onChange={(e) => updateSetting('hero', 'cta_text', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Link CTA</label>
                   <Input 
-                    value={(localSettings as any).hero?.cta_link ?? (initialSettings as any).hero?.cta_link ?? '/auth'} 
+                    value={(localSettings as any).hero?.['cta_link'] ?? (initialSettings as any).hero?.['cta_link'] ?? '/auth'} 
                     onChange={(e) => updateSetting('hero', 'cta_link', e.target.value)}
                   />
                 </div>
@@ -367,6 +371,132 @@ export function AdminEditorTab() {
             </div>
           )}
           
+          {activeSection === 'awards' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Premiações / Placas</h4>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Banner Principal (Awards Hero)</label>
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="URL da Imagem Hero"
+                      value={(localSettings as any).awards?.hero_url ?? (initialSettings as any).awards?.hero_url ?? ''} 
+                      onChange={(e) => updateSetting('awards', 'hero_url', e.target.value)}
+                    />
+                    <Button 
+                      size="icon" 
+                      variant="neonOutline"
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file';
+                        input.accept = 'image/*';
+                        input.onchange = async (e) => {
+                          const file = (e.target as HTMLInputElement).files?.[0];
+                          if (file) {
+                            setUploading('awards-hero');
+                            try {
+                              const fd = new FormData();
+                              fd.append('file', file);
+                              fd.append('key', 'awards-hero');
+                              const res = await uploadAsset({ data: fd as any });
+                              updateSetting('awards', 'hero_url', res.url);
+                              toast.success("Hero carregado!");
+                            } catch (err) {
+                              toast.error("Erro no upload");
+                            } finally {
+                              setUploading(null);
+                            }
+                          }
+                        };
+                        input.click();
+                      }}
+                      disabled={uploading === 'awards-hero'}
+                    >
+                      {uploading === 'awards-hero' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { key: 'award_1k', label: 'Placa 1K' },
+                    { key: 'award_10k', label: 'Placa 10K' },
+                    { key: 'award_100k', label: 'Placa 100K' },
+                    { key: 'award_500k', label: 'Placa 500K' },
+                    { key: 'award_1m', label: 'Placa 1M' },
+                    { key: 'award_5m', label: 'Placa 5M' },
+                  ].map((award) => (
+                    <div key={award.key} className="glass rounded-xl p-4 border border-white/5 space-y-3">
+                      <label className="text-[0.6rem] font-black uppercase tracking-widest text-primary/70">{award.label}</label>
+                      <div className="flex items-center gap-3">
+                        <div className="h-16 w-16 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                          {((localSettings as any).awards?.[award.key] ?? (initialSettings as any).awards?.[award.key]) ? (
+                            <img src={(localSettings as any).awards?.[award.key] ?? (initialSettings as any).awards?.[award.key]} className="h-full w-full object-contain" />
+                          ) : (
+                            <Trophy className="h-6 w-6 text-muted-foreground/30" />
+                          )}
+                        </div>
+                        <div className="flex-1 flex gap-2">
+                          <Input 
+                            placeholder="URL"
+                            value={(localSettings as any).awards?.[award.key] ?? (initialSettings as any).awards?.[award.key] ?? ''} 
+                            onChange={(e) => updateSetting('awards', award.key, e.target.value)}
+                            className="text-xs h-9"
+                          />
+                          <Button 
+                            size="icon" 
+                            variant="neonOutline"
+                            className="h-9 w-9 shrink-0"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.onchange = async (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) {
+                                  setUploading(award.key);
+                                  try {
+                                    const fd = new FormData();
+                                    fd.append('file', file);
+                                    fd.append('key', award.key);
+                                    const res = await uploadAsset({ data: fd as any });
+                                    updateSetting('awards', award.key, res.url);
+                                    toast.success(`${award.label} carregada!`);
+                                  } catch (err) {
+                                    toast.error("Erro no upload");
+                                  } finally {
+                                    setUploading(null);
+                                  }
+                                }
+                              };
+                              input.click();
+                            }}
+                            disabled={uploading === award.key}
+                          >
+                            {uploading === award.key ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('awards')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+                </Button>
+                <Button onClick={() => handlePublish('awards')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Premiações
+                </Button>
+              </div>
+            </div>
+          )}
+
           {activeSection === 'copy' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 

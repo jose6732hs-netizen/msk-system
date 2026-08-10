@@ -143,7 +143,6 @@ function Admin() {
             { value: "subs", label: "Ofertas", Icon: Zap },
             { value: "finance", label: "Financeiro", Icon: TrendingUp },
             { value: "editor", label: "Editor Site", Icon: Activity },
-            { value: "awards", label: "Premiações", Icon: Trophy },
             { value: "tracking", label: "Analytics", Icon: TrendingUp },
             { value: "extension", label: "Extensão", Icon: Monitor },
             { value: "gateway", label: "Gateway", Icon: ShieldAlert },
@@ -295,7 +294,6 @@ function Admin() {
                   {[
                     { value: "licenses", label: "Licenças", Icon: Zap },
                     { value: "editor", label: "Editor Site", Icon: Activity, color: "text-primary" },
-                    { value: "awards", label: "Premiações", Icon: Trophy, color: "text-yellow-400" },
                     { value: "tracking", label: "Analytics", Icon: TrendingUp, color: "text-emerald-400" },
                     ...(role?.superAdmin ? [{ value: "tokens", label: "Gerar Token", Icon: MessageSquare }] : []),
                     { value: "users", label: "Usuários", Icon: Users },
