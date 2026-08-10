@@ -43,16 +43,8 @@ export const Route = createFileRoute("/api/public/license/activate")({
           return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
         }
 
-        const license = (await findLicenseByToken(body.token)) as never as
-          | (Record<string, never> & {
-              id: string;
-              user_id: string;
-              status: string;
-              expires_at: string | null;
-              max_devices: number;
-              plans: { slug: string; name: string; features: Record<string, boolean> } | null;
-            })
-          | null;
+        const license = (await findLicenseByToken(body.token)) as any;
+
 
         if (!license) {
           await logEvent({
@@ -156,9 +148,6 @@ export const Route = createFileRoute("/api/public/license/activate")({
         if (!license.activated_at) {
           updates.activated_at = new Date().toISOString();
           // Se a licença tiver uma duração definida (ex: teste/trial), calcula a expiração baseada no agora
-          // Caso contrário (vitalícia), mantém o comportamento original.
-          // O backend já define um 'expires_at' inicial como fallback em commerce.server.ts, 
-          // mas aqui recalculamos para ser justo com o tempo de uso real.
           if (license.expires_at && license.starts_at) {
             const duration = new Date(license.expires_at).getTime() - new Date(license.starts_at).getTime();
             updates.expires_at = new Date(Date.now() + duration).toISOString();
@@ -169,6 +158,7 @@ export const Route = createFileRoute("/api/public/license/activate")({
           .from("licenses")
           .update(updates)
           .eq("id", license.id);
+
 
         await logEvent({
           license_id: license.id,
