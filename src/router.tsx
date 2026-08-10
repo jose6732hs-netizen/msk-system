@@ -27,7 +27,9 @@ export const getRouter = () => {
       if (typeof window === "undefined" || !isStaleChunkError(error)) return;
       if (sessionStorage.getItem(STALE_CHUNK_KEY)) return;
       sessionStorage.setItem(STALE_CHUNK_KEY, "1");
-      window.location.reload();
+      const url = new URL(window.location.href);
+      url.searchParams.set("_v", Date.now().toString(36));
+      window.location.replace(url.toString());
     },
   });
 
