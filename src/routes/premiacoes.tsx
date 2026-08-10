@@ -18,6 +18,7 @@ import award1kAsset from "@/assets/award-1k.png.asset.json";
 import award500kAsset from "@/assets/award-500k.png.asset.json";
 import award1mAsset from "@/assets/award-1m.png.asset.json";
 import award5mAsset from "@/assets/award-5m.png.asset.json";
+import awardsHeroAsset from "@/assets/awards-hero.png.asset.json";
 const award10kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-10k.png" };
 const award100kAsset = { url: "https://zjrrymncmiyftyogejjr.supabase.co/storage/v1/object/public/images/award-100k.png" };
 
