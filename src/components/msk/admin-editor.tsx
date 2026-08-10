@@ -14,7 +14,8 @@ import {
   Image as ImageIcon,
   Upload,
   Palette,
-  Users
+  Users,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
 
-type Section = 'hero' | 'partners' | 'features' | 'copy' | 'branding';
+type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -116,7 +117,8 @@ export function AdminEditorTab() {
 
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {[
-            { id: 'hero', label: 'Hero / Início', icon: Monitor },
+            { id: 'hero', label: 'Hero / Texto', icon: Monitor },
+            { id: 'banners', label: 'Banners Landing', icon: ImageIcon },
             { id: 'partners', label: 'Parceiros', icon: Users },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
@@ -175,6 +177,120 @@ export function AdminEditorTab() {
                 </Button>
                 <Button onClick={() => handlePublish('hero')} variant="neon" className="flex-1 font-black">
                   <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Agora
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {activeSection === 'banners' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Gerenciar Banners da Landing</label>
+                <Button 
+                  size="sm" 
+                  variant="neonOutline"
+                  onClick={() => {
+                    const currentBanners = localSettings.hero?.banners || [];
+                    updateSetting('hero', 'banners', [...currentBanners, { url: '', alt: '' }]);
+                  }}
+                >
+                  + Adicionar Banner
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {(localSettings.hero?.banners || []).map((banner: any, index: number) => (
+                  <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="h-20 w-32 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                        {banner.url ? (
+                          <img src={banner.url} className="h-full w-full object-cover" />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-muted-foreground/30" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="URL da Imagem"
+                            value={banner.url}
+                            onChange={(e) => {
+                              const newBanners = [...localSettings.hero.banners];
+                              newBanners[index].url = e.target.value;
+                              updateSetting('hero', 'banners', newBanners);
+                            }}
+                            className="text-[0.7rem]"
+                          />
+                          <Button 
+                            size="icon" 
+                            variant="neonOutline" 
+                            className="shrink-0"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.onchange = async (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) {
+                                  setUploading(`banner-${index}`);
+                                  try {
+                                    const fd = new FormData();
+                                    fd.append('file', file);
+                                    fd.append('key', `landing-banner-${index}`);
+                                    const res = await uploadAsset({ data: fd as any });
+                                    const newBanners = [...localSettings.hero.banners];
+                                    newBanners[index].url = res.url;
+                                    updateSetting('hero', 'banners', newBanners);
+                                    toast.success("Imagem carregada!");
+                                  } catch (err) {
+                                    toast.error("Erro no upload");
+                                  } finally {
+                                    setUploading(null);
+                                  }
+                                }
+                              };
+                              input.click();
+                            }}
+                            disabled={uploading === `banner-${index}`}
+                          >
+                            {uploading === `banner-${index}` ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="Texto Alternativo (Alt)"
+                            value={banner.alt}
+                            onChange={(e) => {
+                              const newBanners = [...localSettings.hero.banners];
+                              newBanners[index].alt = e.target.value;
+                              updateSetting('hero', 'banners', newBanners);
+                            }}
+                            className="text-[0.7rem]"
+                          />
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="shrink-0 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            onClick={() => {
+                              const newBanners = localSettings.hero.banners.filter((_: any, i: number) => i !== index);
+                              updateSetting('hero', 'banners', newBanners);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('hero')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+                </Button>
+                <Button onClick={() => handlePublish('hero')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Banners
                 </Button>
               </div>
             </div>

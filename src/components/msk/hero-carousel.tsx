@@ -25,7 +25,7 @@ export function HeroCarousel() {
     queryFn: () => getCms(),
   });
 
-  const banners = settings?.hero?.banners || DEFAULT_BANNERS;
+  const banners = (settings as any)?.hero?.banners || DEFAULT_BANNERS;
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => {
