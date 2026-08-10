@@ -12,7 +12,7 @@ import { PayerForm, useBilling } from "@/components/msk/payer-form";
 import { PixDialog, type PixState } from "@/components/msk/pix-dialog";
 import { startPixCheckout } from "@/lib/commerce.functions";
 import { track, saveCartSnapshot } from "@/lib/tracking";
-import cardDiarioAsset from "@/assets/card-diario.jpg.asset.json";
+import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
 import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
 import cardFreeImg from "@/assets/card-free.jpg";
 import cardSemanalImg from "@/assets/card-semanal.jpg";
@@ -21,7 +21,7 @@ import cardTrimestralImg from "@/assets/card-trimestral.jpg";
 
 const PLAN_IMAGES: Record<string, string> = {
   "free-test": cardFreeImg,
-  daily: cardDiarioAsset.url,
+  daily: dailyLicenseAsset.url,
   weekly: cardSemanalImg,
   monthly: cardMensalImg,
   quarterly: cardTrimestralImg,
