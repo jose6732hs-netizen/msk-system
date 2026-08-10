@@ -100,9 +100,9 @@ function AffiliateDashboard() {
       <main className="container max-w-7xl mx-auto px-4 py-8">
         <Tabs defaultValue="overview" className="space-y-10 focus:outline-none">
           <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-14 w-full max-w-md">
-            <TabsTrigger value="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary">Painel</TabsTrigger>
-            <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center gap-2">
-              <FileText size={16} /> Documentos
+            <TabsTrigger value="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-full">Painel</TabsTrigger>
+            <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+              <FileText size={16} className="shrink-0" /> <span className="truncate">Documentos</span>
             </TabsTrigger>
           </TabsList>
 

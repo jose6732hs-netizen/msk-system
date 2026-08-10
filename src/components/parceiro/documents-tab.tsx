@@ -100,10 +100,10 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
   };
 
   const statusConfig = {
-    WAITING: { label: "Aguardando envio de documentos", color: "bg-white/5 border-white/10 text-white/40" },
-    PENDING: { label: "Documentos em análise", color: "bg-amber-500/10 border-amber-500/20 text-amber-500" },
-    APPROVED: { label: "Aprovado – Afiliação liberada", color: "bg-green-500/10 border-green-500/20 text-green-500" },
-    REJECTED: { label: "Reprovado – Reenvie os documentos", color: "bg-red-500/10 border-red-500/20 text-red-500" },
+    WAITING: { label: "Aguardando envio de documentos", color: "bg-white/5 border-white/10 text-white/40", description: "Envie sua selfie com documento para começar." },
+    PENDING: { label: "Documentos em análise", color: "bg-amber-500/10 border-amber-500/20 text-amber-500", description: "Estamos revisando seus documentos. Isso leva até 24h." },
+    APPROVED: { label: "Aprovado – Afiliação liberada", color: "bg-green-500/10 border-green-500/20 text-green-500", description: "Tudo certo! Você já pode realizar saques." },
+    REJECTED: { label: "Reprovado – Reenvie os documentos", color: "bg-red-500/10 border-red-500/20 text-red-500", description: "Documento ilegível ou inválido. Por favor, tente novamente." },
   };
 
   const currentStatus = statusConfig[status];
@@ -119,7 +119,7 @@ export function DocumentsTab({ status }: DocumentsTabProps) {
              {currentStatus.label}
           </div>
           <h2 className="text-3xl font-bold mb-2">Documentação</h2>
-          <p className="text-white/40 max-w-xl">Envie seus documentos para análise. A afiliação só é liberada após aprovação da nossa equipe de compliance.</p>
+          <p className="text-white/40 max-w-xl">{currentStatus.description}</p>
         </div>
       </section>
 

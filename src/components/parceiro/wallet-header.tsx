@@ -103,7 +103,7 @@ export function AffiliateHeader({
              <SheetContent side="right" className="bg-[#0A0A0A] border-white/10 text-white">
                 <nav className="flex flex-col gap-6 mt-12">
                    <a href="/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</a>
-                   <a href="/parceiro/extrato" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</a>
+                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
                    <a href="/parceiro/links" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</a>
                    <a href="/parceiro/config" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</a>
                    <div className="h-px bg-white/10 my-4" />
