@@ -456,7 +456,6 @@ export function AdminEditorTab() {
                             </div>
                           ) : <Upload className="h-3.5 w-3.5" />}
                         </Button>
-                        </Button>
                       </div>
                       <div className="flex items-center gap-2 py-1">
                         <input 
