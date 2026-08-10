@@ -34,15 +34,8 @@ export function ExtensionDownloadCard() {
       clearInterval(interval);
       setProgress(prev => ({ ...prev, [slug]: 100 }));
       
-      // Aguarda o progresso visual de 0 a 100
-      let currentProgress = 0;
-      while (currentProgress < 100) {
-        await new Promise(r => setTimeout(r, 50));
-        setProgress(p => {
-          currentProgress = p[slug] ?? 0;
-          return p;
-        });
-      }
+      // Pequeno delay para o usuário ver o 100%
+      await new Promise(r => setTimeout(r, 300));
 
       const a = window.document.createElement("a");
       a.href = res.url;
