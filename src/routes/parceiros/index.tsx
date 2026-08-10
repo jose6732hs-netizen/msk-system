@@ -98,15 +98,16 @@ function PartnersPage() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild variant="neon" size="lg" className="h-16 px-6 sm:px-12 text-base sm:text-xl font-black group rounded-2xl w-full sm:w-auto flex items-center justify-center whitespace-normal text-center leading-tight">
+              <Button asChild variant="neon" size="lg" className="h-16 px-6 sm:px-12 text-base sm:text-xl font-black group rounded-2xl w-full sm:w-auto flex items-center justify-center whitespace-normal text-center leading-tight cursor-pointer">
                 <Link 
-                  to="/parceiro" 
-                  search={{ mode: 'signup', next: '/parceiro' } as any}
+                  to="/auth" 
+                  search={{ mode: 'pre-signup', next: '/parceiro' } as any}
                 >
                   <span className="truncate sm:whitespace-normal">Quero me tornar afiliado agora</span>
                   <ArrowRight className="ml-2 w-5 h-5 sm:w-6 sm:h-6 group-hover:translate-x-1 transition-transform shrink-0" />
                 </Link>
               </Button>
+
                 <button 
                   onClick={() => document.getElementById('detalhes')?.scrollIntoView({ behavior: 'smooth' })}
                   className="inline-flex items-center justify-center h-16 px-12 text-xl font-black rounded-2xl bg-white/10 border border-white/20 hover:bg-white/20 transition-all"
@@ -232,14 +233,15 @@ function PartnersPage() {
               </p>
               
               <div className="flex flex-col items-center gap-8">
-                <Button asChild variant="secondary" size="lg" className="h-auto py-6 md:h-24 px-6 md:px-20 text-lg md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full sm:w-auto rounded-3xl shadow-2xl whitespace-normal leading-tight text-center flex items-center justify-center min-h-[4rem]">
+                <Button asChild variant="secondary" size="lg" className="h-auto py-6 md:h-24 px-6 md:px-20 text-lg md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full sm:w-auto rounded-3xl shadow-2xl whitespace-normal leading-tight text-center flex items-center justify-center min-h-[4rem] cursor-pointer">
                   <Link 
-                    to="/parceiro" 
-                    search={{ mode: 'signup', next: '/parceiro' } as any}
+                    to="/auth" 
+                    search={{ mode: 'pre-signup', next: '/parceiro' } as any}
                   >
                     Quero começar a indicar agora
                   </Link>
                 </Button>
+
                 
                 <div className="flex flex-wrap justify-center gap-8">
                   {["CADASTRO GRATUITO", "LIBERAÇÃO IMEDIATA", "SEM MENSALIDADE", "COMISSÕES DE 60%"].map((t, i) => (
