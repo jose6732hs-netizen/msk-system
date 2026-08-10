@@ -11,7 +11,7 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/parceiros/")({
-  validateSearch: (search: Record<string, unknown>): { mode?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { mode?: string | undefined } => ({
     mode: search['mode'] as string | undefined,
   }),
   head: () => ({
