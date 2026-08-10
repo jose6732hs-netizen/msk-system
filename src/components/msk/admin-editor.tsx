@@ -214,15 +214,16 @@ export function AdminEditorTab() {
 
               <div className="space-y-4">
                 {((localSettings as any).hero?.banners || []).map((banner: any, index: number) => (
-                  <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
+                  <div key={index} className="glass group rounded-2xl p-4 border border-white/5 space-y-4 hover:border-primary/30 transition-all hover:bg-white/5">
                     <div className="flex items-start gap-4">
-                      <div className="h-20 w-32 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                      <div className="h-24 w-40 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group/img">
                         {banner.url ? (
-                          <img src={banner.url} className="h-full w-full object-cover" />
+                          <img src={banner.url} className="h-full w-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
                         ) : (
                           <ImageIcon className="h-6 w-6 text-muted-foreground/30" />
                         )}
                       </div>
+
                       <div className="flex-1 space-y-3">
                         <div className="flex gap-2">
                           <Input 
@@ -408,8 +409,23 @@ export function AdminEditorTab() {
 
               <div className="space-y-4">
                 {((localSettings as any).tutorials?.videos || []).map((video: any, index: number) => (
-                  <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
+                  <div key={index} className="glass group rounded-2xl p-4 border border-white/5 space-y-4 hover:border-primary/30 transition-all hover:bg-white/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[0.6rem] font-black uppercase tracking-widest text-primary/70">Tutorial #{index + 1}</span>
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-7 w-7 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                        onClick={() => {
+                          const newVideos = (localSettings as any).tutorials.videos.filter((_: any, i: number) => i !== index);
+                          updateSetting('tutorials', 'videos', newVideos);
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                     <div className="grid grid-cols-1 gap-3">
+
                       <Input 
                         placeholder="Título do Vídeo"
                         value={video.title}
@@ -509,22 +525,12 @@ export function AdminEditorTab() {
                           newVideos[index].description = e.target.value;
                           updateSetting('tutorials', 'videos', newVideos);
                         }}
-                        className="min-h-[60px]"
+                        className="min-h-[60px] bg-black/20"
                       />
-                      <Button 
-                        size="sm" 
-                        variant="ghost" 
-                        className="text-red-500 w-fit"
-                        onClick={() => {
-                          const newVideos = (localSettings as any).tutorials.videos.filter((_: any, i: number) => i !== index);
-                          updateSetting('tutorials', 'videos', newVideos);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Remover
-                      </Button>
                     </div>
                   </div>
                 ))}
+
               </div>
 
               <div className="flex gap-3 pt-4">
