@@ -259,87 +259,97 @@ export function AdminExtensionTab() {
         Enviar e publicar ZIP
       </Button>
 
-      <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold">Versões enviadas</h3>
-          <span className="text-xs text-muted-foreground">
-            {data?.downloads ?? 0} downloads registrados
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Upload className="h-4 w-4 text-primary" /> Versões Enviadas
+          </h3>
+          <span className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground bg-white/5 px-3 py-1 rounded-full border border-white/10">
+            {data?.downloads ?? 0} downloads
           </span>
         </div>
+
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <div className="flex items-center justify-center p-12 bg-card/40 rounded-3xl border border-dashed border-border/60">
+            <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+          </div>
+        ) : (data?.builds ?? []).length === 0 ? (
+          <div className="p-12 text-center bg-card/40 rounded-3xl border border-dashed border-border/60">
+            <p className="text-sm text-muted-foreground font-medium italic">Nenhuma versão enviada ainda.</p>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="py-2">Versão</th>
-                  <th>Arquivo</th>
-                  <th>Tamanho</th>
-                  <th>Status</th>
-                  <th>Enviado em</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {(data?.builds ?? []).length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-4 text-muted-foreground">
-                      Nenhuma versão enviada ainda.
-                    </td>
-                  </tr>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {(data?.builds ?? []).map((b) => (
+              <div 
+                key={b.id}
+                className={`group relative rounded-[2rem] border transition-all duration-300 ${
+                  b.is_published 
+                    ? "border-primary/30 bg-primary/5 shadow-[0_0_25px_rgba(57,255,20,0.03)]" 
+                    : "border-border/60 bg-card/40 opacity-75 grayscale-[0.5]"
+                } p-6 overflow-hidden`}
+              >
+                {/* Background Glow for Active */}
+                {b.is_published && (
+                  <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 blur-[40px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
                 )}
-                {(data?.builds ?? []).map((b) => (
-                  <tr key={b.id} className="border-t border-border/50">
-                    <td className="py-2 font-medium">{b.version}</td>
-                    <td className="max-w-[220px] truncate">{b.file_name}</td>
-                    <td>{human(b.size_bytes)}</td>
-                    <td>
-                      {b.is_published ? (
-                        <span className="text-primary">publicada</span>
-                      ) : (
-                        <span className="text-muted-foreground">arquivada</span>
+
+                <div className="flex items-start justify-between mb-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl font-black italic tracking-tighter">v{b.version}</span>
+                      {b.is_published && (
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-[0.6rem] font-black text-primary uppercase animate-pulse">
+                          <div className="w-1 h-1 rounded-full bg-primary" /> Ativo
+                        </span>
                       )}
-                    </td>
-                    <td>{new Date(b.created_at).toLocaleString("pt-BR")}</td>
-                    <td className="py-2 text-right">
-                      <div className="flex justify-end gap-2">
-                        {!b.is_published && (
-                          <Button
-                            size="sm"
-                            variant="neon"
-                            onClick={() =>
-                              toggle.mutate({ buildId: b.id, publish: true })
-                            }
-                          >
-                            Ativar
-                          </Button>
-                        )}
-                        {b.is_published && (
-                          <Button
-                            size="sm"
-                            variant="glass"
-                            onClick={() =>
-                              toggle.mutate({ buildId: b.id, publish: false })
-                            }
-                          >
-                            Arquivar
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => del.mutate(b.id)}
-                          aria-label="Excluir versão"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <p className="text-[0.65rem] font-bold text-muted-foreground uppercase tracking-widest truncate max-w-[180px]">
+                      {b.file_name}
+                    </p>
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                    onClick={() => del.mutate(b.id)}
+                    aria-label="Excluir versão"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="rounded-2xl bg-background/50 p-3 border border-border/30">
+                    <span className="block text-[0.55rem] font-black uppercase text-muted-foreground tracking-widest mb-0.5">Tamanho</span>
+                    <span className="text-xs font-black">{human(b.size_bytes)}</span>
+                  </div>
+                  <div className="rounded-2xl bg-background/50 p-3 border border-border/30">
+                    <span className="block text-[0.55rem] font-black uppercase text-muted-foreground tracking-widest mb-0.5">Data</span>
+                    <span className="text-[0.65rem] font-black">{new Date(b.created_at).toLocaleDateString("pt-BR")}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {b.is_published ? (
+                    <Button
+                      className="flex-1 h-10 rounded-xl font-black text-[0.65rem] uppercase tracking-widest bg-white/5 border border-white/10 hover:bg-white/10"
+                      variant="glass"
+                      onClick={() => toggle.mutate({ buildId: b.id, publish: false })}
+                    >
+                      Arquivar ZIP
+                    </Button>
+                  ) : (
+                    <Button
+                      className="flex-1 h-10 rounded-xl font-black text-[0.65rem] uppercase tracking-widest shadow-[0_0_15px_rgba(57,255,20,0.2)]"
+                      variant="neon"
+                      onClick={() => toggle.mutate({ buildId: b.id, publish: true })}
+                    >
+                      Ativar agora
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
