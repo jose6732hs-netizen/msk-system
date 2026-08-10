@@ -494,9 +494,9 @@ export function AdminEditorTab() {
                         }}
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-2" /> Remover
-                        </Button>
-                      </div>
+                      </Button>
                     </div>
+                  </div>
                 ))}
               </div>
 
