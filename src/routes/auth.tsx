@@ -15,7 +15,10 @@ import { MskLogo } from "@/components/msk/logo";
 import { linkAffiliateReferral } from "@/lib/affiliate.functions";
 import { getVisitorId, readAffiliateRef } from "@/lib/urls";
 
-const searchSchema = z.object({ next: z.string().optional() });
+const searchSchema = z.object({ 
+  next: z.string().optional(),
+  mode: z.enum(["login", "signup", "reset", "verify", "pre-signup"]).optional()
+});
 
 type IconProps = { className?: string };
 
@@ -106,7 +109,12 @@ function AuthPage() {
                         window.location.href.includes('#afiliado') ||
                         document.referrer.includes('/parceiros');
 
-    if (isAffiliate) {
+    if (search.mode) {
+      setMode(search.mode as Mode);
+      if (search.mode === 'signup' || search.mode === 'login') {
+        setShowForm(true);
+      }
+    } else if (isAffiliate) {
       setMode("pre-signup");
     }
   }, [search.next]);
