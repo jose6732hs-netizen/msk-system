@@ -205,10 +205,7 @@ function MobileNavigation() {
   }, []);
 
   async function downloadExtension() {
-    if (!signedIn) {
-      void navigate({ to: "/auth" });
-      return;
-    }
+    // A opção de baixar a extensão agora é livre (não precisa de login)
     setDownloading(true);
     setProgress(0);
     try {
@@ -322,7 +319,7 @@ function MobileNavigation() {
                   ) : (
                     <>
                       <Download className="h-5 w-5" />
-                      <span className="text-[10px] font-black uppercase">Extensão</span>
+                      <span className="text-[10px] font-black uppercase">Extensão Grátis</span>
                     </>
                   )}
                 </Button>
