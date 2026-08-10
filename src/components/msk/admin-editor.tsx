@@ -377,15 +377,53 @@ export function AdminEditorTab() {
                           updateSetting('tutorials', 'videos', newVideos);
                         }}
                       />
-                      <Input 
-                        placeholder="Link do Vídeo (YouTube, Vimeo ou Link Direto)"
-                        value={video.url}
-                        onChange={(e) => {
-                          const newVideos = [...(localSettings as any).tutorials.videos];
-                          newVideos[index].url = e.target.value;
-                          updateSetting('tutorials', 'videos', newVideos);
-                        }}
-                      />
+                      <div className="flex gap-2">
+                        <Input 
+                          placeholder="Link do Vídeo (YouTube, Vimeo ou Link Direto)"
+                          value={video.url}
+                          onChange={(e) => {
+                            const newVideos = [...(localSettings as any).tutorials.videos];
+                            newVideos[index].url = e.target.value;
+                            updateSetting('tutorials', 'videos', newVideos);
+                          }}
+                          className="flex-1"
+                        />
+                        <Button 
+                          size="icon" 
+                          variant="neonOutline" 
+                          className="shrink-0"
+                          title="Upload de Vídeo"
+                          onClick={() => {
+                            const input = document.createElement('input');
+                            input.type = 'file';
+                            input.accept = 'video/*';
+                            input.onchange = async (e) => {
+                              const file = (e.target as HTMLInputElement).files?.[0];
+                              if (file) {
+                                setUploading(`video-${index}`);
+                                try {
+                                  const fd = new FormData();
+                                  fd.append('file', file);
+                                  fd.append('key', `tutorial-video-${index}`);
+                                  const res = await uploadAsset({ data: fd as any });
+                                  const newVideos = [...(localSettings as any).tutorials.videos];
+                                  newVideos[index].url = res.url;
+                                  updateSetting('tutorials', 'videos', newVideos);
+                                  toast.success("Vídeo carregado com sucesso!");
+                                } catch (err) {
+                                  toast.error("Erro no upload do vídeo");
+                                } finally {
+                                  setUploading(null);
+                                }
+                              }
+                            };
+                            input.click();
+                          }}
+                          disabled={uploading === `video-${index}`}
+                        >
+                          {uploading === `video-${index}` ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                        </Button>
+                      </div>
                       <div className="flex items-center gap-2 py-1">
                         <input 
                           type="checkbox"
