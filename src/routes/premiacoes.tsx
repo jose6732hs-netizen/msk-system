@@ -71,7 +71,7 @@ const levels = [
     color: "from-red-500/20 to-red-500/5",
     borderColor: "border-red-500/20",
     glowColor: "shadow-[0_0_20px_rgba(239,68,68,0.1)]",
-    image: award100kAsset.url,
+    image: award100kNewAsset.url,
   },
   {
     threshold: "500K",
