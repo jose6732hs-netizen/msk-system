@@ -85,7 +85,18 @@ export function AffiliateHeader({
         </div>
 
         {/* Lado Direito: Actions/Menu */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
+           <Button 
+             asChild
+             variant="ghost" 
+             size="sm" 
+             className="h-9 px-3 hidden md:flex text-white/40 hover:text-primary hover:bg-primary/10 gap-2 font-bold"
+           >
+             <Link to="/_authenticated/painel/premiacoes">
+               <Award size={16} /> Premiações
+             </Link>
+           </Button>
+
            <Button 
              variant="neon" 
              size="sm" 
