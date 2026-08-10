@@ -15,11 +15,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { MskLogo } from "@/components/msk/logo";
 import award1kAsset from "@/assets/award-1k.png.asset.json";
-import award10kAsset from "@/assets/award-10k.png.asset.json";
-import award100kAsset from "@/assets/award-100k.png.asset.json";
-import award500kAsset from "@/assets/award-500k.png.asset.json";
-import award1mAsset from "@/assets/award-1m.png.asset.json";
-import award5mAsset from "@/assets/award-5m.png.asset.json";
+const award10kAsset = { url: "/images/award-10k.png" };
+const award100kAsset = { url: "/images/award-100k.png" };
+const award500kAsset = { url: "/images/award-500k.png" };
+const award1mAsset = { url: "/images/award-1m.png" };
+const award5mAsset = { url: "/images/award-5m.png" };
 
 export const Route = createFileRoute("/premiacoes")({
   head: () => ({
