@@ -150,7 +150,10 @@ function RootComponent() {
       const key = "msk_chunk_reload";
       if (sessionStorage.getItem(key)) return;
       sessionStorage.setItem(key, "1");
-      window.location.reload();
+      // Cache-buster: força o navegador a buscar o HTML/manifest novos.
+      const url = new URL(window.location.href);
+      url.searchParams.set("_v", Date.now().toString(36));
+      window.location.replace(url.toString());
     };
 
     const onError = (e: ErrorEvent) => {
