@@ -158,6 +158,7 @@ export async function listActiveChannels() {
       display_name: c.display_name,
       channel_number: c.channel_number ?? 1,
       channel_type: c.channel_type ?? "stable",
+      enabled: c.enabled ?? true,
       version: c.version ?? "1.0.0",
       message: c.message,
       public_zip: (c.metadata?.["public_zip"] as string | undefined) ?? null,
