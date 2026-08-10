@@ -22,12 +22,12 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as AuthenticatedRevendedorRouteImport } from './routes/_authenticated/revendedor'
 import { Route as AfiliadoCodeRouteImport } from './routes/afiliado.$code'
+import { Route as ParceiroIndexRouteImport } from './routes/parceiro/index'
 import { Route as ParceirosIndexRouteImport } from './routes/parceiros/index'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedPainelPremiacoesRouteImport } from './routes/_authenticated/painel/premiacoes'
-import { Route as AuthenticatedParceiroIndexRouteImport } from './routes/_authenticated/parceiro/index'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
@@ -110,6 +110,11 @@ const AfiliadoCodeRoute = AfiliadoCodeRouteImport.update({
   path: '/afiliado/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParceiroIndexRoute = ParceiroIndexRouteImport.update({
+  id: '/parceiro/',
+  path: '/parceiro/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ParceirosIndexRoute = ParceirosIndexRouteImport.update({
   id: '/parceiros/',
   path: '/parceiros/',
@@ -136,12 +141,6 @@ const AuthenticatedPainelPremiacoesRoute =
     id: '/premiacoes',
     path: '/premiacoes',
     getParentRoute: () => AuthenticatedPainelRoute,
-  } as any)
-const AuthenticatedParceiroIndexRoute =
-  AuthenticatedParceiroIndexRouteImport.update({
-    id: '/parceiro/',
-    path: '/parceiro/',
-    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const ApiPublicCmsRoute = ApiPublicCmsRouteImport.update({
   id: '/api/public/cms',
@@ -244,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
+  '/parceiro/': typeof ParceiroIndexRoute
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -251,7 +251,6 @@ export interface FileRoutesByFullPath {
   '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
-  '/parceiro/': typeof AuthenticatedParceiroIndexRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -279,6 +278,7 @@ export interface FileRoutesByTo {
   '/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
+  '/parceiro': typeof ParceiroIndexRoute
   '/parceiros': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -286,7 +286,6 @@ export interface FileRoutesByTo {
   '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
-  '/parceiro': typeof AuthenticatedParceiroIndexRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -316,6 +315,7 @@ export interface FileRoutesById {
   '/_authenticated/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
+  '/parceiro/': typeof ParceiroIndexRoute
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -323,7 +323,6 @@ export interface FileRoutesById {
   '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
-  '/_authenticated/parceiro/': typeof AuthenticatedParceiroIndexRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -353,6 +352,7 @@ export interface FileRouteTypes {
     | '/revendedor'
     | '/afiliado/$code'
     | '/r/$slug'
+    | '/parceiro/'
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -360,7 +360,6 @@ export interface FileRouteTypes {
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
-    | '/parceiro/'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -388,6 +387,7 @@ export interface FileRouteTypes {
     | '/revendedor'
     | '/afiliado/$code'
     | '/r/$slug'
+    | '/parceiro'
     | '/parceiros'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -395,7 +395,6 @@ export interface FileRouteTypes {
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
-    | '/parceiro'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -424,6 +423,7 @@ export interface FileRouteTypes {
     | '/_authenticated/revendedor'
     | '/afiliado/$code'
     | '/r/$slug'
+    | '/parceiro/'
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -431,7 +431,6 @@ export interface FileRouteTypes {
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
-    | '/_authenticated/parceiro/'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -458,6 +457,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AfiliadoCodeRoute: typeof AfiliadoCodeRoute
   RSlugRoute: typeof RSlugRoute
+  ParceiroIndexRoute: typeof ParceiroIndexRoute
   ParceirosIndexRoute: typeof ParceirosIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -571,6 +571,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AfiliadoCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/parceiro/': {
+      id: '/parceiro/'
+      path: '/parceiro'
+      fullPath: '/parceiro/'
+      preLoaderRoute: typeof ParceiroIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/parceiros/': {
       id: '/parceiros/'
       path: '/parceiros'
@@ -605,13 +612,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/painel/premiacoes'
       preLoaderRoute: typeof AuthenticatedPainelPremiacoesRouteImport
       parentRoute: typeof AuthenticatedPainelRoute
-    }
-    '/_authenticated/parceiro/': {
-      id: '/_authenticated/parceiro/'
-      path: '/parceiro'
-      fullPath: '/parceiro/'
-      preLoaderRoute: typeof AuthenticatedParceiroIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/cms': {
       id: '/api/public/cms'
@@ -736,14 +736,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedPainelRoute: typeof AuthenticatedPainelRouteWithChildren
   AuthenticatedRevendedorRoute: typeof AuthenticatedRevendedorRoute
-  AuthenticatedParceiroIndexRoute: typeof AuthenticatedParceiroIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedPainelRoute: AuthenticatedPainelRouteWithChildren,
   AuthenticatedRevendedorRoute: AuthenticatedRevendedorRoute,
-  AuthenticatedParceiroIndexRoute: AuthenticatedParceiroIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -762,6 +760,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AfiliadoCodeRoute: AfiliadoCodeRoute,
   RSlugRoute: RSlugRoute,
+  ParceiroIndexRoute: ParceiroIndexRoute,
   ParceirosIndexRoute: ParceirosIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,

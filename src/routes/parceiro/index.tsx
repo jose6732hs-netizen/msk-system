@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute("/_authenticated/parceiro/")({
+export const Route = createFileRoute("/parceiro/")({
   component: AffiliateDashboard,
 });
 
