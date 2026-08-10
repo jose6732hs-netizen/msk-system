@@ -3,8 +3,10 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import bannerAfiliado from "@/assets/banner-afiliado.png.asset.json";
 import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
+import mainPromoAsset from "@/assets/main-promo.png.asset.json";
 
 const PANEL_BANNERS = [
+  { url: mainPromoAsset.url, alt: "Crie sites sem limitações" },
   { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK" },
   { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA" },
 ];
