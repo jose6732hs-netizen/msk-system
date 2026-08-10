@@ -30,6 +30,7 @@ export const Route = createFileRoute("/parceiro/")({
 });
 
 function AffiliateDashboard() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fetchOverview = useServerFn(affiliateOverview);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
