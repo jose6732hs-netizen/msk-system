@@ -54,12 +54,24 @@ function HowItWorks() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: i * 0.1 }}
-                className="glass rounded-3xl overflow-hidden border border-white/10 group"
+                className="glass rounded-3xl overflow-hidden border border-white/10 group flex flex-col"
               >
-                <div className="aspect-video bg-black/40 relative flex items-center justify-center">
-                   {video.url.includes('youtube.com') || video.url.includes('youtu.be') ? (
+                <div className="aspect-video bg-black/40 relative flex items-center justify-center overflow-hidden">
+                   {video.is_redirect ? (
+                     <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-primary/5">
+                        <Play className="w-12 h-12 text-primary animate-pulse" />
+                        <a 
+                          href={video.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="px-6 py-2 bg-primary text-black font-black uppercase text-xs rounded-full hover:scale-105 transition-transform"
+                        >
+                          Assistir Agora
+                        </a>
+                     </div>
+                   ) : (video.url.includes('youtube.com') || video.url.includes('youtu.be')) ? (
                      <iframe
-                        src={video.url.replace('watch?v=', 'embed/')}
+                        src={video.url.replace('watch?v=', 'embed/').split('&')[0]}
                         className="w-full h-full"
                         allowFullScreen
                      />
@@ -70,9 +82,30 @@ function HowItWorks() {
                         allowFullScreen
                      />
                    ) : (
-                     <video src={video.url} controls className="w-full h-full object-cover" />
+                     <div className="w-full h-full relative group/video">
+                       <video 
+                         src={video.url} 
+                         controls 
+                         className="w-full h-full object-cover custom-video-player"
+                         controlsList="nodownload"
+                       />
+                       <style>{`
+                         .custom-video-player::-webkit-media-controls-panel {
+                           background: linear-gradient(transparent, rgba(0,0,0,0.8));
+                         }
+                         .custom-video-player::-webkit-media-controls-play-button,
+                         .custom-video-player::-webkit-media-controls-current-time-display,
+                         .custom-video-player::-webkit-media-controls-time-remaining-display,
+                         .custom-video-player::-webkit-media-controls-timeline,
+                         .custom-video-player::-webkit-media-controls-volume-control-container,
+                         .custom-video-player::-webkit-media-controls-fullscreen-button {
+                           filter: invert(36%) sepia(85%) saturate(3500%) hue-rotate(260deg) brightness(90%) contrast(100%);
+                         }
+                       `}</style>
+                     </div>
                    )}
                 </div>
+
                 <div className="p-6">
                   <h3 className="text-xl font-bold uppercase tracking-tighter mb-2">{video.title}</h3>
                   <p className="text-white/60 text-sm">{video.description}</p>
