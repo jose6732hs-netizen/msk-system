@@ -12,9 +12,11 @@ import bannerNoC from "@/assets/banner_no_credits.png.asset.json";
 import bannerAfiliado from "@/assets/banner-afiliado.png.asset.json";
 import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
 import mainPromoAsset from "@/assets/main-promo.png.asset.json";
+import bannerConquista from "@/assets/banner-afiliado-conquista.png.asset.json";
 
 const DEFAULT_BANNERS = [
   { url: mainPromoAsset.url, alt: "Crie sites sem limitações" },
+  { url: bannerConquista.url, alt: "Seu resultado tem valor" },
   { url: banner1.url, alt: "Banner 1" },
   { url: banner2.url, alt: "Banner 2" },
   { url: bannerInf.url, alt: "Créditos Infinitos" },

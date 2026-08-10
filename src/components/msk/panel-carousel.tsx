@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import bannerAfiliado from "@/assets/banner-afiliado.png.asset.json";
 import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
 import mainPromoAsset from "@/assets/main-promo.png.asset.json";
+import bannerConquista from "@/assets/banner-afiliado-conquista.png.asset.json";
 
 const PANEL_BANNERS = [
   { url: mainPromoAsset.url, alt: "Crie sites sem limitações" },
+  { url: bannerConquista.url, alt: "Seu resultado tem valor" },
   { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK" },
   { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA" },
 ];
