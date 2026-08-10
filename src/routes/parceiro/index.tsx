@@ -103,7 +103,11 @@ function AffiliateDashboard() {
         <Tabs defaultValue="overview" className="space-y-10 focus:outline-none">
           <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-14 w-full max-w-md">
             <TabsTrigger value="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-full">Painel</TabsTrigger>
-            <TabsTrigger value="awards" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+            <TabsTrigger 
+              value="awards" 
+              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full"
+              onClick={() => navigate({ to: "/premiacoes" })}
+            >
               <Award size={16} className="shrink-0" /> <span className="truncate">Premiações</span>
             </TabsTrigger>
             <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
