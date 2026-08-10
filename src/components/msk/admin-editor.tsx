@@ -25,7 +25,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
 
-type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials';
+type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -125,6 +125,7 @@ export function AdminEditorTab() {
             { id: 'banners', label: 'Banners Landing', icon: ImageIcon },
             { id: 'partners', label: 'Parceiros', icon: Users },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
+            { id: 'awards', label: 'Premiações / Placas', icon: Trophy },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
             { id: 'tutorials', label: 'Tutoriais / Explicações', icon: FileText },
           ].map((item: any) => (
