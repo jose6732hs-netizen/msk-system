@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { affiliateOverview } from "@/lib/affiliate.functions";
@@ -30,6 +30,7 @@ export const Route = createFileRoute("/parceiro/")({
 });
 
 function AffiliateDashboard() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fetchOverview = useServerFn(affiliateOverview);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
@@ -103,7 +104,11 @@ function AffiliateDashboard() {
         <Tabs defaultValue="overview" className="space-y-10 focus:outline-none">
           <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-14 w-full max-w-md">
             <TabsTrigger value="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-full">Painel</TabsTrigger>
-            <TabsTrigger value="awards" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+            <TabsTrigger 
+              value="awards" 
+              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full"
+              onClick={() => navigate({ to: "/premiacoes" })}
+            >
               <Award size={16} className="shrink-0" /> <span className="truncate">Premiações</span>
             </TabsTrigger>
             <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">

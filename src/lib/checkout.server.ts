@@ -194,7 +194,7 @@ export async function createPixCheckout(input: {
   userId: string;
   email: string;
   name: string;
-  planId?: string; // Agora opcional se houver carrinho
+  planId?: string | null; // Agora opcional se houver carrinho
   affiliateCode?: string | null;
   resellerCode?: string | null;
   document: string;

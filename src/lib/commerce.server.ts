@@ -206,7 +206,7 @@ export async function grantTrial(input: { userId: string; planId?: string | null
       .maybeSingle();
     planId = plan?.id ?? null;
   }
-  if (!planId) throw new Error("Nenhum plano disponível para o teste");
+  if (!planId && !input.planId) throw new Error("Nenhum plano disponível para o teste");
 
   if (input.resellerId) {
     const { data: reseller } = await supabaseAdmin
@@ -226,7 +226,7 @@ export async function grantTrial(input: { userId: string; planId?: string | null
 
   const result = await issueStandaloneLicense({
     userId: input.userId,
-    planId,
+    planId: planId!,
     durationMinutes: cfg.duration_minutes,
     type: "trial",
     resellerId: input.resellerId ?? null,
