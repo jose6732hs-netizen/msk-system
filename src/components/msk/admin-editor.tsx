@@ -157,8 +157,9 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
-                  value={(localSettings as any).hero?.title ?? ''} 
-                  placeholder={(settings as any)?.hero?.title || 'Pare de ser interrompido no meio da criação'}
+                  value={(localSettings as any).hero?.['title'] ?? ''} 
+                  placeholder={(settings as any)?.hero?.['title'] || 'Pare de ser interrompido no meio da criação'}
+
                   onChange={(e) => updateSetting('hero', 'title', e.target.value)}
                   className="bg-background/50"
                 />
@@ -166,8 +167,9 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo</label>
                 <Textarea 
-                  value={(localSettings as any).hero?.subtitle ?? ''} 
-                  placeholder={(settings as any)?.hero?.subtitle || 'Acesso completo à extensão Lovable com créditos infinitos...'}
+                  value={(localSettings as any).hero?.['subtitle'] ?? ''} 
+                  placeholder={(settings as any)?.hero?.['subtitle'] || 'Acesso completo à extensão Lovable com créditos infinitos...'}
+
                   onChange={(e) => updateSetting('hero', 'subtitle', e.target.value)}
                   className="bg-background/50 min-h-[100px]"
                 />
@@ -176,14 +178,14 @@ export function AdminEditorTab() {
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Texto CTA</label>
                   <Input 
-                    value={(localSettings as any).hero?.cta_text ?? (initialSettings as any).hero?.cta_text ?? 'Quero créditos infinitos agora'} 
+                    value={(localSettings as any).hero?.['cta_text'] ?? (initialSettings as any).hero?.['cta_text'] ?? 'Quero créditos infinitos agora'} 
                     onChange={(e) => updateSetting('hero', 'cta_text', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Link CTA</label>
                   <Input 
-                    value={(localSettings as any).hero?.cta_link ?? (initialSettings as any).hero?.cta_link ?? '/auth'} 
+                    value={(localSettings as any).hero?.['cta_link'] ?? (initialSettings as any).hero?.['cta_link'] ?? '/auth'} 
                     onChange={(e) => updateSetting('hero', 'cta_link', e.target.value)}
                   />
                 </div>

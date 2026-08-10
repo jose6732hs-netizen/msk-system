@@ -57,7 +57,7 @@ function AwardsPage() {
     queryFn: () => getCms(),
   });
 
-  const cmsAwards = settings?.awards || {};
+  const cmsAwards = settings?.['awards'] || {};
 
   const levels = [
     {
@@ -68,7 +68,7 @@ function AwardsPage() {
       color: "from-green-500/20 to-green-500/5",
       borderColor: "border-green-500/20",
       glowColor: "shadow-[0_0_20px_rgba(34,197,94,0.1)]",
-      image: cmsAwards.award_1k || award1kAsset.url,
+      image: cmsAwards?.['award_1k'] || award1kAsset.url,
     },
     {
       threshold: "10K",
@@ -78,7 +78,7 @@ function AwardsPage() {
       color: "from-yellow-500/20 to-yellow-500/5",
       borderColor: "border-yellow-500/20",
       glowColor: "shadow-[0_0_20px_rgba(234,179,8,0.1)]",
-      image: cmsAwards.award_10k || award10kNewAsset.url,
+      image: cmsAwards?.['award_10k'] || award10kNewAsset.url,
     },
     {
       threshold: "100K",
@@ -88,7 +88,7 @@ function AwardsPage() {
       color: "from-red-500/20 to-red-500/5",
       borderColor: "border-red-500/20",
       glowColor: "shadow-[0_0_20px_rgba(239,68,68,0.1)]",
-      image: cmsAwards.award_100k || award100kNewAsset.url,
+      image: cmsAwards?.['award_100k'] || award100kNewAsset.url,
     },
     {
       threshold: "500K",
@@ -98,7 +98,7 @@ function AwardsPage() {
       color: "from-blue-500/20 to-blue-500/5",
       borderColor: "border-blue-500/20",
       glowColor: "shadow-[0_0_20px_rgba(59,130,246,0.1)]",
-      image: cmsAwards.award_500k || award500kAsset.url,
+      image: cmsAwards?.['award_500k'] || award500kAsset.url,
     },
     {
       threshold: "1M",
@@ -108,7 +108,7 @@ function AwardsPage() {
       color: "from-cyan-500/20 to-cyan-500/5",
       borderColor: "border-cyan-500/20",
       glowColor: "shadow-[0_0_20px_rgba(6,182,212,0.1)]",
-      image: cmsAwards.award_1m || award1mAsset.url,
+      image: cmsAwards?.['award_1m'] || award1mAsset.url,
     },
     {
       threshold: "5M",
@@ -118,7 +118,7 @@ function AwardsPage() {
       color: "from-primary/20 to-primary/5",
       borderColor: "border-primary/20",
       glowColor: "shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)]",
-      image: cmsAwards.award_5m || award5mAsset.url,
+      image: cmsAwards?.['award_5m'] || award5mAsset.url,
     },
   ];
 
@@ -163,7 +163,7 @@ function AwardsPage() {
           className="text-center mb-16 space-y-8"
         >
           <motion.img 
-            src={cmsAwards.hero_url || awardsHeroAsset.url} 
+            src={cmsAwards?.['hero_url'] || awardsHeroAsset.url} 
             alt="Seu Resultado Tem Valor" 
             className="w-full max-w-4xl mx-auto rounded-2xl shadow-2xl shadow-primary/10"
             initial={{ scale: 0.9, opacity: 0 }}
