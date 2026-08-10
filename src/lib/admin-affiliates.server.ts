@@ -44,9 +44,9 @@ export async function loadAdminAffiliates(search = "") {
   const byUser = new Map((profiles ?? []).map((p: any) => [p.id, p]));
   const docsByAffiliate = new Map<string, any[]>();
   (documents ?? []).forEach(d => {
-    const list = docsByAffiliate.get(d.affiliate_id) || [];
+    const list = docsByAffiliate.get(d["affiliate_id"]) || [];
     list.push(d);
-    docsByAffiliate.set(d.affiliate_id, list);
+    docsByAffiliate.set(d["affiliate_id"], list);
   });
   
   const statsMap = new Map<string, { signups: number; customers: number; revenue: number; commission: number; pending: number; paid: number }>();

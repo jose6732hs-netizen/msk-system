@@ -439,9 +439,9 @@ function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> 
                       <div className="aspect-square rounded-xl bg-white/5 border border-white/10 overflow-hidden flex items-center justify-center relative group/img">
                         {doc.file_path ? (
                           <>
-                            <img src={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/affiliate-docs/${doc.file_path}`} className="w-full h-full object-cover" />
+                            <img src={`${import.meta.env["VITE_SUPABASE_URL"]}/storage/v1/object/public/affiliate-docs/${doc.file_path}`} className="w-full h-full object-cover" />
                             <a 
-                              href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/affiliate-docs/${doc.file_path}`} 
+                              href={`${import.meta.env["VITE_SUPABASE_URL"]}/storage/v1/object/public/affiliate-docs/${doc.file_path}`} 
                               target="_blank" 
                               rel="noreferrer"
                               className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center"
