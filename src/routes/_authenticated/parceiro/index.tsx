@@ -77,7 +77,7 @@ function AffiliateDashboard() {
           <h2 className="text-2xl font-bold text-white mb-2">Seja um Parceiro</h2>
           <p className="text-white/40 mb-8">Você ainda não faz parte do nosso programa de parceiros. Comece a lucrar agora!</p>
           <Button asChild variant="neon" className="w-full h-12 font-bold text-lg rounded-xl">
-            <Link to="/auth" search={{ mode: 'signup', next: '/parceiro' }} hash="afiliado" className="inline-flex items-center justify-center w-full h-12 font-bold text-lg rounded-xl">Quero Me Tornar Parceiro</Link>
+            <Link to="/auth" search={{ mode: 'signup', next: '/parceiro' }} className="inline-flex items-center justify-center w-full h-12 font-bold text-lg rounded-xl">Quero Me Tornar Parceiro</Link>
           </Button>
         </div>
       </div>
