@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import confetti from "canvas-confetti";
 import { 
   Monitor, 
@@ -49,6 +49,8 @@ export function AdminEditorTab() {
     queryKey: ["cms-history"],
     queryFn: () => getHistory(),
   });
+
+  const initialSettings = useMemo(() => settings || {}, [settings]);
 
   useEffect(() => {
     if (settings) {
@@ -142,7 +144,7 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
-                  value={localSettings.hero?.title || ''} 
+                  value={localSettings.hero?.title ?? initialSettings.hero?.title ?? 'Pare de ser interrompido no meio da criação'} 
                   onChange={(e) => updateSetting('hero', 'title', e.target.value)}
                   className="bg-background/50"
                 />
@@ -150,7 +152,7 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo</label>
                 <Textarea 
-                  value={localSettings.hero?.subtitle || ''} 
+                  value={localSettings.hero?.subtitle ?? initialSettings.hero?.subtitle ?? 'Acesso completo à extensão Lovable com créditos infinitos. Crie apps, landing pages e sistemas o dia inteiro sem travar, sem contar crédito e sem perder o ritmo.'} 
                   onChange={(e) => updateSetting('hero', 'subtitle', e.target.value)}
                   className="bg-background/50 min-h-[100px]"
                 />
@@ -159,14 +161,14 @@ export function AdminEditorTab() {
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Texto CTA</label>
                   <Input 
-                    value={localSettings.hero?.cta_text || ''} 
+                    value={localSettings.hero?.cta_text ?? initialSettings.hero?.cta_text ?? 'Quero créditos infinitos agora'} 
                     onChange={(e) => updateSetting('hero', 'cta_text', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Link CTA</label>
                   <Input 
-                    value={localSettings.hero?.cta_link || ''} 
+                    value={localSettings.hero?.cta_link ?? initialSettings.hero?.cta_link ?? '/auth'} 
                     onChange={(e) => updateSetting('hero', 'cta_link', e.target.value)}
                   />
                 </div>
@@ -301,14 +303,14 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Chamada Parceiros</label>
                 <Input 
-                  value={localSettings.partners_teaser?.title || ''} 
+                  value={localSettings.partners_teaser?.title ?? initialSettings.partners_teaser?.title ?? 'Revenda e ganhe comissões recorrentes'} 
                   onChange={(e) => updateSetting('partners_teaser', 'title', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo Parceiros</label>
                 <Textarea 
-                  value={localSettings.partners_teaser?.subtitle || ''} 
+                  value={localSettings.partners_teaser?.subtitle ?? initialSettings.partners_teaser?.subtitle ?? 'Entre para o programa de parceiros Infinity e transforme sua audiência em renda. Estrutura simples, pagamentos via PIX e suporte total.'} 
                   onChange={(e) => updateSetting('partners_teaser', 'subtitle', e.target.value)}
                 />
               </div>
@@ -329,7 +331,7 @@ export function AdminEditorTab() {
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">URL de Suporte (WhatsApp)</label>
                 <Input 
                   placeholder="https://wa.me/55..."
-                  value={localSettings.config?.support_url || ''} 
+                  value={localSettings.config?.support_url ?? initialSettings.config?.support_url ?? ''} 
                   onChange={(e) => updateSetting('config', 'support_url', e.target.value)}
                 />
               </div>
@@ -356,8 +358,9 @@ export function AdminEditorTab() {
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground block">Ícone Principal (128x128)</label>
                     <div className="flex items-center gap-4">
                       <div className="h-20 w-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                        {localSettings.branding?.icon_url ? (
-                          <img src={localSettings.branding.icon_url} className="h-full w-full object-cover" />
+                        {(localSettings.branding?.icon_url ?? initialSettings.branding?.icon_url) ? (
+                          <img src={localSettings.branding?.icon_url ?? initialSettings.branding?.icon_url} className="h-full w-full object-cover" />
+
                         ) : (
                           <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
                         )}
@@ -401,8 +404,9 @@ export function AdminEditorTab() {
                   <div className="space-y-2">
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground block">Banner Promocional</label>
                     <div className="aspect-video w-full rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group">
-                      {localSettings.branding?.banner_url ? (
-                        <img src={localSettings.branding.banner_url} className="h-full w-full object-cover" />
+                      {(localSettings.branding?.banner_url ?? initialSettings.branding?.banner_url) ? (
+                        <img src={localSettings.branding?.banner_url ?? initialSettings.branding?.banner_url} className="h-full w-full object-cover" />
+
                       ) : (
                         <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
                       )}
@@ -449,7 +453,7 @@ export function AdminEditorTab() {
                   <div className="space-y-2">
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Nome da Marca</label>
                     <Input 
-                      value={localSettings.branding?.brand_name || 'MSK SISTEM'} 
+                      value={localSettings.branding?.brand_name ?? initialSettings.branding?.brand_name ?? 'MSK SISTEM'} 
                       onChange={(e) => updateSetting('branding', 'brand_name', e.target.value)}
                     />
                   </div>
@@ -457,13 +461,13 @@ export function AdminEditorTab() {
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Cor Primária (Hex)</label>
                     <div className="flex gap-2">
                       <Input 
-                        value={localSettings.branding?.primary_color || '#39ff14'} 
+                        value={localSettings.branding?.primary_color ?? initialSettings.branding?.primary_color ?? '#39ff14'} 
                         onChange={(e) => updateSetting('branding', 'primary_color', e.target.value)}
                         className="font-mono"
                       />
                       <div 
                         className="h-10 w-12 rounded-xl border border-white/10" 
-                        style={{ backgroundColor: localSettings.branding?.primary_color || '#39ff14' }}
+                        style={{ backgroundColor: localSettings.branding?.primary_color ?? initialSettings.branding?.primary_color ?? '#39ff14' }}
                       />
                     </div>
                   </div>
