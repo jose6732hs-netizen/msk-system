@@ -111,6 +111,11 @@ function AffiliateDashboard() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-10 focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
+            {/* Carousel Banner */}
+            <div className="w-full">
+              <PanelCarousel />
+            </div>
+
             {/* Welcome Section */}
             <section>
               <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
