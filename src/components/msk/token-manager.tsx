@@ -116,7 +116,7 @@ function TimeDisplay({ value, label, danger }: { value: number; label: string; d
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/20 p-4">
+    <div className="rounded-xl border border-border/60 bg-muted/20 p-4 min-w-0">
       <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
     </div>
@@ -227,7 +227,7 @@ export function TokenManager() {
   const available = allowance?.available ?? 0;
 
   return (
-    <section className="glass rounded-2xl p-7 lg:col-span-2">
+    <section className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3">
       <Tabs defaultValue="tokens">
         <TabsList>
           <TabsTrigger value="tokens">
@@ -245,7 +245,7 @@ export function TokenManager() {
             </div>
           ) : (
             <>
-              <div className="grid gap-3 sm:grid-cols-4">
+              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
                 <Metric label="Disponíveis" value={String(available)} />
                 <Metric label="Utilizados" value={String(allowance?.used ?? 0)} />
                 <Metric label="Total" value={String(allowance?.total ?? 0)} />
