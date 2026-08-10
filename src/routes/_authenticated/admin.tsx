@@ -200,11 +200,11 @@ function Admin() {
         )}
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-10">
-          <div className="mb-10">
+          <div className="mb-8">
             <HeroCarousel />
           </div>
 
-          <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 className="text-3xl font-black uppercase tracking-tight sm:text-4xl">
                 Sistema <span className="neon-text">Geral</span>
