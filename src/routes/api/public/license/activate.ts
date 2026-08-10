@@ -43,16 +43,8 @@ export const Route = createFileRoute("/api/public/license/activate")({
           return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
         }
 
-        const license = (await findLicenseByToken(body.token)) as never as
-          | (Record<string, never> & {
-              id: string;
-              user_id: string;
-              status: string;
-              expires_at: string | null;
-              max_devices: number;
-              plans: { slug: string; name: string; features: Record<string, boolean> } | null;
-            })
-          | null;
+        const license = (await findLicenseByToken(body.token)) as any;
+
 
         if (!license) {
           await logEvent({
@@ -147,14 +139,26 @@ export const Route = createFileRoute("/api/public/license/activate")({
             .eq("id", existing.id);
         }
 
+        // Se for o primeiro uso (activated_at nulo), define a expiração a partir de agora
+        const updates: any = {
+          status: "active",
+          last_validation: new Date().toISOString(),
+        };
+        
+        if (!license.activated_at) {
+          updates.activated_at = new Date().toISOString();
+          // Se a licença tiver uma duração definida (ex: teste/trial), calcula a expiração baseada no agora
+          if (license.expires_at && license.starts_at) {
+            const duration = new Date(license.expires_at).getTime() - new Date(license.starts_at).getTime();
+            updates.expires_at = new Date(Date.now() + duration).toISOString();
+          }
+        }
+
         await supabaseAdmin
           .from("licenses")
-          .update({
-            status: "active",
-            activated_at: new Date().toISOString(),
-            last_validation: new Date().toISOString(),
-          })
+          .update(updates)
           .eq("id", license.id);
+
 
         await logEvent({
           license_id: license.id,
