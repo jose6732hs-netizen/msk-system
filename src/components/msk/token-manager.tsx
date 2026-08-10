@@ -361,6 +361,24 @@ export function TokenManager() {
                                     Créditos ilimitados ativados
                                   </p>
                                 </>
+                              ) : t.status === 'expired' ? (
+                                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+                                  <div className="flex items-center gap-3 mb-3">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                                      <Clock className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[0.65rem] font-black uppercase tracking-widest text-red-500">Atenção</p>
+                                      <h5 className="text-xs font-black text-white uppercase tracking-tighter">Licença Expirada</h5>
+                                    </div>
+                                  </div>
+                                  <p className="mb-4 text-[0.6rem] font-bold leading-relaxed text-muted-foreground uppercase">
+                                    {t.type === 'trial' ? 'Sua licença free de 15 min expirou.' : 'Sua licença premium expirou e o acesso foi bloqueado.'} Adquira uma nova licença para continuar usando o sistema MSK.
+                                  </p>
+                                  <Button asChild variant="neon" className="w-full rounded-xl py-6 text-[0.65rem] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                                    <Link to="/planos">Adquirir nova licença</Link>
+                                  </Button>
+                                </div>
                               ) : (
                                 <>
                                   <div className="flex items-center gap-1.5">
@@ -382,6 +400,24 @@ export function TokenManager() {
                                   </p>
                                 </>
                               )}
+                            </div>
+                          ) : t.status === 'expired' ? (
+                            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+                              <div className="flex items-center gap-3 mb-3">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
+                                  <Clock className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-[0.65rem] font-black uppercase tracking-widest text-red-500">Atenção</p>
+                                  <h5 className="text-xs font-black text-white uppercase tracking-tighter">Licença Expirada</h5>
+                                </div>
+                              </div>
+                              <p className="mb-4 text-[0.6rem] font-bold leading-relaxed text-muted-foreground uppercase">
+                                Sua licença expirou. Adquira uma nova licença para continuar usando o sistema MSK.
+                              </p>
+                              <Button asChild variant="neon" className="w-full rounded-xl py-6 text-[0.65rem] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
+                                <Link to="/planos">Adquirir nova licença</Link>
+                              </Button>
                             </div>
                           ) : (
                             <span className="inline-block rounded-full border border-white/5 bg-white/5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
