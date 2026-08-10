@@ -119,7 +119,7 @@ export function AdminEditorTab() {
           </Button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar rounded-2xl bg-black/20 p-2 border border-white/5 shadow-inner">
           {[
             { id: 'hero', label: 'Hero / Texto', icon: Monitor },
             { id: 'banners', label: 'Banners Landing', icon: ImageIcon },
@@ -131,8 +131,10 @@ export function AdminEditorTab() {
             <button
               key={item.id}
               onClick={() => setActiveSection(item.id)}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2 text-[0.65rem] font-black uppercase tracking-widest transition-all ${
-                activeSection === item.id ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20" : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+              className={`flex items-center gap-2 shrink-0 rounded-xl px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition-all ${
+                activeSection === item.id 
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                  : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
               }`}
             >
               <item.icon className="h-3.5 w-3.5" />
@@ -142,8 +144,14 @@ export function AdminEditorTab() {
         </div>
 
         <div className="glass rounded-3xl p-6 space-y-6">
+          
           {activeSection === 'hero' && (
-            <div className="space-y-4">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Configuração da Hero</h4>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
@@ -188,7 +196,8 @@ export function AdminEditorTab() {
           )}
           
           {activeSection === 'banners' && (
-            <div className="space-y-6">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
               <div className="flex items-center justify-between">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Gerenciar Banners da Landing</label>
                 <Button 
@@ -324,9 +333,10 @@ export function AdminEditorTab() {
               </div>
             </div>
           )}
-
+          
           {activeSection === 'partners' && (
-            <div className="space-y-4">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Chamada Parceiros</label>
                 <Input 
@@ -353,7 +363,8 @@ export function AdminEditorTab() {
           )}
           
           {activeSection === 'copy' && (
-            <div className="space-y-4">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">URL de Suporte (WhatsApp)</label>
                 <Input 

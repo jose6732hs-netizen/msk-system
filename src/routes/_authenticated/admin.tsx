@@ -260,36 +260,49 @@ function Admin() {
             </div>
           ) : (
             <div className="mt-8">
-              <div className="glass flex h-auto w-full flex-nowrap gap-1 overflow-x-auto p-1 scrollbar-hide sm:flex-wrap pb-2 mb-4">
-                {[
-                  { value: "licenses", label: "Licenças", color: "" },
-                  { value: "editor", label: "Editor", color: "text-primary" },
-                  { value: "tracking", label: "Analytics", color: "text-emerald-400" },
-                  ...(role?.superAdmin ? [{ value: "tokens", label: "Gerar token", color: "" }] : []),
-                  { value: "users", label: "Usuários", color: "" },
-                  { value: "subs", label: "Assinaturas", color: "" },
-                  { value: "payments", label: "Pagamentos", color: "" },
-                  { value: "webhooks", label: "Webhooks", color: "" },
-                  { value: "logs", label: "Auditoria", color: "" },
-                  { value: "gateway", label: "Gateway", color: "text-cyan-400" },
-                  { value: "finance", label: "Financeiro", color: "text-yellow-400" },
-                  { value: "extension", label: "Extensão", color: "" },
-                  { value: "affiliates", label: "Afiliados", color: "" },
-                  { value: "push", label: "🔔 Testes / Push", color: "text-orange-400" },
+              <div className="flex flex-col gap-6 mt-8">
+                <div className="flex items-center gap-3">
+                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <Activity className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black uppercase tracking-widest">Painel Administrativo</h3>
+                    <p className="text-[0.6rem] text-muted-foreground uppercase font-bold">Gestão completa da infraestrutura</p>
+                  </div>
+                </div>
 
-                ].map((tab) => (
-                  <button
-                    key={tab.value}
-                    onClick={() => setActiveTab(tab.value)}
-                    className={cn(
-                      "inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-bold transition-all shrink-0 min-w-[100px]",
-                      activeTab === tab.value ? "bg-primary/20 text-foreground" : "text-muted-foreground",
-                      tab.color
-                    )}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                <div className="glass flex h-auto w-full flex-nowrap gap-1 overflow-x-auto p-1.5 scrollbar-hide sm:flex-wrap rounded-2xl border border-white/5">
+                  {[
+                    { value: "licenses", label: "Licenças", Icon: Zap },
+                    { value: "editor", label: "Editor Site", Icon: Activity, color: "text-primary" },
+                    { value: "tracking", label: "Analytics", Icon: TrendingUp, color: "text-emerald-400" },
+                    ...(role?.superAdmin ? [{ value: "tokens", label: "Gerar Token", Icon: MessageSquare }] : []),
+                    { value: "users", label: "Usuários", Icon: Users },
+                    { value: "subs", label: "Assinaturas", Icon: Zap },
+                    { value: "payments", label: "Pagamentos", Icon: DollarSign },
+                    { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
+                    { value: "logs", label: "Auditoria", Icon: Clock },
+                    { value: "gateway", label: "Gateway", Icon: ShieldAlert, color: "text-cyan-400" },
+                    { value: "finance", label: "Financeiro", Icon: TrendingUp, color: "text-yellow-400" },
+                    { value: "extension", label: "Extensão", Icon: LayoutDashboard },
+                    { value: "affiliates", label: "Afiliados", Icon: Users },
+                    { value: "push", label: "Push / Testes", Icon: MessageSquare, color: "text-orange-400" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.value}
+                      onClick={() => setActiveTab(tab.value)}
+                      className={cn(
+                        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition-all shrink-0",
+                        activeTab === tab.value 
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
+                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                      )}
+                    >
+                      <tab.Icon className={cn("h-3.5 w-3.5", !activeTab === tab.value && tab.color)} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Tab Contents */}
