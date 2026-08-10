@@ -22,15 +22,21 @@ export const getRouter = () => {
     scrollRestoration: true,
     defaultPreload: false,
     defaultPreloadDelay: 50,
-    // Recupera de chunks antigos em cache (após novo deploy) recarregando uma única vez.
+    // Recupera de chunks antigos em cache (após novo deploy) recarregando o destino pretendido.
     defaultOnCatch: (error) => {
       if (typeof window === "undefined" || !isStaleChunkError(error)) return;
-      if (sessionStorage.getItem(STALE_CHUNK_KEY)) return;
-      sessionStorage.setItem(STALE_CHUNK_KEY, "1");
-      const url = new URL(window.location.href);
+      // Destino que o roteador tentou abrir (pode ser diferente da URL atual).
+      const target =
+        router.state.location?.href ??
+        window.location.pathname + window.location.search;
+      const key = `${STALE_CHUNK_KEY}:${target.split("?")[0]}`;
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+      const url = new URL(target, window.location.origin);
       url.searchParams.set("_v", Date.now().toString(36));
       window.location.replace(url.toString());
     },
+
   });
 
   return router;
