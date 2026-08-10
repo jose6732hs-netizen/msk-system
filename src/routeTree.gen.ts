@@ -26,6 +26,7 @@ import { Route as ParceirosIndexRouteImport } from './routes/parceiros/index'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as AuthenticatedPainelPremiacoesRouteImport } from './routes/_authenticated/painel/premiacoes'
 import { Route as AuthenticatedParceiroIndexRouteImport } from './routes/_authenticated/parceiro/index'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
@@ -130,6 +131,12 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedPainelPremiacoesRoute =
+  AuthenticatedPainelPremiacoesRouteImport.update({
+    id: '/premiacoes',
+    path: '/premiacoes',
+    getParentRoute: () => AuthenticatedPainelRoute,
+  } as any)
 const AuthenticatedParceiroIndexRoute =
   AuthenticatedParceiroIndexRouteImport.update({
     id: '/parceiro/',
@@ -233,13 +240,14 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/painel': typeof AuthenticatedPainelRoute
+  '/painel': typeof AuthenticatedPainelRouteWithChildren
   '/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/painel/premiacoes': typeof AuthenticatedPainelPremiacoesRoute
   '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
@@ -267,13 +275,14 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
-  '/painel': typeof AuthenticatedPainelRoute
+  '/painel': typeof AuthenticatedPainelRouteWithChildren
   '/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
   '/parceiros': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/painel/premiacoes': typeof AuthenticatedPainelPremiacoesRoute
   '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
@@ -303,13 +312,14 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
-  '/_authenticated/painel': typeof AuthenticatedPainelRoute
+  '/_authenticated/painel': typeof AuthenticatedPainelRouteWithChildren
   '/_authenticated/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
   '/r/$slug': typeof RSlugRoute
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/painel/premiacoes': typeof AuthenticatedPainelPremiacoesRoute
   '/api/public/cms': typeof ApiPublicCmsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/painel/premiacoes'
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
@@ -380,6 +391,7 @@ export interface FileRouteTypes {
     | '/parceiros'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/painel/premiacoes'
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
@@ -415,6 +427,7 @@ export interface FileRouteTypes {
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/painel/premiacoes'
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
@@ -586,6 +599,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/painel/premiacoes': {
+      id: '/_authenticated/painel/premiacoes'
+      path: '/premiacoes'
+      fullPath: '/painel/premiacoes'
+      preLoaderRoute: typeof AuthenticatedPainelPremiacoesRouteImport
+      parentRoute: typeof AuthenticatedPainelRoute
+    }
     '/_authenticated/parceiro/': {
       id: '/_authenticated/parceiro/'
       path: '/parceiro'
@@ -701,16 +721,27 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedPainelRouteChildren {
+  AuthenticatedPainelPremiacoesRoute: typeof AuthenticatedPainelPremiacoesRoute
+}
+
+const AuthenticatedPainelRouteChildren: AuthenticatedPainelRouteChildren = {
+  AuthenticatedPainelPremiacoesRoute: AuthenticatedPainelPremiacoesRoute,
+}
+
+const AuthenticatedPainelRouteWithChildren =
+  AuthenticatedPainelRoute._addFileChildren(AuthenticatedPainelRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
-  AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
+  AuthenticatedPainelRoute: typeof AuthenticatedPainelRouteWithChildren
   AuthenticatedRevendedorRoute: typeof AuthenticatedRevendedorRoute
   AuthenticatedParceiroIndexRoute: typeof AuthenticatedParceiroIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
-  AuthenticatedPainelRoute: AuthenticatedPainelRoute,
+  AuthenticatedPainelRoute: AuthenticatedPainelRouteWithChildren,
   AuthenticatedRevendedorRoute: AuthenticatedRevendedorRoute,
   AuthenticatedParceiroIndexRoute: AuthenticatedParceiroIndexRoute,
 }
