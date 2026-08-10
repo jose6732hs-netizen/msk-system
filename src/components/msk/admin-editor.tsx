@@ -156,7 +156,7 @@ export function AdminEditorTab() {
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
                   value={(localSettings as any).hero?.title ?? ''} 
-                  placeholder={settings?.hero?.title || 'Pare de ser interrompido no meio da criação'}
+                  placeholder={(settings as any)?.hero?.title || 'Pare de ser interrompido no meio da criação'}
                   onChange={(e) => updateSetting('hero', 'title', e.target.value)}
                   className="bg-background/50"
                 />
@@ -165,7 +165,7 @@ export function AdminEditorTab() {
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo</label>
                 <Textarea 
                   value={(localSettings as any).hero?.subtitle ?? ''} 
-                  placeholder={settings?.hero?.subtitle || 'Acesso completo à extensão Lovable com créditos infinitos...'}
+                  placeholder={(settings as any)?.hero?.subtitle || 'Acesso completo à extensão Lovable com créditos infinitos...'}
                   onChange={(e) => updateSetting('hero', 'subtitle', e.target.value)}
                   className="bg-background/50 min-h-[100px]"
                 />
@@ -344,7 +344,7 @@ export function AdminEditorTab() {
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Chamada Parceiros</label>
                 <Input 
                   value={(localSettings as any).partners_teaser?.title ?? ''} 
-                  placeholder={settings?.partners_teaser?.title || 'Revenda e ganhe comissões recorrentes'}
+                  placeholder={(settings as any)?.partners_teaser?.title || 'Revenda e ganhe comissões recorrentes'}
                   onChange={(e) => updateSetting('partners_teaser', 'title', e.target.value)}
                 />
               </div>
@@ -352,7 +352,7 @@ export function AdminEditorTab() {
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo Parceiros</label>
                 <Textarea 
                   value={(localSettings as any).partners_teaser?.subtitle ?? ''} 
-                  placeholder={settings?.partners_teaser?.subtitle || 'Entre para o programa de parceiros Infinity...'}
+                  placeholder={(settings as any)?.partners_teaser?.subtitle || 'Entre para o programa de parceiros Infinity...'}
                   onChange={(e) => updateSetting('partners_teaser', 'subtitle', e.target.value)}
                 />
               </div>
