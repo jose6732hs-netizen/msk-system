@@ -15,7 +15,8 @@ import {
   Clock,
   ExternalLink,
   Copy,
-  FileText
+  FileText,
+  Award
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentsTab } from "@/components/parceiro/documents-tab";
@@ -101,6 +102,9 @@ function AffiliateDashboard() {
         <Tabs defaultValue="overview" className="space-y-10 focus:outline-none">
           <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-14 w-full max-w-md">
             <TabsTrigger value="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-full">Painel</TabsTrigger>
+            <TabsTrigger value="awards" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+              <Award size={16} className="shrink-0" /> <span className="truncate">Premiações</span>
+            </TabsTrigger>
             <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
               <FileText size={16} className="shrink-0" /> <span className="truncate">Documentos</span>
             </TabsTrigger>
@@ -258,6 +262,26 @@ function AffiliateDashboard() {
                   </section>
                </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="awards" className="focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <Link to="/_authenticated/painel/premiacoes" className="block group">
+              <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center space-y-8 hover:border-primary/40 transition-all relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full -mr-32 -mt-32 group-hover:bg-primary/10 transition-colors" />
+                <div className="relative z-10">
+                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+                    <Award className="text-primary" size={40} />
+                  </div>
+                  <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4">Central de Premiações</h2>
+                  <p className="text-white/40 text-lg max-w-2xl mx-auto mb-8">
+                    Seu desempenho tem valor. Sua conquista tem nome. Acesse agora a central e veja as recompensas exclusivas que esperam por você.
+                  </p>
+                  <Button variant="neon" size="lg" className="h-14 px-10 rounded-xl font-black text-lg">
+                    Acessar Premiações
+                  </Button>
+                </div>
+              </div>
+            </Link>
           </TabsContent>
 
           <TabsContent value="docs" className="focus:outline-none">

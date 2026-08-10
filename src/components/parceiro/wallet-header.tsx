@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, RefreshCw, Trophy, Menu } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Trophy, Menu, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
@@ -103,10 +103,11 @@ export function AffiliateHeader({
              </SheetTrigger>
              <SheetContent side="right" className="bg-[#0A0A0A] border-white/10 text-white">
                 <nav className="flex flex-col gap-6 mt-12">
-                   <a href="/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</a>
-                   <Link to="/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
-                   <a href="/parceiro/links" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</a>
-                   <a href="/parceiro/config" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</a>
+                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors">Visão Geral</Link>
+                   <Link to="/_authenticated/painel/premiacoes" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Premiações</Link>
+                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Financeiro</Link>
+                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Links de Divulgação</Link>
+                   <Link to="/_authenticated/parceiro" className="text-xl font-bold hover:text-primary transition-colors text-white/40">Configurações</Link>
                    <div className="h-px bg-white/10 my-4" />
                    <Button variant="neon" className="w-full" onClick={() => (window as any).openWalletModal?.()}>
                       Carteira Digital
