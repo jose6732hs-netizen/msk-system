@@ -436,7 +436,16 @@ export function AdminEditorTab() {
                                   
                                   const newVideos = [...(localSettings as any).tutorials.videos];
                                   newVideos[index].url = res.url;
-                                  updateSetting('tutorials', 'videos', newVideos);
+                                  
+                                  // Immediately update local state so the preview reflects the change
+                                  setLocalSettings((prev: any) => ({
+                                    ...prev,
+                                    tutorials: {
+                                      ...(prev?.tutorials || {}),
+                                      videos: newVideos
+                                    }
+                                  }));
+                                  
                                   toast.success("Vídeo carregado com sucesso!");
                                 } catch (err) {
                                   toast.error("Erro no upload do vídeo");
