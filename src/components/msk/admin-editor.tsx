@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import confetti from "canvas-confetti";
 import { 
   Monitor, 
@@ -14,7 +14,8 @@ import {
   Image as ImageIcon,
   Upload,
   Palette,
-  Users
+  Users,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +25,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
 
-type Section = 'hero' | 'partners' | 'features' | 'copy' | 'branding';
+type Section = 'hero' | 'banners' | 'partners' | 'features' | 'copy' | 'branding';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -48,6 +49,8 @@ export function AdminEditorTab() {
     queryKey: ["cms-history"],
     queryFn: () => getHistory(),
   });
+
+  const initialSettings = useMemo(() => settings || {}, [settings]);
 
   useEffect(() => {
     if (settings) {
@@ -116,7 +119,8 @@ export function AdminEditorTab() {
 
         <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
           {[
-            { id: 'hero', label: 'Hero / Início', icon: Monitor },
+            { id: 'hero', label: 'Hero / Texto', icon: Monitor },
+            { id: 'banners', label: 'Banners Landing', icon: ImageIcon },
             { id: 'partners', label: 'Parceiros', icon: Users },
             { id: 'branding', label: 'Extensão / Branding', icon: Palette },
             { id: 'copy', label: 'Copies / Suporte', icon: Type },
@@ -140,7 +144,7 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Principal (H1)</label>
                 <Input 
-                  value={localSettings.hero?.title || ''} 
+                  value={(localSettings as any).hero?.title ?? (initialSettings as any).hero?.title ?? 'Pare de ser interrompido no meio da criação'} 
                   onChange={(e) => updateSetting('hero', 'title', e.target.value)}
                   className="bg-background/50"
                 />
@@ -148,7 +152,7 @@ export function AdminEditorTab() {
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo</label>
                 <Textarea 
-                  value={localSettings.hero?.subtitle || ''} 
+                  value={(localSettings as any).hero?.subtitle ?? (initialSettings as any).hero?.subtitle ?? 'Acesso completo à extensão Lovable com créditos infinitos. Crie apps, landing pages e sistemas o dia inteiro sem travar, sem contar crédito e sem perder o ritmo.'} 
                   onChange={(e) => updateSetting('hero', 'subtitle', e.target.value)}
                   className="bg-background/50 min-h-[100px]"
                 />
@@ -157,14 +161,14 @@ export function AdminEditorTab() {
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Texto CTA</label>
                   <Input 
-                    value={localSettings.hero?.cta_text || ''} 
+                    value={(localSettings as any).hero?.cta_text ?? (initialSettings as any).hero?.cta_text ?? 'Quero créditos infinitos agora'} 
                     onChange={(e) => updateSetting('hero', 'cta_text', e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Link CTA</label>
                   <Input 
-                    value={localSettings.hero?.cta_link || ''} 
+                    value={(localSettings as any).hero?.cta_link ?? (initialSettings as any).hero?.cta_link ?? '/auth'} 
                     onChange={(e) => updateSetting('hero', 'cta_link', e.target.value)}
                   />
                 </div>
@@ -179,20 +183,134 @@ export function AdminEditorTab() {
               </div>
             </div>
           )}
+          
+          {activeSection === 'banners' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Gerenciar Banners da Landing</label>
+                <Button 
+                  size="sm" 
+                  variant="neonOutline"
+                  onClick={() => {
+                    const currentBanners = (localSettings as any).hero?.banners || [];
+                    updateSetting('hero', 'banners', [...currentBanners, { url: '', alt: '' }]);
+                  }}
+                >
+                  + Adicionar Banner
+                </Button>
+              </div>
+
+              <div className="space-y-4">
+                {((localSettings as any).hero?.banners || []).map((banner: any, index: number) => (
+                  <div key={index} className="glass rounded-2xl p-4 border border-white/5 space-y-4">
+                    <div className="flex items-start gap-4">
+                      <div className="h-20 w-32 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                        {banner.url ? (
+                          <img src={banner.url} className="h-full w-full object-cover" />
+                        ) : (
+                          <ImageIcon className="h-6 w-6 text-muted-foreground/30" />
+                        )}
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="URL da Imagem"
+                            value={banner.url}
+                            onChange={(e) => {
+                              const newBanners = [...(localSettings as any).hero.banners];
+                              newBanners[index].url = e.target.value;
+                              updateSetting('hero', 'banners', newBanners);
+                            }}
+                            className="text-[0.7rem]"
+                          />
+                          <Button 
+                            size="icon" 
+                            variant="neonOutline" 
+                            className="shrink-0"
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.onchange = async (e) => {
+                                const file = (e.target as HTMLInputElement).files?.[0];
+                                if (file) {
+                                  setUploading(`banner-${index}`);
+                                  try {
+                                    const fd = new FormData();
+                                    fd.append('file', file);
+                                    fd.append('key', `landing-banner-${index}`);
+                                    const res = await uploadAsset({ data: fd as any });
+                                    const newBanners = [...(localSettings as any).hero.banners];
+                                    newBanners[index].url = res.url;
+                                    updateSetting('hero', 'banners', newBanners);
+                                    toast.success("Imagem carregada!");
+                                  } catch (err) {
+                                    toast.error("Erro no upload");
+                                  } finally {
+                                    setUploading(null);
+                                  }
+                                }
+                              };
+                              input.click();
+                            }}
+                            disabled={uploading === `banner-${index}`}
+                          >
+                            {uploading === `banner-${index}` ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Input 
+                            placeholder="Texto Alternativo (Alt)"
+                            value={banner.alt}
+                            onChange={(e) => {
+                              const newBanners = [...(localSettings as any).hero.banners];
+                              newBanners[index].alt = e.target.value;
+                              updateSetting('hero', 'banners', newBanners);
+                            }}
+                            className="text-[0.7rem]"
+                          />
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="shrink-0 text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                            onClick={() => {
+                              const newBanners = (localSettings as any).hero.banners.filter((_: any, i: number) => i !== index);
+                              updateSetting('hero', 'banners', newBanners);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('hero')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+                </Button>
+                <Button onClick={() => handlePublish('hero')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Banners
+                </Button>
+              </div>
+            </div>
+          )}
 
           {activeSection === 'partners' && (
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Título Chamada Parceiros</label>
                 <Input 
-                  value={localSettings.partners_teaser?.title || ''} 
+                  value={(localSettings as any).partners_teaser?.title ?? (initialSettings as any).partners_teaser?.title ?? 'Revenda e ganhe comissões recorrentes'} 
                   onChange={(e) => updateSetting('partners_teaser', 'title', e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Subtítulo Parceiros</label>
                 <Textarea 
-                  value={localSettings.partners_teaser?.subtitle || ''} 
+                  value={(localSettings as any).partners_teaser?.subtitle ?? (initialSettings as any).partners_teaser?.subtitle ?? 'Entre para o programa de parceiros Infinity e transforme sua audiência em renda. Estrutura simples, pagamentos via PIX e suporte total.'} 
                   onChange={(e) => updateSetting('partners_teaser', 'subtitle', e.target.value)}
                 />
               </div>
@@ -213,7 +331,7 @@ export function AdminEditorTab() {
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">URL de Suporte (WhatsApp)</label>
                 <Input 
                   placeholder="https://wa.me/55..."
-                  value={localSettings.config?.support_url || ''} 
+                  value={(localSettings as any).config?.support_url ?? (initialSettings as any).config?.support_url ?? ''} 
                   onChange={(e) => updateSetting('config', 'support_url', e.target.value)}
                 />
               </div>
@@ -240,8 +358,10 @@ export function AdminEditorTab() {
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground block">Ícone Principal (128x128)</label>
                     <div className="flex items-center gap-4">
                       <div className="h-20 w-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                        {localSettings.branding?.icon_url ? (
-                          <img src={localSettings.branding.icon_url} className="h-full w-full object-cover" />
+                        {((localSettings as any).branding?.icon_url ?? (initialSettings as any).branding?.icon_url) ? (
+                          <img src={(localSettings as any).branding?.icon_url ?? (initialSettings as any).branding?.icon_url} className="h-full w-full object-cover" />
+
+
                         ) : (
                           <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
                         )}
@@ -285,8 +405,10 @@ export function AdminEditorTab() {
                   <div className="space-y-2">
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground block">Banner Promocional</label>
                     <div className="aspect-video w-full rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group">
-                      {localSettings.branding?.banner_url ? (
-                        <img src={localSettings.branding.banner_url} className="h-full w-full object-cover" />
+                      {((localSettings as any).branding?.banner_url ?? (initialSettings as any).branding?.banner_url) ? (
+                        <img src={(localSettings as any).branding?.banner_url ?? (initialSettings as any).branding?.banner_url} className="h-full w-full object-cover" />
+
+
                       ) : (
                         <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
                       )}
@@ -333,7 +455,7 @@ export function AdminEditorTab() {
                   <div className="space-y-2">
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Nome da Marca</label>
                     <Input 
-                      value={localSettings.branding?.brand_name || 'MSK SISTEM'} 
+                      value={(localSettings as any).branding?.brand_name ?? (initialSettings as any).branding?.brand_name ?? 'MSK SISTEM'} 
                       onChange={(e) => updateSetting('branding', 'brand_name', e.target.value)}
                     />
                   </div>
@@ -341,13 +463,13 @@ export function AdminEditorTab() {
                     <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Cor Primária (Hex)</label>
                     <div className="flex gap-2">
                       <Input 
-                        value={localSettings.branding?.primary_color || '#39ff14'} 
+                        value={(localSettings as any).branding?.primary_color ?? (initialSettings as any).branding?.primary_color ?? '#39ff14'} 
                         onChange={(e) => updateSetting('branding', 'primary_color', e.target.value)}
                         className="font-mono"
                       />
                       <div 
                         className="h-10 w-12 rounded-xl border border-white/10" 
-                        style={{ backgroundColor: localSettings.branding?.primary_color || '#39ff14' }}
+                        style={{ backgroundColor: (localSettings as any).branding?.primary_color ?? (initialSettings as any).branding?.primary_color ?? '#39ff14' }}
                       />
                     </div>
                   </div>
