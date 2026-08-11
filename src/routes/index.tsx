@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
 function LandingPage() {
   return (
     <div className="relative min-h-screen bg-[#050505] text-foreground overflow-hidden font-sans">
-      <NightSky opacity={0.4} />
+      <NightSky intensity={0.4} />
       <SiteHeader />
       
       <main>
