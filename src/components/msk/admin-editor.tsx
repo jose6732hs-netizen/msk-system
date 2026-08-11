@@ -488,7 +488,7 @@ export function AdminEditorTab() {
                                 accept: 'image/*',
                                 key: slot.key,
                                 setUploading,
-                                uploadAsset,
+                                uploadAsset: null as any,
                                 onDone: (url) => updateSetting('site_images', slot.key, url),
                               })}
                             >
