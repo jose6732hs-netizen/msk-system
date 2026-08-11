@@ -121,17 +121,26 @@ export async function generateManualToken(
 
 
 export async function loadTokenPlans() {
-  const { data, error } = await supabaseAdmin
+  const { data: activePlans, error: activeError } = await supabaseAdmin
+    .from("plans")
+    .select("id,name,slug,is_lifetime,max_devices,active,price,currency,duration_label,duration_days")
+    .eq("active", true)
+    .order("sort_order", { ascending: true });
+  
+  if (!activeError && activePlans?.length) {
+    return activePlans;
+  }
+
+  // Fallback anti-travamento: admin sempre consegue gerar licença.
+  const { data: all, error: allError } = await supabaseAdmin
     .from("plans")
     .select("id,name,slug,is_lifetime,max_devices,active,price,currency,duration_label,duration_days")
     .order("sort_order", { ascending: true });
   
-  if (error) {
-    console.error("Error loading plans for manual token generation:", error);
+  if (allError) {
+    console.error("Error loading plans for manual token generation:", allError);
     return [];
   }
   
-  // Return all plans for the super admin, even if "active" is false in some context,
-  // but usually they are all true now after our migration.
-  return (data ?? []) as Record<string, any>[];
+  return (all ?? []) as Record<string, any>[];
 }
