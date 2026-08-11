@@ -137,7 +137,7 @@ export function AffiliateHeader({
                  <Menu />
                </Button>
              </SheetTrigger>
-              <SheetContent side="bottom" className="h-[100dvh] max-h-screen border-none bg-background/95 p-0 backdrop-blur-3xl focus:outline-none z-[110]">
+              <SheetContent side="bottom" className="h-[100dvh] max-h-screen border-none bg-background/98 p-0 backdrop-blur-3xl focus:outline-none z-[150]">
                 <div className="flex h-full flex-col overflow-y-auto pb-10">
                   <div className="flex items-center justify-between px-6 pt-6 mb-4">
                     <span className="text-lg font-black uppercase tracking-widest text-primary">MSK AFILIADOS</span>

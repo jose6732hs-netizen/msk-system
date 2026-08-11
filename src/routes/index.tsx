@@ -68,8 +68,9 @@ function Index() {
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden text-yellow-400">
 
-      <header className="mobile-top-bar lg:hidden">
+      <header className="mobile-top-bar lg:hidden flex items-center justify-between px-5">
         <MskLogo size={32} />
+        <SiteHeader mobileMenuOnly />
       </header>
       <SiteHeader />
       <main className="flex-1 flex flex-col items-center p-5 relative overflow-visible">

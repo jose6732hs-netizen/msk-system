@@ -102,8 +102,14 @@ function AffiliateDashboard() {
 
       <main className="flex-1 container max-w-7xl mx-auto px-4 py-8 overflow-y-auto scrollbar-hide min-w-0">
         <Tabs defaultValue="overview" className="space-y-10 focus:outline-none pb-32 md:pb-20">
-          <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-auto min-h-14 w-full max-w-md flex flex-wrap sm:flex-nowrap">
+          <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-auto min-h-14 w-full max-w-lg flex flex-wrap sm:flex-nowrap">
             <TabsTrigger value="overview" id="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-12 sm:h-full">Painel</TabsTrigger>
+            <TabsTrigger 
+              value="ranking" 
+              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full px-2"
+            >
+              <TrendingUp size={16} className="shrink-0" /> <span className="truncate">Ranking</span>
+            </TabsTrigger>
             <TabsTrigger 
               value="awards" 
               className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full"
@@ -291,6 +297,19 @@ function AffiliateDashboard() {
                      </p>
                   </section>
                </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="ranking" className="focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8 text-center">
+              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <TrendingUp className="text-primary" size={40} />
+              </div>
+              <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Seu Ranking</h2>
+              <p className="text-white/40 mb-8 max-w-md mx-auto">Você está atualmente na posição #24 entre os parceiros de maior performance deste mês.</p>
+              <div className="max-w-xs mx-auto flex justify-center">
+                <Button variant="neon" className="w-full h-14 rounded-xl font-black uppercase flex items-center justify-center">Ver meu ranking atual</Button>
+              </div>
             </div>
           </TabsContent>
 
