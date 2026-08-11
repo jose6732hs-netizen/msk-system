@@ -318,11 +318,12 @@ function MobileNavigation() {
 
   return (
     <div
-      className="lg:hidden fixed inset-x-0 bottom-0 z-[120] w-full max-w-full"
+      className="hidden fixed inset-x-0 bottom-0 z-[120] w-full max-w-full"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       {/* Fade para o conteúdo não colar na barra */}
       <div className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-gradient-to-t from-background to-transparent" />
+
 
       <nav className="grid w-full grid-cols-5 items-stretch gap-0 border-t border-white/10 bg-background/90 px-1 py-1.5 backdrop-blur-2xl">
         {navItems.map((item) => {
