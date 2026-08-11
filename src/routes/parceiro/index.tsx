@@ -307,8 +307,8 @@ function AffiliateDashboard() {
               </div>
               <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Seu Ranking</h2>
               <p className="text-white/40 mb-8 max-w-md mx-auto">Você está atualmente na posição #24 entre os parceiros de maior performance deste mês.</p>
-              <div className="max-w-xs mx-auto">
-                <Button variant="neon" className="w-full h-14 rounded-xl font-black uppercase">Ver meu ranking atual</Button>
+              <div className="max-w-xs mx-auto flex justify-center">
+                <Button variant="neon" className="w-full h-14 rounded-xl font-black uppercase flex items-center justify-center">Ver meu ranking atual</Button>
               </div>
             </div>
           </TabsContent>
