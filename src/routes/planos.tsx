@@ -433,10 +433,11 @@ function PlanosPage() {
 
             <div 
               id="plans-carousel"
-              className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth snap-x snap-mandatory px-4 sm:px-10 touch-pan-x scroll-p-4 sm:scroll-p-10"
+              className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth snap-x snap-mandatory px-4 sm:px-10 touch-pan-x scroll-p-4 sm:scroll-p-10 pointer-events-auto"
             >
               {/* Loop Infinito: Usamos a classe animate-carousel-loop do global CSS */}
-              <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10">
+              <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10 pointer-events-auto">
+
 
 
               {[...(plans || []), ...(plans || [])].map((plan, idx) => {
