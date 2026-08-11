@@ -1,0 +1,1 @@
+delete from public.extension_builds where id = '9d1177c2-adb1-4c69-997c-0173dd3f1af5';
