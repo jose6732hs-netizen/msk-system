@@ -455,13 +455,14 @@ function PlanosPage() {
                     }`}
                   >
 
-                    <div className="relative h-40 sm:h-52 w-full overflow-hidden p-3 pb-0 sm:p-4 sm:pb-0">
+                    <div className="relative h-48 sm:h-64 w-full overflow-hidden">
                       <img 
                         src={planImage(plan)} 
                         alt={plan.name} 
-                        className="w-full h-full object-contain rounded-[1.25rem] sm:rounded-[2rem] transition-transform duration-700 hover:scale-105"
+                        className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent pointer-events-none" />
+
                       <div className="absolute top-3 right-3 sm:top-6 sm:right-6 max-w-[85%] truncate bg-primary text-black font-black text-[0.5rem] sm:text-[0.6rem] uppercase tracking-widest px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-lg">
                         {isDaily ? "Oferta Flash" : highlighted ? "Mais Popular" : "Oferta Premium"}
                       </div>
