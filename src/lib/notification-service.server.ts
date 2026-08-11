@@ -42,7 +42,7 @@ export async function sendProfessionalNotification(params: {
     .from("profiles")
     .select("notification_preferences")
     .eq("id", userId)
-    .single();
+    .single() as any;
   
   const prefs = (profile?.notification_preferences as Record<string, boolean>) || {};
   if (prefs[type] === false) return { skipped: true, reason: "preference_off" };
@@ -55,14 +55,14 @@ export async function sendProfessionalNotification(params: {
     body,
     emoji,
     link: link || "/painel",
-    data: metadata || {},
+    data: (metadata || {}) as any,
     status: "pending"
-  } as any).select("id").single();
+  } as any).select("id").single() as any;
 
   if (nErr) throw nErr;
 
-  // 3. Buscar Dispositivos Ativos
-  const { data: devices } = await supabaseAdmin
+  // 3. Buscar Dispositivos Ativos (uso push_subscriptions conforme schema criado)
+  const { data: devices } = await (supabaseAdmin as any)
     .from("push_subscriptions")
     .select("*")
     .eq("user_id", userId)
@@ -85,7 +85,7 @@ export async function sendProfessionalNotification(params: {
     });
 
     // Registrar Log
-    await supabaseAdmin.from("push_notification_logs").insert({
+    await (supabaseAdmin as any).from("push_notification_logs").insert({
       notification_id: notif.id,
       user_id: userId,
       device_id: device.device_id,
@@ -96,7 +96,7 @@ export async function sendProfessionalNotification(params: {
 
     if (res.ok) sent++;
     else if (res.gone) {
-      await supabaseAdmin.from("push_subscriptions").update({ is_active: false }).eq("id", device.id);
+      await (supabaseAdmin as any).from("push_subscriptions").update({ is_active: false }).eq("id", device.id);
     }
   }
 
