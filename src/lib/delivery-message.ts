@@ -101,3 +101,46 @@ export function copyToClipboard(text: string, successMessage: string = "Copiado 
     toast.error("Erro ao copiar.");
   });
 }
+
+export function generateSalesMessage(data: {
+  productName: string;
+  planName: string;
+  planDuration: string;
+  maxDevices: number | string;
+  licenseKey: string;
+  expirationInfo: string;
+}) {
+  return `🔥 ${data.productName} — ACESSO LIBERADO 🔥
+
+Olá! 👋 Muito obrigado pela sua compra e pela confiança! 💚
+
+Você acaba de garantir o plano *${data.planName}*, e abaixo está tudo o que ele inclui:
+
+━━━━━━━━━━━━━━━━━━
+
+⭐ SEU PLANO: ${data.planName}
+⏱️ Duração: ${data.planDuration}
+💻 Dispositivos liberados: ${data.maxDevices}
+📆 Expira em: ${data.expirationInfo}
+♾️ Créditos ilimitados enquanto a licença estiver ativa
+🛡️ Suporte prioritário durante toda a vigência
+
+━━━━━━━━━━━━━━━━━━
+
+🔐 SUA LICENÇA
+
+${data.licenseKey}
+
+━━━━━━━━━━━━━━━━━━
+
+🚀 ATIVAÇÃO EM 3 PASSOS
+1️⃣ Instale a extensão MSK SISTEM no Chrome.
+2️⃣ Abra a extensão e cole a licença acima.
+3️⃣ Clique em "Ativar licença" e pronto! 🎉
+
+⚠️ A licença é individual — não compartilhe.
+
+Qualquer dúvida, é só chamar o suporte. Estamos com você! 🤝
+
+Obrigado por fazer parte da MSK SISTEM. Bom uso! 🔥`;
+}
