@@ -190,7 +190,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
                   </SelectItem>
                 ))
               ) : !isLoading ? (
-                <div className="px-3 py-2 text-sm text-muted-foreground">
+                <div className="px-3 py-2 text-sm text-muted-foreground italic">
                   Nenhum plano disponível para emissão manual. Verifique se existem planos cadastrados.
                 </div>
               ) : (
