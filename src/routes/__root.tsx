@@ -310,7 +310,7 @@ function MobileNavigation() {
 
   return (
     <div
-      className="lg:hidden fixed inset-x-0 bottom-0 z-[60] w-full max-w-full"
+      className="lg:hidden fixed inset-x-0 bottom-0 z-[120] w-full max-w-full"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       {/* Fade para o conteúdo não colar na barra */}

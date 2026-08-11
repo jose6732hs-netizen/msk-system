@@ -255,8 +255,8 @@ function Admin() {
 
         {/* Mobile Sidebar Overlay */}
         {menuOpen && (
-          <div className="fixed inset-0 z-[100] lg:hidden">
-            <div className="absolute inset-0 bg-background/90 backdrop-blur-md" onClick={() => setMenuOpen(false)} />
+          <div className="fixed inset-0 z-[200] lg:hidden">
+            <div className="absolute inset-0 bg-background/95 backdrop-blur-xl" onClick={() => setMenuOpen(false)} />
             <nav className="absolute right-0 top-0 flex h-full w-72 max-w-[85vw] flex-col border-l border-border/60 bg-card p-5 shadow-2xl">
               <div className="mb-6 flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Admin</span>
