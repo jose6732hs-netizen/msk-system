@@ -117,8 +117,13 @@ export const getCmsHistory = createServerFn({ method: "GET" })
 
 export const uploadCmsAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context, request }) => {
+  .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
+    // In TanStack Start v1, server functions get the request from the global context or arguments
+    // When using middleware, the second argument might contain the request if injected.
+    // However, the standard way in .handler() for a multipart form is often accessed via context if properly typed,
+    // or we can use the web-standard way if the framework provides it.
+    const request = (context as any).request;
     const formData = await request.formData();
     const file = formData.get("file") as File;
     const key = formData.get("key") as string;
