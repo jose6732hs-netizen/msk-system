@@ -434,7 +434,7 @@ export function AdminEditorTab() {
               uploadKeyPrefix="panel-banner"
               uploading={uploading}
               setUploading={setUploading}
-              uploadAsset={uploadAsset}
+              uploadAsset={null as any}
               onChange={(list) => updateSetting('panel', 'banners', list)}
               onSave={() => handleSave('panel')}
               onPublish={() => handlePublish('panel')}
