@@ -222,59 +222,87 @@ function Admin() {
         )}
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-10">
-          <div className="mb-8">
-            <HeroCarousel />
-          </div>
-
           <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 className="text-3xl font-black uppercase tracking-tight sm:text-4xl">
                 Sistema <span className="neon-text">Geral</span>
               </h1>
               <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Infraestrutura MSK SISTEMe
+                Infraestrutura MSK SISTEM
               </p>
             </div>
+            <Button variant="neon" className="w-full md:w-auto" onClick={() => setActiveTab("tokens")}>
+              <KeyRound className="h-4 w-4" /> Gerar licença
+            </Button>
           </header>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
-            {[
-              ["Total de Afiliados", stats?.users, Users, "text-blue-400"],
-              ["Afiliados Ativos", stats?.activeLicenses, Zap, "text-yellow-400"],
-              ["Comissões do Mês", "R$ 0,00", TrendingUp, "text-primary"],
-              ["Conversões", 0, Activity, "text-cyan-400"],
-              ["Receita Gerada", "R$ 0,00", DollarSign, "text-emerald-400"],
-            ].map(([k, v, Icon, color]: any) => (
-              <div key={k} className="glass group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all hover:border-primary/40">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[0.6rem] sm:text-[0.65rem] uppercase tracking-widest text-muted-foreground truncate">{k}</p>
-                    <p className="mt-1 sm:mt-2 text-lg sm:text-2xl font-bold text-foreground">{v ?? "—"}</p>
+          {activeTab === "licenses" && (
+            <>
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
+                {[
+                  ["Total de Afiliados", stats?.users, Users, "text-blue-400"],
+                  ["Licenças Ativas", stats?.activeLicenses, Zap, "text-yellow-400"],
+                  ["Comissões do Mês", "R$ 0,00", TrendingUp, "text-primary"],
+                  ["Conversões", 0, Activity, "text-cyan-400"],
+                  ["Receita Gerada", "R$ 0,00", DollarSign, "text-emerald-400"],
+                ].map(([k, v, Icon, color]: any) => (
+                  <div key={k} className="glass group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all hover:border-primary/40">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <p className="text-[0.6rem] sm:text-[0.65rem] uppercase tracking-widest text-muted-foreground truncate">{k}</p>
+                        <p className="mt-1 sm:mt-2 text-lg sm:text-2xl font-bold text-foreground">{v ?? "—"}</p>
+                      </div>
+                      <div className={`w-fit rounded-xl bg-muted/20 p-2 sm:p-2.5 transition-colors group-hover:bg-muted/40 ${color}`}>
+                        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </div>
+                    </div>
                   </div>
-                  <div className={`w-fit rounded-xl bg-muted/20 p-2 sm:p-2.5 transition-colors group-hover:bg-muted/40 ${color}`}>
-                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <form
-            className="mt-8 flex max-w-md gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setTerm(search);
-            }}
-          >
-            <Input
-              placeholder="Buscar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Button type="submit" variant="neon">
-              <Search />
-            </Button>
-          </form>
+              <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-hide">
+                  {[
+                    { id: "all", label: "Todas", color: "bg-foreground text-background" },
+                    { id: "active", label: "Ativas", color: "bg-emerald-500 text-black" },
+                    { id: "expired", label: "Expiradas", color: "bg-yellow-500 text-black" },
+                    { id: "suspended", label: "Suspensas", color: "bg-orange-500 text-black" },
+                    { id: "revoked", label: "Revogadas", color: "bg-red-500 text-white" },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setStatusFilter(f.id)}
+                      className={cn(
+                        "shrink-0 rounded-xl border border-white/5 px-4 py-2 text-[0.6rem] font-black uppercase tracking-widest transition-all",
+                        statusFilter === f.id ? f.color : "bg-muted/10 text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <form
+                  className="flex w-full gap-2 lg:max-w-sm"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setTerm(search);
+                  }}
+                >
+                  <Input
+                    placeholder="Buscar por e-mail, token ou plano..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                  <Button type="submit" variant="neon">
+                    <Search />
+                  </Button>
+                </form>
+              </div>
+            </>
+          )}
+
 
           {isLoading ? (
             <div className="mt-16 flex justify-center">
