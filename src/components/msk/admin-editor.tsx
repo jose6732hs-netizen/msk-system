@@ -227,7 +227,8 @@ export function AdminEditorTab() {
   const saveDraft = useServerFn(saveCmsDraft);
   const publishDraft = useServerFn(publishCmsDraft);
   const getHistory = useServerFn(getCmsHistory);
-  const uploadAsset = useServerFn(uploadCmsAsset);
+  // O uploadAsset via server function foi substituído pela rota /api/public/cms/upload
+  // para resolver problemas com FormData em server functions.
 
   const [activeSection, setActiveSection] = useState<Section>('hero');
   const [localSettings, setLocalSettings] = useState<any>(null);
