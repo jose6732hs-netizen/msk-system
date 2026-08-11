@@ -188,6 +188,7 @@ export async function loadAffiliateOverview(
         amount: Number(s.amount),
         rate: Number(c?.["rate"] ?? 0),
         commission: Number(c?.["amount"] ?? 0),
+        commissionStatus: c?.["status"] ?? "NONE",
         status: s.status,
         createdAt: s.created_at,
       };

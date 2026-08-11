@@ -214,18 +214,21 @@ function AffiliateDashboard() {
                                  </div>
                               </div>
                            </div>
-                           <div className="text-right">
-                              <p className="font-bold text-lg">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                              <p className={cn(
-                                "text-[10px] font-bold uppercase tracking-widest",
-                                sale.status === 'PAID' ? "text-green-500" : 
-                                sale.status === 'PENDING' ? "text-amber-500" : 
-                                "text-red-500"
+                           <div className="text-right flex flex-col items-end gap-1">
+                              <div className="flex flex-col items-end">
+                                <p className="font-bold text-lg leading-none">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                <p className="text-[9px] text-white/40 font-medium">Sua comissão ({sale.rate}%)</p>
+                              </div>
+                              <div className={cn(
+                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                                sale.status === 'PAID' ? "bg-green-500/20 text-green-500" : 
+                                sale.status === 'PENDING' ? "bg-amber-500/20 text-amber-500" : 
+                                "bg-red-500/20 text-red-500"
                               )}>
                                 {sale.status === 'PAID' ? 'Aprovada' : 
                                  sale.status === 'PENDING' ? 'Pendente' : 
                                  'Expirada'}
-                              </p>
+                              </div>
                            </div>
                         </div>
                       )) : (
