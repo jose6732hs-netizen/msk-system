@@ -23,9 +23,9 @@ export async function loadAdminAffiliates(search = "") {
   const userIds = list.map((a) => a["user_id"]);
   const affiliateIds = list.map((a) => a["id"]);
 
-  const [{ data: profiles }, { data: referrals }, { data: conversions }, { data: commissions }, { data: documents }] = await Promise.all([
+  const [{ data: profiles }, { data: referrals }, { data: conversions }, { data: commissions }, { data: documents }, { data: sessions }] = await Promise.all([
     userIds.length
-      ? supabaseAdmin.from("profiles").select("id,name,email").in("id", userIds)
+      ? supabaseAdmin.from("profiles").select("id,name,email,last_seen").in("id", userIds)
       : { data: [] as Record<string, any>[] },
     affiliateIds.length
       ? supabaseAdmin.from("affiliate_referrals").select("id, affiliate_id, status, user_id").in("affiliate_id", affiliateIds)
@@ -38,6 +38,9 @@ export async function loadAdminAffiliates(search = "") {
       : { data: [] as Record<string, any>[] },
     affiliateIds.length
       ? supabaseAdmin.from("affiliate_documents").select("*").in("affiliate_id", affiliateIds)
+      : { data: [] as Record<string, any>[] },
+    userIds.length
+      ? supabaseAdmin.from("profiles").select("id, last_seen").in("id", userIds)
       : { data: [] as Record<string, any>[] },
   ]);
 
@@ -99,10 +102,14 @@ export async function loadAdminAffiliates(search = "") {
           };
         });
 
+      const isOnline = profile?.last_seen && new Date(profile.last_seen).getTime() > Date.now() - 5 * 60000;
+
       const row: Record<string, any> = {
         ...(a as Record<string, any>),
         name: profile?.name ?? "—",
         email: profile?.email ?? "—",
+        last_seen: profile?.last_seen ?? null,
+        is_online: !!isOnline,
         link: affiliateLink(base, a["code"]),
         signups_count: stats?.signups ?? 0,
         customers_count: stats?.customers ?? 0,

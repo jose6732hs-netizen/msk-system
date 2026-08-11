@@ -130,6 +130,10 @@ function PlanosPage() {
 
   function addToCart(plan: any) {
     const isFree = Number(plan.price) === 0;
+    
+    // Proteção contra cliques múltiplos rápidos
+    if (loadingPlan === plan.id) return;
+
     track("offer_view", { label: plan.name, value: Number(plan.price) });
     if (isFree) {
       void subscribe(plan.id, plan.name, true);
@@ -139,9 +143,9 @@ function PlanosPage() {
     setCart(current => {
       const existing = current.find(item => item.planId === plan.id);
       if (existing) {
-        return current.map(item => 
-          item.planId === plan.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
+        // Impedir duplicação acidental: se já está no carrinho, não fazemos nada
+        // O usuário reclamou que cai duplicado sempre.
+        return current;
       }
       
       let imageUrl: string | null = planImage(plan);
@@ -313,7 +317,11 @@ function PlanosPage() {
           </div>
 
           {cart.length > 0 && (
-            <div className="glass p-0 rounded-[2.5rem] border border-white/10 w-full lg:min-w-[420px] lg:w-auto animate-in fade-in slide-in-from-top-4 lg:slide-in-from-right-4 shadow-2xl overflow-hidden bg-[#0F0F0F]">
+            <div className="glass p-0 rounded-[2.5rem] border border-white/10 w-full lg:min-w-[420px] lg:w-auto animate-in fade-in slide-in-from-top-4 lg:slide-in-from-right-4 shadow-2xl overflow-hidden bg-[#0F0F0F] ring-2 ring-primary/20">
+              <div className="bg-primary/10 px-4 py-2 flex items-center gap-2 border-b border-primary/20 animate-pulse">
+                <ShoppingCart className="h-3 w-3 text-primary" />
+                <span className="text-[10px] font-black text-primary uppercase tracking-tighter">Material Adicionado com Sucesso</span>
+              </div>
               <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/5">
                 <div>
                   <h3 className="text-lg font-black tracking-tight text-foreground">Seu Carrinho</h3>
