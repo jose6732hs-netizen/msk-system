@@ -46,24 +46,22 @@ export async function handleValidation(request: Request, bucket: string, limit: 
   if (!license) {
     const { hashToken } = await import("./license.server");
     const sentHash = await hashToken(parsed.data.token);
-    const { data: dbLicense } = await supabaseAdmin
-      .from("licenses")
-      .select("id, token_hash")
-      .limit(1);
-
+    
+    // Log the error for admin debugging in license_events
     await logEvent({ 
       event_type: "invalid_attempt", 
       metadata: { 
         bucket, 
         token_last4: parsed.data.token.slice(-4),
         sent_hash: sentHash,
-        db_sample_hash: dbLicense?.[0]?.token_hash || "none"
+        error: "Token not found in database"
       } 
     });
+
     return jsonResponse({ 
       success: false, 
       error: "LICENSE_INVALID",
-      message: "Token inválido. Confira os caracteres e tente novamente. (Não encontrado no banco)"
+      message: "Token inválido. Confira os caracteres e tente novamente."
     }, 404);
   }
 

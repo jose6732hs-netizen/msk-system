@@ -69,7 +69,6 @@ export async function hashToken(token: string): Promise<string> {
   const data = new TextEncoder().encode(payload);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hash = toHex(hashBuffer);
-  // console.log(`[DEBUG] Hashing token: "${tokenStr}" with key length ${key.length} -> ${hash}`);
   return hash;
 }
 

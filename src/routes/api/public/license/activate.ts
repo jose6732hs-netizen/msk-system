@@ -43,28 +43,24 @@ export const Route = createFileRoute("/api/public/license/activate")({
           return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
         }
 
-        const { hashToken } = await import("@/lib/license.server");
-        const tokenHash = await hashToken(body.token);
         const license = (await findLicenseByToken(body.token)) as any;
 
         if (!license) {
-          const { data: rawLicense } = await supabaseAdmin
-            .from("licenses")
-            .select("id, token_hash")
-            .limit(1);
-          
+          const { hashToken } = await import("@/lib/license.server");
+          const tokenHash = await hashToken(body.token);
+
           await logEvent({
             event_type: "invalid_attempt",
             metadata: { 
               ip_hash: await hashValue(ip),
               token_hash_sent: tokenHash,
-              db_sample_hash: rawLicense?.[0]?.token_hash || "none"
+              error: "Token not found during activation"
             },
           });
           return jsonResponse({ 
             success: false, 
             error: "INVALID_LICENSE",
-            message: "Token inválido. Confira os caracteres e tente novamente. (Não encontrado no banco)"
+            message: "Token inválido. Confira os caracteres e tente novamente."
           }, 404);
         }
 
