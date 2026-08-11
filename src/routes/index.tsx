@@ -73,9 +73,7 @@ function Index() {
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden bg-background text-foreground">
 
-      <header className="mobile-top-bar lg:hidden">
-        <MskLogo size={32} />
-      </header>
+      {/* Mobile top bar removed because SiteHeader is now visible on mobile */}
       <SiteHeader />
       <main className="flex-1 flex flex-col items-center p-5 relative overflow-visible">
         {/* Neon glow behind everything */}
