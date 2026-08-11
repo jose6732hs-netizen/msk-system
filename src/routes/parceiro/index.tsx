@@ -90,7 +90,7 @@ function AffiliateDashboard() {
   const { stats, affiliate, goal, sales } = data;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-primary selection:text-white">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-primary selection:text-white flex flex-col overflow-hidden">
       <AffiliateHeader 
         balance={stats.availableBalance}
         goalCurrent={goal.current}
@@ -100,21 +100,21 @@ function AffiliateDashboard() {
         isRefreshing={isRefreshing}
       />
 
-      <main className="container max-w-7xl mx-auto px-4 py-8 h-[calc(100vh-80px)] overflow-y-auto scrollbar-hide">
+      <main className="flex-1 container max-w-7xl mx-auto px-4 py-8 overflow-y-auto scrollbar-hide min-w-0">
         <Tabs defaultValue="overview" className="space-y-10 focus:outline-none pb-32 md:pb-20">
-          <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-14 w-full max-w-md">
-            <TabsTrigger value="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-full">Painel</TabsTrigger>
+          <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-auto min-h-14 w-full max-w-md flex flex-wrap sm:flex-nowrap">
+            <TabsTrigger value="overview" id="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-12 sm:h-full">Painel</TabsTrigger>
             <TabsTrigger 
               value="awards" 
-              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full"
+              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full"
               onClick={() => navigate({ to: "/premiacoes" })}
             >
               <Award size={16} className="shrink-0" /> <span className="truncate">Premiações</span>
             </TabsTrigger>
-            <TabsTrigger value="referrals" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+            <TabsTrigger value="referrals" id="referrals" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full">
               <Users size={16} className="shrink-0" /> <span className="truncate">Indicações</span>
             </TabsTrigger>
-            <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+            <TabsTrigger value="docs" id="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full">
               <FileText size={16} className="shrink-0" /> <span className="truncate">Documentos</span>
             </TabsTrigger>
           </TabsList>
@@ -152,7 +152,7 @@ function AffiliateDashboard() {
             </section>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard 
                 label="Cliques Totais" 
                 value={stats.clicks.toLocaleString()} 
@@ -192,35 +192,35 @@ function AffiliateDashboard() {
                     
                     <div className="space-y-4">
                       {sales.length > 0 ? sales.map((sale: any) => (
-                        <div key={sale.id} className="group p-5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all flex items-center justify-between">
-                           <div className="flex items-center gap-4">
+                        <div key={sale.id} className="group p-5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                           <div className="flex items-center gap-4 min-w-0">
                               <div className={cn(
-                                "w-12 h-12 rounded-full flex items-center justify-center",
+                                "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
                                 sale.status === 'PAID' ? "bg-green-500/10 text-green-500" : 
                                 sale.status === 'PENDING' ? "bg-amber-500/10 text-amber-500" : 
                                 "bg-red-500/10 text-red-500"
                               )}>
                                  <ShoppingCart size={20} />
                               </div>
-                              <div>
-                                 <p className="font-bold text-white group-hover:text-primary transition-colors">{sale.plan}</p>
+                              <div className="min-w-0">
+                                 <p className="font-bold text-white group-hover:text-primary transition-colors truncate">{sale.plan}</p>
                                  <div className="flex flex-col gap-0.5 mt-1">
-                                   <p className="text-[10px] font-bold text-white/60">{sale.customerName}</p>
-                                   <div className="flex items-center gap-2">
+                                   <p className="text-[10px] font-bold text-white/60 truncate">{sale.customerName}</p>
+                                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                      <p className="text-xs text-white/40">{new Date(sale.createdAt).toLocaleString('pt-BR')}</p>
-                                     <span className="text-white/10 text-[8px]">•</span>
-                                     <p className="text-xs text-white/40 font-mono italic">{sale.customer}</p>
+                                     <span className="text-white/10 text-[8px] hidden sm:inline">•</span>
+                                     <p className="text-xs text-white/40 font-mono italic truncate max-w-[120px] sm:max-w-none">{sale.customer}</p>
                                    </div>
                                  </div>
                               </div>
                            </div>
-                           <div className="text-right flex flex-col items-end gap-1">
-                              <div className="flex flex-col items-end">
-                                <p className="font-bold text-lg leading-none">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                           <div className="text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
+                              <div className="flex flex-col items-start sm:items-end order-1 sm:order-none">
+                                <p className="font-bold text-lg leading-none break-all">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                 <p className="text-[9px] text-white/40 font-medium">Sua comissão ({sale.rate}%)</p>
                               </div>
                               <div className={cn(
-                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider whitespace-nowrap order-2 sm:order-none",
                                 sale.status === 'PAID' ? "bg-green-500/20 text-green-500" : 
                                 sale.status === 'PENDING' ? "bg-amber-500/20 text-amber-500" : 
                                 "bg-red-500/20 text-red-500"
@@ -395,12 +395,12 @@ function StatCard({ label, value, icon, color }: StatCardProps) {
   };
 
   return (
-    <div className="bg-[#0F0F0F] border border-white/10 p-6 rounded-[2rem] hover:border-white/20 transition-all group">
-       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110", colors[color])}>
+    <div className="bg-[#0F0F0F] border border-white/10 p-5 sm:p-6 rounded-[2rem] hover:border-white/20 transition-all group overflow-hidden flex flex-col h-full">
+       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4 shrink-0 transition-transform group-hover:scale-110", colors[color])}>
          {icon}
        </div>
-       <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">{label}</p>
-       <h4 className="text-2xl font-bold tracking-tight">{value}</h4>
+       <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 truncate w-full">{label}</p>
+       <h4 className="text-xl sm:text-2xl font-bold tracking-tight break-words line-clamp-2">{value}</h4>
     </div>
   );
 }

@@ -247,12 +247,12 @@ export function WalletModal({
                             
                             <Button
                               variant="neon"
-                              className="w-full h-12 text-base sm:text-lg font-bold rounded-xl whitespace-normal leading-tight"
+                              className="w-full h-12 text-base sm:text-lg font-bold rounded-xl whitespace-normal py-2 px-4 leading-tight flex items-center justify-center min-h-[3rem]"
                               disabled={submitting || !passwordSet}
                               onClick={() => void submitWithdrawal()}
                             >
-                              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                              Solicitar Saque
+                              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin shrink-0" /> : null}
+                              <span className="truncate sm:whitespace-normal">Solicitar Saque</span>
                             </Button>
                           </>
                         )}

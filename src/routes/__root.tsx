@@ -225,6 +225,20 @@ function MobileNavigation() {
   const [downloading, setDownloading] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // Close on route change
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
+
+  // Handle ESC key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSignedIn(!!data.session);
@@ -296,7 +310,7 @@ function MobileNavigation() {
 
   return (
     <div
-      className="lg:hidden fixed inset-x-0 bottom-0 z-[100] w-full max-w-full"
+      className="lg:hidden fixed inset-x-0 bottom-0 z-[60] w-full max-w-full"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       {/* Fade para o conteúdo não colar na barra */}
