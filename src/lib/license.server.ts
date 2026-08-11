@@ -65,8 +65,12 @@ export async function verifySignature(data: string, signature: string): Promise<
 export async function hashToken(token: string): Promise<string> {
   const tokenStr = token.trim().toUpperCase();
   const key = encKey();
-  const data = new TextEncoder().encode(`${key}::${tokenStr}`);
-  return toHex(await crypto.subtle.digest("SHA-256", data));
+  const payload = `${key}::${tokenStr}`;
+  const data = new TextEncoder().encode(payload);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hash = toHex(hashBuffer);
+  // console.log(`[DEBUG] Hashing token: "${tokenStr}" with key length ${key.length} -> ${hash}`);
+  return hash;
 }
 
 export async function hashValue(value: string): Promise<string> {
