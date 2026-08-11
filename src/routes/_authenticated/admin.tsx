@@ -136,33 +136,29 @@ function Admin() {
             <MskLogo size={32} />
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-4 scrollbar-hide overflow-y-auto">
-          {[
-            { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
-            { value: "tokens", label: "Gerar Token", Icon: MessageSquare },
-            { value: "affiliates", label: "Afiliados", Icon: Users },
-            { value: "subs", label: "Ofertas", Icon: Zap },
-            { value: "finance", label: "Financeiro", Icon: TrendingUp },
-            { value: "editor", label: "Editor Site", Icon: Activity },
-            { value: "tracking", label: "Analytics", Icon: TrendingUp },
-            { value: "extension", label: "Extensão", Icon: Monitor },
-            { value: "gateway", label: "Gateway", Icon: ShieldAlert },
-            { value: "logs", label: "Auditoria", Icon: Clock },
-          ].map(({ value, label, Icon }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setActiveTab(value)}
-              className={cn(
-                "w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-[0.7rem] font-black uppercase tracking-widest transition-all",
-                activeTab === value 
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
-                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </button>
+        <nav className="flex-1 space-y-6 p-4 scrollbar-hide overflow-y-auto">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-1">
+              <p className="px-4 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+                {group.title}
+              </p>
+              {group.items.map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setActiveTab(value)}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-xl px-4 py-3 text-[0.68rem] font-black uppercase tracking-widest transition-all",
+                    activeTab === value
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>
@@ -193,30 +189,29 @@ function Admin() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-                {[
-                  { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
-                  { value: "tokens", label: "Gerar Token", Icon: MessageSquare },
-                  { value: "affiliates", label: "Afiliados", Icon: Users },
-                  { value: "extension", label: "Extensão", Icon: Monitor },
-                  { value: "subs", label: "Ofertas", Icon: Zap },
-                  { value: "finance", label: "Financeiro", Icon: TrendingUp },
-                  { value: "editor", label: "Editor", Icon: Activity },
-                  { value: "tracking", label: "Analytics", Icon: TrendingUp },
-                ].map(({ value, label, Icon }) => (
-                  <button
-                    key={value}
-                    onClick={() => { setActiveTab(value); setMenuOpen(false); }}
-                    className={cn(
-                      "w-full flex items-center gap-4 rounded-2xl px-5 py-4 text-base font-bold transition-all",
-                      activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {label}
-                  </button>
+              <div className="flex-1 space-y-5 overflow-y-auto no-scrollbar">
+                {NAV_GROUPS.map((group) => (
+                  <div key={group.title} className="space-y-1">
+                    <p className="px-2 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+                      {group.title}
+                    </p>
+                    {group.items.map(({ value, label, Icon }) => (
+                      <button
+                        key={value}
+                        onClick={() => { setActiveTab(value); setMenuOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all",
+                          activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="h-5 w-5 shrink-0" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
+
             </nav>
           </div>
         )}
