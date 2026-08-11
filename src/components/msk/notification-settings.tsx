@@ -10,8 +10,8 @@ import {
   updateMyNotificationPrefs,
   getGlobalNotificationSettings,
   saveGlobalNotificationSettings,
-  NOTIFICATION_KEYS,
 } from "@/lib/notification-prefs.functions";
+import { NOTIFICATION_KEYS } from "@/lib/notification-keys";
 import { enablePushNotifications, pushPermission } from "@/lib/push-client";
 
 const LABELS: Record<string, { title: string; desc: string; emoji: string }> = {

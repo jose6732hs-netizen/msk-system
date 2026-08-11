@@ -2,18 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
+import { NOTIFICATION_KEYS, type NotificationKey } from "./notification-keys";
 
-export const NOTIFICATION_KEYS = [
-  "sales",
-  "payments",
-  "commissions",
-  "messages",
-  "campaigns",
-  "updates",
-  "promotions",
-] as const;
-
-export type NotificationKey = (typeof NOTIFICATION_KEYS)[number];
 
 const prefsSchema = z.object(
   Object.fromEntries(NOTIFICATION_KEYS.map((k) => [k, z.boolean().optional()])) as Record<
