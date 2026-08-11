@@ -44,7 +44,7 @@ export async function ensureAffiliate(userId: string) {
   const commissions = await getSetting<{ affiliate: number }>("commissions", { affiliate: 60 });
   const { data, error } = await supabaseAdmin
     .from("affiliates")
-    .insert({ user_id: userId, code: randomCode("AF"), commission_rate: commissions.affiliate })
+    .insert({ user_id: userId, code: randomCode("AF"), commission_rate: commissions.affiliate, status: "pending", verification_status: "PENDING" })
     .select("*")
     .single();
   if (error) throw error;
