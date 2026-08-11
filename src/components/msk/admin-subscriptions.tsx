@@ -248,9 +248,63 @@ export function AdminSubscriptionsTab({
               />
             </Field>
             <Field label="Validade (dias)">
+              <div className="mb-2 flex flex-wrap gap-2">
+                {([
+                  { key: "days", label: "Dias" },
+                  { key: "free", label: "Grátis / Trial" },
+                  { key: "lifetime", label: "Vitalício" },
+                ] as const).map((opt) => {
+                  const current = editing.is_lifetime
+                    ? "lifetime"
+                    : Number(editing.price) === 0
+                      ? "free"
+                      : "days";
+                  return (
+                    <Button
+                      key={opt.key}
+                      type="button"
+                      size="sm"
+                      variant={current === opt.key ? "default" : "outline"}
+                      onClick={() => {
+                        if (opt.key === "lifetime") {
+                          setEditing({
+                            ...editing,
+                            is_lifetime: true,
+                            duration_days: null,
+                            duration_label: "Vitalício",
+                          });
+                        } else if (opt.key === "free") {
+                          setEditing({
+                            ...editing,
+                            is_lifetime: false,
+                            price: 0,
+                            duration_days: editing.duration_days ?? 7,
+                            duration_value: editing.duration_days ?? 7,
+                            duration_unit: "day",
+                            duration_label: `Grátis · ${editing.duration_days ?? 7} dias`,
+                          });
+                        } else {
+                          setEditing({
+                            ...editing,
+                            is_lifetime: false,
+                            duration_days: editing.duration_days ?? 30,
+                            duration_value: editing.duration_days ?? 30,
+                            duration_unit: "day",
+                            duration_label: `${editing.duration_days ?? 30} dias`,
+                          });
+                        }
+                      }}
+                    >
+                      {opt.label}
+                    </Button>
+                  );
+                })}
+              </div>
               <Input
                 inputMode="numeric"
-                value={String(editing.duration_days ?? "")}
+                disabled={editing.is_lifetime}
+                placeholder={editing.is_lifetime ? "Vitalício" : "30"}
+                value={editing.is_lifetime ? "" : String(editing.duration_days ?? "")}
                 onChange={(e) =>
                   setEditing({
                     ...editing,
@@ -259,7 +313,13 @@ export function AdminSubscriptionsTab({
                   })
                 }
               />
+              {!editing.is_lifetime && Number(editing.price) === 0 && (
+                <p className="mt-1 text-xs text-emerald-400">
+                  Oferta gratuita: licença de teste por {editing.duration_days ?? 7} dias.
+                </p>
+              )}
             </Field>
+
             <Field label="Máx. dispositivos">
               <Input
                 inputMode="numeric"
