@@ -82,11 +82,14 @@ export function AdminSubscriptionsTab({
         const fd = new FormData();
         fd.append("file", file);
         fd.append("key", `plan-offer-${uploadKey}`);
-        const res = await uploadAsset({ data: fd as any });
-        if (editing) {
-          setEditing({ ...editing, image_url: res.url });
-        }
-        toast.success("Imagem carregada!");
+        
+        // Use standard fetch to call the server function as it handles multipart/form-data correctly
+        const res = await fetch("/api/public/cms/upload", {
+          method: "POST",
+          body: fd,
+        }).then(r => r.json());
+        
+        if (!res.url) throw new Error(res.error || "Upload falhou");
       } catch (err) {
         toast.error("Erro no upload: " + (err as Error).message);
       } finally {
