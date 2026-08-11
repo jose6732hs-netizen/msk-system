@@ -105,9 +105,9 @@ export async function loadAffiliateOverview(
   const row = (fresh ?? affiliate) as Record<string, any>;
   const buyerIds = [...new Set((sales ?? []).map((s) => s.user_id).filter(Boolean))] as string[];
   const { data: buyers } = buyerIds.length
-    ? await supabaseAdmin.from("profiles").select("id,email").in("id", buyerIds)
-    : { data: [] as { id: string; email: string }[] };
-  const emailById = new Map((buyers ?? []).map((b) => [b.id, b.email]));
+    ? await supabaseAdmin.from("profiles").select("id,email,name").in("id", buyerIds)
+    : { data: [] as { id: string; email: string; name: string }[] };
+  const userById = new Map((buyers ?? []).map((b) => [b.id, { email: b.email, name: b.name }]));
   const commissionRows = commissions ?? [];
   const saleRows = sales ?? [];
 
@@ -179,9 +179,11 @@ export async function loadAffiliateOverview(
     series: Object.values(series).sort((a, b) => a.date.localeCompare(b.date)),
     sales: saleRows.slice(0, 100).map((s) => {
       const c = commissionByTx.get(s.id) as Record<string, any> | undefined;
+      const user = userById.get(s.user_id as string);
       return {
         id: s.id,
-        customer: maskEmail(emailById.get(s.user_id as string)),
+        customer: maskEmail(user?.email),
+        customerName: user?.name || "Usuário",
         plan: (s as Record<string, any>)["plans"]?.name ?? "—",
         amount: Number(s.amount),
         rate: Number(c?.["rate"] ?? 0),
