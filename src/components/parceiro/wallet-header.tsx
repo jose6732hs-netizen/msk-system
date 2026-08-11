@@ -28,6 +28,8 @@ export function AffiliateHeader({
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const supportLink = useSupportLink("Olá! Sou parceiro MSK e preciso de suporte.");
+
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
