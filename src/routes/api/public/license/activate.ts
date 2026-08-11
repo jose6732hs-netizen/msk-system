@@ -43,13 +43,23 @@ export const Route = createFileRoute("/api/public/license/activate")({
           return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
         }
 
+        const { hashToken } = await import("@/lib/license.server");
+        const tokenHash = await hashToken(body.token);
         const license = (await findLicenseByToken(body.token)) as any;
 
-
         if (!license) {
+          const { data: rawLicense } = await supabaseAdmin
+            .from("licenses")
+            .select("id, token_hash")
+            .limit(1);
+          
           await logEvent({
             event_type: "invalid_attempt",
-            metadata: { ip_hash: await hashValue(ip) },
+            metadata: { 
+              ip_hash: await hashValue(ip),
+              token_hash_sent: tokenHash,
+              db_sample_hash: rawLicense?.[0]?.token_hash || "none"
+            },
           });
           return jsonResponse({ 
             success: false, 
