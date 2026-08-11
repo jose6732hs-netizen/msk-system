@@ -1761,6 +1761,7 @@ export type Database = {
           features: Json
           highlights: string[]
           id: string
+          image_url: string | null
           is_lifetime: boolean
           max_activations: number
           max_devices: number
@@ -1791,6 +1792,7 @@ export type Database = {
           features?: Json
           highlights?: string[]
           id?: string
+          image_url?: string | null
           is_lifetime?: boolean
           max_activations?: number
           max_devices?: number
@@ -1821,6 +1823,7 @@ export type Database = {
           features?: Json
           highlights?: string[]
           id?: string
+          image_url?: string | null
           is_lifetime?: boolean
           max_activations?: number
           max_devices?: number
