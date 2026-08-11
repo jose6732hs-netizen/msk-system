@@ -406,7 +406,10 @@ function PlanosPage() {
                   e.preventDefault();
                   e.stopPropagation();
                   const container = document.getElementById('plans-carousel');
-                  if (container) container.scrollBy({ left: -(container.clientWidth * 0.8), behavior: 'smooth' });
+                  if (container) {
+                    const scrollAmount = container.clientWidth * 0.8;
+                    container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+                  }
                 }}
               >
                 <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
@@ -418,7 +421,10 @@ function PlanosPage() {
                   e.preventDefault();
                   e.stopPropagation();
                   const container = document.getElementById('plans-carousel');
-                  if (container) container.scrollBy({ left: container.clientWidth * 0.8, behavior: 'smooth' });
+                  if (container) {
+                    const scrollAmount = container.clientWidth * 0.8;
+                    container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+                  }
                 }}
               >
                 <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
@@ -427,9 +433,11 @@ function PlanosPage() {
 
             <div 
               id="plans-carousel"
-              className="flex gap-5 sm:gap-10 pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth snap-x snap-mandatory px-4 sm:px-10 touch-pan-x scroll-p-4 sm:scroll-p-10"
+              className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth snap-x snap-mandatory px-4 sm:px-10 touch-pan-x scroll-p-4 sm:scroll-p-10"
             >
-              {/* Dobramos os planos para o loop infinito */}
+              {/* Loop Infinito: Usamos a classe animate-carousel-loop do global CSS */}
+              <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10">
+
 
               {(plans || []).map((plan, idx) => {
                 const highlighted = plan.slug === "monthly";
@@ -507,8 +515,10 @@ function PlanosPage() {
                   </article>
                 );
               })}
+              </div>
             </div>
           </div>
+
         )}
 
         <p className="mt-12 text-xs text-muted-foreground">
