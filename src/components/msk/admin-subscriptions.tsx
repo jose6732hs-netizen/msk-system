@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { adminSavePlan } from "@/lib/admin.functions";
+import { uploadCmsAsset } from "@/lib/cms.functions";
+import { Upload, RefreshCw, Image as ImageIcon } from "lucide-react";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
