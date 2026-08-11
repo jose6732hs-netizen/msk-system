@@ -54,8 +54,8 @@ export function AffiliateHeader({
       className={cn(
         "sticky top-0 z-[50] w-full transition-all duration-300 border-b",
         scrolled 
-          ? "bg-[#0A0A0A]/80 backdrop-blur-xl border-white/10 py-2 shadow-2xl" 
-          : "bg-transparent border-transparent py-4"
+          ? "bg-[#0A0A0A]/95 backdrop-blur-xl border-white/10 py-2 shadow-2xl" 
+          : "bg-[#050505] border-white/5 py-4"
       )}
     >
       <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-2 md:gap-4">
