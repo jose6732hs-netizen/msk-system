@@ -118,24 +118,6 @@ export const getCmsHistory = createServerFn({ method: "GET" })
 export const uploadCmsAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    
-    // In TanStack Start v1, server functions (especially multipart ones) 
-    // should ideally use the provided helper or access the request from context.
-    // If the standard injection fails, we use the Request from the environment.
-    const req = (context as any).request;
-    if (!req) throw new Error("Request not found in context. Certifique-se de que o TanStack Start está configurado corretamente.");
-    
-    const formData = await req.formData();
-    const file = formData.get("file") as File;
-    const key = formData.get("key") as string;
-    
-    if (!file) throw new Error("No file uploaded");
-
-    const extension = file.name.split('.').pop();
-    const fileName = `cms/${key}-${Date.now()}.${extension}`;
-    
-    const url = await uploadPublicFile(file, fileName, "extension-builds");
-    
-    return { url };
+    // Esta função foi substituída pela rota /api/public/cms/upload para lidar melhor com FormData
+    throw new Error("Use a rota /api/public/cms/upload para uploads de arquivos.");
   });
