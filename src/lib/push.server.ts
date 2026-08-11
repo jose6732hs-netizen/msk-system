@@ -48,10 +48,17 @@ async function vapidToken(audience: string): Promise<{ jwt: string; publicKey: s
   );
   const unsigned = `${header}.${payload}`;
 
-  const raw = Uint8Array.from(atob(privateKey.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
-  const key = await crypto.subtle.importKey("pkcs8", raw as BufferSource, { name: "ECDSA", namedCurve: "P-256" }, false, [
-    "sign",
-  ]);
+  const normalized = privateKey.replace(/-/g, "+").replace(/_/g, "/").trim();
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  const raw = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  
+  const key = await crypto.subtle.importKey(
+    "pkcs8",
+    raw as BufferSource,
+    { name: "ECDSA", namedCurve: "P-256" },
+    false,
+    ["sign"]
+  );
   const sig = new Uint8Array(
     await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, enc.encode(unsigned) as BufferSource),
   );
