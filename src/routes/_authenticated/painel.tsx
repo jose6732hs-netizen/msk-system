@@ -331,7 +331,6 @@ function Painel() {
               />
             </div>
 
-            <AffiliateRequestCard />
             <section className="glass rounded-[2rem] p-6 md:p-8">
               <h2 className="text-lg font-semibold">Plano Atual</h2>
               {data?.subscription ? (
