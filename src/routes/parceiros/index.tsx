@@ -224,18 +224,18 @@ function PartnersPage() {
         </section>
 
         {/* Final CTA */}
-        <section className="py-24 relative">
+        <section className="py-16 md:py-24 relative">
           <div className="container px-4 mx-auto max-w-5xl">
-            <div className="bg-primary p-12 md:p-20 rounded-[4rem] text-black text-center relative overflow-hidden">
-              <h2 className="text-4xl md:text-7xl font-black mb-8 uppercase tracking-tighter leading-none italic">
+            <div className="bg-primary p-6 sm:p-10 md:p-20 rounded-[2rem] md:rounded-[4rem] text-black text-center relative overflow-hidden">
+              <h2 className="text-2xl sm:text-4xl md:text-7xl font-black mb-6 md:mb-8 uppercase tracking-tighter leading-tight italic break-words">
                 O mercado de Inteligência Artificial não para de crescer.
               </h2>
-              <p className="text-2xl font-bold mb-12 opacity-80 uppercase tracking-tight">
+              <p className="text-base sm:text-xl md:text-2xl font-bold mb-8 md:mb-12 opacity-80 uppercase tracking-tight">
                 Quem indica agora, lucra nos próximos meses. Cadastro gratuito. Acesso imediato. Comissões via PIX.
               </p>
               
-              <div className="flex flex-col items-center gap-8">
-                <Button asChild variant="secondary" size="lg" className="h-auto py-6 md:h-24 px-6 md:px-20 text-lg md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full sm:w-auto rounded-3xl shadow-2xl whitespace-normal leading-tight text-center flex items-center justify-center min-h-[4rem] cursor-pointer">
+              <div className="flex flex-col items-center gap-8 w-full">
+                <Button asChild variant="secondary" size="lg" className="h-auto py-4 md:py-6 md:h-24 px-4 md:px-20 text-base sm:text-xl md:text-3xl font-black bg-black text-white hover:scale-105 transition-all w-full max-w-sm sm:max-w-none sm:w-auto mx-auto rounded-2xl md:rounded-3xl shadow-2xl whitespace-normal leading-tight text-center flex items-center justify-center min-h-[3.5rem] cursor-pointer">
                   <Link 
                     to="/auth" 
                     search={{ mode: 'pre-signup', next: '/parceiro' } as any}
@@ -243,6 +243,7 @@ function PartnersPage() {
                     Quero começar a indicar agora
                   </Link>
                 </Button>
+
 
                 
                 <div className="flex flex-wrap justify-center gap-8">
