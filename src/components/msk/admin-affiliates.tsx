@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { resetAffiliateWithdrawalSecurity } from "@/lib/parceiro/wallet.functions";
-import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet, FileText, CheckCircle2, X } from "lucide-react";
+import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet, FileText, CheckCircle2, X, Bell, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,18 @@ export function AdminAffiliatesTab() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xl font-bold uppercase tracking-widest text-white flex items-center gap-3">
+          <LayoutDashboard className="text-primary" /> Gestão de Afiliados
+        </h2>
+        {data?.affiliates?.some((a: any) => a.verification_status === "PENDING") && (
+          <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full animate-pulse">
+            <Bell className="h-4 w-4 text-primary" />
+            <span className="text-[10px] font-black uppercase text-primary">Solicitações Pendentes</span>
+          </div>
+        )}
+      </div>
+
       <section className="rounded-xl border border-border/60 p-4">
         <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground">
           Domínio da plataforma

@@ -27,6 +27,7 @@ import { TokenManager } from "@/components/msk/token-manager";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { NotificationSettings } from "@/components/msk/notification-settings";
 import { LicenseCard } from "@/components/msk/license-card";
+import { AffiliateRequestCard } from "@/components/msk/affiliate-request-card";
 
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
@@ -362,6 +363,7 @@ function Painel() {
                </div>
             </section>
 
+            <AffiliateRequestCard />
             <ExtensionDownloadCard />
 
             <section className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3">
