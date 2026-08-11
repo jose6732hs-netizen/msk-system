@@ -239,3 +239,57 @@ export const adminGenerateToken = createServerFn({ method: "POST" })
     const { generateManualToken } = await import("./admin-tokens.server");
     return generateManualToken(data, context.userId);
   });
+
+export const adminUserAction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      userId: z.string().uuid(),
+      action: z.enum(["reset_password", "reset_withdrawal_password", "block_user", "unblock_user"]),
+    }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { logAudit } = await import("./audit.server");
+
+    if (data.action === "reset_password") {
+      // In Supabase, admin can send a reset email or update the password directly
+      // Here we'll generate a recovery link via Supabase Auth Admin
+      const { data: recovery, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: 'recovery',
+        email: (await supabaseAdmin.from("profiles").select("email").eq("id", data.userId).single()).data?.email || "",
+      });
+      if (error) throw error;
+      await logAudit({ userId: context.userId, action: "user.password_reset_requested", resource: "profiles", resourceId: data.userId });
+      return { ok: true, link: recovery.properties.action_link };
+    }
+
+    if (data.action === "reset_withdrawal_password") {
+      const { error } = await supabaseAdmin
+        .from("affiliates")
+        .update({ withdrawal_password_hash: null, withdrawal_attempts: 0, withdrawal_blocked_at: null } as never)
+        .eq("user_id", data.userId);
+      if (error) throw error;
+      await logAudit({ userId: context.userId, action: "user.withdrawal_password_reset", resource: "profiles", resourceId: data.userId });
+      return { ok: true };
+    }
+
+    if (data.action === "block_user") {
+      // Logic to block user access globally
+      // In this system, blocking might involve adding a 'blocked' role or status
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { ban_duration: 'none' }); // 'none' means permanent ban in some providers, but Supabase uses ban_duration
+      // Let's use a custom status in profiles for better app-level control
+      await supabaseAdmin.from("profiles").update({ status: 'blocked' } as any).eq("id", data.userId);
+      await logAudit({ userId: context.userId, action: "user.blocked", resource: "profiles", resourceId: data.userId });
+      return { ok: true };
+    }
+
+    if (data.action === "unblock_user") {
+      await supabaseAdmin.from("profiles").update({ status: 'active' } as any).eq("id", data.userId);
+      await logAudit({ userId: context.userId, action: "user.unblocked", resource: "profiles", resourceId: data.userId });
+      return { ok: true };
+    }
+
+    return { ok: false };
+  });

@@ -36,7 +36,7 @@ import { NotificationSettings } from "@/components/msk/notification-settings";
 import { Bell } from "lucide-react";
 
 import { MskLogo } from "@/components/msk/logo";
-import { adminLicenseAction, adminOverview, isAdmin } from "@/lib/admin.functions";
+import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
 
 const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
   {
@@ -106,8 +106,11 @@ function Admin() {
   const checkAdmin = useServerFn(isAdmin);
   const overviewFn = useServerFn(adminOverview);
   const actionFn = useServerFn(adminLicenseAction);
+  const userActionFn = useServerFn(adminUserAction);
   const [search, setSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
   const [term, setTerm] = useState("");
+  const [userTerm, setUserTerm] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("licenses");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -139,6 +142,30 @@ function Admin() {
         data: { licenseId, action: action === "block" ? "revoke" : action, ...(action === "extend" ? { days: 30 } : {}) },
       });
       toast.success(action === "block" ? "Licença bloqueada e acesso removido." : action === "revoke" ? "Extensão desligada com sucesso." : "Ação aplicada.");
+      qc.invalidateQueries({ queryKey: ["admin-overview"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function handleUserAction(userId: string, action: "reset_password" | "reset_withdrawal_password" | "block_user" | "unblock_user") {
+    const confirmMessage = {
+      reset_password: "Deseja gerar um link de recuperação de senha para este usuário?",
+      reset_withdrawal_password: "Deseja resetar a senha de saque deste usuário?",
+      block_user: "Deseja BLOQUEAR este usuário? Ele não conseguirá acessar a plataforma.",
+      unblock_user: "Deseja DESBLOQUEAR este usuário?"
+    }[action];
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      const result = await userActionFn({ data: { userId, action } });
+      if (action === "reset_password" && result.link) {
+        navigator.clipboard.writeText(result.link);
+        toast.success("Link de recuperação copiado para a área de transferência!");
+      } else {
+        toast.success("Ação realizada com sucesso.");
+      }
       qc.invalidateQueries({ queryKey: ["admin-overview"] });
     } catch (e) {
       toast.error((e as Error).message);
@@ -388,7 +415,7 @@ function Admin() {
                           if (statusFilter === "active") return l.status === "active" && !exp;
                           return l.status === statusFilter;
                         }).map((l: any) => {
-                          const isOnline = l.last_validation && new Date(l.last_validation).getTime() > Date.now() - 300000;
+                          const isOnline = l.last_validation && new Date(l.last_validation).getTime() > Date.now() - 60000;
                           const isExpired = l.expires_at && new Date(l.expires_at) < new Date();
                           return (
                             <tr key={l.id} className="group hover:bg-muted/5 transition-colors">
@@ -549,10 +576,93 @@ function Admin() {
 
                 {activeTab === "finance" && <AdminFinanceTab />}
                 {activeTab === "users" && (
-                  <table className="w-full text-left text-sm">
-                    <thead><tr className="text-[0.65rem] uppercase text-muted-foreground"><th className="p-2">Nome</th><th className="p-2">E-mail</th></tr></thead>
-                    <tbody>{data?.users?.map((u:any) => <tr key={u.id} className="border-t border-border/50"><td className="p-2">{u.name}</td><td className="p-2">{u.email}</td></tr>)}</tbody>
-                  </table>
+                  <div className="space-y-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-1 bg-blue-500 rounded-full" />
+                        <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Usuários</h4>
+                      </div>
+                      <form
+                        className="flex w-full gap-2 md:max-w-xs"
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          setTerm(userSearch);
+                        }}
+                      >
+                        <Input
+                          placeholder="Nome ou e-mail..."
+                          value={userSearch}
+                          onChange={(e) => setUserSearch(e.target.value)}
+                          className="h-9 text-xs"
+                        />
+                        <Button type="submit" variant="neon" size="sm">
+                          <Search className="h-4 w-4" />
+                        </Button>
+                      </form>
+                    </div>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="text-[0.6rem] uppercase tracking-widest text-muted-foreground border-b border-border/50">
+                          <tr>
+                            <th className="p-4">Nome</th>
+                            <th className="p-4">E-mail</th>
+                            <th className="p-4">Status</th>
+                            <th className="p-4">Cadastro</th>
+                            <th className="p-4 text-right">Ações de Suporte</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/30">
+                          {data?.users?.map((u: any) => (
+                            <tr key={u.id} className="group hover:bg-muted/5 transition-colors">
+                              <td className="p-4 font-bold">{u.name || "—"}</td>
+                              <td className="p-4 text-muted-foreground">{u.email}</td>
+                              <td className="p-4">
+                                <span className={cn(
+                                  "rounded-full px-2 py-0.5 text-[0.6rem] font-black uppercase tracking-wider",
+                                  u.status === 'blocked' ? "bg-red-500/20 text-red-500" : "bg-green-500/20 text-green-500"
+                                )}>
+                                  {u.status === 'blocked' ? 'Bloqueado' : 'Ativo'}
+                                </span>
+                              </td>
+                              <td className="p-4 text-xs text-muted-foreground">{fmt(u.created_at)}</td>
+                              <td className="p-4 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="h-8 text-[9px] font-black uppercase border border-white/5 text-primary"
+                                    onClick={() => handleUserAction(u.id, "reset_password")}
+                                  >
+                                    Senha Login
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className="h-8 text-[9px] font-black uppercase border border-white/5 text-yellow-500"
+                                    onClick={() => handleUserAction(u.id, "reset_withdrawal_password")}
+                                  >
+                                    Senha Saque
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    className={cn(
+                                      "h-8 text-[9px] font-black uppercase border border-white/5",
+                                      u.status === 'blocked' ? "text-green-500" : "text-red-500"
+                                    )}
+                                    onClick={() => handleUserAction(u.id, u.status === 'blocked' ? "unblock_user" : "block_user")}
+                                  >
+                                    {u.status === 'blocked' ? 'Desbloquear' : 'Bloquear'}
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 )}
                 {activeTab === "logs" && (
                   <div className="space-y-2">

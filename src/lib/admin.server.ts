@@ -16,7 +16,7 @@ export async function loadAdminOverview(search: string) {
 
   let profileQuery = supabaseAdmin
     .from("profiles")
-    .select("id,name,email,created_at")
+    .select("id,name,email,created_at,status")
     .order("created_at", { ascending: false })
     .limit(100);
   if (term) profileQuery = profileQuery.or(`email.ilike.%${term}%,name.ilike.%${term}%`);
@@ -117,6 +117,9 @@ export async function runLicenseAction(
 
   const { error } = await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
   if (error) throw error;
+
+  // Real-time notification logic could be added here to force client refresh
+  // but status updates are already reflected on next validation.
 
   await logEvent({
     license_id: license.id,
