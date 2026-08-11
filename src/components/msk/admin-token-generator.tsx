@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminGenerateToken, adminTokenPlans, adminGetLicenseDetails } from "@/lib/admin.functions";
-import { generateDeliveryMessage, copyToClipboard } from "@/lib/delivery-message";
+import { generateDeliveryMessage, generateSalesMessage, copyToClipboard } from "@/lib/delivery-message";
 
 const DURATIONS = [
-  { id: "trial15", label: "Teste — 15 minutos" },
-  { id: "trial60", label: "Teste — 1 hora" },
+  { id: "trial15", label: "Trial — 15 minutos" },
+  { id: "trial60", label: "Trial — 1 hora" },
   { id: "day1", label: "1 dia" },
   { id: "day7", label: "7 dias" },
   { id: "day30", label: "30 dias" },
