@@ -156,8 +156,9 @@ export async function loadAffiliateOverview(
   }
 
   const { getAffiliateGoal } = await import("./affiliate.server");
-  const goalTarget = await getAffiliateGoal(stats.availableBalance);
+  const goalTarget = (await getAffiliateGoal(stats.availableBalance)) ?? 1000;
   const progress = goalTarget > 0 ? Math.min(100, (stats.availableBalance / goalTarget) * 100) : 0;
+
 
 
   return {
