@@ -16,7 +16,7 @@ export async function loadAdminOverview(search: string) {
 
   let profileQuery = supabaseAdmin
     .from("profiles")
-    .select("id,name,email,created_at")
+    .select("id,name,email,created_at,status")
     .order("created_at", { ascending: false })
     .limit(100);
   if (term) profileQuery = profileQuery.or(`email.ilike.%${term}%,name.ilike.%${term}%`);
