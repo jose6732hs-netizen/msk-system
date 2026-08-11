@@ -139,6 +139,7 @@ function Admin() {
         <nav className="flex-1 space-y-1 p-4 scrollbar-hide overflow-y-auto">
           {[
             { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
+            { value: "tokens", label: "Gerar Token", Icon: MessageSquare },
             { value: "affiliates", label: "Afiliados", Icon: Users },
             { value: "subs", label: "Ofertas", Icon: Zap },
             { value: "finance", label: "Financeiro", Icon: TrendingUp },
@@ -195,7 +196,9 @@ function Admin() {
               <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
                 {[
                   { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
+                  { value: "tokens", label: "Gerar Token", Icon: MessageSquare },
                   { value: "affiliates", label: "Afiliados", Icon: Users },
+                  { value: "extension", label: "Extensão", Icon: Monitor },
                   { value: "subs", label: "Ofertas", Icon: Zap },
                   { value: "finance", label: "Financeiro", Icon: TrendingUp },
                   { value: "editor", label: "Editor", Icon: Activity },
@@ -295,7 +298,7 @@ function Admin() {
                     { value: "licenses", label: "Licenças", Icon: Zap },
                     { value: "editor", label: "Editor Site", Icon: Activity, color: "text-primary" },
                     { value: "tracking", label: "Analytics", Icon: TrendingUp, color: "text-emerald-400" },
-                    ...(role?.superAdmin ? [{ value: "tokens", label: "Gerar Token", Icon: MessageSquare }] : []),
+                    { value: "tokens", label: "Gerar Token", Icon: MessageSquare, color: "text-primary" },
                     { value: "users", label: "Usuários", Icon: Users },
                     { value: "subs", label: "Assinaturas", Icon: Zap },
                     { value: "payments", label: "Pagamentos", Icon: DollarSign },
@@ -402,7 +405,7 @@ function Admin() {
                 
                 {activeTab === "editor" && <AdminEditorTab />}
                 {activeTab === "tracking" && <AdminTrackingTab />}
-                {activeTab === "tokens" && role?.superAdmin && <AdminTokenGenerator initialIssued={issued} onReset={() => setIssued(null)} />}
+                {activeTab === "tokens" && <AdminTokenGenerator initialIssued={issued} onReset={() => setIssued(null)} />}
                 {activeTab === "gateway" && <AdminGatewayTab />}
                 {activeTab === "affiliates" && <AdminAffiliatesTab />}
                 {activeTab === "extension" && <AdminExtensionTab />}
