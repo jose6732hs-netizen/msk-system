@@ -63,7 +63,8 @@ export function AdminSubscriptionsTab({
 }) {
   const qc = useQueryClient();
   const saveFn = useServerFn(adminSavePlan);
-  const uploadAsset = useServerFn(uploadCmsAsset);
+  // O uploadAsset via server function foi substituído pela rota /api/public/cms/upload
+  // const uploadAsset = useServerFn(uploadCmsAsset);
   const [editing, setEditing] = useState<PlanForm | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
