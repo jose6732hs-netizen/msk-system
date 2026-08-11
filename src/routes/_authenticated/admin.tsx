@@ -37,6 +37,7 @@ import { Bell } from "lucide-react";
 
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
+import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
 
 const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
   {
@@ -476,8 +477,9 @@ function Admin() {
                 {activeTab === "tracking" && <AdminTrackingTab />}
                 {activeTab === "tokens" && <AdminTokenGenerator initialIssued={issued} onReset={() => setIssued(null)} />}
                 {activeTab === "gateway" && <AdminGatewayTab />}
-                {activeTab === "affiliates" && <AdminAffiliatesTab />}
                 {activeTab === "extension" && <AdminExtensionTab />}
+                {activeTab === "wallets" && <AdminWalletsTab />}
+                {activeTab === "withdrawals" && <AdminWithdrawalsTab />}
                 {activeTab === "push" && <AdminPushTestsTab />}
                 {activeTab === "notifications" && <NotificationSettings scope="admin" />}
                 {activeTab === "subs" && (
@@ -577,6 +579,7 @@ function Admin() {
                 )}
 
                 {activeTab === "finance" && <AdminFinanceTab />}
+                {activeTab === "affiliates" && <AdminAffiliatesTab />}
                 {activeTab === "users" && (
                   <div className="space-y-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
