@@ -168,7 +168,7 @@ export function AffiliateHeader({
                         <Link 
                           key={route.label}
                           to={route.to} 
-                          hash={route.hash}
+                          hash={route.hash || undefined}
                           className={cn(
                             "flex items-center gap-4 rounded-2xl bg-white/5 p-5 text-lg font-bold transition-colors active:bg-white/10",
                             pathname === route.to && "text-primary bg-primary/5 border border-primary/20"
