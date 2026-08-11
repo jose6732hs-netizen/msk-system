@@ -1,4 +1,4 @@
-// Assinaturas Gestão completa da infraestrutura - MODO MSK ATIVO - EDIÇÃO DE IMAGENS DE OFERTAS DISPONÍVEL - CORREÇÃO DE LISTAGEM DE PLANOS NO GERADOR DE TOKENS - MSK SISTEM 100%
+// Financeiro - Links de Divulgação - Configurações: estas opções agora estão visíveis no menu principal do painel para facilitar o acesso. - MODO MSK ATIVO - EDIÇÃO DE IMAGENS DE OFERTAS DISPONÍVEL - MSK SISTEM 100%
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
