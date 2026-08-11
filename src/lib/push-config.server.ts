@@ -72,9 +72,11 @@ export async function generateVapidPair() {
   ])) as CryptoKeyPair;
   const pub = new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey));
   const priv = new Uint8Array(await crypto.subtle.exportKey("pkcs8", kp.privateKey));
-  let s = "";
-  for (const b of priv) s += String.fromCharCode(b);
-  return { publicKey: b64url(pub), privateKey: btoa(s) };
+  
+  return { 
+    publicKey: b64url(pub), 
+    privateKey: b64url(priv) // Usando b64url consistentemente
+  };
 }
 
 /** Valida as chaves configuradas assinando um token VAPID de teste. */
