@@ -192,18 +192,18 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
           {signedIn && <NotificationBell />}
           <CartSheet signedIn={signedIn} />
           {signedIn ? (
-            <Button asChild variant="neon" size="sm">
+            <Button asChild variant="neon" size="sm" className="hidden lg:flex">
               <Link to="/painel">Painel</Link>
             </Button>
           ) : (
-            <>
+            <div className="hidden lg:flex items-center gap-1.5 sm:gap-2">
               <Button asChild variant="ghost" size="sm">
                 <Link to="/auth">Entrar</Link>
               </Button>
               <Button asChild variant="neon" size="sm">
                 <Link to="/planos">Começar agora</Link>
               </Button>
-            </>
+            </div>
           )}
 
           <Sheet>
