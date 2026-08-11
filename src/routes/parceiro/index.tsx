@@ -196,22 +196,35 @@ function AffiliateDashboard() {
                            <div className="flex items-center gap-4">
                               <div className={cn(
                                 "w-12 h-12 rounded-full flex items-center justify-center",
-                                sale.status === 'PAID' ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"
+                                sale.status === 'PAID' ? "bg-green-500/10 text-green-500" : 
+                                sale.status === 'PENDING' ? "bg-amber-500/10 text-amber-500" : 
+                                "bg-red-500/10 text-red-500"
                               )}>
                                  <ShoppingCart size={20} />
                               </div>
                               <div>
                                  <p className="font-bold text-white group-hover:text-primary transition-colors">{sale.plan}</p>
-                                 <p className="text-xs text-white/40">{new Date(sale.createdAt).toLocaleString('pt-BR')}</p>
+                                 <div className="flex flex-col gap-0.5 mt-1">
+                                   <p className="text-[10px] font-bold text-white/60">{sale.customerName}</p>
+                                   <div className="flex items-center gap-2">
+                                     <p className="text-xs text-white/40">{new Date(sale.createdAt).toLocaleString('pt-BR')}</p>
+                                     <span className="text-white/10 text-[8px]">•</span>
+                                     <p className="text-xs text-white/40 font-mono italic">{sale.customer}</p>
+                                   </div>
+                                 </div>
                               </div>
                            </div>
                            <div className="text-right">
                               <p className="font-bold text-lg">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                               <p className={cn(
                                 "text-[10px] font-bold uppercase tracking-widest",
-                                sale.status === 'PAID' ? "text-green-500" : "text-amber-500"
+                                sale.status === 'PAID' ? "text-green-500" : 
+                                sale.status === 'PENDING' ? "text-amber-500" : 
+                                "text-red-500"
                               )}>
-                                {sale.status === 'PAID' ? 'Aprovada' : 'Pendente'}
+                                {sale.status === 'PAID' ? 'Aprovada' : 
+                                 sale.status === 'PENDING' ? 'Pendente' : 
+                                 'Expirada'}
                               </p>
                            </div>
                         </div>
@@ -305,7 +318,7 @@ function AffiliateDashboard() {
                   <Users className="text-white/20" size={20} /> Suas Indicações
                 </h3>
                 <div className="text-xs font-bold uppercase tracking-widest text-white/40">
-                  Total: {data.stats.signups}
+                  Total: {data.referrals?.length || 0}
                 </div>
               </div>
               
