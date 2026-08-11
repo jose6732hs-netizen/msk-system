@@ -87,10 +87,11 @@ export const adminRemoveDevice = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const planSchema = z.object({
-  id: z.string().uuid().optional(),
-  slug: z.string().min(2).max(40),
-  name: z.string().min(2).max(60),
+const planSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    slug: z.string().max(40).optional(),
+    name: z.string().min(2).max(60),
   description: z.string().max(400).default(""),
   price: z.number().min(0),
   currency: z.string().min(3).max(3).default("BRL"),
