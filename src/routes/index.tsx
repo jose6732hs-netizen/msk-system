@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+// PROMPT MESTRE — ROTA DE LICENÇA CONECTADA ÀS OFERTAS (PLANOS)
+// Infraestrutura unificada: OFERTA → LICENÇA → VALIDAÇÃO baseada em public.plans.
 // Painel Admin e landing page otimizados para mobile
 // Design premium com foco em centralização e responsividade total.
 

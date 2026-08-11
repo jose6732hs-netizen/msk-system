@@ -190,8 +190,22 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
                   </SelectItem>
                 ))
               ) : !isLoading ? (
-                <div className="px-3 py-2 text-sm text-muted-foreground italic font-semibold">
-                  Nenhum plano disponível para emissão manual. Verifique se existem planos cadastrados.
+                <div className="px-3 py-4 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground italic font-semibold">
+                    Nenhum plano ativo encontrado.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full text-[10px] uppercase font-bold"
+                    onClick={() => {
+                      // Redireciona para aba de assinaturas para criar um plano
+                      window.location.hash = "subs";
+                      toast.info("Crie ou ative um plano na aba Assinaturas.");
+                    }}
+                  >
+                    Configurar Planos
+                  </Button>
                 </div>
               ) : (
                 <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
