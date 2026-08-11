@@ -134,6 +134,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       plan_name: license.plans?.name ?? null,
       expires_at: license.expires_at,
       max_devices: license.max_devices,
+      devices_used: 1, 
       features: active ? (license.plans?.features ?? LOCKED) : LOCKED,
     },
     timestamp: Date.now(),
