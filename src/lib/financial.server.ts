@@ -108,7 +108,9 @@ export async function createInvoice(input: {
   return data.id;
 }
 
-/** Monta os splits (em centavos) para produtor, afiliado e revendedor. */
+/** Monta os splits (em centavos) para revendedor. 
+ * OBS: O split de afiliado AmploPay foi removido em favor da carteira interna.
+ */
 export async function buildSplits(input: {
   amountCents: number;
   affiliateId?: string | null;
@@ -125,28 +127,8 @@ export async function buildSplits(input: {
   
   const config = (appSettings?.value as any) || {};
 
-  if (input.affiliateId) {
-    const { data: aff } = await (supabaseAdmin as any)
-      .from("affiliates")
-      .select("commission_rate,producer_id:user_id")
-      .eq("id", input.affiliateId)
-      .maybeSingle();
-    
-    let value = 0;
-    const type = config.affiliate_type ?? 'percent';
-    const val = Number(config.affiliate_value ?? 0);
-
-    if (val > 0) {
-      if (type === 'fixed') value = Math.round(val * 100);
-      else value = Math.floor((input.amountCents * val) / 100);
-    } else {
-      const rate = Number(input.affiliateRate ?? aff?.commission_rate ?? 0);
-      value = Math.floor((input.amountCents * rate) / 100);
-    }
-
-    const producerId = (aff as { producer_id?: string } | null)?.producer_id;
-    if (producerId && value > 0) splits.push({ producerId, amount: value });
-  }
+  // O split de Afiliado AmploPay foi desativado. 
+  // O processamento agora é feito via processInternalCommission() no webhook.
 
   if (input.resellerId) {
     const { data: rv } = await (supabaseAdmin as any)
