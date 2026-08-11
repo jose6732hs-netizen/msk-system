@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { logAudit } from "./audit.server";
+import { logAudit } from "@/lib/audit.server";
 
 /**
  * Registra uma comissão internamente no sistema e atualiza a carteira do afiliado.
@@ -16,7 +16,7 @@ export async function processInternalCommission(transactionId: string) {
   if (!tx || tx.status !== "PAID" || tx.commission_registered) return null;
 
   // 2. Identificar Afiliado (Prioridade: Transação -> Perfil do Usuário)
-  let affiliateId = tx.affiliate_id;
+  let affiliateId = tx.affiliate_id ?? null;
   if (!affiliateId && tx.user_id) {
     const { data: ref } = await supabaseAdmin
       .from("affiliate_referrals")
