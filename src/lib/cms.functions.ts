@@ -119,9 +119,11 @@ export const uploadCmsAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
-    // Use the standard Web Request from globalThis if not in context
-    const req = (context as any).request || (globalThis as any).request;
-    if (!req) throw new Error("Request not found in context");
+    
+    // In TanStack Start v1 with Vite, the request object is available via getWebRequest
+    const { getWebRequest } = await import("@tanstack/react-start/server");
+    const req = getWebRequest();
+    if (!req) throw new Error("Request not found");
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const key = formData.get("key") as string;
