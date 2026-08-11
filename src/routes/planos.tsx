@@ -195,7 +195,13 @@ function PlanosPage() {
 
 
 
-  async function subscribe(planId: string, planName: string, isFree: boolean = false, imageUrl?: string | null) {
+  async function subscribe(
+    planId: string,
+    planName: string,
+    isFree: boolean = false,
+    imageUrl?: string | null,
+    billingOverride?: { document: string; phone: string },
+  ) {
     const { data: session } = await supabase.auth.getSession();
     
     if (isFree && !session.session) {
