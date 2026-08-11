@@ -23,6 +23,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { PixKeyForm } from "./pix-form";
 import { WithdrawalPasswordModal } from "./password-modal";
+import { useServerFn } from "@tanstack/react-start";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  getAffiliateWalletStatus,
+  requestAffiliateWithdrawal,
+} from "@/lib/parceiro/wallet.functions";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface WalletModalProps {
   isOpen: boolean;
@@ -44,10 +52,54 @@ export function WalletModal({
   hasPassword
 }: WalletModalProps) {
   const [activeTab, setActiveTab] = useState("overview");
+  const [amount, setAmount] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const qc = useQueryClient();
+
+  const loadStatus = useServerFn(getAffiliateWalletStatus);
+  const withdraw = useServerFn(requestAffiliateWithdrawal);
+  const { data: status } = useQuery({
+    queryKey: ["affiliate-wallet-status"],
+    queryFn: () => loadStatus({}),
+    enabled: isOpen,
+  });
+
+  const passwordSet = status?.hasPassword ?? hasPassword ?? false;
+  const blocked = status?.blocked ?? false;
+  const savedPixKey = status?.pixKey ?? pixKey ?? undefined;
+  const savedPixType = status?.pixKeyType ?? pixKeyType ?? undefined;
+
+  async function submitWithdrawal() {
+    const value = Number(String(amount).replace(",", "."));
+    if (!Number.isFinite(value) || value < 20) {
+      toast.error("O valor mínimo para saque é R$ 20,00.");
+      return;
+    }
+    if (password.length !== 6) {
+      toast.error("Informe sua senha de saque de 6 dígitos.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await withdraw({ data: { amount: value, passwordHash: password } });
+      toast.success("Saque solicitado! Aguarde a aprovação.");
+      setAmount("");
+      setPassword("");
+      await qc.invalidateQueries({ queryKey: ["affiliate-wallet-status"] });
+      await qc.invalidateQueries({ queryKey: ["affiliate-overview"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+      setPassword("");
+      await qc.invalidateQueries({ queryKey: ["affiliate-wallet-status"] });
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-[#0F0F0F] border-white/10 text-white p-0 overflow-hidden rounded-[2rem]">
+      <DialogContent className="max-w-2xl w-[calc(100vw-1.5rem)] bg-[#0F0F0F] border-white/10 text-white p-0 overflow-hidden rounded-[2rem]">
         <div className="flex flex-col h-full max-h-[90vh]">
           {/* Header customizado */}
           <div className="p-8 pb-4 flex justify-between items-start">
@@ -117,30 +169,73 @@ export function WalletModal({
 
               <TabsContent value="overview" className="mt-0">
                 <div className="space-y-4">
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                  <div className="bg-white/5 border border-white/10 rounded-2xl p-4 sm:p-6">
                     <h4 className="font-bold mb-4 flex items-center gap-2">Solicitar Retirada</h4>
-                    <div className="space-y-4">
-                       <div>
-                         <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ 20,00)</label>
-                         <Input 
-                           placeholder="0,00" 
-                           className="bg-black/20 border-white/10 h-12 text-lg font-bold"
-                         />
-                       </div>
-                       <Button 
-                         variant="neon" 
-                         className="w-full h-12 text-lg font-bold rounded-xl"
-                         onClick={() => {
-                           if (!hasPassword) {
-                             setActiveTab("settings");
-                           } else {
-                             // Lógica de senha de 6 dígitos
-                           }
-                         }}
-                       >
-                         Continuar
-                       </Button>
-                    </div>
+                    {blocked ? (
+                      <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-4 text-center">
+                        <Lock className="mx-auto mb-3 h-8 w-8 text-destructive" />
+                        <p className="text-sm font-bold">Saques bloqueados</p>
+                        <p className="mt-1 text-xs text-white/50">
+                          A senha foi digitada incorretamente 3 vezes. Entre em contato com o suporte para liberar.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ 20,00)</label>
+                          <Input
+                            placeholder="0,00"
+                            inputMode="decimal"
+                            value={amount}
+                            onChange={(e) => setAmount(e.target.value)}
+                            className="bg-black/20 border-white/10 h-12 text-lg font-bold"
+                          />
+                        </div>
+                        {passwordSet && (
+                          <div>
+                            <label className="text-xs text-white/40 block mb-2">Senha de saque (6 dígitos)</label>
+                            <Input
+                              type="password"
+                              inputMode="numeric"
+                              maxLength={6}
+                              autoComplete="off"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
+                              className="bg-black/20 border-white/10 h-12 text-center text-lg font-bold tracking-[0.5em]"
+                            />
+                            {!!status?.attempts && (
+                              <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-amber-400">
+                                {status.attempts} de 3 tentativas usadas
+                              </p>
+                            )}
+                          </div>
+                        )}
+                        {!savedPixKey && (
+                          <p className="text-[11px] text-amber-400">
+                            Cadastre uma chave PIX na aba "Chave PIX" para receber.
+                          </p>
+                        )}
+                        <Button
+                          variant="neon"
+                          className="w-full h-12 text-base sm:text-lg font-bold rounded-xl whitespace-normal leading-tight"
+                          disabled={submitting}
+                          onClick={() => {
+                            if (!passwordSet) {
+                              setActiveTab("settings");
+                              return;
+                            }
+                            if (!savedPixKey) {
+                              setActiveTab("pix");
+                              return;
+                            }
+                            void submitWithdrawal();
+                          }}
+                        >
+                          {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          {passwordSet ? "Solicitar Saque" : "Criar senha de saque"}
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
@@ -159,11 +254,11 @@ export function WalletModal({
               </TabsContent>
 
               <TabsContent value="pix" className="mt-0">
-                <PixKeyForm initialKey={pixKey} initialType={pixKeyType} />
+                <PixKeyForm initialKey={savedPixKey} initialType={savedPixType} onSaved={() => void qc.invalidateQueries({ queryKey: ["affiliate-wallet-status"] })} />
               </TabsContent>
 
               <TabsContent value="settings" className="mt-0">
-                <WithdrawalPasswordModal isAlreadySet={hasPassword} />
+                <WithdrawalPasswordModal isAlreadySet={passwordSet} />
               </TabsContent>
             </Tabs>
           </div>
