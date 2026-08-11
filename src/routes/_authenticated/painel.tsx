@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent } from "@/lib/cms.functions";
 import { normalizeTutorials } from "@/lib/tutorials";
 import { TutorialPlayer } from "@/components/msk/tutorial-player";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Copy,
@@ -26,6 +26,7 @@ import { ExtensionDownloadCard } from "@/components/msk/extension-download";
 import { TokenManager } from "@/components/msk/token-manager";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { NotificationSettings } from "@/components/msk/notification-settings";
+import { LicenseCard } from "@/components/msk/license-card";
 
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
