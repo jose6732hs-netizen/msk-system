@@ -117,16 +117,16 @@ export async function buildSplits(input: {
 }): Promise<AmploSplit[]> {
   const splits: AmploSplit[] = [];
   
-  const { data: cmsSettings } = await supabaseAdmin
-    .from("cms_content")
-    .select("data")
+  const { data: appSettings } = await (supabaseAdmin as any)
+    .from("app_settings")
+    .select("value")
     .eq("key", "splits")
     .maybeSingle();
   
-  const config = (cmsSettings?.data as any) || {};
+  const config = (appSettings?.value as any) || {};
 
   if (input.affiliateId) {
-    const { data: aff } = await supabaseAdmin
+    const { data: aff } = await (supabaseAdmin as any)
       .from("affiliates")
       .select("commission_rate,producer_id:user_id")
       .eq("id", input.affiliateId)
@@ -149,7 +149,7 @@ export async function buildSplits(input: {
   }
 
   if (input.resellerId) {
-    const { data: rv } = await supabaseAdmin
+    const { data: rv } = await (supabaseAdmin as any)
       .from("resellers")
       .select("commission_rate,producer_id:user_id")
       .eq("id", input.resellerId)
