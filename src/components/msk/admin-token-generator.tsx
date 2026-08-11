@@ -34,7 +34,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
   const plansFn = useServerFn(adminTokenPlans);
   const generateFn = useServerFn(adminGenerateToken);
 
-  const { data, isLoading } = useQuery({ queryKey: ["admin-token-plans"], queryFn: () => plansFn() });
+  const { data, isLoading, refetch } = useQuery({ queryKey: ["admin-token-plans"], queryFn: () => plansFn() });
   const plans = data?.plans ?? [];
 
   const [email, setEmail] = useState("");
@@ -47,6 +47,13 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(initialIssued || null);
+
+  // Auto-select first plan when plans load
+  useMemo(() => {
+    if (plans.length > 0 && !planId) {
+      setPlanId(plans[0].id);
+    }
+  }, [plans, planId]);
 
   useMemo(() => {
     if (initialIssued) {
