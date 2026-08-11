@@ -208,8 +208,8 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
 
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="lg:hidden" aria-label="Menu">
-                <Menu className="h-5 w-5 text-neon" />
+              <Button variant="ghost" size="sm" className="lg:hidden h-10 w-10 p-0 border border-white/10 rounded-xl hover:bg-white/5" aria-label="Menu">
+                <Menu className="h-6 w-6 text-primary" />
               </Button>
             </SheetTrigger>
             <SheetContent className="w-64">
