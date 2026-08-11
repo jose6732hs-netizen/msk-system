@@ -125,7 +125,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground">
+      <body className={cn("min-h-screen bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground", isBoard && "board-layout")}>
         {children}
         <Scripts />
       </body>
@@ -199,7 +199,7 @@ function RootComponent() {
       <PwaInstallBanner />
       <PushPermissionPrompt />
       <Outlet />
-      {!isBoard && <MobileNavigation />}
+      {!isBoard && !isAuth && <MobileNavigation />}
       <Toaster position="top-right" />
     </QueryClientProvider>
   );

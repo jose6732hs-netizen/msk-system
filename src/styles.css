@@ -161,7 +161,7 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 20px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
     background-image: var(--gradient-hero);
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -254,7 +254,7 @@ html, body {
 }
 
 @media (max-width: 1023px) {
-  body {
+  body:not(.board-layout) {
     padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
 }
