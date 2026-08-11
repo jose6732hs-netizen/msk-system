@@ -54,11 +54,18 @@ async function pickAndUpload(opts: {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("key", opts.key);
-      const res = await opts.uploadAsset({ data: fd as any });
+      
+      const res = await fetch("/api/public/cms/upload", {
+        method: "POST",
+        body: fd
+      }).then(r => r.json());
+
+      if (!res.url) throw new Error(res.error || "Upload falhou");
+      
       opts.onDone(res.url);
       toast.success("Arquivo carregado!");
-    } catch {
-      toast.error("Erro no upload");
+    } catch (err: any) {
+      toast.error("Erro no upload: " + (err.message || "Erro desconhecido"));
     } finally {
       opts.setUploading(null);
     }
