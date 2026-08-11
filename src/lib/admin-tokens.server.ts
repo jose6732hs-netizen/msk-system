@@ -124,7 +124,6 @@ export async function loadTokenPlans() {
   const { data } = await supabaseAdmin
     .from("plans")
     .select("id,name,slug,is_lifetime,max_devices,active")
-    .order("active", { ascending: false })
     .order("sort_order", { ascending: true });
   return (data ?? []) as Record<string, any>[];
 }
