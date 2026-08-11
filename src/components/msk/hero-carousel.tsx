@@ -49,7 +49,7 @@ export function HeroCarousel() {
               <img 
                 src={banner.url} 
                 alt={banner.alt} 
-                className="w-full h-full object-cover rounded-none bg-black/20"
+                className="w-full h-full object-contain rounded-none bg-black/5"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/40 via-transparent to-transparent opacity-60 pointer-events-none" />
             </div>
