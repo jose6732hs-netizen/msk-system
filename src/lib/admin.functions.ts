@@ -104,8 +104,24 @@ const planSchema = z
   sort_order: z.number().int().default(0),
   image_url: z.string().max(4000).default("").optional(),
   affiliate_commission_rate: z.number().min(0).max(100).default(0),
-  affiliate_commission_fixed: z.number().min(0).default(0),
-});
+    affiliate_commission_fixed: z.number().min(0).default(0),
+  })
+  .transform((p) => {
+    const base = (p.slug ?? "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const fromName = p.name
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const slug = (base || fromName || `plano-${Date.now()}`).slice(0, 40);
+    return { ...p, slug };
+  });
 
 export const adminSavePlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
