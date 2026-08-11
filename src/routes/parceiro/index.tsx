@@ -18,7 +18,6 @@ import {
   FileText,
   Award
 } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentsTab } from "@/components/parceiro/documents-tab";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { Button } from "@/components/ui/button";
@@ -199,8 +198,8 @@ function AffiliateDashboard() {
                            </div>
                            <div className="text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
                               <div className="flex flex-col items-start sm:items-end order-1 sm:order-none">
-                                <p className="font-bold text-lg leading-none break-all">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                                <p className="text-[9px] text-white/40 font-medium">Sua comissão ({sale.rate}%)</p>
+                                 <p className="font-bold text-lg leading-none break-all">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                 <p className="text-[9px] text-white/40 font-medium">Sua comissão ({sale.rate}%)</p>
                               </div>
                               <div className={cn(
                                 "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider whitespace-nowrap order-2 sm:order-none",
@@ -275,91 +274,57 @@ function AffiliateDashboard() {
                   </section>
                </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="ranking" className="focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8 text-center">
-              <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                <TrendingUp className="text-primary" size={40} />
-              </div>
-              <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Seu Ranking</h2>
-              <p className="text-white/40 mb-8 max-w-md mx-auto">Você está atualmente na posição #24 entre os parceiros de maior performance deste mês.</p>
-              <div className="w-full max-w-xs mx-auto flex justify-center px-4">
-                <Button variant="neon" className="w-full h-14 rounded-xl font-black uppercase flex items-center justify-center text-center whitespace-normal leading-tight" onClick={() => navigate({ to: '/admin' })}>Ver meu ranking atual</Button>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="awards" className="focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <Link to="/premiacoes" className="block group">
-              <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center space-y-8 hover:border-primary/40 transition-all relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full -mr-32 -mt-32 group-hover:bg-primary/10 transition-colors" />
-                <div className="relative z-10">
-                  <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
-                    <Award className="text-primary" size={40} />
+            {/* Referrals Section */}
+            <section id="referrals" className="scroll-mt-32">
+              <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold flex items-center gap-2">
+                    <Users className="text-white/20" size={20} /> Suas Indicações
+                  </h3>
+                  <div className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
+                    Total: {data.referrals?.length || 0}
                   </div>
-                  <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4">Central de Premiações</h2>
-                  <p className="text-white/40 text-lg max-w-2xl mx-auto mb-8">
-                    Seu desempenho tem valor. Sua conquista tem nome. Acesse agora a central e veja as recompensas exclusivas que esperam por você.
-                  </p>
-                  <Button variant="neon" size="lg" className="h-14 px-10 rounded-xl font-black text-lg">
-                    Acessar Premiações
-                  </Button>
                 </div>
-              </div>
-            </Link>
-          </TabsContent>
-
-          <TabsContent value="referrals" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <section className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-xl font-bold flex items-center gap-2">
-                  <Users className="text-white/20" size={20} /> Suas Indicações
-                </h3>
-                <div className="text-xs font-bold uppercase tracking-widest text-white/40">
-                  Total: {data.referrals?.length || 0}
+                
+                <div className="space-y-4">
+                  {data.referrals && data.referrals.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {data.referrals.map((ref: any) => (
+                        <div key={ref.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+                              <Users size={18} className="text-white/20" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm">{ref.name || 'Usuário'}</p>
+                              <p className="text-[10px] text-white/40">{ref.email.split('@')[0]}***@{ref.email.split('@')[1]}</p>
+                            </div>
+                          </div>
+                          <div className={cn(
+                            "px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider",
+                            ref.status === 'customer' ? "bg-green-500/20 text-green-500" : "bg-white/10 text-white/40"
+                          )}>
+                            {ref.status === 'customer' ? 'Cliente' : 'Cadastro'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="py-12 text-center">
+                       <p className="text-white/20 font-medium">Nenhuma indicação cadastrada ainda.</p>
+                    </div>
+                  )}
                 </div>
-              </div>
-              
-              <div className="grid gap-4">
-                {data.referrals && data.referrals.length > 0 ? data.referrals.map((ref: any) => (
-                  <div key={ref.id} className="group p-5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary"
-                      )}>
-                        <Users size={20} />
-                      </div>
-                      <div>
-                        <p className="font-bold text-white group-hover:text-primary transition-colors">{ref.name}</p>
-                        <p className="text-xs text-white/40">{ref.email}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-white/40 mb-1">
-                        {ref.signedUpAt ? new Date(ref.signedUpAt).toLocaleDateString('pt-BR') : '—'}
-                      </p>
-                      <div className={cn(
-                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider inline-block",
-                        ref.status === 'customer' ? "bg-green-500/20 text-green-500" : "bg-blue-500/20 text-blue-500"
-                      )}>
-                        {ref.status === 'customer' ? 'Venda Aprovada' : 'Cadastro'}
-                      </div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="py-20 text-center">
-                    <p className="text-white/20 font-medium">Nenhuma indicação cadastrada ainda.</p>
-                  </div>
-                )}
               </div>
             </section>
-          </TabsContent>
 
-          <TabsContent value="docs" className="focus:outline-none">
-            <DocumentsTab status={(affiliate as any).verification_status || 'WAITING'} />
-          </TabsContent>
-        </Tabs>
+            {/* Documents Section */}
+            <section id="docs" className="scroll-mt-32">
+              <DocumentsTab status={(affiliate as any).verification_status || 'WAITING'} />
+            </section>
+          </div>
+        </div>
       </main>
 
       <WalletModal 
