@@ -130,16 +130,19 @@ export async function issueStandaloneLicense(input: {
 
   const now = new Date();
   let expires: string | null = null;
-  if (input.expiresAtOverride !== undefined && input.expiresAtOverride !== null)
+  
+  if (input.expiresAtOverride !== undefined && input.expiresAtOverride !== null) {
     expires = input.expiresAtOverride;
-  else if (input.durationMinutes) expires = new Date(now.getTime() + input.durationMinutes * 60000).toISOString();
-  else if (input.durationDays) expires = new Date(now.getTime() + input.durationDays * 86400000).toISOString();
-  else if (!plan.is_lifetime)
-    expires = computeExpiry(
-      (plan as { duration_unit?: string }).duration_unit ?? "days",
-      Number((plan as { duration_value?: number }).duration_value ?? plan.duration_days ?? 30),
-      now,
-    );
+  } else if (input.durationMinutes) {
+    expires = new Date(now.getTime() + input.durationMinutes * 60000).toISOString();
+  } else if (input.durationDays) {
+    expires = new Date(now.getTime() + input.durationDays * 86400000).toISOString();
+  } else if (!plan.is_lifetime) {
+    // Herda do plano: duration_unit + duration_value ou fallback duration_days
+    const unit = (plan as any).duration_unit || "days";
+    const val = Number((plan as any).duration_value || plan.duration_days || 30);
+    expires = computeExpiry(unit, val, now);
+  }
 
   const token = generateLicenseToken();
   const { data, error } = await supabaseAdmin
@@ -164,11 +167,13 @@ export async function issueStandaloneLicense(input: {
         plan_name_snapshot: plan.name,
         plan_price_snapshot: plan.price,
         plan_duration_snapshot: plan.duration_days,
-        plan_slug_snapshot: plan.slug
+        plan_slug_snapshot: plan.slug,
+        features_snapshot: plan.features || {}
       }
     } as never)
     .select("id")
     .single();
+
   if (error) throw error;
 
   await logEvent({
