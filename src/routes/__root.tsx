@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
