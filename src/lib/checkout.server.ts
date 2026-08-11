@@ -195,34 +195,58 @@ export async function createPixCheckout(input: {
   email: string;
   name: string;
   planId?: string | null; // Agora opcional se houver carrinho
+  items?: { planId: string; quantity: number }[] | null;
   affiliateCode?: string | null;
   resellerCode?: string | null;
   document: string;
   phone: string;
 }) {
-  const { loadCart, clearCart } = await import("./cart.server");
-  const cart = await loadCart(input.userId);
-  
-  // Se não passou um planId específico, usa o total do carrinho
-  const isBulk = !input.planId && cart.lines.length > 0;
-  
+  const { loadCart } = await import("./cart.server");
+
   let finalPrice = 0;
   let planName = "";
   let planSlug = "";
   let items: any[] = [];
+  let isBulk = false;
 
-  if (isBulk) {
+  if (!input.planId && input.items?.length) {
+    // Lote enviado pelo carrinho do navegador (fonte de verdade: tabela plans).
+    isBulk = true;
+    const ids = [...new Set(input.items.map((i) => i.planId))];
+    const { data: rows } = await supabaseAdmin
+      .from("plans")
+      .select("id,name,slug,price")
+      .in("id", ids)
+      .eq("active", true);
+    const byId = new Map((rows ?? []).map((p: any) => [p.id, p]));
+    for (const line of input.items) {
+      const plan = byId.get(line.planId);
+      if (!plan) throw new Error("Um dos planos do carrinho não está mais disponível.");
+      finalPrice += Number(plan.price) * line.quantity;
+      items.push({
+        title: plan.name,
+        unitPrice: Math.round(Number(plan.price) * 100),
+        quantity: line.quantity,
+        tangible: false,
+      });
+    }
+    planName = items.length === 1 ? String(items[0].title) : `${items.length} Planos MSK`;
+    planSlug = "cart_bulk";
+  } else if (!input.planId) {
+    const cart = await loadCart(input.userId);
+    if (!cart.lines.length) throw new Error("Seu carrinho está vazio.");
+    isBulk = true;
     finalPrice = cart.total;
     planName = cart.lines.length === 1 ? (cart.lines[0]?.name ?? "Plano MSK") : `${cart.lines.length} Planos MSK`;
     planSlug = "cart_bulk";
-    items = cart.lines.map(l => ({
+    items = cart.lines.map((l) => ({
       title: l.name,
       unitPrice: Math.round(l.price * 100),
       quantity: l.quantity,
-      tangible: false
+      tangible: false,
     }));
   } else {
-    const planId = input.planId!;
+    const planId = input.planId;
     const { data: plan } = await supabaseAdmin
       .from("plans")
       .select("*")
