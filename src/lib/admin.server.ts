@@ -23,8 +23,16 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   if (uTerm) profileQuery = profileQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
   const { data: users } = await profileQuery;
 
-  const [{ data: plans }, { data: subs }, { data: payments }, { data: webhooks }, { data: events }, { data: devices }] =
-    await Promise.all([
+  const [
+    { data: plans },
+    { data: subs },
+    { data: payments },
+    { data: webhooks },
+    { data: events },
+    { data: devices },
+    { data: affiliates },
+  ] = await Promise.all([
+
       supabaseAdmin.from("plans").select("*").order("sort_order"),
       supabaseAdmin
         .from("subscriptions")
@@ -52,7 +60,13 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .eq("status", "active")
         .order("last_seen", { ascending: false })
         .limit(60),
+      supabaseAdmin
+        .from("affiliates")
+        .select("id,verification_status")
+        .eq("verification_status", "PENDING")
+        .limit(50),
     ]);
+
 
   return {
     licenses: (licenses ?? []) as Record<string, any>[],
@@ -63,6 +77,8 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     webhooks: (webhooks ?? []) as Record<string, any>[],
     events: (events ?? []) as Record<string, any>[],
     devices: (devices ?? []) as Record<string, any>[],
+    affiliates: (affiliates ?? []) as Record<string, any>[],
+
     stats: {
       users: users?.length ?? 0,
       licenses: licenses?.length ?? 0,
