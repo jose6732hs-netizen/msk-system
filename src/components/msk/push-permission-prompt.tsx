@@ -31,6 +31,7 @@ export function PushPermissionPrompt() {
     
     if (res.ok) {
       setShow(false);
+      localStorage.setItem("msk_push_enabled", "1");
       toast.success("Notificações ativadas com sucesso!");
     } else {
       if (res.reason === "denied") {

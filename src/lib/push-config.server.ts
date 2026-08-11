@@ -82,7 +82,7 @@ export async function testVapidConnection() {
   const keys = await getVapidKeys();
   if (!keys) return { ok: false, message: "Nenhuma chave VAPID configurada." };
   try {
-    const raw = Uint8Array.from(atob(keys.privateKey), (c) => c.charCodeAt(0));
+    const raw = Uint8Array.from(atob(keys.privateKey.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
     const key = await crypto.subtle.importKey("pkcs8", raw as BufferSource, { name: "ECDSA", namedCurve: "P-256" }, false, [
       "sign",
     ]);
