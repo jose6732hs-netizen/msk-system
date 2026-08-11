@@ -419,7 +419,7 @@ export function AdminEditorTab() {
               uploadKeyPrefix="landing-banner"
               uploading={uploading}
               setUploading={setUploading}
-              uploadAsset={uploadAsset}
+              uploadAsset={null as any}
               onChange={(list) => updateSetting('hero', 'banners', list)}
               onSave={() => handleSave('hero')}
               onPublish={() => handlePublish('hero')}
