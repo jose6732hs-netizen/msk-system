@@ -394,11 +394,14 @@ export async function approveCommissionForTransaction(tx: {
     commissionId = data?.id ?? null;
     amount = resolved.amount;
   } else {
+    // Atualiza a comissão existente com os valores calculados no momento do pagamento (snapshot)
     await supabaseAdmin
       .from("affiliate_commissions")
       .update({ 
         status: "APPROVED", 
         amount: resolved.amount,
+        rate: resolved.rate,
+        source: resolved.source,
         approved_at: new Date().toISOString(), 
         updated_at: new Date().toISOString() 
       } as any)
