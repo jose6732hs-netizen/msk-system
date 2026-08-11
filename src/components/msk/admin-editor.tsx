@@ -212,7 +212,7 @@ function BannerManager(props: {
 }
 
 
-type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards';
+type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards' | 'splits';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -292,6 +292,7 @@ export function AdminEditorTab() {
     { id: 'images', label: 'Imagens do Site', icon: ImageIcon, desc: 'Todas as imagens editáveis' },
     { id: 'banners', label: 'Banners Landing', icon: Layout, desc: 'Ordenar e ativar' },
     { id: 'panel', label: 'Banners Painel', icon: Users, desc: 'Exclusivos dos tenants' },
+    { id: 'splits', label: 'Configurações de Split', icon: Palette, desc: 'Configurações financeiras' },
     { id: 'partners', label: 'Parceiros', icon: Users, desc: 'Chamada de afiliados' },
     { id: 'branding', label: 'Extensão / Branding', icon: Palette, desc: 'Ícones e cores' },
     { id: 'awards', label: 'Premiações / Placas', icon: Trophy, desc: 'Placas 1K a 5M' },
