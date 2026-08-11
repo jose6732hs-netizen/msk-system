@@ -155,8 +155,11 @@ export async function loadAffiliateOverview(
     ensure(dayKey(c.created_at)).commission += Number(c.amount);
   }
 
-  const goalTarget = Number(row["goal_amount"] ?? goals.balance ?? 0);
+  const { getAffiliateGoal } = await import("./affiliate.server");
+  const goalTarget = (await getAffiliateGoal(stats.availableBalance)) ?? 1000;
   const progress = goalTarget > 0 ? Math.min(100, (stats.availableBalance / goalTarget) * 100) : 0;
+
+
 
   return {
     enrolled: true as const,
@@ -175,6 +178,7 @@ export async function loadAffiliateOverview(
     },
     stats,
     goal: { target: goalTarget, current: stats.availableBalance, progress: Math.round(progress * 100) / 100, reached: goalTarget > 0 && stats.availableBalance >= goalTarget },
+
     goals,
     series: Object.values(series).sort((a, b) => a.date.localeCompare(b.date)),
     sales: saleRows.slice(0, 100).map((s) => {
