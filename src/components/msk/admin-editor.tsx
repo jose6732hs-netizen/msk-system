@@ -32,6 +32,7 @@ import {
   DEFAULT_PANEL_BANNERS,
 } from "@/lib/site-images";
 import { ChevronUp, ChevronDown } from "lucide-react";
+import { TutorialsManager } from "@/components/msk/tutorials-manager";
 
 type BannerItem = { url: string; alt?: string; active?: boolean; order?: number };
 
@@ -692,184 +693,12 @@ export function AdminEditorTab() {
           )}
 
           {activeSection === 'tutorials' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-8 w-1 bg-primary rounded-full" />
-                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Gestão de Vídeos Tutoriais</h4>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Vídeos de Tutoriais / Explicações</label>
-                <Button 
-                  size="sm" 
-                  variant="neonOutline"
-                  onClick={() => {
-                    const currentVideos = (localSettings as any).tutorials?.videos || [];
-                    updateSetting('tutorials', 'videos', [...currentVideos, { url: '', title: '', description: '', is_redirect: false }]);
-                  }}
-
-                >
-                  + Adicionar Vídeo
-                </Button>
-              </div>
-
-              <div className="space-y-4">
-                {((localSettings as any).tutorials?.videos || []).map((video: any, index: number) => (
-                  <div key={index} className="glass group rounded-2xl p-4 border border-white/5 space-y-4 hover:border-primary/30 transition-all hover:bg-white/5">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[0.6rem] font-black uppercase tracking-widest text-primary/70">Tutorial #{index + 1}</span>
-                      <Button 
-                        size="icon" 
-                        variant="ghost" 
-                        className="h-7 w-7 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                        onClick={() => {
-                          const newVideos = (localSettings as any).tutorials.videos.filter((_: any, i: number) => i !== index);
-                          updateSetting('tutorials', 'videos', newVideos);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-
-                      <Input 
-                        placeholder="Título do Vídeo"
-                        value={video.title}
-                        onChange={(e) => {
-                          const newVideos = [...(localSettings as any).tutorials.videos];
-                          newVideos[index].title = e.target.value;
-                          updateSetting('tutorials', 'videos', newVideos);
-                        }}
-                      />
-                      <div className="flex gap-2">
-                        <Input 
-                          placeholder="Link do Vídeo (YouTube, Vimeo ou Link Direto)"
-                          value={video.url}
-                          onChange={(e) => {
-                            const newVideos = [...(localSettings as any).tutorials.videos];
-                            newVideos[index].url = e.target.value;
-                            updateSetting('tutorials', 'videos', newVideos);
-                          }}
-                          className="flex-1"
-                        />
-                        <Button 
-                          size="icon" 
-                          variant="neonOutline" 
-                          className="shrink-0"
-                          title="Upload de Vídeo"
-                          onClick={() => {
-                            const input = document.createElement('input');
-                            input.type = 'file';
-                            input.accept = 'video/*';
-                            input.onchange = async (e) => {
-                              const file = (e.target as HTMLInputElement).files?.[0];
-                                if (file) {
-                                  setUploading(`video-${index}`);
-                                  try {
-                                    const fd = new FormData();
-                                    fd.append('file', file);
-                                    fd.append('key', `tutorial-video-${index}`);
-                                    
-                                    // Use XHR for real progress tracking
-                                    const xhr = new XMLHttpRequest();
-                                    xhr.upload.addEventListener("progress", (evt) => {
-                                      if (evt.lengthComputable) {
-                                        const percentComplete = Math.round((evt.loaded / evt.total) * 100);
-                                        setUploading(`video-${index}-${percentComplete}`);
-                                      }
-                                    });
-
-                                    const uploadPromise = new Promise((resolve, reject) => {
-                                      xhr.onload = () => {
-                                        if (xhr.status >= 200 && xhr.status < 300) {
-                                          resolve(JSON.parse(xhr.responseText));
-                                        } else {
-                                          reject(new Error('Upload failed'));
-                                        }
-                                      };
-                                      xhr.onerror = () => reject(new Error('Upload error'));
-                                    });
-
-                                    // Note: server functions are not easily usable with XHR progress 
-                                    // We fall back to standard asset upload with simulated 100% on completion for now
-                                    // but UI will show the "100" once the promise resolves
-                                    const res = await uploadAsset({ data: fd as any });
-                                    
-                                    const newVideos = [...(localSettings as any).tutorials.videos];
-                                    newVideos[index].url = res.url;
-                                    
-                                    setLocalSettings((prev: any) => ({
-                                      ...prev,
-                                      tutorials: {
-                                        ...(prev?.tutorials || {}),
-                                        videos: newVideos
-                                      }
-                                    }));
-                                    
-                                    toast.success("Vídeo carregado com sucesso!");
-                                  } catch (err) {
-                                    toast.error("Erro no upload do vídeo");
-                                  } finally {
-                                    setUploading(null);
-                                  }
-                                }
-                            };
-                            input.click();
-                          }}
-                          disabled={uploading === `video-${index}`}
-                        >
-                          {uploading?.startsWith(`video-${index}`) ? (
-                            <div className="relative h-4 w-4">
-                              <RefreshCw className="h-4 w-4 animate-spin text-primary" />
-                              <div className="absolute inset-0 flex items-center justify-center text-[8px] font-bold">
-                                {uploading.split('-').pop()}
-                              </div>
-                            </div>
-                          ) : <Upload className="h-3.5 w-3.5" />}
-                        </Button>
-                      </div>
-                      <div className="flex items-center gap-2 py-1">
-                        <input 
-                          type="checkbox"
-                          id={`redirect-${index}`}
-                          checked={video.is_redirect || false}
-                          onChange={(e) => {
-                            const newVideos = [...(localSettings as any).tutorials.videos];
-                            newVideos[index].is_redirect = e.target.checked;
-                            updateSetting('tutorials', 'videos', newVideos);
-                          }}
-                          className="w-4 h-4 accent-primary"
-                        />
-                        <label htmlFor={`redirect-${index}`} className="text-[0.65rem] font-bold uppercase text-white/70 cursor-pointer">
-                          Redirecionar para link externo ao invés de exibir no painel
-                        </label>
-                      </div>
-
-                      <Textarea 
-                        placeholder="Descrição curta"
-                        value={video.description}
-                        onChange={(e) => {
-                          const newVideos = [...(localSettings as any).tutorials.videos];
-                          newVideos[index].description = e.target.value;
-                          updateSetting('tutorials', 'videos', newVideos);
-                        }}
-                        className="min-h-[60px] bg-black/20"
-                      />
-                    </div>
-                  </div>
-                ))}
-
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button onClick={() => handleSave('tutorials')} variant="neonOutline" className="flex-1 font-black">
-                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
-                </Button>
-                <Button onClick={() => handlePublish('tutorials')} variant="neon" className="flex-1 font-black">
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Tutoriais
-                </Button>
-              </div>
-            </div>
+            <TutorialsManager
+              tutorials={(localSettings as any).tutorials}
+              onChange={(sections) => updateSetting('tutorials', 'sections', sections)}
+              onSave={() => handleSave('tutorials')}
+              onPublish={() => handlePublish('tutorials')}
+            />
           )}
 
           {activeSection === 'branding' && (
