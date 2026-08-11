@@ -394,7 +394,7 @@ export function AdminSubscriptionsTab({
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="neon" disabled={busy || !editing.name || !editing.slug} onClick={() => void save(editing)}>
+            <Button variant="neon" disabled={busy || !editing.name} onClick={() => void save(editing)}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Salvar plano
             </Button>
