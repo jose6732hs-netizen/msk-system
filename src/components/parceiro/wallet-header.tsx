@@ -152,11 +152,15 @@ export function AffiliateHeader({
                   <div className="mx-auto mb-6 h-1 w-12 rounded-full bg-white/15 shrink-0" />
                   <nav className="flex flex-col gap-2 px-6">
                     {affiliateRoutes.map((route) => (
-                      route.action === "openWallet" ? (
+                      route.action ? (
                         <button
                           key={route.label}
                           onClick={() => {
-                            (window as any).openWalletModal?.();
+                            if (route.action === "support") {
+                              if (supportLink) window.open(supportLink, "_blank", "noopener");
+                            } else {
+                              (window as any).openWalletModal?.();
+                            }
                             setOpen(false);
                           }}
                           className="flex items-center gap-4 rounded-2xl bg-white/5 p-5 text-lg font-bold transition-colors active:bg-white/10 text-left w-full"
@@ -180,6 +184,7 @@ export function AffiliateHeader({
                         </Link>
                       )
                     ))}
+
                   </nav>
                 </div>
              </SheetContent>
