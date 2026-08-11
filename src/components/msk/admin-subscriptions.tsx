@@ -206,14 +206,7 @@ export function AdminSubscriptionsTab({
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
               />
             </Field>
-            <Field label="Slug (URL)">
-              <Input
-                value={editing.slug}
-                onChange={(e) =>
-                  setEditing({ ...editing, slug: e.target.value.toLowerCase().replace(/\s+/g, "-") })
-                }
-              />
-            </Field>
+            {/* Slug gerado automaticamente a partir do nome */}
             <Field label="Preço (R$)">
               <Input
                 inputMode="decimal"
@@ -401,7 +394,7 @@ export function AdminSubscriptionsTab({
             </div>
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="neon" disabled={busy || !editing.name || !editing.slug} onClick={() => void save(editing)}>
+            <Button variant="neon" disabled={busy || !editing.name} onClick={() => void save(editing)}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Salvar plano
             </Button>
