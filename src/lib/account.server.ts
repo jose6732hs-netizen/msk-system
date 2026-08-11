@@ -13,22 +13,27 @@ export async function loadAccount(supabase: Client, userId: string) {
     .eq("id", userId)
     .maybeSingle();
 
-  const { data: license } = await supabase
+  // Busca as últimas licenças e prioriza uma ativa/pendente sobre expiradas
+  // (ex.: licença emitida manualmente pelo admin logo após uma expirar).
+  const { data: licenseRows } = await supabase
     .from("licenses")
     .select(
       "id,status,expires_at,activated_at,max_devices,token_preview,token_last4,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,features,max_devices)",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(10);
+
+  const list = (licenseRows ?? []) as Record<string, any>[];
+  const license =
+    list.find((l) => l["status"] === "active" || l["status"] === "inactive") ?? list[0] ?? null;
 
   let devices: Record<string, any>[] = [];
   if (license) {
     const { data } = await supabase
       .from("license_devices")
       .select("id,device_name,browser,os,first_seen,last_seen,status,extension_version")
-      .eq("license_id", license.id)
+      .eq("license_id", license["id"])
       .eq("status", "active")
       .order("last_seen", { ascending: false });
     devices = data ?? [];

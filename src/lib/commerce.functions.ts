@@ -8,30 +8,30 @@ const name = (claims: Record<string, unknown>) =>
 
 export const startPixCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => {
-    const parsed = z
+  .inputValidator((d: unknown) =>
+    z
       .object({
         planId: z.string().uuid().optional(),
+        // Checkout em lote enviado pelo carrinho do navegador.
+        items: z
+          .array(z.object({ planId: z.string().uuid(), quantity: z.number().int().min(1).max(20) }))
+          .max(20)
+          .optional(),
         affiliateCode: z.string().max(24).optional(),
         resellerCode: z.string().max(24).optional(),
         document: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => v.length === 11 || v.length === 14, "CPF/CNPJ inválido"),
         phone: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => v.length >= 10 && v.length <= 13, "Telefone inválido"),
       })
-      .parse(d);
-    
-    // Se não for checkout em lote, planId é obrigatório
-    if (!parsed.planId && !parsed.affiliateCode && !parsed.resellerCode) {
-       // O lote não tem planId único na entrada, mas aqui estamos mantendo compatibilidade
-    }
-    return parsed;
-  })
+      .parse(d),
+  )
   .handler(async ({ context, data }) => {
     const { createPixCheckout } = await import("./checkout.server");
     return createPixCheckout({
       userId: context.userId,
       email: email(context.claims),
       name: name(context.claims),
-      planId: data.planId ?? null, 
+      planId: data.planId ?? null,
+      items: data.items ?? null,
       affiliateCode: data.affiliateCode ?? null,
       resellerCode: data.resellerCode ?? null,
       document: data.document,

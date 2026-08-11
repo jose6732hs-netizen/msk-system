@@ -4,7 +4,7 @@ import { setAffiliateWithdrawalPassword } from "@/lib/parceiro/wallet.functions"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { Lock, ShieldCheck, Loader2, Eye, EyeOff } from "lucide-react";
+import { Lock, ShieldCheck, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface WithdrawalPasswordModalProps {
@@ -14,7 +14,6 @@ interface WithdrawalPasswordModalProps {
 export function WithdrawalPasswordModal({ isAlreadySet }: WithdrawalPasswordModalProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [attempts, setAttempts] = useState(0);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -111,26 +110,21 @@ export function WithdrawalPasswordModal({ isAlreadySet }: WithdrawalPasswordModa
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="relative">
-            <Input
-              type={showPassword ? "text" : "password"}
-              maxLength={6}
-              placeholder="Nova Senha"
-              value={password}
-              onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
-              className="bg-black/20 border-white/10 h-12 pr-10 text-center tracking-[0.5em] font-bold text-lg"
-            />
-            <button 
-              type="button" 
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white"
-            >
-              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
-            type={showPassword ? "text" : "password"}
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            maxLength={6}
+            placeholder="Nova Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
+            className="bg-black/20 border-white/10 h-12 text-center tracking-[0.5em] font-bold text-lg"
+          />
+          <Input
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
             maxLength={6}
             placeholder="Confirmar"
             value={confirmPassword}
@@ -140,7 +134,7 @@ export function WithdrawalPasswordModal({ isAlreadySet }: WithdrawalPasswordModa
         </div>
 
         <p className="text-[10px] text-white/40 italic">
-          * A senha deve ser composta apenas por números. Nunca compartilhe sua senha.
+          * Apenas números. Após salvar, a senha não pode ser visualizada — somente o suporte pode redefini-la.
         </p>
 
         <Button 

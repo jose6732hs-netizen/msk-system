@@ -43,7 +43,7 @@ export function AffiliateHeader({
     >
       <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-2 md:gap-4">
         {/* Lado Esquerdo: Saldo */}
-        <div className="flex flex-col">
+        <div className="flex min-w-0 flex-col">
           <span className="text-xs font-medium text-white/40 uppercase tracking-widest">Saldo Disponível</span>
           <div className="flex items-center gap-3">
             <h2 className={cn(
@@ -93,7 +93,7 @@ export function AffiliateHeader({
 
 
         {/* Lado Direito: Actions/Menu */}
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex shrink-0 items-center gap-2 md:gap-3">
            <Button 
              asChild
              variant="ghost" 
