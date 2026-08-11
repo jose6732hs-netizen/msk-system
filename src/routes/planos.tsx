@@ -27,7 +27,9 @@ const PLAN_IMAGES: Record<string, string> = {
   quarterly: cardTrimestralImg,
 };
 
-function planImage(slug?: string | null) {
+function planImage(plan?: any) {
+  if (plan?.image_url) return plan.image_url;
+  const slug = plan?.slug;
   return (slug && PLAN_IMAGES[slug]) || bannerOfferAsset.url;
 }
 import {
@@ -142,7 +144,7 @@ function PlanosPage() {
         );
       }
       
-      let imageUrl: string | null = planImage(plan.slug);
+      let imageUrl: string | null = planImage(plan);
 
       return [...current, { 
         planId: plan.id, 
@@ -435,7 +437,7 @@ function PlanosPage() {
                   >
                     <div className="relative h-32 sm:h-52 w-full overflow-hidden p-2 pb-0 sm:p-3 sm:pb-0">
                       <img 
-                        src={planImage(plan.slug)} 
+                        src={planImage(plan)} 
                         alt={plan.name} 
                         className="w-full h-full object-contain rounded-[1.25rem] sm:rounded-[2rem] transition-transform duration-700 hover:scale-105"
                       />

@@ -98,6 +98,7 @@ const planSchema = z.object({
   max_devices: z.number().int().min(1).max(100),
   active: z.boolean(),
   sort_order: z.number().int().default(0),
+  image_url: z.string().max(400).default("").optional(),
 });
 
 export const adminSavePlan = createServerFn({ method: "POST" })
