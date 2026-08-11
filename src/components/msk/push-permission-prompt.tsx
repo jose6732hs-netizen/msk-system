@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bell, ShieldCheck, X, AlertCircle, Loader2 } from "lucide-react";
+import { Bell, ShieldCheck, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { enablePushNotifications, pushPermission, pushSupported } from "@/lib/push-client";
 import { toast } from "sonner";
@@ -21,6 +21,7 @@ export function PushPermissionPrompt() {
         return () => clearTimeout(timer);
       }
     }
+    return undefined;
   }, []);
 
   const handleEnable = async () => {
