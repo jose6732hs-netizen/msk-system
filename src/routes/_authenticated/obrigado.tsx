@@ -20,7 +20,7 @@ import { MskLogo } from "@/components/msk/logo";
 
 export const Route = createFileRoute("/_authenticated/obrigado")({
   validateSearch: (search: Record<string, unknown>) => ({
-    transactionId: (search.transactionId as string) || "",
+    transactionId: (search["transactionId"] as string) || "",
   }),
   head: () => ({
     meta: [
@@ -49,7 +49,7 @@ function ObrigadoPage() {
 
   // Polling se ainda não estiver pago ou licença não gerada
   useEffect(() => {
-    if (isLoading || license) return;
+    if (isLoading || license) return undefined;
     
     // Tentar por até 30 segundos
     if (attempts < 10) {
@@ -59,6 +59,7 @@ function ObrigadoPage() {
       }, 3000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [license, isLoading, attempts, refetch]);
 
   useEffect(() => {
@@ -83,6 +84,7 @@ function ObrigadoPage() {
 
       return () => clearInterval(interval);
     }
+    return undefined;
   }, [license]);
 
   if (!transactionId) {
@@ -186,7 +188,7 @@ function ObrigadoPage() {
               <FeatureBox 
                 icon={<CreditCard className="text-primary" />} 
                 title="Valor Pago" 
-                value={`R$ ${Number(license.metadata?.amount_paid || 99.90).toFixed(2).replace('.', ',')}`} 
+                value={`R$ ${Number((license as any).amount_paid || 99.90).toFixed(2).replace('.', ',')}`} 
               />
               <FeatureBox 
                 icon={<ShoppingBag className="text-primary" />} 

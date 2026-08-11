@@ -121,7 +121,7 @@ export function LicenseCard({ license, onCopyToken, highlighted }: LicenseCardPr
             <div className="text-right">
               <span className="text-[10px] uppercase font-bold text-white/40 tracking-widest block mb-1">Valor Investido</span>
               <span className="text-2xl font-black text-white">
-                R$ {Number(license.metadata?.amount_paid || 99.90).toFixed(2).replace('.', ',')}
+                R$ {Number(license.amount_paid || 99.90).toFixed(2).replace('.', ',')}
               </span>
             </div>
           )}
