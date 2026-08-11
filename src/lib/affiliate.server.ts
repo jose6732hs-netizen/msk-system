@@ -281,19 +281,26 @@ export async function resolveCommission(input: {
   let fixed = 0;
   let source: ResolvedCommission["source"] = "default";
 
+  // 1. Override por plano específico para este afiliado
   if (byPlan) {
     rate = Number(byPlan.rate);
     fixed = Number(byPlan.fixed_amount);
     source = "override_plan";
-  } else if (global) {
+  } 
+  // 2. Override global para este afiliado
+  else if (global) {
     rate = Number(global.rate);
     fixed = Number(global.fixed_amount);
     source = "override_global";
-  } else if (plan && (Number(plan.affiliate_commission_rate ?? 0) > 0 || Number(plan.affiliate_commission_fixed ?? 0) > 0)) {
+  } 
+  // 3. Configuração padrão do Plano
+  else if (plan && (Number(plan.affiliate_commission_rate ?? 0) > 0 || Number(plan.affiliate_commission_fixed ?? 0) > 0)) {
     rate = Number(plan.affiliate_commission_rate ?? 0);
     fixed = Number(plan.affiliate_commission_fixed ?? 0);
     source = "plan";
-  } else {
+  } 
+  // 4. Padrão do sistema/afiliado
+  else {
     rate = Number(affiliate?.commission_rate ?? 0);
     source = "default";
   }
