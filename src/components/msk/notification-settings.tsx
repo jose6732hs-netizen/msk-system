@@ -22,6 +22,7 @@ const LABELS: Record<string, { title: string; desc: string; emoji: string }> = {
   campaigns: { title: "Campanhas", desc: "Novas campanhas e materiais para divulgar.", emoji: "📣" },
   updates: { title: "Atualizações do sistema", desc: "Novas versões da extensão e do painel.", emoji: "🚀" },
   promotions: { title: "Promoções", desc: "Ofertas e descontos exclusivos.", emoji: "🔥" },
+  admin_sales: { title: "Vendas Aprovadas (Admin)", desc: "Notificar sobre todas as vendas brutas aprovadas.", emoji: "👑" },
 };
 
 /**
@@ -117,7 +118,7 @@ export function NotificationSettings({ scope = "user" }: { scope?: "user" | "adm
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {NOTIFICATION_KEYS.map((key) => {
+          {(isAdmin ? ["admin_sales"] : NOTIFICATION_KEYS).map((key) => {
             const info = LABELS[key]!;
             const value = data?.[key] !== false;
             return (
@@ -143,8 +144,7 @@ export function NotificationSettings({ scope = "user" }: { scope?: "user" | "adm
 
       {isAdmin && (
         <p className="text-xs text-muted-foreground">
-          Estes interruptores controlam os disparos de toda a plataforma. Cada usuário ainda pode
-          desativar os tipos que não quiser receber no painel dele.
+          Estes interruptores controlam as notificações de administração. Notificações de comissão e promoções são exclusivas para o painel de usuários.
         </p>
       )}
     </div>
