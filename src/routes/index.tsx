@@ -1,23 +1,71 @@
-# CORREÇÃO DEFINITIVA — PLANOS E COMISSÕES
+import { createFileRoute } from "@tanstack/react-router";
+import { SiteHeader } from "@/components/msk/site-header";
+import { SiteFooter } from "@/components/msk/site-footer";
+import { HeroCarousel } from "@/components/msk/hero-carousel";
+import { NightSky } from "@/components/msk/night-sky";
 
-O sistema foi corrigido para utilizar uma única fonte de verdade: a tabela `plans` do banco de dados.
+export const Route = createFileRoute("/")({
+  head: () => ({
+    title: "MSK SISTEM — Tecnologia e Performance",
+    meta: [
+      {
+        name: "description",
+        content: "A plataforma definitiva para automação e gestão de licenças com alta performance.",
+      },
+      { property: "og:title", content: "MSK SISTEM" },
+      { property: "og:description", content: "Automação e gestão de licenças premium." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: LandingPage,
+});
 
-### 1. Fonte Única de Verdade
-- Todas as consultas de planos (Site, Admin, Geração de Tokens) agora utilizam a tabela `plans`.
-- Removidos filtros restritivos que impediam a visualização de planos no Gerador de Tokens.
+function LandingPage() {
+  return (
+    <div className="relative min-h-screen bg-background text-foreground overflow-hidden">
+      <NightSky />
+      <SiteHeader />
+      
+      <main>
+        <section className="relative z-10 pt-20 pb-12 sm:pt-32 sm:pb-20">
+          <div className="container px-4 mx-auto text-center">
+            <h1 className="text-5xl font-black tracking-tighter uppercase sm:text-8xl mb-6">
+              MSK <span className="neon-text">SISTEM</span>
+            </h1>
+            <p className="max-w-2xl mx-auto text-sm sm:text-base font-medium text-muted-foreground uppercase tracking-[0.2em] mb-12">
+              Performance Incomparável • Gestão Inteligente • Resultados Reais
+            </p>
+          </div>
+        </section>
 
-### 2. Fluxo de Licenças e Tokens
-- O `plan_id` é preservado em todo o ciclo de vida: `Transação -> Licença -> Token`.
-- A duração da licença é extraída dinamicamente do plano selecionado.
-- Adicionado snapshot dos dados do plano (nome, preço, duração) na licença para fins históricos.
+        <section className="relative z-10 px-4 mb-20">
+          <div className="max-w-6xl mx-auto">
+            <HeroCarousel />
+          </div>
+        </section>
 
-### 3. Comissões Dinâmicas de Afiliados
-- A comissão agora é calculada com base na configuração do plano (`affiliate_commission_rate` e `affiliate_commission_fixed`).
-- Implementado sistema de snapshot na comissão: a porcentagem e o valor são registrados no momento da aprovação, protegendo o histórico contra alterações futuras no plano.
-- Atualizado o Admin Editor para permitir configurar comissões específicas por plano.
+        <section className="relative z-10 py-20 bg-black/40 border-y border-white/5">
+          <div className="container px-4 mx-auto text-center">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div className="space-y-4">
+                <div className="text-4xl font-black text-primary">100%</div>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Automação</p>
+              </div>
+              <div className="space-y-4">
+                <div className="text-4xl font-black text-primary">24/7</div>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Suporte Ativo</p>
+              </div>
+              <div className="space-y-4">
+                <div className="text-4xl font-black text-primary">+10k</div>
+                <p className="text-xs uppercase tracking-widest text-muted-foreground font-bold">Usuários Felizes</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
 
-### 4. Diagnóstico de Sistema
-- Verificado RLS: Super Admins possuem acesso total aos planos, enquanto usuários anônimos veem apenas planos marcados como ativos.
-- Corrigido o seletor de planos no Gerador Manual para exibir detalhes como preço e duração, facilitando a identificação.
-
-O sistema agora está totalmente integrado e pronto para produção, seguindo as melhores práticas de arquitetura e segurança.
+      <SiteFooter />
+    </div>
+  );
+}
