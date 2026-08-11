@@ -4,27 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent } from "@/lib/cms.functions";
-import banner1 from "@/assets/banner1.jpg.asset.json";
-import banner2 from "@/assets/banner2.png.asset.json";
-import bannerInf from "@/assets/banner_infinite.png.asset.json";
-import bannerInt from "@/assets/banner_interrupted.png.asset.json";
-import bannerNoC from "@/assets/banner_no_credits.png.asset.json";
-import bannerAfiliado from "@/assets/banner-afiliado.png.asset.json";
-import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
-import mainPromoAsset from "@/assets/main-promo.png.asset.json";
-import bannerConquista from "@/assets/banner-afiliado-conquista.png.asset.json";
-
-const DEFAULT_BANNERS = [
-  { url: mainPromoAsset.url, alt: "Crie sites sem limitações" },
-  { url: bannerConquista.url, alt: "Seu resultado tem valor" },
-  { url: banner1.url, alt: "Banner 1" },
-  { url: banner2.url, alt: "Banner 2" },
-  { url: bannerInf.url, alt: "Créditos Infinitos" },
-  { url: bannerInt.url, alt: "Sem Interrupções" },
-  { url: bannerNoC.url, alt: "Crie sem Limites" },
-  { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK" },
-  { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA" },
-];
+import { DEFAULT_LANDING_BANNERS } from "@/lib/site-images";
 
 export function HeroCarousel() {
   const getCms = useServerFn(getCmsContent);
@@ -33,11 +13,12 @@ export function HeroCarousel() {
     queryFn: () => getCms(),
   });
 
-  const allBanners = (settings as any)?.hero?.banners || DEFAULT_BANNERS;
+  const allBanners = (settings as any)?.hero?.banners || DEFAULT_LANDING_BANNERS;
   const banners = allBanners
     .map((b: any, index: number) => ({ ...b, originalIndex: index }))
-    .filter((b: any) => b.active !== false)
+    .filter((b: any) => b.active !== false && b.url)
     .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+
   const [current, setCurrent] = useState(0);
 
   const next = useCallback(() => {
