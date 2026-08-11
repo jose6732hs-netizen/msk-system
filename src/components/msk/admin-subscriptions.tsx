@@ -265,13 +265,52 @@ export function AdminSubscriptionsTab({
                 onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value || 0) })}
               />
             </Field>
-            <Field label="URL da Imagem (Oferta)">
-              <Input
-                placeholder="https://exemplo.com/imagem.png"
-                value={editing.image_url}
-                onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
-              />
-            </Field>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <Field label="Imagem da Oferta (Upload)">
+                <div className="mt-2 flex items-center gap-4">
+                  <div className="relative h-32 w-48 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+                    {editing.image_url ? (
+                      <img
+                        src={editing.image_url}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+                      </div>
+                    )}
+                    {uploading === (editing.id || "new-plan") && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="URL da Imagem"
+                        value={editing.image_url}
+                        onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
+                        className="flex-1"
+                      />
+                      <Button
+                        size="icon"
+                        variant="neonOutline"
+                        className="shrink-0"
+                        disabled={uploading === (editing.id || "new-plan")}
+                        onClick={() => void pickAndUpload(editing.id)}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <p className="text-[0.65rem] font-medium text-muted-foreground uppercase leading-relaxed">
+                      Recomendado: 1200x800px. A imagem aparecerá no carrossel de planos e no checkout.
+                    </p>
+                  </div>
+                </div>
+              </Field>
+            </div>
             <div className="flex items-end gap-6">
               <label className="flex items-center gap-2 text-xs font-bold uppercase">
                 <Switch
