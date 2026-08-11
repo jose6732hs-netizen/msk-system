@@ -318,7 +318,7 @@ function AffiliateDashboard() {
                   <Users className="text-white/20" size={20} /> Suas Indicações
                 </h3>
                 <div className="text-xs font-bold uppercase tracking-widest text-white/40">
-                  Total: {data.stats.signups}
+                  Total: {data.referrals?.length || 0}
                 </div>
               </div>
               

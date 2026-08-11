@@ -126,7 +126,7 @@ export async function loadAffiliateOverview(
   const stats = {
     clicks: Number(row["total_clicks"] ?? 0),
     referrals: (referrals ?? []).length,
-    signups: (referrals ?? []).filter((r) => r.status === "signup" || r.status === "customer").length,
+    signups: (referrals ?? []).length,
     customers: (referrals ?? []).filter((r) => r.status === "customer").length,
     sales: saleRows.length,
     approvedSales: saleRows.filter((s) => s.status === "PAID").length,
