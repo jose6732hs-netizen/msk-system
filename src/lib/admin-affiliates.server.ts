@@ -213,7 +213,7 @@ export async function saveCommissionOverride(
       affiliate_id: input.affiliateId ?? null,
       plan_id: input.planId ?? null,
       rate: input.rate ?? null,
-      fixed_amount: input.fixed_amount ?? null,
+      fixed_amount: input.fixedAmount ?? null,
       updated_at: new Date().toISOString(),
     } as never,
     { onConflict: "affiliate_id,plan_id" },
