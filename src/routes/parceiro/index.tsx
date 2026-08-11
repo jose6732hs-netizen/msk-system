@@ -323,6 +323,7 @@ function AffiliateDashboard() {
             <section id="docs" className="scroll-mt-32">
               <DocumentsTab status={(affiliate as any).verification_status || 'WAITING'} />
             </section>
+            <RankingSection navigate={navigate} />
           </div>
         </div>
       </main>
@@ -339,6 +340,29 @@ function AffiliateDashboard() {
     </div>
   );
 }
+
+function RankingSection({ navigate }: { navigate: any }) {
+  return (
+    <Link to="/parceiro" className="group block mb-10">
+      <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center space-y-8 hover:border-primary/40 transition-all relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full -mr-32 -mt-32 group-hover:bg-primary/10 transition-colors" />
+        <div className="relative z-10">
+          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform">
+            <TrendingUp className="text-primary" size={40} />
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-4">Seu Ranking</h2>
+          <p className="text-white/40 text-lg max-w-2xl mx-auto mb-8">
+            Confira sua posição atual e o histórico de vendas. O reconhecimento é proporcional ao seu esforço constante.
+          </p>
+          <Button variant="neon" size="lg" className="h-14 px-10 rounded-xl font-black text-lg">
+            Ver meu ranking atual
+          </Button>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 
 interface StatCardProps {
   label: string;
