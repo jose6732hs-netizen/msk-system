@@ -15,6 +15,8 @@ export function PushPermissionPrompt() {
       const dismissed = localStorage.getItem("msk_push_dismissed");
       const enabled = localStorage.getItem("msk_push_enabled");
       
+      // Removemos a verificação de sessão aqui para permitir que visitantes anônimos
+      // também recebam notificações de "Campanhas" (marketing)
       if (perm === "default" && !dismissed && !enabled) {
         // Delay para não ser intrusivo logo no primeiro segundo
         const timer = setTimeout(() => setShow(true), 3000);
