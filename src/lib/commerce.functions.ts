@@ -214,3 +214,44 @@ export const sellLicense = createServerFn({ method: "POST" })
       salePrice: data.salePrice ?? null,
     });
   });
+
+export const getLicenseForTransaction = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ transactionId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    
+    // Validar que a transação pertence ao usuário e está paga
+    const { data: tx } = await supabaseAdmin
+      .from("transactions")
+      .select("id,status,user_id,amount,metadata")
+      .eq("id", data.transactionId)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+      
+    if (!tx) throw new Error("Transação não encontrada.");
+    if (tx.status !== "PAID") throw new Error("Pagamento ainda não confirmado.");
+
+    const { data: license } = await supabaseAdmin
+      .from("licenses")
+      .select(`
+        *,
+        plans:plan_id (
+          id,
+          name,
+          slug,
+          features,
+          is_lifetime
+        )
+      `)
+      .eq("transaction_id", tx.id)
+      .maybeSingle();
+      
+    if (!license) throw new Error("Licença ainda não gerada. Tente novamente em alguns segundos.");
+
+    return {
+      ...license,
+      amount_paid: tx.amount,
+      transaction_metadata: tx.metadata
+    } as any;
+  });

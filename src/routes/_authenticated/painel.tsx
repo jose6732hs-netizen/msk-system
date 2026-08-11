@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent } from "@/lib/cms.functions";
 import { normalizeTutorials } from "@/lib/tutorials";
 import { TutorialPlayer } from "@/components/msk/tutorial-player";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import {
   Copy,
@@ -26,6 +26,7 @@ import { ExtensionDownloadCard } from "@/components/msk/extension-download";
 import { TokenManager } from "@/components/msk/token-manager";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { NotificationSettings } from "@/components/msk/notification-settings";
+import { LicenseCard } from "@/components/msk/license-card";
 
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
@@ -66,7 +67,19 @@ function Painel() {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const hid = localStorage.getItem("msk_highlight_license");
+    if (hid) {
+      setHighlightedId(hid);
+      // Limpar após alguns segundos para não ficar destacado para sempre
+      setTimeout(() => {
+        localStorage.removeItem("msk_highlight_license");
+        setHighlightedId(null);
+      }, 10000);
+    }
+  }, []);
 
   const getCms = useServerFn(getCmsContent);
 
@@ -303,51 +316,19 @@ function Painel() {
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
             
-            <section className="glass rounded-[2rem] p-6 md:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Sua licença</h2>
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase ${statusStyle(license.status)}`}
-                >
-                  {license.status}
-                </span>
-              </div>
-
-              <div className="mt-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
-                <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-                  Token de ativação
-                </p>
-                <p className="mt-2 break-all font-mono text-lg text-primary">
-                  {token ?? license.token_preview ?? "MSK-••••-••••-••••-••••"}
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="neonOutline" onClick={reveal} disabled={busy}>
-                    {busy ? <Loader2 className="animate-spin" /> : <Eye />} Revelar
-                  </Button>
-                  <Button size="sm" variant="neon" onClick={copy} disabled={!token}>
-                    <Copy /> Copiar
-                  </Button>
-                </div>
-              </div>
-
-              <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-                {[
-                  ["Plano", plan?.name ?? "—"],
-                  ["Expira em", license.expires_at ? fmt(license.expires_at) : "Vitalício"],
-                  ["Ativada em", fmt(license.activated_at)],
-                  ["Última validação", fmt(license.last_validation)],
-                  ["Dispositivos permitidos", String(license.max_devices)],
-                  ["Dispositivos ativos", String(data?.devices.length ?? 0)],
-                ].map(([k, v]) => (
-                  <div key={k as string}>
-                    <dt className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-                      {k}
-                    </dt>
-                    <dd className="mt-1 text-sm">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
+            <div className="md:col-span-2 lg:col-span-1">
+              <LicenseCard 
+                license={license} 
+                token={token}
+                busy={busy}
+                onReveal={reveal}
+                onCopyToken={() => {
+                  navigator.clipboard.writeText(token ?? license.token_preview ?? "");
+                  toast.success("Token copiado com sucesso!");
+                }}
+                highlighted={highlightedId === license.id}
+              />
+            </div>
 
             <section className="glass rounded-[2rem] p-6 md:p-8">
               <h2 className="text-lg font-semibold">Plano Atual</h2>
