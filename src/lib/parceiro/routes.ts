@@ -17,12 +17,6 @@ export const affiliateRoutes = [
     description: "Acompanhe seu desempenho geral"
   },
   {
-    label: "Ranking",
-    to: "/admin", // Seguindo a lógica anterior de ver histórico de vendas/ranking
-    icon: TrendingUp,
-    description: "Veja sua posição no ranking"
-  },
-  {
     label: "Premiações",
     to: "/premiacoes",
     icon: Award,
