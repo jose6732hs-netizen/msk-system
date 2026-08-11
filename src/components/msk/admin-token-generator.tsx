@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { adminGenerateToken, adminTokenPlans, adminGetLicenseDetails } from "@/lib/admin.functions";
-import { generateDeliveryMessage, copyToClipboard } from "@/lib/delivery-message";
+import { generateDeliveryMessage, generateSalesMessage, copyToClipboard } from "@/lib/delivery-message";
 
 const DURATIONS = [
-  { id: "trial15", label: "Teste — 15 minutos" },
-  { id: "trial60", label: "Teste — 1 hora" },
+  { id: "trial15", label: "Trial — 15 minutos" },
+  { id: "trial60", label: "Trial — 1 hora" },
   { id: "day1", label: "1 dia" },
   { id: "day7", label: "7 dias" },
   { id: "day30", label: "30 dias" },
@@ -261,7 +261,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
 
 function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: string; fullToken?: string | null }) {
   const getDetailsFn = useServerFn(adminGetLicenseDetails);
-  const [copiedType, setCopiedType] = useState<"token" | "message" | "all" | null>(null);
+  const [copiedType, setCopiedType] = useState<"token" | "message" | "all" | "sales" | null>(null);
 
   const { data: license, isLoading } = useQuery({
     queryKey: ["admin-license-details", licenseId],
@@ -305,10 +305,11 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
   }, [license, fullToken]);
 
   const message = useMemo(() => deliveryData ? generateDeliveryMessage(deliveryData) : "", [deliveryData]);
+  const salesMessage = useMemo(() => deliveryData ? generateSalesMessage(deliveryData) : "", [deliveryData]);
 
   if (!licenseId || isLoading || !deliveryData) return null;
 
-  const handleCopy = (type: "token" | "message" | "all") => {
+  const handleCopy = (type: "token" | "message" | "all" | "sales") => {
     let text = "";
     let toastMsg = "";
 
@@ -318,8 +319,11 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
     } else if (type === "message") {
       text = message;
       toastMsg = "✅ Mensagem completa copiada!";
+    } else if (type === "sales") {
+      text = salesMessage;
+      toastMsg = "✅ Texto de vendas copiado!";
     } else {
-      text = `PRODUTO: ${deliveryData.productName}\nPLANO: ${deliveryData.planName}\nLICENÇA: ${fullToken}\nVALIDADE: ${deliveryData.planDuration}\nINSTRUÇÕES: Instale a extensão e informe sua licença.`;
+      text = `PRODUTO: ${deliveryData.productName}\nPLANO: ${deliveryData.planName}\nLICENÇA: ${fullToken}\nVALIDADE: ${deliveryData.planDuration}\nDISPOSITIVOS: ${deliveryData.maxDevices}\nINSTRUÇÕES: Instale a extensão e informe sua licença.`;
       toastMsg = "✅ Todos os dados copiados!";
     }
 
@@ -375,6 +379,17 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
             {copiedType === "message" ? <ClipboardCheck className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
             Copiar Mensagem Completa
           </Button>
+
+          <Button
+            className="w-full justify-start gap-3 h-12 rounded-xl text-xs font-bold uppercase tracking-wider"
+            variant="neonOutline"
+            onClick={() => handleCopy("sales")}
+          >
+            {copiedType === "sales" ? <ClipboardCheck className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+            Copiar Texto de Vendas
+          </Button>
+
+
           
           <div className="grid grid-cols-2 gap-2">
             <Button 
