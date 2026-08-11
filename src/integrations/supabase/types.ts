@@ -484,6 +484,8 @@ export type Database = {
           user_id: string
           verification_status: string
           verification_submitted_at: string | null
+          withdrawal_attempts: number
+          withdrawal_blocked_at: string | null
           withdrawal_password_hash: string | null
         }
         Insert: {
@@ -507,6 +509,8 @@ export type Database = {
           user_id: string
           verification_status?: string
           verification_submitted_at?: string | null
+          withdrawal_attempts?: number
+          withdrawal_blocked_at?: string | null
           withdrawal_password_hash?: string | null
         }
         Update: {
@@ -530,6 +534,8 @@ export type Database = {
           user_id?: string
           verification_status?: string
           verification_submitted_at?: string | null
+          withdrawal_attempts?: number
+          withdrawal_blocked_at?: string | null
           withdrawal_password_hash?: string | null
         }
         Relationships: [
