@@ -111,6 +111,9 @@ function AffiliateDashboard() {
             >
               <Award size={16} className="shrink-0" /> <span className="truncate">Premiações</span>
             </TabsTrigger>
+            <TabsTrigger value="referrals" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+              <Users size={16} className="shrink-0" /> <span className="truncate">Indicações</span>
+            </TabsTrigger>
             <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
               <FileText size={16} className="shrink-0" /> <span className="truncate">Documentos</span>
             </TabsTrigger>
@@ -293,6 +296,52 @@ function AffiliateDashboard() {
                 </div>
               </div>
             </Link>
+          </TabsContent>
+
+          <TabsContent value="referrals" className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <section className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <Users className="text-white/20" size={20} /> Suas Indicações
+                </h3>
+                <div className="text-xs font-bold uppercase tracking-widest text-white/40">
+                  Total: {data.stats.signups}
+                </div>
+              </div>
+              
+              <div className="grid gap-4">
+                {data.referrals && data.referrals.length > 0 ? data.referrals.map((ref: any) => (
+                  <div key={ref.id} className="group p-5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center bg-primary/10 text-primary"
+                      )}>
+                        <Users size={20} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-white group-hover:text-primary transition-colors">{ref.name}</p>
+                        <p className="text-xs text-white/40">{ref.email}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-white/40 mb-1">
+                        {ref.signedUpAt ? new Date(ref.signedUpAt).toLocaleDateString('pt-BR') : '—'}
+                      </p>
+                      <div className={cn(
+                        "px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider inline-block",
+                        ref.status === 'customer' ? "bg-green-500/20 text-green-500" : "bg-blue-500/20 text-blue-500"
+                      )}>
+                        {ref.status === 'customer' ? 'Venda Aprovada' : 'Cadastro'}
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="py-20 text-center">
+                    <p className="text-white/20 font-medium">Nenhuma indicação cadastrada ainda.</p>
+                  </div>
+                )}
+              </div>
+            </section>
           </TabsContent>
 
           <TabsContent value="docs" className="focus:outline-none">

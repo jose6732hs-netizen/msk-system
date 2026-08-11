@@ -62,6 +62,74 @@ export async function loadAffiliateOverview(
     supabaseAdmin.from("affiliates").select("*").eq("id", affiliate.id).maybeSingle(),
     supabaseAdmin
       .from("affiliate_referrals")
+      .select("id,status,first_seen_at,signed_up_at,converted_at,user_id,profiles:user_id(name,email)")
+      .eq("affiliate_id", affiliate.id)
+      .order("first_seen_at", { ascending: false })
+      .limit(500),
+    supabaseAdmin
+      .from("affiliate_clicks")
+      .select("id,created_at")
+      .eq("affiliate_id", affiliate.id)
+      .gte("created_at", startIso)
+      .lte("created_at", endIso)
+      .limit(5000),
+    supabaseAdmin
+      .from("transactions")
+      .select("id,amount,status,created_at,paid_at,plan_id,user_id,plans(name)")
+      .eq("affiliate_id", affiliate.id)
+      .order("created_at", { ascending: false })
+      .limit(300),
+    supabaseAdmin
+      .from("affiliate_commissions")
+      .select("id,amount,rate,status,source,base_amount,created_at,approved_at,transaction_id,plan_id")
+      .eq("affiliate_id", affiliate.id)
+      .order("created_at", { ascending: false })
+      .limit(300),
+    supabaseAdmin
+      .from("withdrawals")
+      .select("id,amount,status,created_at,pix_key_type")
+      .eq("affiliate_id", affiliate.id)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabaseAdmin
+      .from("affiliate_balance_ledger")
+      .select("id,type,amount,balance_after,reason,created_at")
+      .eq("affiliate_id", affiliate.id)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabaseAdmin.from("affiliate_tiers" as any).select("*"),
+    getGoals(),
+    getAppUrl(),
+  ]);
+  const { data: affiliate } = await supabaseAdmin
+    .from("affiliates")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!affiliate) return { enrolled: false as const };
+
+  await recomputePendingBalance(affiliate.id);
+
+  const start = rangeStart(opts.range ?? "30d", opts.from ?? null);
+  const end = opts.to ? new Date(opts.to) : new Date();
+  const startIso = start.toISOString();
+  const endIso = end.toISOString();
+
+  const [
+    { data: fresh },
+    { data: referrals },
+    { data: clicks },
+    { data: sales },
+    { data: commissions },
+    { data: withdrawals },
+    { data: ledger },
+    { data: tiers },
+    goals,
+    appUrl,
+  ] = await Promise.all([
+    supabaseAdmin.from("affiliates").select("*").eq("id", affiliate.id).maybeSingle(),
+    supabaseAdmin
+      .from("affiliate_referrals")
       .select("id,status,first_seen_at,signed_up_at,converted_at,user_id")
       .eq("affiliate_id", affiliate.id)
       .order("first_seen_at", { ascending: false })
@@ -190,12 +258,14 @@ export async function loadAffiliateOverview(
         createdAt: s.created_at,
       };
     }),
-    referrals: (referrals ?? []).slice(0, 100).map((r) => ({
+    referrals: (referrals ?? []).slice(0, 100).map((r: any) => ({
       id: r.id,
       status: r.status,
       firstSeenAt: r.first_seen_at,
       signedUpAt: r.signed_up_at,
       convertedAt: r.converted_at,
+      email: maskEmail(r.profiles?.email),
+      name: r.profiles?.name || "Usuário",
     })),
     commissions: commissionRows.slice(0, 100),
     withdrawals: withdrawals ?? [],
