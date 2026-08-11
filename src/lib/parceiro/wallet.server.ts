@@ -151,7 +151,7 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
     metadata: { amount: input.amount },
   });
 
-  return { ok: true, withdrawalId: withdrawal.id, balance: nextBalance };
+  return { ok: true, withdrawalId: withdrawal.id, balance: nextBalance, success: true };
 }
 
 /** Estado da carteira do parceiro (senha definida, PIX, bloqueio). */
@@ -172,6 +172,7 @@ export async function loadWalletStatus(userId: string) {
     hasPassword: !!data.withdrawal_password_hash,
     attempts: Number((data as any).withdrawal_attempts ?? 0),
     blocked: !!(data as any).withdrawal_blocked_at,
+    withdrawalSuccess: false, // Flag temporária resetada no load
   };
 }
 
