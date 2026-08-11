@@ -24,8 +24,7 @@ export const registerPushDevice = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => subscriptionSchema.parse(d))
   .handler(async ({ context, data }) => {
-    // Usar push_subscriptions conforme instrução 3
-    const { error } = await (context.supabase as any).from("push_subscriptions").upsert(
+    const { error } = await (context.supabase as any).from("push_devices").upsert(
       {
         user_id: context.userId,
         device_id: data.deviceId,
@@ -35,8 +34,8 @@ export const registerPushDevice = createServerFn({ method: "POST" })
         browser: data.browser ?? null,
         platform: data.platform ?? null,
         user_agent: data.userAgent ?? null,
-        is_active: true,
-        last_seen_at: new Date().toISOString(),
+        active: true,
+        last_active_at: new Date().toISOString(),
       } as never,
       { onConflict: "endpoint" },
     );
@@ -48,10 +47,10 @@ export const listMyPushDevices = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { data } = await (context.supabase as any)
-      .from("push_subscriptions")
-      .select("id,device_id,browser,platform,is_active,last_seen_at,created_at")
+      .from("push_devices")
+      .select("id,device_id,browser,platform,active,last_active_at,created_at")
       .eq("user_id", context.userId)
-      .order("last_seen_at", { ascending: false });
+      .order("last_active_at", { ascending: false });
     return { devices: data ?? [] };
   });
 
