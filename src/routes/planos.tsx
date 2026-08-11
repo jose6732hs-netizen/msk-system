@@ -231,7 +231,8 @@ function PlanosPage() {
       }
     }
 
-    if (!complete || !billing) {
+    const bill = billingOverride ?? (complete ? billing : undefined);
+    if (!bill) {
       setPayer({ planId, planName });
       return;
     }
@@ -239,13 +240,19 @@ function PlanosPage() {
     try {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
+      // Checkout em lote: enviamos os itens do carrinho local para que o
+      // servidor não dependa de um carrinho persistido (causa do "Plano indisponível").
+      const bulkItems = planId
+        ? undefined
+        : cart.map((i) => ({ planId: i.planId, quantity: i.quantity }));
       const result = await startPixCheckout({
         data: {
           planId: planId || undefined,
+          ...(bulkItems?.length ? { items: bulkItems } : {}),
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
-          document: billing.document,
-          phone: billing.phone,
+          document: bill.document,
+          phone: bill.phone,
         },
       });
       setPayer(null);
