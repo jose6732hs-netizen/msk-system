@@ -336,6 +336,7 @@ export async function createPixCheckout(input: {
       .eq("id", tx.id);
 
     if (isBulk) {
+      const { clearCart } = await import("./cart.server");
       await clearCart(input.userId);
     }
 
