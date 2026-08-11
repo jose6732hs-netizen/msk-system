@@ -337,10 +337,20 @@ function MobileNavigation() {
           </SheetTrigger>
           <SheetContent
             side="bottom"
-            className="max-h-[80vh] overflow-y-auto rounded-t-[2.5rem] border-white/10 bg-background/95 backdrop-blur-3xl"
+            className="h-[100dvh] max-h-screen border-none bg-background/95 p-0 backdrop-blur-3xl focus:outline-none"
           >
-            <div className="mx-auto mb-6 mt-2 h-1 w-12 rounded-full bg-white/15" />
-            <nav className="flex flex-col gap-2 px-4 pb-10">
+            <div className="flex h-full flex-col overflow-y-auto pb-10">
+              <div className="flex items-center justify-between px-6 pt-6 mb-4">
+                <MskLogo size={32} />
+                <button 
+                  onClick={() => setOpen(false)}
+                  className="grid h-12 w-12 place-items-center rounded-2xl bg-white/5 border border-white/10 text-white"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <div className="mx-auto mb-6 h-1 w-12 rounded-full bg-white/15 shrink-0" />
+              <nav className="flex flex-col gap-2 px-6">
               <div className="mb-6 grid grid-cols-2 gap-3">
                 <Button
                   variant="neon"
