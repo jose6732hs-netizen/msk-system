@@ -949,7 +949,9 @@ export function AdminEditorTab() {
           </div>
         </div>
       </div>
+      </div>
     </div>
+
   );
 }
 
