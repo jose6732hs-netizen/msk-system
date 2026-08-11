@@ -67,7 +67,19 @@ function Painel() {
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
 
+  useEffect(() => {
+    const hid = localStorage.getItem("msk_highlight_license");
+    if (hid) {
+      setHighlightedId(hid);
+      // Limpar após alguns segundos para não ficar destacado para sempre
+      setTimeout(() => {
+        localStorage.removeItem("msk_highlight_license");
+        setHighlightedId(null);
+      }, 10000);
+    }
+  }, []);
 
   const getCms = useServerFn(getCmsContent);
 
