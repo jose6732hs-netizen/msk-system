@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, Search, Wallet, DollarSign, ArrowUpRight, ArrowDownLeft, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Wallet, DollarSign, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -42,7 +41,7 @@ export const adminWithdrawals = createServerFn({ method: "GET" })
   });
 
 export const adminProcessWithdrawal = createServerFn({ method: "POST" })
-  .inputValidator((d: { id: string; action: 'approve' | 'reject'; reason?: string }) => d)
+  .inputValidator((d: { id: string; action: 'approve' | 'reject'; reason?: string | null }) => d)
   .handler(async ({ data }) => {
     const { id, action, reason } = data;
     const status = action === 'approve' ? 'paid' : 'rejected';
@@ -61,13 +60,13 @@ export const adminProcessWithdrawal = createServerFn({ method: "POST" })
       .update({ 
         status, 
         processed_at: new Date().toISOString(),
-        rejection_reason: reason 
+        rejection_reason: reason || undefined 
       } as never)
       .eq("id", id);
 
     if (error) throw error;
 
-    // Se rejeitado, devolve o saldo
+    // Se rejeitado, devolve o saldo para a carteira
     if (action === 'reject') {
       const { data: wallet } = await supabaseAdmin
         .from("affiliate_wallets")
@@ -76,12 +75,23 @@ export const adminProcessWithdrawal = createServerFn({ method: "POST" })
         .single();
       
       if (wallet) {
+        const nextBalance = Number(wallet.available_balance) + Number(withdrawal.amount);
         await supabaseAdmin
           .from("affiliate_wallets")
-          .update({ 
-            available_balance: Number(wallet.available_balance) + Number(withdrawal.amount) 
-          })
+          .update({ available_balance: nextBalance })
           .eq("id", withdrawal.wallet_id);
+
+        // Registrar transação de estorno
+        await supabaseAdmin.from("affiliate_wallet_transactions").insert({
+          affiliate_id: withdrawal.affiliate_id,
+          wallet_id: withdrawal.wallet_id,
+          type: 'adjustment',
+          amount: Number(withdrawal.amount),
+          balance_before: wallet.available_balance,
+          balance_after: nextBalance,
+          description: `Estorno de saque rejeitado #${id}`,
+          status: 'completed'
+        } as never);
       }
     }
 
@@ -133,6 +143,7 @@ export function AdminWalletsTab() {
             </div>
           </div>
         ))}
+        {!wallets?.length && <p className="text-xs text-muted-foreground italic">Nenhuma carteira encontrada.</p>}
       </div>
     </div>
   );
@@ -153,7 +164,7 @@ export function AdminWithdrawalsTab() {
     if (action === 'reject' && reason === null) return;
     
     try {
-      await process({ data: { id, action, reason: reason || undefined } });
+      await process({ data: { id, action, reason: reason ?? null } });
       toast.success(action === 'approve' ? "Saque aprovado!" : "Saque rejeitado.");
       qc.invalidateQueries({ queryKey: ["admin-withdrawals"] });
       qc.invalidateQueries({ queryKey: ["admin-wallets"] });
