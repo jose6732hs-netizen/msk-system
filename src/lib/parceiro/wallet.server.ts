@@ -10,10 +10,6 @@ export async function setWithdrawalPassword(userId: string, passwordHash: string
     .single();
 
   if (!affiliate) throw new Error("Conta de afiliado não encontrada.");
-  if (affiliate.withdrawal_password_hash) {
-     // Aqui poderíamos permitir alteração com a senha antiga, mas o prompt pede "Crie sua senha".
-     // Vamos permitir definir se estiver vazio, ou apenas atualizar se logado.
-  }
 
   const { error } = await supabaseAdmin
     .from("affiliates")
@@ -65,12 +61,12 @@ export async function updatePixKey(userId: string, input: { type: string; key: s
 
 const MAX_ATTEMPTS = 3;
 
-/** Solicita um saque. Bloqueia após 3 senhas incorretas (desbloqueio pelo suporte). */
+/** Solicita um saque usando o novo sistema de carteira interna. */
 export async function requestWithdrawal(userId: string, input: { amount: number; passwordHash: string }) {
   const { data: affiliate } = await supabaseAdmin
     .from("affiliates")
     .select(
-      "id, available_balance, withdrawal_password_hash, pix_key, pix_key_type, status, withdrawal_attempts, withdrawal_blocked_at",
+      "id, withdrawal_password_hash, pix_key, pix_key_type, status, withdrawal_attempts, withdrawal_blocked_at",
     )
     .eq("user_id", userId)
     .single();
@@ -81,6 +77,7 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
     throw new Error("Saques bloqueados por segurança. Fale com o suporte para liberar.");
   if (!affiliate.withdrawal_password_hash) throw new Error("Defina uma senha de saque primeiro.");
 
+  // Validação de senha
   if (affiliate.withdrawal_password_hash !== input.passwordHash) {
     const attempts = Number((affiliate as any).withdrawal_attempts ?? 0) + 1;
     const blocked = attempts >= MAX_ATTEMPTS;
@@ -91,13 +88,7 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
         ...(blocked ? { withdrawal_blocked_at: new Date().toISOString() } : {}),
       } as never)
       .eq("id", affiliate.id);
-    await logAudit({
-      userId,
-      action: blocked ? "affiliate.withdrawal_blocked" : "affiliate.withdrawal_password_failed",
-      resource: "affiliates",
-      resourceId: affiliate.id,
-      metadata: { attempts },
-    });
+    
     throw new Error(
       blocked
         ? "Senha incorreta 3 vezes. Saques bloqueados — fale com o suporte."
@@ -107,20 +98,27 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
 
   if (!affiliate.pix_key) throw new Error("Cadastre uma chave PIX para receber.");
 
-  const balance = Number(affiliate.available_balance);
-  if (input.amount < 20) throw new Error("O valor mínimo para saque é R$ 20,00.");
+  // 1. Obter carteira interna
+  const { data: wallet } = await supabaseAdmin
+    .from("affiliate_wallets")
+    .select("id, available_balance")
+    .eq("affiliate_id", affiliate.id)
+    .single();
+
+  if (!wallet) throw new Error("Carteira não encontrada.");
+  
+  const balance = Number(wallet.available_balance);
+  if (input.amount < 50) throw new Error("O valor mínimo para saque é R$ 50,00.");
   if (balance < input.amount) throw new Error("Saldo insuficiente.");
 
-  // Deduz saldo e registra saque
-  const nextBalance = balance - input.amount;
-
+  // 2. Registrar saque (Nova Tabela)
   const { data: withdrawal, error: wError } = await supabaseAdmin
-    .from("withdrawals")
+    .from("affiliate_withdrawals")
     .insert({
-      user_id: userId,
       affiliate_id: affiliate.id,
+      wallet_id: wallet.id,
       amount: input.amount,
-      status: "PENDING",
+      status: "pending",
       pix_key: affiliate.pix_key,
       pix_key_type: affiliate.pix_key_type,
     } as never)
@@ -129,24 +127,32 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
 
   if (wError) throw wError;
 
+  // 3. Deduzir saldo da carteira
+  const nextBalance = balance - input.amount;
   await supabaseAdmin
-    .from("affiliates")
-    .update({ available_balance: nextBalance, withdrawal_attempts: 0 } as never)
-    .eq("id", affiliate.id);
+    .from("affiliate_wallets")
+    .update({ available_balance: nextBalance } as never)
+    .eq("id", wallet.id);
 
-  // Registro no extrato (ledger)
-  await supabaseAdmin.from("affiliate_balance_ledger").insert({
+  // 4. Registrar no extrato (Nova Tabela)
+  await supabaseAdmin.from("affiliate_wallet_transactions").insert({
     affiliate_id: affiliate.id,
+    wallet_id: wallet.id,
     type: "withdrawal",
-    amount: input.amount,
+    amount: -input.amount,
+    balance_before: balance,
     balance_after: nextBalance,
-    reason: `Solicitação de saque #${withdrawal.id}`,
+    description: `Solicitação de saque #${withdrawal.id} PIX: ${affiliate.pix_key}`,
+    status: 'completed'
   } as never);
+
+  // Resetar tentativas após sucesso
+  await supabaseAdmin.from("affiliates").update({ withdrawal_attempts: 0 } as never).eq("id", affiliate.id);
 
   await logAudit({
     userId,
     action: "affiliate.withdrawal_requested",
-    resource: "withdrawals",
+    resource: "affiliate_withdrawals",
     resourceId: withdrawal.id,
     metadata: { amount: input.amount },
   });
@@ -154,25 +160,31 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
   return { ok: true, withdrawalId: withdrawal.id, balance: nextBalance, success: true };
 }
 
-/** Estado da carteira do parceiro (senha definida, PIX, bloqueio). */
+/** Estado da carteira do parceiro usando tabelas internas. */
 export async function loadWalletStatus(userId: string) {
-  const { data } = await supabaseAdmin
+  const { data: aff } = await supabaseAdmin
     .from("affiliates")
-    .select(
-      "available_balance, pending_balance, pix_key, pix_key_type, withdrawal_password_hash, withdrawal_attempts, withdrawal_blocked_at",
-    )
+    .select("id, pix_key, pix_key_type, withdrawal_password_hash, withdrawal_attempts, withdrawal_blocked_at")
     .eq("user_id", userId)
     .maybeSingle();
-  if (!data) return null;
+
+  if (!aff) return null;
+
+  const { data: wallet } = await supabaseAdmin
+    .from("affiliate_wallets")
+    .select("available_balance, pending_balance")
+    .eq("affiliate_id", aff.id)
+    .maybeSingle();
+
   return {
-    balance: Number(data.available_balance ?? 0),
-    pendingBalance: Number(data.pending_balance ?? 0),
-    pixKey: data.pix_key ?? null,
-    pixKeyType: data.pix_key_type ?? null,
-    hasPassword: !!data.withdrawal_password_hash,
-    attempts: Number((data as any).withdrawal_attempts ?? 0),
-    blocked: !!(data as any).withdrawal_blocked_at,
-    withdrawalSuccess: false, // Flag temporária resetada no load
+    balance: Number(wallet?.available_balance ?? 0),
+    pendingBalance: Number(wallet?.pending_balance ?? 0),
+    pixKey: aff.pix_key ?? null,
+    pixKeyType: aff.pix_key_type ?? null,
+    hasPassword: !!aff.withdrawal_password_hash,
+    attempts: Number((aff as any).withdrawal_attempts ?? 0),
+    blocked: !!(aff as any).withdrawal_blocked_at,
+    withdrawalSuccess: false,
   };
 }
 

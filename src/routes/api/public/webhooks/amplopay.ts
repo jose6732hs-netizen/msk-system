@@ -167,7 +167,9 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
           });
 
           if (paidEvents.includes(eventType)) {
+            const { processInternalCommission } = await import("@/lib/parceiro/internal-affiliate.server");
             await settlePaidTransaction(tx.id);
+            await processInternalCommission(tx.id).catch(err => console.error("[webhook] Erro comissão:", err));
           } else if (failEvents.includes(eventType)) {
             await supabaseAdmin.from("transactions").update({ status: "FAILED" }).eq("id", tx.id);
           } else if (refundEvents.includes(eventType)) {

@@ -215,43 +215,64 @@ export type Database = {
           affiliate_id: string
           amount: number
           approved_at: string | null
+          available_at: string | null
           base_amount: number | null
+          commission_amount: number | null
+          commission_percentage: number | null
           created_at: string
+          gross_amount: number | null
           id: string
+          order_id: string | null
           plan_id: string | null
           rate: number
           source: string
           status: string
           transaction_id: string
           updated_at: string
+          user_id: string | null
+          wallet_id: string | null
         }
         Insert: {
           affiliate_id: string
           amount?: number
           approved_at?: string | null
+          available_at?: string | null
           base_amount?: number | null
+          commission_amount?: number | null
+          commission_percentage?: number | null
           created_at?: string
+          gross_amount?: number | null
           id?: string
+          order_id?: string | null
           plan_id?: string | null
           rate?: number
           source?: string
           status?: string
           transaction_id: string
           updated_at?: string
+          user_id?: string | null
+          wallet_id?: string | null
         }
         Update: {
           affiliate_id?: string
           amount?: number
           approved_at?: string | null
+          available_at?: string | null
           base_amount?: number | null
+          commission_amount?: number | null
+          commission_percentage?: number | null
           created_at?: string
+          gross_amount?: number | null
           id?: string
+          order_id?: string | null
           plan_id?: string | null
           rate?: number
           source?: string
           status?: string
           transaction_id?: string
           updated_at?: string
+          user_id?: string | null
+          wallet_id?: string | null
         }
         Relationships: [
           {
@@ -273,6 +294,13 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_wallets"
             referencedColumns: ["id"]
           },
         ]
@@ -461,6 +489,182 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      affiliate_wallet_transactions: {
+        Row: {
+          affiliate_id: string
+          amount: number
+          balance_after: number
+          balance_before: number
+          commission_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          payment_id: string | null
+          status: string
+          type: string
+          wallet_id: string
+          withdrawal_id: string | null
+        }
+        Insert: {
+          affiliate_id: string
+          amount: number
+          balance_after: number
+          balance_before: number
+          commission_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_id?: string | null
+          status?: string
+          type: string
+          wallet_id: string
+          withdrawal_id?: string | null
+        }
+        Update: {
+          affiliate_id?: string
+          amount?: number
+          balance_after?: number
+          balance_before?: number
+          commission_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          payment_id?: string | null
+          status?: string
+          type?: string
+          wallet_id?: string
+          withdrawal_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_wallet_transactions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_wallets: {
+        Row: {
+          affiliate_id: string
+          available_balance: number
+          created_at: string
+          id: string
+          pending_balance: number
+          requested_balance: number
+          total_earned: number
+          total_withdrawn: number
+          updated_at: string
+        }
+        Insert: {
+          affiliate_id: string
+          available_balance?: number
+          created_at?: string
+          id?: string
+          pending_balance?: number
+          requested_balance?: number
+          total_earned?: number
+          total_withdrawn?: number
+          updated_at?: string
+        }
+        Update: {
+          affiliate_id?: string
+          available_balance?: number
+          created_at?: string
+          id?: string
+          pending_balance?: number
+          requested_balance?: number
+          total_earned?: number
+          total_withdrawn?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_wallets_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: true
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      affiliate_withdrawals: {
+        Row: {
+          admin_id: string | null
+          admin_note: string | null
+          affiliate_id: string
+          amount: number
+          approved_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          id: string
+          paid_at: string | null
+          pix_key: string
+          pix_key_type: string
+          requested_at: string
+          status: string
+          updated_at: string
+          wallet_id: string
+        }
+        Insert: {
+          admin_id?: string | null
+          admin_note?: string | null
+          affiliate_id: string
+          amount: number
+          approved_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          pix_key: string
+          pix_key_type: string
+          requested_at?: string
+          status?: string
+          updated_at?: string
+          wallet_id: string
+        }
+        Update: {
+          admin_id?: string | null
+          admin_note?: string | null
+          affiliate_id?: string
+          amount?: number
+          approved_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          pix_key?: string
+          pix_key_type?: string
+          requested_at?: string
+          status?: string
+          updated_at?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "affiliate_withdrawals_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_withdrawals_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_wallets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       affiliates: {
         Row: {
@@ -2138,6 +2342,7 @@ export type Database = {
           affiliate_id: string | null
           amount: number
           checkout_url: string | null
+          commission_registered: boolean | null
           created_at: string
           currency: string
           expires_at: string | null
@@ -2165,6 +2370,7 @@ export type Database = {
           affiliate_id?: string | null
           amount?: number
           checkout_url?: string | null
+          commission_registered?: boolean | null
           created_at?: string
           currency?: string
           expires_at?: string | null
@@ -2192,6 +2398,7 @@ export type Database = {
           affiliate_id?: string | null
           amount?: number
           checkout_url?: string | null
+          commission_registered?: boolean | null
           created_at?: string
           currency?: string
           expires_at?: string | null

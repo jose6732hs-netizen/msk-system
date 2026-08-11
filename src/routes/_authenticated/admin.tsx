@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Activity, Clock, KeyRound, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor, Trophy } from "lucide-react";
+import { Activity, Clock, KeyRound, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor, Trophy, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGatewayTab } from "@/components/msk/admin-gateway";
@@ -37,6 +37,7 @@ import { Bell } from "lucide-react";
 
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
+import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
 
 const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
   {
@@ -55,7 +56,9 @@ const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: 
       { value: "finance", label: "Financeiro", Icon: TrendingUp },
       { value: "gateway", label: "Gateway", Icon: ShieldAlert },
       { value: "affiliates", label: "Afiliados", Icon: Users },
-      { value: "payments", label: "Pagamentos", Icon: DollarSign },
+      { value: "wallets", label: "Carteiras", Icon: Wallet },
+      { value: "withdrawals", label: "Saques", Icon: DollarSign },
+      { value: "payments", label: "Vendas Amplo", Icon: DollarSign },
     ],
   },
   {
@@ -474,8 +477,9 @@ function Admin() {
                 {activeTab === "tracking" && <AdminTrackingTab />}
                 {activeTab === "tokens" && <AdminTokenGenerator initialIssued={issued} onReset={() => setIssued(null)} />}
                 {activeTab === "gateway" && <AdminGatewayTab />}
-                {activeTab === "affiliates" && <AdminAffiliatesTab />}
                 {activeTab === "extension" && <AdminExtensionTab />}
+                {activeTab === "wallets" && <AdminWalletsTab />}
+                {activeTab === "withdrawals" && <AdminWithdrawalsTab />}
                 {activeTab === "push" && <AdminPushTestsTab />}
                 {activeTab === "notifications" && <NotificationSettings scope="admin" />}
                 {activeTab === "subs" && (
@@ -575,6 +579,7 @@ function Admin() {
                 )}
 
                 {activeTab === "finance" && <AdminFinanceTab />}
+                {activeTab === "affiliates" && <AdminAffiliatesTab />}
                 {activeTab === "users" && (
                   <div className="space-y-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
