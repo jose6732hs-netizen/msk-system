@@ -212,14 +212,23 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                 <Menu className="h-6 w-6 text-primary" />
               </Button>
             </SheetTrigger>
-            <SheetContent className="w-64">
-              <nav className="mt-8 flex flex-col gap-4 text-sm">
+            <SheetContent className="w-full sm:w-64 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh]">
+              <nav className="mt-8 flex flex-col gap-4 text-sm px-6">
+                <div className="flex items-center justify-between mb-8">
+                  <MskLogo size={32} />
+                  <SheetTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-10 w-10 border border-white/10 rounded-xl">
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </SheetTrigger>
+                </div>
+
                 <div className="flex flex-col gap-2 mb-4 border-b border-border/50 pb-4">
-                  {signedIn && (
+                  {signedIn ? (
                     <>
                       <Link 
                         to="/painel" 
-                        className="flex items-center gap-2 font-bold text-primary"
+                        className="flex items-center gap-2 font-bold text-primary p-2"
                         onClick={() => document.body.click()}
                       >
                         <LayoutDashboard className="h-4 w-4" />
@@ -227,35 +236,46 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                       </Link>
                       <Link 
                         to="/admin" 
-                        className="flex items-center gap-2 font-bold text-cyan-400"
+                        className="flex items-center gap-2 font-bold text-cyan-400 p-2"
                         onClick={() => document.body.click()}
                       >
                         <ShieldCheck className="h-4 w-4" />
                         Admin
                       </Link>
                     </>
+                  ) : (
+                    <Link 
+                      to="/auth" 
+                      className="flex items-center gap-2 font-bold text-primary p-2"
+                      onClick={() => document.body.click()}
+                    >
+                      Entrar / Cadastrar
+                    </Link>
                   )}
                 </div>
+
                 {NAV.map((item) => (
                   <Link 
                     key={item.to} 
                     to={item.to} 
-                    className="hover:text-primary"
+                    className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
                     onClick={() => document.body.click()}
                   >
                     {item.label}
                   </Link>
                 ))}
-                <button 
-                  type="button" 
+                
+                <Button 
+                  variant="neon" 
+                  className="mt-4 w-full h-12 rounded-xl"
                   onClick={() => {
                     downloadExtension();
                     document.body.click();
-                  }} 
-                  className="text-left text-primary"
+                  }}
                 >
+                  <Download className="mr-2 h-4 w-4" />
                   Baixar Extensão Grátis
-                </button>
+                </Button>
               </nav>
             </SheetContent>
           </Sheet>
