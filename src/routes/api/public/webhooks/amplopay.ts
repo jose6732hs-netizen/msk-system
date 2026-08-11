@@ -138,7 +138,7 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
 
         try {
           // 3. Localizar a transação registrada no checkout.
-          let query = supabaseAdmin.from("transactions").select("id,status");
+          let query = supabaseAdmin.from("transactions").select("id,status,amount,identifier");
           query = identifier
             ? query.eq("identifier", identifier)
             : query.eq("provider_transaction_id", providerTxId ?? "");
@@ -168,8 +168,24 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
 
           if (paidEvents.includes(eventType)) {
             const { processInternalCommission } = await import("@/lib/parceiro/internal-affiliate.server");
+            const { sendProfessionalNotification } = await import("@/lib/notification-service.server");
+            
             await settlePaidTransaction(tx.id);
             await processInternalCommission(tx.id).catch(err => console.error("[webhook] Erro comissão:", err));
+
+            // Notificação de Venda para Super Admin
+            const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "super_admin");
+            for (const admin of (admins || [])) {
+              if (admin.user_id) {
+                await sendProfessionalNotification({
+                  userId: admin.user_id,
+                  type: "sale_approved",
+                  title: "Venda aprovada",
+                  body: `Uma nova venda de R$ ${Number(tx.amount).toFixed(2)} foi aprovada.`,
+                  link: `/admin/vendas`
+                }).catch(e => console.error("Push Admin fail:", e));
+              }
+            }
           } else if (failEvents.includes(eventType)) {
             await supabaseAdmin.from("transactions").update({ status: "FAILED" }).eq("id", tx.id);
           } else if (refundEvents.includes(eventType)) {
