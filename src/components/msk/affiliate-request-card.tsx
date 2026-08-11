@@ -9,11 +9,15 @@ import {
   Clock, 
   AlertCircle,
   PartyPopper,
-  ArrowRight
+  ArrowRight,
+  TrendingUp as TrendingUpIcon,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { affiliateOverview, enrollAsAffiliate } from "@/lib/affiliate.functions";
+import { affiliateOverview } from "@/lib/affiliate.functions";
+import { enrollAsAffiliate } from "@/lib/enrollment.functions";
+import { cn } from "@/lib/utils";
 import confetti from "canvas-confetti";
 
 export function AffiliateRequestCard() {
@@ -104,10 +108,10 @@ export function AffiliateRequestCard() {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <div className="flex items-center gap-2 text-xs font-bold text-white/60">
-              <ShieldCheck size={16} className="text-primary" /> Aprovação Rápida
+              <TrendingUpIcon size={16} className="text-primary" /> Aprovação Rápida
             </div>
             <div className="flex items-center gap-2 text-xs font-bold text-white/60">
-              <TrendingUp size={16} className="text-primary" /> Comissões Altas
+              <TrendingUpIcon size={16} className="text-primary" /> Comissões Altas
             </div>
           </div>
         </div>
@@ -137,25 +141,3 @@ export function AffiliateRequestCard() {
   );
 }
 
-function TrendingUp({ size, className }: { size: number, className?: string }) {
-  return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2" 
-      strokeLinecap="round" 
-      strokeLinejoin="round" 
-      className={className}
-    >
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-      <polyline points="16 7 22 7 22 13" />
-    </svg>
-  );
-}
-
-function Loader2({ size, className }: { size: number, className?: string }) {
-  return <Clock className={cn("animate-spin", className)} size={size} />;
-}
