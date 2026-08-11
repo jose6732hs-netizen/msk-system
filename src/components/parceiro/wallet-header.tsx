@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { affiliateRoutes } from "@/lib/parceiro/routes";
+import { useSupportLink } from "@/lib/support-link";
+
 
 interface AffiliateHeaderProps {
   balance: number;
