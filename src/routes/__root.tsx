@@ -443,7 +443,8 @@ function MobileNavigation() {
                 )}
               </div>
             </nav>
-          </SheetContent>
+          </div>
+        </SheetContent>
         </Sheet>
       </nav>
     </div>
