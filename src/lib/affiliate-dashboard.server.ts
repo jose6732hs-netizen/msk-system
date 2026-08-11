@@ -155,8 +155,10 @@ export async function loadAffiliateOverview(
     ensure(dayKey(c.created_at)).commission += Number(c.amount);
   }
 
-  const goalTarget = Number(row["goal_amount"] ?? goals.balance ?? 0);
+  const { getAffiliateGoal } = await import("./affiliate.server");
+  const goalTarget = await getAffiliateGoal(stats.availableBalance);
   const progress = goalTarget > 0 ? Math.min(100, (stats.availableBalance / goalTarget) * 100) : 0;
+
 
   return {
     enrolled: true as const,
