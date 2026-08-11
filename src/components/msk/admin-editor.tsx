@@ -54,11 +54,18 @@ async function pickAndUpload(opts: {
       const fd = new FormData();
       fd.append("file", file);
       fd.append("key", opts.key);
-      const res = await opts.uploadAsset({ data: fd as any });
+      
+      const res = await fetch("/api/public/cms/upload", {
+        method: "POST",
+        body: fd
+      }).then(r => r.json());
+
+      if (!res.url) throw new Error(res.error || "Upload falhou");
+      
       opts.onDone(res.url);
       toast.success("Arquivo carregado!");
-    } catch {
-      toast.error("Erro no upload");
+    } catch (err: any) {
+      toast.error("Erro no upload: " + (err.message || "Erro desconhecido"));
     } finally {
       opts.setUploading(null);
     }
@@ -220,7 +227,8 @@ export function AdminEditorTab() {
   const saveDraft = useServerFn(saveCmsDraft);
   const publishDraft = useServerFn(publishCmsDraft);
   const getHistory = useServerFn(getCmsHistory);
-  const uploadAsset = useServerFn(uploadCmsAsset);
+  // O uploadAsset via server function foi substituído pela rota /api/public/cms/upload
+  // para resolver problemas com FormData em server functions.
 
   const [activeSection, setActiveSection] = useState<Section>('hero');
   const [localSettings, setLocalSettings] = useState<any>(null);
@@ -411,7 +419,7 @@ export function AdminEditorTab() {
               uploadKeyPrefix="landing-banner"
               uploading={uploading}
               setUploading={setUploading}
-              uploadAsset={uploadAsset}
+              uploadAsset={null as any}
               onChange={(list) => updateSetting('hero', 'banners', list)}
               onSave={() => handleSave('hero')}
               onPublish={() => handlePublish('hero')}
@@ -426,7 +434,7 @@ export function AdminEditorTab() {
               uploadKeyPrefix="panel-banner"
               uploading={uploading}
               setUploading={setUploading}
-              uploadAsset={uploadAsset}
+              uploadAsset={null as any}
               onChange={(list) => updateSetting('panel', 'banners', list)}
               onSave={() => handleSave('panel')}
               onPublish={() => handlePublish('panel')}
@@ -480,7 +488,7 @@ export function AdminEditorTab() {
                                 accept: 'image/*',
                                 key: slot.key,
                                 setUploading,
-                                uploadAsset,
+                                uploadAsset: null as any,
                                 onDone: (url) => updateSetting('site_images', slot.key, url),
                               })}
                             >
@@ -576,11 +584,15 @@ export function AdminEditorTab() {
                               const fd = new FormData();
                               fd.append('file', file);
                               fd.append('key', 'awards-hero');
-                              const res = await uploadAsset({ data: fd as any });
+                              const res = await fetch("/api/public/cms/upload", {
+                                method: "POST",
+                                body: fd
+                              }).then(r => r.json());
+                              if (!res.url) throw new Error(res.error || "Upload falhou");
                               updateSetting('awards', 'hero_url', res.url);
                               toast.success("Hero carregado!");
-                            } catch (err) {
-                              toast.error("Erro no upload");
+                            } catch (err: any) {
+                              toast.error("Erro no upload: " + (err.message || "Erro desconhecido"));
                             } finally {
                               setUploading(null);
                             }
@@ -637,11 +649,15 @@ export function AdminEditorTab() {
                                     const fd = new FormData();
                                     fd.append('file', file);
                                     fd.append('key', award.key);
-                                    const res = await uploadAsset({ data: fd as any });
+                                    const res = await fetch("/api/public/cms/upload", {
+                                      method: "POST",
+                                      body: fd
+                                    }).then(r => r.json());
+                                    if (!res.url) throw new Error(res.error || "Upload falhou");
                                     updateSetting('awards', award.key, res.url);
                                     toast.success(`${award.label} carregada!`);
-                                  } catch (err) {
-                                    toast.error("Erro no upload");
+                                  } catch (err: any) {
+                                    toast.error("Erro no upload: " + (err.message || "Erro desconhecido"));
                                   } finally {
                                     setUploading(null);
                                   }
@@ -741,11 +757,15 @@ export function AdminEditorTab() {
                                 const fd = new FormData();
                                 fd.append('file', file);
                                 fd.append('key', 'branding-icon');
-                                const res = await uploadAsset({ data: fd as any });
+                                const res = await fetch("/api/public/cms/upload", {
+                                  method: "POST",
+                                  body: fd
+                                }).then(r => r.json());
+                                if (!res.url) throw new Error(res.error || "Upload falhou");
                                 updateSetting('branding', 'icon_url', res.url);
                                 toast.success("Ícone carregado!");
-                              } catch (err) {
-                                toast.error("Erro no upload");
+                              } catch (err: any) {
+                                toast.error("Erro no upload: " + (err.message || "Erro desconhecido"));
                               } finally {
                                 setUploading(null);
                               }
@@ -786,11 +806,15 @@ export function AdminEditorTab() {
                                   const fd = new FormData();
                                   fd.append('file', file);
                                   fd.append('key', 'branding-banner');
-                                  const res = await uploadAsset({ data: fd as any });
+                                  const res = await fetch("/api/public/cms/upload", {
+                                    method: "POST",
+                                    body: fd
+                                  }).then(r => r.json());
+                                  if (!res.url) throw new Error(res.error || "Upload falhou");
                                   updateSetting('branding', 'banner_url', res.url);
                                   toast.success("Banner carregado!");
-                                } catch (err) {
-                                  toast.error("Erro no upload");
+                                } catch (err: any) {
+                                  toast.error("Erro no upload: " + (err.message || "Erro desconhecido"));
                                 } finally {
                                   setUploading(null);
                                 }

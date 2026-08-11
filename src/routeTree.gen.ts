@@ -33,6 +33,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
+import { Route as ApiPublicCmsUploadRouteImport } from './routes/api/public/cms.upload'
 import { Route as ApiPublicCronRenewLicensesRouteImport } from './routes/api/public/cron/renew-licenses'
 import { Route as ApiPublicExtensionStatusRouteImport } from './routes/api/public/extension/status'
 import { Route as ApiPublicLicenseActivateRouteImport } from './routes/api/public/license/activate'
@@ -168,6 +169,11 @@ const ExtRuntimeManifestRoute = ExtRuntimeManifestRouteImport.update({
   path: '/ext/runtime/manifest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCmsUploadRoute = ApiPublicCmsUploadRouteImport.update({
+  id: '/upload',
+  path: '/upload',
+  getParentRoute: () => ApiPublicCmsRoute,
+} as any)
 const ApiPublicCronRenewLicensesRoute =
   ApiPublicCronRenewLicensesRouteImport.update({
     id: '/api/public/cron/renew-licenses',
@@ -261,9 +267,10 @@ export interface FileRoutesByFullPath {
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/cms': typeof ApiPublicCmsRoute
+  '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -298,9 +305,10 @@ export interface FileRoutesByTo {
   '/parceiros': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/cms': typeof ApiPublicCmsRoute
+  '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -337,9 +345,10 @@ export interface FileRoutesById {
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/api/public/cms': typeof ApiPublicCmsRoute
+  '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -379,6 +388,7 @@ export interface FileRouteTypes {
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
+    | '/api/public/cms/upload'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -416,6 +426,7 @@ export interface FileRouteTypes {
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
+    | '/api/public/cms/upload'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
+    | '/api/public/cms/upload'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -486,7 +498,7 @@ export interface RootRouteChildren {
   ParceirosIndexRoute: typeof ParceirosIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
-  ApiPublicCmsRoute: typeof ApiPublicCmsRoute
+  ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
   ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
   ApiPublicCronRenewLicensesRoute: typeof ApiPublicCronRenewLicensesRoute
@@ -673,6 +685,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExtRuntimeManifestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cms/upload': {
+      id: '/api/public/cms/upload'
+      path: '/upload'
+      fullPath: '/api/public/cms/upload'
+      preLoaderRoute: typeof ApiPublicCmsUploadRouteImport
+      parentRoute: typeof ApiPublicCmsRoute
+    }
     '/api/public/cron/renew-licenses': {
       id: '/api/public/cron/renew-licenses'
       path: '/api/public/cron/renew-licenses'
@@ -777,6 +796,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ApiPublicCmsRouteChildren {
+  ApiPublicCmsUploadRoute: typeof ApiPublicCmsUploadRoute
+}
+
+const ApiPublicCmsRouteChildren: ApiPublicCmsRouteChildren = {
+  ApiPublicCmsUploadRoute: ApiPublicCmsUploadRoute,
+}
+
+const ApiPublicCmsRouteWithChildren = ApiPublicCmsRoute._addFileChildren(
+  ApiPublicCmsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -796,7 +827,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParceirosIndexRoute: ParceirosIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
-  ApiPublicCmsRoute: ApiPublicCmsRoute,
+  ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
   ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
   ApiPublicCronRenewLicensesRoute: ApiPublicCronRenewLicensesRoute,

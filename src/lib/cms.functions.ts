@@ -118,17 +118,6 @@ export const getCmsHistory = createServerFn({ method: "GET" })
 export const uploadCmsAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdmin(context.supabase, context.userId);
-    const formData = await (context as any).request.formData();
-    const file = formData.get("file") as File;
-    const key = formData.get("key") as string;
-    
-    if (!file) throw new Error("No file uploaded");
-
-    const extension = file.name.split('.').pop();
-    const fileName = `cms/${key}-${Date.now()}.${extension}`;
-    
-    const url = await uploadPublicFile(file, fileName, "extension-builds");
-    
-    return { url };
+    // Esta função foi substituída pela rota /api/public/cms/upload para lidar melhor com FormData
+    throw new Error("Use a rota /api/public/cms/upload para uploads de arquivos.");
   });
