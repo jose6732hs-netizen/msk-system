@@ -18,6 +18,7 @@ type PlanForm = {
   name: string;
   description: string;
   price: number;
+  currency: string;
   duration_label: string;
   duration_unit: string;
   duration_value: number;
@@ -27,6 +28,8 @@ type PlanForm = {
   active: boolean;
   sort_order: number;
   image_url: string;
+  affiliate_commission_rate?: number;
+  affiliate_commission_fixed?: number;
 };
 
 const EMPTY: PlanForm = {
@@ -34,6 +37,7 @@ const EMPTY: PlanForm = {
   name: "",
   description: "",
   price: 0,
+  currency: "BRL",
   duration_label: "30 dias",
   duration_unit: "day",
   duration_value: 30,
@@ -43,6 +47,8 @@ const EMPTY: PlanForm = {
   active: true,
   sort_order: 0,
   image_url: "",
+  affiliate_commission_rate: 0,
+  affiliate_commission_fixed: 0,
 };
 
 /** Gestão das assinaturas: planos publicados no site + assinaturas ativas. */
