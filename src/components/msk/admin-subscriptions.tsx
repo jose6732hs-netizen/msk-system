@@ -71,6 +71,7 @@ export function AdminSubscriptionsTab({
       name: plan["name"] ?? "",
       description: plan["description"] ?? "",
       price: Number(plan["price"] ?? 0),
+      currency: plan["currency"] ?? "BRL",
       duration_label: plan["duration_label"] ?? "",
       duration_unit: plan["duration_unit"] ?? "day",
       duration_value: Number(plan["duration_value"] ?? 30),
@@ -80,6 +81,8 @@ export function AdminSubscriptionsTab({
       active: plan["active"] !== false,
       sort_order: Number(plan["sort_order"] ?? 0),
       image_url: plan["image_url"] ?? "",
+      affiliate_commission_rate: plan["affiliate_commission_rate"] ?? 0,
+      affiliate_commission_fixed: plan["affiliate_commission_fixed"] ?? 0,
     });
   }
 
