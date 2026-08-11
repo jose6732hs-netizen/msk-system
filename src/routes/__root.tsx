@@ -208,7 +208,9 @@ function RootComponent() {
       <PushPermissionPrompt />
       <Outlet />
       {!isBoard && !isAuth && <MobileNavigation />}
+      <WhatsappSupportButton />
       <Toaster position="top-right" />
+
     </QueryClientProvider>
   );
 }
