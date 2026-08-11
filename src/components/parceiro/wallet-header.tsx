@@ -70,19 +70,27 @@ export function AffiliateHeader({
           </div>
         </div>
 
-        {/* Centro: Meta (Desktop) */}
-        <div className="hidden md:flex flex-col items-center flex-1 max-w-xs mx-auto">
-          <div className="w-full flex justify-between text-[10px] uppercase font-bold tracking-widest mb-1">
-            <span className="text-primary flex items-center gap-1"><Trophy size={10} /> Meta Mensal</span>
-            <span className="text-white/60">{goalProgress}%</span>
+        {/* Centro: Meta de Vendas (sempre visível) */}
+        <div className="flex min-w-0 flex-1 flex-col items-end md:items-center md:max-w-sm">
+          <div className="mb-1 flex w-full items-center justify-end gap-1.5 md:justify-between">
+            <span className="hidden text-[10px] font-bold uppercase tracking-widest text-emerald-400 md:flex md:items-center md:gap-1">
+              <Trophy size={10} /> Meta de Vendas
+            </span>
+            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-yellow-400">
+              <Trophy size={10} /> {goalProgress}%
+            </span>
           </div>
-          <div className="w-full relative h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-             <div 
-               className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-primary/40 shadow-[0_0_10px_rgba(var(--primary),0.5)] transition-all duration-1000 ease-out"
-               style={{ width: `${goalProgress}%` }}
-             />
+          <div className="relative h-6 w-full max-w-[220px] overflow-hidden rounded-full border border-white/10 bg-white/5 md:max-w-none">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600 shadow-[0_0_14px_rgba(16,185,129,0.5)] transition-all duration-1000 ease-out"
+              style={{ width: `${Math.min(100, Math.max(2, goalProgress))}%` }}
+            />
+            <span className="absolute inset-0 flex items-center justify-center truncate px-2 text-[10px] font-black tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] sm:text-[11px]">
+              R$ {goalCurrent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} / R$ {goalTarget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </span>
           </div>
         </div>
+
 
         {/* Lado Direito: Actions/Menu */}
         <div className="flex items-center gap-2 md:gap-3">

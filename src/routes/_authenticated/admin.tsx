@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Activity, Clock, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor, Trophy } from "lucide-react";
+import { Activity, Clock, KeyRound, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGatewayTab } from "@/components/msk/admin-gateway";
@@ -34,7 +34,47 @@ import { AdminPushTestsTab } from "@/components/msk/admin-push-tests";
 
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin } from "@/lib/admin.functions";
-import { HeroCarousel } from "@/components/msk/hero-carousel";
+
+const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
+  {
+    title: "Operação",
+    items: [
+      { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
+      { value: "tokens", label: "Gerar Licença", Icon: KeyRound },
+      { value: "users", label: "Usuários", Icon: Users },
+      { value: "subs", label: "Assinaturas", Icon: Zap },
+      { value: "extension", label: "Extensão", Icon: Monitor },
+    ],
+  },
+  {
+    title: "Financeiro",
+    items: [
+      { value: "finance", label: "Financeiro", Icon: TrendingUp },
+      { value: "gateway", label: "Gateway", Icon: ShieldAlert },
+      { value: "affiliates", label: "Afiliados", Icon: Users },
+      { value: "payments", label: "Pagamentos", Icon: DollarSign },
+    ],
+  },
+  {
+    title: "Conteúdo",
+    items: [
+      { value: "editor", label: "Editor Site", Icon: Activity },
+      { value: "awards", label: "Premiações", Icon: Trophy },
+    ],
+  },
+  {
+    title: "Sistema",
+    items: [
+      { value: "tracking", label: "Analytics", Icon: TrendingUp },
+      { value: "push", label: "Push / Testes", Icon: MessageSquare },
+      { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
+      { value: "logs", label: "Auditoria", Icon: Clock },
+    ],
+  },
+];
+
+const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
+
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
@@ -66,6 +106,7 @@ function Admin() {
   const [term, setTerm] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("licenses");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(null);
 
   const { data: role, isLoading: roleLoading } = useQuery({
@@ -136,33 +177,29 @@ function Admin() {
             <MskLogo size={32} />
           </Link>
         </div>
-        <nav className="flex-1 space-y-1 p-4 scrollbar-hide overflow-y-auto">
-          {[
-            { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
-            { value: "tokens", label: "Gerar Token", Icon: MessageSquare },
-            { value: "affiliates", label: "Afiliados", Icon: Users },
-            { value: "subs", label: "Ofertas", Icon: Zap },
-            { value: "finance", label: "Financeiro", Icon: TrendingUp },
-            { value: "editor", label: "Editor Site", Icon: Activity },
-            { value: "tracking", label: "Analytics", Icon: TrendingUp },
-            { value: "extension", label: "Extensão", Icon: Monitor },
-            { value: "gateway", label: "Gateway", Icon: ShieldAlert },
-            { value: "logs", label: "Auditoria", Icon: Clock },
-          ].map(({ value, label, Icon }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setActiveTab(value)}
-              className={cn(
-                "w-full flex items-center gap-3 rounded-xl px-4 py-3.5 text-[0.7rem] font-black uppercase tracking-widest transition-all",
-                activeTab === value 
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
-                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </button>
+        <nav className="flex-1 space-y-6 p-4 scrollbar-hide overflow-y-auto">
+          {NAV_GROUPS.map((group) => (
+            <div key={group.title} className="space-y-1">
+              <p className="px-4 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+                {group.title}
+              </p>
+              {group.items.map(({ value, label, Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setActiveTab(value)}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-xl px-4 py-3 text-[0.68rem] font-black uppercase tracking-widest transition-all",
+                    activeTab === value
+                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                      : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
       </aside>
@@ -193,88 +230,115 @@ function Admin() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-              <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar">
-                {[
-                  { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
-                  { value: "tokens", label: "Gerar Token", Icon: MessageSquare },
-                  { value: "affiliates", label: "Afiliados", Icon: Users },
-                  { value: "extension", label: "Extensão", Icon: Monitor },
-                  { value: "subs", label: "Ofertas", Icon: Zap },
-                  { value: "finance", label: "Financeiro", Icon: TrendingUp },
-                  { value: "editor", label: "Editor", Icon: Activity },
-                  { value: "tracking", label: "Analytics", Icon: TrendingUp },
-                ].map(({ value, label, Icon }) => (
-                  <button
-                    key={value}
-                    onClick={() => { setActiveTab(value); setMenuOpen(false); }}
-                    className={cn(
-                      "w-full flex items-center gap-4 rounded-2xl px-5 py-4 text-base font-bold transition-all",
-                      activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    <Icon className="h-5 w-5 shrink-0" />
-                    {label}
-                  </button>
+              <div className="flex-1 space-y-5 overflow-y-auto no-scrollbar">
+                {NAV_GROUPS.map((group) => (
+                  <div key={group.title} className="space-y-1">
+                    <p className="px-2 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
+                      {group.title}
+                    </p>
+                    {group.items.map(({ value, label, Icon }) => (
+                      <button
+                        key={value}
+                        onClick={() => { setActiveTab(value); setMenuOpen(false); }}
+                        className={cn(
+                          "w-full flex items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all",
+                          activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                        )}
+                      >
+                        <Icon className="h-5 w-5 shrink-0" />
+                        {label}
+                      </button>
+                    ))}
+                  </div>
                 ))}
               </div>
+
             </nav>
           </div>
         )}
 
         <main className="flex-1 overflow-y-auto p-5 sm:p-10">
-          <div className="mb-8">
-            <HeroCarousel />
-          </div>
-
           <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
               <h1 className="text-3xl font-black uppercase tracking-tight sm:text-4xl">
                 Sistema <span className="neon-text">Geral</span>
               </h1>
               <p className="mt-1 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                Infraestrutura MSK SISTEMe
+                Infraestrutura MSK SISTEM
               </p>
             </div>
+            <Button variant="neon" className="w-full md:w-auto" onClick={() => setActiveTab("tokens")}>
+              <KeyRound className="h-4 w-4" /> Gerar licença
+            </Button>
           </header>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
-            {[
-              ["Total de Afiliados", stats?.users, Users, "text-blue-400"],
-              ["Afiliados Ativos", stats?.activeLicenses, Zap, "text-yellow-400"],
-              ["Comissões do Mês", "R$ 0,00", TrendingUp, "text-primary"],
-              ["Conversões", 0, Activity, "text-cyan-400"],
-              ["Receita Gerada", "R$ 0,00", DollarSign, "text-emerald-400"],
-            ].map(([k, v, Icon, color]: any) => (
-              <div key={k} className="glass group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all hover:border-primary/40">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <p className="text-[0.6rem] sm:text-[0.65rem] uppercase tracking-widest text-muted-foreground truncate">{k}</p>
-                    <p className="mt-1 sm:mt-2 text-lg sm:text-2xl font-bold text-foreground">{v ?? "—"}</p>
+          {activeTab === "licenses" && (
+            <>
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
+                {[
+                  ["Total de Afiliados", stats?.users, Users, "text-blue-400"],
+                  ["Licenças Ativas", stats?.activeLicenses, Zap, "text-yellow-400"],
+                  ["Comissões do Mês", "R$ 0,00", TrendingUp, "text-primary"],
+                  ["Conversões", 0, Activity, "text-cyan-400"],
+                  ["Receita Gerada", "R$ 0,00", DollarSign, "text-emerald-400"],
+                ].map(([k, v, Icon, color]: any) => (
+                  <div key={k} className="glass group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all hover:border-primary/40">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <p className="text-[0.6rem] sm:text-[0.65rem] uppercase tracking-widest text-muted-foreground truncate">{k}</p>
+                        <p className="mt-1 sm:mt-2 text-lg sm:text-2xl font-bold text-foreground">{v ?? "—"}</p>
+                      </div>
+                      <div className={`w-fit rounded-xl bg-muted/20 p-2 sm:p-2.5 transition-colors group-hover:bg-muted/40 ${color}`}>
+                        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </div>
+                    </div>
                   </div>
-                  <div className={`w-fit rounded-xl bg-muted/20 p-2 sm:p-2.5 transition-colors group-hover:bg-muted/40 ${color}`}>
-                    <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <form
-            className="mt-8 flex max-w-md gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setTerm(search);
-            }}
-          >
-            <Input
-              placeholder="Buscar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Button type="submit" variant="neon">
-              <Search />
-            </Button>
-          </form>
+              <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-hide">
+                  {[
+                    { id: "all", label: "Todas", color: "bg-foreground text-background" },
+                    { id: "active", label: "Ativas", color: "bg-emerald-500 text-black" },
+                    { id: "expired", label: "Expiradas", color: "bg-yellow-500 text-black" },
+                    { id: "suspended", label: "Suspensas", color: "bg-orange-500 text-black" },
+                    { id: "revoked", label: "Revogadas", color: "bg-red-500 text-white" },
+                  ].map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setStatusFilter(f.id)}
+                      className={cn(
+                        "shrink-0 rounded-xl border border-white/5 px-4 py-2 text-[0.6rem] font-black uppercase tracking-widest transition-all",
+                        statusFilter === f.id ? f.color : "bg-muted/10 text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+
+                <form
+                  className="flex w-full gap-2 lg:max-w-sm"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setTerm(search);
+                  }}
+                >
+                  <Input
+                    placeholder="Buscar por e-mail, token ou plano..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                  <Button type="submit" variant="neon">
+                    <Search />
+                  </Button>
+                </form>
+              </div>
+            </>
+          )}
+
 
           {isLoading ? (
             <div className="mt-16 flex justify-center">
@@ -282,50 +346,16 @@ function Admin() {
             </div>
           ) : (
             <div className="mt-8">
-              <div className="flex flex-col gap-6 mt-8">
-                <div className="flex items-center gap-3">
-                  <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
-                    <Activity className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black uppercase tracking-widest">Painel Administrativo</h3>
-                    <p className="text-[0.6rem] text-muted-foreground uppercase font-bold">Gestão completa da infraestrutura</p>
-                  </div>
-                </div>
-
-                <div className="glass flex h-auto w-full flex-nowrap gap-1 overflow-x-auto p-1.5 scrollbar-hide sm:flex-wrap rounded-2xl border border-white/5">
-                  {[
-                    { value: "licenses", label: "Licenças", Icon: Zap },
-                    { value: "editor", label: "Editor Site", Icon: Activity, color: "text-primary" },
-                    { value: "tracking", label: "Analytics", Icon: TrendingUp, color: "text-emerald-400" },
-                    { value: "tokens", label: "Gerar Token", Icon: MessageSquare, color: "text-primary" },
-                    { value: "users", label: "Usuários", Icon: Users },
-                    { value: "subs", label: "Assinaturas", Icon: Zap },
-                    { value: "payments", label: "Pagamentos", Icon: DollarSign },
-                    { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
-                    { value: "logs", label: "Auditoria", Icon: Clock },
-                    { value: "gateway", label: "Gateway", Icon: ShieldAlert, color: "text-cyan-400" },
-                    { value: "finance", label: "Financeiro", Icon: TrendingUp, color: "text-yellow-400" },
-                    { value: "extension", label: "Extensão", Icon: LayoutDashboard },
-                    { value: "affiliates", label: "Afiliados", Icon: Users },
-                    { value: "push", label: "Push / Testes", Icon: MessageSquare, color: "text-orange-400" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.value}
-                      onClick={() => setActiveTab(tab.value)}
-                      className={cn(
-                        "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition-all shrink-0",
-                        activeTab === tab.value 
-                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
-                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                      )}
-                    >
-                      <tab.Icon className={cn("h-3.5 w-3.5", activeTab !== tab.value && tab.color)} />
-                      {tab.label}
-                    </button>
-                  ))}
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-1.5 rounded-full bg-gradient-to-b from-primary to-primary/20" />
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-widest">
+                    {ALL_NAV.find((n) => n.value === activeTab)?.label ?? "Painel"}
+                  </h3>
+                  <p className="text-[0.6rem] font-bold uppercase text-muted-foreground">Gestão completa da infraestrutura</p>
                 </div>
               </div>
+
 
               {/* Tab Contents */}
               <div className="glass mt-4 overflow-x-auto rounded-[2rem] p-6 scrollbar-hide animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[500px]">
@@ -347,7 +377,13 @@ function Admin() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/30">
-                        {(data?.licenses ?? []).map((l: any) => {
+                        {(data?.licenses ?? []).filter((l: any) => {
+                          if (statusFilter === "all") return true;
+                          const exp = l.expires_at && new Date(l.expires_at) < new Date();
+                          if (statusFilter === "expired") return exp;
+                          if (statusFilter === "active") return l.status === "active" && !exp;
+                          return l.status === statusFilter;
+                        }).map((l: any) => {
                           const isOnline = l.last_validation && new Date(l.last_validation).getTime() > Date.now() - 300000;
                           const isExpired = l.expires_at && new Date(l.expires_at) < new Date();
                           return (
