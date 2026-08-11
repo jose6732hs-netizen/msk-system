@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { resetAffiliateWithdrawalSecurity } from "@/lib/parceiro/wallet.functions";
-import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet, FileText, CheckCircle2, X, Bell } from "lucide-react";
+import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet, FileText, CheckCircle2, X, Bell, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
