@@ -173,7 +173,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
                 ))
               ) : (
                 <div className="px-3 py-2 text-sm text-muted-foreground">
-                  Nenhum plano ativo disponível para emissão.
+                  Nenhum plano disponível para emissão manual.
                 </div>
               )}
             </SelectContent>
