@@ -11,22 +11,9 @@ import {
   getGlobalNotificationSettings,
   saveGlobalNotificationSettings,
 } from "@/lib/notification-prefs.functions";
-import { NOTIFICATION_KEYS } from "@/lib/notification-keys";
+import { NOTIFICATION_GROUPS } from "@/lib/notification-keys";
 import { enablePushNotifications, pushPermission } from "@/lib/push-client";
 
-const LABELS: Record<string, { title: string; desc: string; emoji: string }> = {
-  sales: { title: "Vendas aprovadas", desc: "Avisar sempre que uma venda for paga.", emoji: "💰" },
-  pix_created: { title: "PIX Gerado", desc: "Notificar quando um novo PIX de pagamento for gerado.", emoji: "🧾" },
-  pix_approved: { title: "PIX Pago", desc: "Notificar quando um pagamento via PIX for confirmado.", emoji: "✅" },
-  sale_approved: { title: "Venda Confirmada", desc: "Notificar quando uma venda for totalmente processada.", emoji: "🛍️" },
-  payments: { title: "Pagamentos", desc: "Atualizações gerais de faturas e cobranças.", emoji: "💳" },
-  commissions: { title: "Comissões", desc: "Comissões liberadas, pagas ou estornadas.", emoji: "🤝" },
-  messages: { title: "Mensagens do suporte", desc: "Respostas e avisos diretos da equipe.", emoji: "💬" },
-  campaigns: { title: "Campanhas", desc: "Novas campanhas e materiais para divulgar.", emoji: "📣" },
-  updates: { title: "Atualizações do sistema", desc: "Novas versões da extensão e do painel.", emoji: "🚀" },
-  promotions: { title: "Promoções", desc: "Ofertas e descontos exclusivos.", emoji: "🔥" },
-  admin_sales: { title: "Vendas Aprovadas (Admin)", desc: "Notificar sobre todas as vendas brutas aprovadas no sistema.", emoji: "👑" },
-};
 
 /**
  * Painel de notificações. `scope="user"` edita as preferências pessoais;
@@ -56,15 +43,15 @@ export function NotificationSettings({ scope = "user" }: { scope?: "user" | "adm
     setPermission(pushPermission());
   }, []);
 
-  async function toggle(key: string, value: boolean) {
-    setSaving(key);
+  async function toggle(groupId: string, keys: string[], value: boolean) {
+    setSaving(groupId);
     try {
-      const patch = { [key]: value };
+      const patch = Object.fromEntries(keys.map((k) => [k, value]));
       if (isAdmin) await saveGlobal({ data: patch });
       else await saveUser({ data: patch });
       qc.setQueryData(["notification-prefs", scope], (old: Record<string, boolean> | undefined) => ({
         ...(old ?? {}),
-        [key]: value,
+        ...patch,
       }));
       toast.success(value ? "Notificação ativada" : "Notificação desativada");
     } catch (e) {
@@ -121,23 +108,22 @@ export function NotificationSettings({ scope = "user" }: { scope?: "user" | "adm
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {(isAdmin ? ["admin_sales", "pix_approved"] : NOTIFICATION_KEYS).map((key) => {
-            const info = LABELS[key]!;
-            const value = data?.[key] !== false;
+          {NOTIFICATION_GROUPS.map((group) => {
+            const value = group.keys.some((k) => data?.[k] !== false);
             return (
               <div
-                key={key}
+                key={group.id}
                 className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-2xl border border-border/50 bg-black/20 p-4"
               >
                 <div className="min-w-0">
                   <p className="truncate text-sm font-bold">
-                    {info.emoji} {info.title}
+                    {group.emoji} {group.title}
                   </p>
-                  <p className="text-xs text-muted-foreground">{info.desc}</p>
+                  <p className="text-xs text-muted-foreground">{group.desc}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  {saving === key && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
-                  <Switch checked={value} onCheckedChange={(v) => void toggle(key, v)} />
+                  {saving === group.id && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+                  <Switch checked={value} onCheckedChange={(v) => void toggle(group.id, group.keys, v)} />
                 </div>
               </div>
             );
