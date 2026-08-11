@@ -1,4 +1,4 @@
-// MSK SISTEM 100% - Navegação mobile e infraestrutura corrigida.
+// MSK SISTEM 100% - Navegação mobile, ranking e menu de afiliados corrigidos.
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
