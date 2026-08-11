@@ -62,6 +62,18 @@ export function AdminAffiliatesTab() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between mb-2">
+        <h2 className="text-xl font-bold uppercase tracking-widest text-white flex items-center gap-3">
+          <Users className="text-primary" /> Gestão de Afiliados
+        </h2>
+        {data?.affiliates?.some((a: any) => a.verification_status === "PENDING") && (
+          <div className="flex items-center gap-2 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-full animate-pulse">
+            <Bell className="h-4 w-4 text-primary" />
+            <span className="text-[10px] font-black uppercase text-primary">Solicitações Pendentes</span>
+          </div>
+        )}
+      </div>
+
       <section className="rounded-xl border border-border/60 p-4">
         <h3 className="font-display text-sm uppercase tracking-widest text-muted-foreground">
           Domínio da plataforma
