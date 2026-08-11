@@ -125,8 +125,8 @@ function Admin() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-overview", term],
-    queryFn: () => overviewFn({ data: { search: term } }),
+    queryKey: ["admin-overview", term, userTerm],
+    queryFn: () => overviewFn({ data: { search: term, userSearch: userTerm } }),
     enabled: !!role?.admin,
   });
 
@@ -592,6 +592,7 @@ function Admin() {
                         onSubmit={(e) => {
                           e.preventDefault();
                           setTerm(userSearch);
+                          setUserTerm(userSearch);
                         }}
                       >
                         <Input

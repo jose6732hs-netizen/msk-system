@@ -1,8 +1,9 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logEvent } from "./license.server";
 
-export async function loadAdminOverview(search: string) {
+export async function loadAdminOverview(search: string, userSearch: string = "") {
   const term = search.trim();
+  const uTerm = userSearch.trim();
 
   let licenseQuery = supabaseAdmin
     .from("licenses")
@@ -19,7 +20,7 @@ export async function loadAdminOverview(search: string) {
     .select("id,name,email,created_at,status")
     .order("created_at", { ascending: false })
     .limit(100);
-  if (term) profileQuery = profileQuery.or(`email.ilike.%${term}%,name.ilike.%${term}%`);
+  if (uTerm) profileQuery = profileQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
   const { data: users } = await profileQuery;
 
   const [{ data: plans }, { data: subs }, { data: payments }, { data: webhooks }, { data: events }, { data: devices }] =

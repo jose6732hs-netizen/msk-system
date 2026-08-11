@@ -17,12 +17,15 @@ export const isAdmin = createServerFn({ method: "GET" })
 export const adminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ search: z.string().max(120).optional() }).parse(d ?? {}),
+    z.object({ 
+      search: z.string().max(120).optional(),
+      userSearch: z.string().max(120).optional()
+    }).parse(d ?? {}),
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { loadAdminOverview } = await import("./admin.server");
-    return loadAdminOverview(data.search ?? "");
+    return loadAdminOverview(data.search ?? "", data.userSearch ?? "");
   });
 
 const licenseAction = z.object({

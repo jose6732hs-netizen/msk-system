@@ -253,5 +253,5 @@ export const getLicenseForTransaction = createServerFn({ method: "GET" })
       ...license,
       amount_paid: tx.amount,
       transaction_metadata: tx.metadata
-    };
+    } as any;
   });
