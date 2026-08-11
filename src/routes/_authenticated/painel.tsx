@@ -163,6 +163,12 @@ function Painel() {
             <Button asChild variant="ghost" size="sm">
               <Link to="/parceiro" search={{}} preload="intent">Afiliados</Link>
             </Button>
+            {supportLink && (
+              <Button asChild variant="ghost" size="sm">
+                <a href={supportLink} target="_blank" rel="noopener noreferrer">Suporte</a>
+              </Button>
+            )}
+
             <Button variant="neonOutline" size="sm" onClick={signOut}>
               <LogOut /> Sair
             </Button>
