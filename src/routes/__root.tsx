@@ -199,7 +199,7 @@ function RootComponent() {
       <PwaInstallBanner />
       <PushPermissionPrompt />
       <Outlet />
-      <MobileNavigation />
+      {!isBoard && <MobileNavigation />}
       <Toaster position="top-right" />
     </QueryClientProvider>
   );
