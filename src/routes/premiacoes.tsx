@@ -293,16 +293,16 @@ function AwardsPage() {
         <motion.section 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="text-center bg-primary/5 p-12 rounded-[3rem] border border-primary/20 space-y-8"
+          className="text-center bg-primary/5 p-6 sm:p-10 md:p-12 rounded-[2rem] md:rounded-[3rem] border border-primary/20 space-y-6 md:space-y-8"
         >
           <div className="space-y-4">
-            <h2 className="text-3xl font-bold uppercase tracking-tighter">Quer subir de nível?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold uppercase tracking-tighter">Quer subir de nível?</h2>
             <p className="text-white/60 max-w-xl mx-auto text-lg">
               Continue divulgando, aumente seus resultados e desbloqueie as próximas premiações. O topo está reservado para quem age.
             </p>
           </div>
           
-          <Button asChild variant="neon" size="lg" className="px-10 h-14 text-lg">
+          <Button asChild variant="neon" size="lg" className="w-full sm:w-auto px-6 md:px-10 h-12 md:h-14 text-sm sm:text-base md:text-lg whitespace-normal leading-tight justify-center">
             <Link to="/parceiro">Ver meu ranking atual</Link>
           </Button>
         </motion.section>
