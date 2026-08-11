@@ -45,7 +45,7 @@ export async function enablePushNotifications(): Promise<
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      return { ok: false, reason: "denied", message: "Permissão de notificações negada pelo navegador." };
+      return { ok: false, reason: "denied", message: "Permissão de notificações negada. Ative nas configurações do navegador." };
     }
 
     const { publicKey } = await getPushPublicKey();
