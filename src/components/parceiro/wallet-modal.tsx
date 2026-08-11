@@ -179,61 +179,83 @@ export function WalletModal({
                           A senha foi digitada incorretamente 3 vezes. Entre em contato com o suporte para liberar.
                         </p>
                       </div>
+                    ) : status?.withdrawalSuccess ? (
+                      <div className="rounded-xl border border-green-500/40 bg-green-500/10 p-6 text-center animate-in zoom-in duration-500">
+                        <ShieldCheck className="mx-auto mb-3 h-12 w-12 text-green-500" />
+                        <p className="text-lg font-bold">PARABÉNS!</p>
+                        <p className="mt-1 text-sm text-white/80">
+                          Seu saque foi solicitado com sucesso e já está em análise pela nossa equipe financeira.
+                        </p>
+                        <Button 
+                          variant="outline" 
+                          className="mt-6 border-white/10" 
+                          onClick={() => qc.invalidateQueries({ queryKey: ["affiliate-wallet-status"] })}
+                        >
+                          Entendido
+                        </Button>
+                      </div>
                     ) : (
                       <div className="space-y-4">
-                        <div>
-                          <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ 20,00)</label>
-                          <Input
-                            placeholder="0,00"
-                            inputMode="decimal"
-                            value={amount}
-                            onChange={(e) => setAmount(e.target.value)}
-                            className="bg-black/20 border-white/10 h-12 text-lg font-bold"
-                          />
-                        </div>
-                        {passwordSet && (
-                          <div>
-                            <label className="text-xs text-white/40 block mb-2">Senha de saque (6 dígitos)</label>
-                            <Input
-                              type="password"
-                              inputMode="numeric"
-                              maxLength={6}
-                              autoComplete="off"
-                              value={password}
-                              onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
-                              className="bg-black/20 border-white/10 h-12 text-center text-lg font-bold tracking-[0.5em]"
-                            />
-                            {!!status?.attempts && (
-                              <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-amber-400">
-                                {status.attempts} de 3 tentativas usadas
-                              </p>
-                            )}
+                        {!savedPixKey ? (
+                          <div className="space-y-4">
+                             <p className="text-sm text-amber-400 font-medium">
+                               Antes de sacar, você precisa cadastrar sua chave PIX.
+                             </p>
+                             <PixKeyForm 
+                               onSaved={() => void qc.invalidateQueries({ queryKey: ["affiliate-wallet-status"] })} 
+                             />
                           </div>
+                        ) : (
+                          <>
+                            <div>
+                              <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ 20,00)</label>
+                              <Input
+                                placeholder="0,00"
+                                inputMode="decimal"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                className="bg-black/20 border-white/10 h-12 text-lg font-bold"
+                              />
+                            </div>
+                            {passwordSet ? (
+                              <div>
+                                <label className="text-xs text-white/40 block mb-2">Senha de saque (6 dígitos)</label>
+                                <Input
+                                  type="password"
+                                  inputMode="numeric"
+                                  maxLength={6}
+                                  autoComplete="off"
+                                  value={password}
+                                  disabled={submitting}
+                                  onChange={(e) => setPassword(e.target.value.replace(/\D/g, ""))}
+                                  className="bg-black/20 border-white/10 h-12 text-center text-lg font-bold tracking-[0.5em] disabled:opacity-50"
+                                />
+                                {!!status?.attempts && (
+                                  <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-amber-400 text-center">
+                                    {status.attempts} de 3 tentativas usadas
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                                <p className="text-xs text-white/60 mb-3">Você ainda não criou sua senha de segurança para saques.</p>
+                                <Button variant="neonOutline" className="w-full h-10 text-xs" onClick={() => setActiveTab("settings")}>
+                                  Configurar Senha Agora
+                                </Button>
+                              </div>
+                            )}
+                            
+                            <Button
+                              variant="neon"
+                              className="w-full h-12 text-base sm:text-lg font-bold rounded-xl whitespace-normal leading-tight"
+                              disabled={submitting || !passwordSet}
+                              onClick={() => void submitWithdrawal()}
+                            >
+                              {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              Solicitar Saque
+                            </Button>
+                          </>
                         )}
-                        {!savedPixKey && (
-                          <p className="text-[11px] text-amber-400">
-                            Cadastre uma chave PIX na aba "Chave PIX" para receber.
-                          </p>
-                        )}
-                        <Button
-                          variant="neon"
-                          className="w-full h-12 text-base sm:text-lg font-bold rounded-xl whitespace-normal leading-tight"
-                          disabled={submitting}
-                          onClick={() => {
-                            if (!passwordSet) {
-                              setActiveTab("settings");
-                              return;
-                            }
-                            if (!savedPixKey) {
-                              setActiveTab("pix");
-                              return;
-                            }
-                            void submitWithdrawal();
-                          }}
-                        >
-                          {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                          {passwordSet ? "Solicitar Saque" : "Criar senha de saque"}
-                        </Button>
                       </div>
                     )}
                   </div>

@@ -116,28 +116,58 @@ export async function buildSplits(input: {
   affiliateRate?: number | null;
 }): Promise<AmploSplit[]> {
   const splits: AmploSplit[] = [];
+  
+  const { data: appSettings } = await (supabaseAdmin as any)
+    .from("app_settings")
+    .select("value")
+    .eq("key", "splits")
+    .maybeSingle();
+  
+  const config = (appSettings?.value as any) || {};
 
   if (input.affiliateId) {
-    const { data: aff } = await supabaseAdmin
+    const { data: aff } = await (supabaseAdmin as any)
       .from("affiliates")
       .select("commission_rate,producer_id:user_id")
       .eq("id", input.affiliateId)
       .maybeSingle();
-    const rate = Number(input.affiliateRate ?? aff?.commission_rate ?? 0);
+    
+    let value = 0;
+    const type = config.affiliate_type ?? 'percent';
+    const val = Number(config.affiliate_value ?? 0);
+
+    if (val > 0) {
+      if (type === 'fixed') value = Math.round(val * 100);
+      else value = Math.floor((input.amountCents * val) / 100);
+    } else {
+      const rate = Number(input.affiliateRate ?? aff?.commission_rate ?? 0);
+      value = Math.floor((input.amountCents * rate) / 100);
+    }
+
     const producerId = (aff as { producer_id?: string } | null)?.producer_id;
-    const value = Math.floor((input.amountCents * rate) / 100);
     if (producerId && value > 0) splits.push({ producerId, amount: value });
   }
 
   if (input.resellerId) {
-    const { data: rv } = await supabaseAdmin
+    const { data: rv } = await (supabaseAdmin as any)
       .from("resellers")
       .select("commission_rate,producer_id:user_id")
       .eq("id", input.resellerId)
       .maybeSingle();
-    const rate = Number(rv?.commission_rate ?? 0);
+    
+    let value = 0;
+    const type = config.reseller_type ?? 'percent';
+    const val = Number(config.reseller_value ?? 0);
+
+    if (val > 0) {
+      if (type === 'fixed') value = Math.round(val * 100);
+      else value = Math.floor((input.amountCents * val) / 100);
+    } else {
+      const rate = Number(rv?.commission_rate ?? 0);
+      value = Math.floor((input.amountCents * rate) / 100);
+    }
+
     const producerId = (rv as { producer_id?: string } | null)?.producer_id;
-    const value = Math.floor((input.amountCents * rate) / 100);
     if (producerId && value > 0) splits.push({ producerId, amount: value });
   }
 
