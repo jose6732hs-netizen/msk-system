@@ -258,3 +258,9 @@ html, body {
     padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* Evita o "pulo"/quebra do cabeçalho fixo quando um Sheet/Dialog trava o scroll. */
+body[data-scroll-locked] {
+  margin-right: 0 !important;
+  padding-right: 0 !important;
+}
