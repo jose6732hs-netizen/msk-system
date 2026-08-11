@@ -1,10 +1,18 @@
 import logoAsset from "@/assets/logo.png.asset.json";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getCmsContent } from "@/lib/cms.functions";
 
 export function MskLogo({ size = 40 }: { size?: number }) {
+  const getCms = useServerFn(getCmsContent);
+  const { data: settings } = useQuery({ queryKey: ["cms-content"], queryFn: () => getCms() });
+  const logoUrl = (settings as any)?.site_images?.logo || logoAsset.url;
+
   return (
     <span className="flex items-center gap-3">
       <img
-        src={logoAsset.url}
+        src={logoUrl}
+
         alt="MSK Logo"
         className="neon-glow rounded-xl object-cover"
         style={{

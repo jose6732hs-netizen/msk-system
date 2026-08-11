@@ -4,17 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent } from "@/lib/cms.functions";
-import bannerAfiliado from "@/assets/banner-afiliado.png.asset.json";
-import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
-import mainPromoAsset from "@/assets/main-promo.png.asset.json";
-import bannerConquista from "@/assets/banner-afiliado-conquista.png.asset.json";
-
-const DEFAULT_BANNERS = [
-  { url: mainPromoAsset.url, alt: "Crie sites sem limitações", active: true, order: 0 },
-  { url: bannerConquista.url, alt: "Seu resultado tem valor", active: true, order: 1 },
-  { url: bannerAfiliado.url, alt: "Programa de Afiliados MSK", active: true, order: 2 },
-  { url: bannerAjudaIA.url, alt: "Ajude pessoas a criar com IA", active: true, order: 3 },
-];
+import { DEFAULT_PANEL_BANNERS } from "@/lib/site-images";
 
 export function PanelCarousel() {
   const [current, setCurrent] = useState(0);
@@ -25,10 +15,14 @@ export function PanelCarousel() {
     queryFn: () => getCms(),
   });
 
-  const allBanners = (settings as any)?.hero?.banners || DEFAULT_BANNERS;
+  const allBanners =
+    (settings as any)?.panel?.banners ||
+    (settings as any)?.hero?.banners ||
+    DEFAULT_PANEL_BANNERS;
   const banners = allBanners
-    .filter((b: any) => b.active !== false)
+    .filter((b: any) => b.active !== false && b.url)
     .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+
 
   const next = useCallback(() => {
     setCurrent((curr) => (curr >= banners.length - 1 ? 0 : curr + 1));
