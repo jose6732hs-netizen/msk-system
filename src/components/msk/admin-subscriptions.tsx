@@ -26,6 +26,7 @@ type PlanForm = {
   max_devices: number;
   active: boolean;
   sort_order: number;
+  image_url: string;
 };
 
 const EMPTY: PlanForm = {
@@ -41,6 +42,7 @@ const EMPTY: PlanForm = {
   max_devices: 1,
   active: true,
   sort_order: 0,
+  image_url: "",
 };
 
 /** Gestão das assinaturas: planos publicados no site + assinaturas ativas. */
@@ -71,6 +73,7 @@ export function AdminSubscriptionsTab({
       max_devices: Number(plan["max_devices"] ?? 1),
       active: plan["active"] !== false,
       sort_order: Number(plan["sort_order"] ?? 0),
+      image_url: plan["image_url"] ?? "",
     });
   }
 
@@ -206,6 +209,13 @@ export function AdminSubscriptionsTab({
                 inputMode="numeric"
                 value={String(editing.sort_order)}
                 onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value || 0) })}
+              />
+            </Field>
+            <Field label="URL da Imagem (Oferta)">
+              <Input
+                placeholder="https://exemplo.com/imagem.png"
+                value={editing.image_url}
+                onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
               />
             </Field>
             <div className="flex items-end gap-6">

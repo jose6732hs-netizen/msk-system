@@ -163,16 +163,17 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
               <SelectValue placeholder="Escolha o plano da licença" />
             </SelectTrigger>
             <SelectContent className="max-h-72">
-              {plans.map((p: any) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                  {p.is_lifetime ? " — Vitalício" : ""}
-                  {p.active === false ? " (oculto no site)" : ""}
-                </SelectItem>
-              ))}
-              {!plans.length && (
+              {plans && plans.length > 0 ? (
+                plans.map((p: any) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.name}
+                    {p.is_lifetime ? " — Vitalício" : ""}
+                    {p.active === false ? " (oculto no site)" : ""}
+                  </SelectItem>
+                ))
+              ) : (
                 <div className="px-3 py-2 text-sm text-muted-foreground">
-                  Nenhum plano cadastrado.
+                  Nenhum plano ativo disponível para emissão.
                 </div>
               )}
             </SelectContent>
