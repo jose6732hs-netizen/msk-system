@@ -218,7 +218,9 @@ export type Database = {
           available_at: string | null
           base_amount: number | null
           commission_amount: number | null
+          commission_percentage: number | null
           created_at: string
+          gross_amount: number | null
           id: string
           order_id: string | null
           plan_id: string | null
@@ -228,6 +230,7 @@ export type Database = {
           transaction_id: string
           updated_at: string
           user_id: string | null
+          wallet_id: string | null
         }
         Insert: {
           affiliate_id: string
@@ -236,7 +239,9 @@ export type Database = {
           available_at?: string | null
           base_amount?: number | null
           commission_amount?: number | null
+          commission_percentage?: number | null
           created_at?: string
+          gross_amount?: number | null
           id?: string
           order_id?: string | null
           plan_id?: string | null
@@ -246,6 +251,7 @@ export type Database = {
           transaction_id: string
           updated_at?: string
           user_id?: string | null
+          wallet_id?: string | null
         }
         Update: {
           affiliate_id?: string
@@ -254,7 +260,9 @@ export type Database = {
           available_at?: string | null
           base_amount?: number | null
           commission_amount?: number | null
+          commission_percentage?: number | null
           created_at?: string
+          gross_amount?: number | null
           id?: string
           order_id?: string | null
           plan_id?: string | null
@@ -264,6 +272,7 @@ export type Database = {
           transaction_id?: string
           updated_at?: string
           user_id?: string | null
+          wallet_id?: string | null
         }
         Relationships: [
           {
@@ -285,6 +294,13 @@ export type Database = {
             columns: ["transaction_id"]
             isOneToOne: false
             referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "affiliate_commissions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "affiliate_wallets"
             referencedColumns: ["id"]
           },
         ]
@@ -2326,6 +2342,7 @@ export type Database = {
           affiliate_id: string | null
           amount: number
           checkout_url: string | null
+          commission_registered: boolean | null
           created_at: string
           currency: string
           expires_at: string | null
@@ -2353,6 +2370,7 @@ export type Database = {
           affiliate_id?: string | null
           amount?: number
           checkout_url?: string | null
+          commission_registered?: boolean | null
           created_at?: string
           currency?: string
           expires_at?: string | null
@@ -2380,6 +2398,7 @@ export type Database = {
           affiliate_id?: string | null
           amount?: number
           checkout_url?: string | null
+          commission_registered?: boolean | null
           created_at?: string
           currency?: string
           expires_at?: string | null

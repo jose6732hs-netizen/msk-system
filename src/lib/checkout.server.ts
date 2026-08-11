@@ -84,9 +84,11 @@ export async function createSubscriptionCheckout(input: {
     .single();
   if (error) throw error;
 
+  // Split desativado para afiliados conforme nova regra de carteira interna.
+  // Somente manter splits se houver revendedor (reseller).
   const splits = await buildSplits({
     amountCents,
-    affiliateId,
+    affiliateId: null, // NÃO ENVIAR AFILIADO PARA SPLIT
     resellerId: reseller?.id ?? null,
   });
   await supabaseAdmin.from("transactions").update({ splits: splits as never }).eq("id", tx.id);
@@ -295,10 +297,11 @@ export async function createPixCheckout(input: {
 
   const service = await AmploPayService.create();
   try {
+    // Split desativado para afiliados (carteira interna)
     const splits = await buildSplits({
       amountCents,
-      affiliateId,
-      resellerId: null, // Já aplicado no preço final
+      affiliateId: null,
+      resellerId: null,
     });
     await supabaseAdmin.from("transactions").update({ splits: splits as never }).eq("id", tx.id);
     if (affiliateId) {
