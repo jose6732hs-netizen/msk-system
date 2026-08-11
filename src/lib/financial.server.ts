@@ -116,60 +116,58 @@ export async function buildSplits(input: {
   affiliateRate?: number | null;
 }): Promise<AmploSplit[]> {
   const splits: AmploSplit[] = [];
-  const { data: adminSettings } = await supabaseAdmin
-    .from("app_settings")
-    .select("value")
-    .eq("key", "commission_split_config")
+  
+  const { data: cmsSettings } = await supabaseAdmin
+    .from("cms_content")
+    .select("data")
+    .eq("key", "splits")
     .maybeSingle();
   
-  const splitConfig = (adminSettings?.value as any) || {};
+  const config = (cmsSettings?.data as any) || {};
 
   if (input.affiliateId) {
     const { data: aff } = await supabaseAdmin
       .from("affiliates")
-      .select("commission_rate,producer_id:user_id,id")
+      .select("commission_rate,producer_id:user_id")
       .eq("id", input.affiliateId)
       .maybeSingle();
     
-    // Prioridade: Configuração específica do Super Admin > Taxa do afiliado
-    let rate = Number(aff?.commission_rate ?? 0);
-    let fixedAmount = 0;
+    let value = 0;
+    const type = config.affiliate_type ?? 'percent';
+    const val = Number(config.affiliate_value ?? 0);
 
-    if (splitConfig.affiliates) {
-       const affConfig = splitConfig.affiliates[aff?.id || ""] || splitConfig.default_affiliate;
-       if (affConfig) {
-          if (affConfig.type === 'fixed') fixedAmount = Math.round(Number(affConfig.value) * 100);
-          else rate = Number(affConfig.value);
-       }
+    if (val > 0) {
+      if (type === 'fixed') value = Math.round(val * 100);
+      else value = Math.floor((input.amountCents * val) / 100);
+    } else {
+      const rate = Number(input.affiliateRate ?? aff?.commission_rate ?? 0);
+      value = Math.floor((input.amountCents * rate) / 100);
     }
 
     const producerId = (aff as { producer_id?: string } | null)?.producer_id;
-    const value = fixedAmount > 0 ? fixedAmount : Math.floor((input.amountCents * rate) / 100);
-    
     if (producerId && value > 0) splits.push({ producerId, amount: value });
   }
 
   if (input.resellerId) {
     const { data: rv } = await supabaseAdmin
       .from("resellers")
-      .select("commission_rate,producer_id:user_id,id")
+      .select("commission_rate,producer_id:user_id")
       .eq("id", input.resellerId)
       .maybeSingle();
     
-    let rate = Number(rv?.commission_rate ?? 0);
-    let fixedAmount = 0;
+    let value = 0;
+    const type = config.reseller_type ?? 'percent';
+    const val = Number(config.reseller_value ?? 0);
 
-    if (splitConfig.resellers) {
-       const resConfig = splitConfig.resellers[rv?.id || ""] || splitConfig.default_reseller;
-       if (resConfig) {
-          if (resConfig.type === 'fixed') fixedAmount = Math.round(Number(resConfig.value) * 100);
-          else rate = Number(resConfig.value);
-       }
+    if (val > 0) {
+      if (type === 'fixed') value = Math.round(val * 100);
+      else value = Math.floor((input.amountCents * val) / 100);
+    } else {
+      const rate = Number(rv?.commission_rate ?? 0);
+      value = Math.floor((input.amountCents * rate) / 100);
     }
 
     const producerId = (rv as { producer_id?: string } | null)?.producer_id;
-    const value = fixedAmount > 0 ? fixedAmount : Math.floor((input.amountCents * rate) / 100);
-    
     if (producerId && value > 0) splits.push({ producerId, amount: value });
   }
 
