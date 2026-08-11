@@ -691,6 +691,18 @@ export function AdminEditorTab() {
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
               <div className="space-y-2">
+                <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Número WhatsApp de Suporte</label>
+                <Input
+                  placeholder="(11) 99999-9999"
+                  value={(localSettings as any).config?.support_whatsapp ?? (initialSettings as any).config?.support_whatsapp ?? ''}
+                  onChange={(e) => updateSetting('config', 'support_whatsapp', e.target.value)}
+                />
+                <p className="text-[0.6rem] font-bold text-muted-foreground">
+                  Ao publicar, o botão 3D de WhatsApp aparece no site e o menu "Suporte" é liberado nos painéis.
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">URL de Suporte (WhatsApp)</label>
                 <Input 
                   placeholder="https://wa.me/55..."
@@ -698,6 +710,7 @@ export function AdminEditorTab() {
                   onChange={(e) => updateSetting('config', 'support_url', e.target.value)}
                 />
               </div>
+
               <div className="flex gap-3 pt-4">
                 <Button onClick={() => handleSave('config')} variant="neonOutline" className="flex-1 font-black">
                   <Save className="mr-2 h-4 w-4" /> Salvar
