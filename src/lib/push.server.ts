@@ -48,7 +48,7 @@ async function vapidToken(audience: string): Promise<{ jwt: string; publicKey: s
   );
   const unsigned = `${header}.${payload}`;
 
-  const raw = Uint8Array.from(atob(privateKey), (c) => c.charCodeAt(0));
+  const raw = Uint8Array.from(atob(privateKey.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
   const key = await crypto.subtle.importKey("pkcs8", raw as BufferSource, { name: "ECDSA", namedCurve: "P-256" }, false, [
     "sign",
   ]);
