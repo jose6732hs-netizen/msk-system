@@ -117,9 +117,9 @@ export const getCmsHistory = createServerFn({ method: "GET" })
 
 export const uploadCmsAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context, request }) => {
     await assertAdmin(context.supabase, context.userId);
-    const formData = await (context as any).request.formData();
+    const formData = await request.formData();
     const file = formData.get("file") as File;
     const key = formData.get("key") as string;
     
