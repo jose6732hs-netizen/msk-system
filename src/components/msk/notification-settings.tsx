@@ -16,13 +16,16 @@ import { enablePushNotifications, pushPermission } from "@/lib/push-client";
 
 const LABELS: Record<string, { title: string; desc: string; emoji: string }> = {
   sales: { title: "Vendas aprovadas", desc: "Avisar sempre que uma venda for paga.", emoji: "💰" },
-  payments: { title: "Pagamentos gerados", desc: "PIX gerado, pendente ou expirado.", emoji: "🧾" },
+  pix_created: { title: "PIX Gerado", desc: "Notificar quando um novo PIX de pagamento for gerado.", emoji: "🧾" },
+  pix_approved: { title: "PIX Pago", desc: "Notificar quando um pagamento via PIX for confirmado.", emoji: "✅" },
+  sale_approved: { title: "Venda Confirmada", desc: "Notificar quando uma venda for totalmente processada.", emoji: "🛍️" },
+  payments: { title: "Pagamentos", desc: "Atualizações gerais de faturas e cobranças.", emoji: "💳" },
   commissions: { title: "Comissões", desc: "Comissões liberadas, pagas ou estornadas.", emoji: "🤝" },
   messages: { title: "Mensagens do suporte", desc: "Respostas e avisos diretos da equipe.", emoji: "💬" },
   campaigns: { title: "Campanhas", desc: "Novas campanhas e materiais para divulgar.", emoji: "📣" },
   updates: { title: "Atualizações do sistema", desc: "Novas versões da extensão e do painel.", emoji: "🚀" },
   promotions: { title: "Promoções", desc: "Ofertas e descontos exclusivos.", emoji: "🔥" },
-  admin_sales: { title: "Vendas Aprovadas (Admin)", desc: "Notificar sobre todas as vendas brutas aprovadas.", emoji: "👑" },
+  admin_sales: { title: "Vendas Aprovadas (Admin)", desc: "Notificar sobre todas as vendas brutas aprovadas no sistema.", emoji: "👑" },
 };
 
 /**
