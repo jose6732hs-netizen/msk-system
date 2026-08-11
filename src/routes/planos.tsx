@@ -499,9 +499,8 @@ function PlanosPage() {
                       </div>
 
                       <Button
-                        variant="none"
                         className={`w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.85rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] rounded-full transition-all duration-300 whitespace-normal break-words leading-tight px-4 sm:px-6 relative group/btn overflow-hidden
-                          bg-[#22C55E] text-white
+                          bg-[#22C55E] text-white hover:text-white
                           border-b-[6px] border-[#166534] active:border-b-0 active:translate-y-[4px]
                           hover:bg-[#28D56A] hover:border-[#1A7D3D] hover:-translate-y-[2px] hover:shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)]
                           flex items-center justify-center
@@ -515,6 +514,7 @@ function PlanosPage() {
                           isFree ? "Testar Grátis" : "Adicionar ao Carrinho"
                         )}
                       </Button>
+
 
                     </div>
                   </article>
