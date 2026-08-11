@@ -63,8 +63,38 @@ export function AdminSubscriptionsTab({
 }) {
   const qc = useQueryClient();
   const saveFn = useServerFn(adminSavePlan);
+  const uploadAsset = useServerFn(uploadCmsAsset);
   const [editing, setEditing] = useState<PlanForm | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState<string | null>(null);
+
+  async function pickAndUpload(planId?: string) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      
+      const uploadKey = planId || "new-plan";
+      setUploading(uploadKey);
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("key", `plan-offer-${uploadKey}`);
+        const res = await uploadAsset({ data: fd as any });
+        if (editing) {
+          setEditing({ ...editing, image_url: res.url });
+        }
+        toast.success("Imagem carregada!");
+      } catch (err) {
+        toast.error("Erro no upload: " + (err as Error).message);
+      } finally {
+        setUploading(null);
+      }
+    };
+    input.click();
+  }
 
   function edit(plan: Record<string, any>) {
     setEditing({
