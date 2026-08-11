@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getExtensionDownload } from "@/lib/extension.functions";
-import { Download, LayoutDashboard, Loader2, Menu, ShieldCheck } from "lucide-react";
+import { Download, LayoutDashboard, Loader2, Menu, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { CartSheet } from "./cart-sheet";
