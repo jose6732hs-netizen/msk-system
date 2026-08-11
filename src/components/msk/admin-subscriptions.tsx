@@ -171,6 +171,19 @@ export function AdminSubscriptionsTab({
                 onChange={(e) => setEditing({ ...editing, price: Number(e.target.value || 0) })}
               />
             </Field>
+            <Field label="Comissão Afiliado (%)">
+              <Input
+                inputMode="decimal"
+                value={String(editing.affiliate_commission_rate ?? 0)}
+                onChange={(e) => setEditing({ ...editing, affiliate_commission_rate: Number(e.target.value || 0) })}
+              />
+            </Field>
+            <Field label="Moeda">
+              <Input
+                value={editing.currency || "BRL"}
+                onChange={(e) => setEditing({ ...editing, currency: e.target.value.toUpperCase() })}
+              />
+            </Field>
             <Field label="Descrição">
               <Input
                 value={editing.description}
