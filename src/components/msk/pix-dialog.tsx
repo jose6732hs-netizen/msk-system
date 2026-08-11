@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { checkTransaction } from "@/lib/commerce.functions";
+import { useNavigate } from "@tanstack/react-router";
 
 export type PixState = {
   transactionId: string;
@@ -69,6 +70,7 @@ export function PixDialog({
   onRegenerate: () => void;
   regenerating?: boolean;
 }) {
+  const navigate = useNavigate();
   const [status, setStatus] = useState(pix.status);
   const [qrData, setQrData] = useState<string | null>(null);
   const { left, label } = useCountdown(pix.expiresAt);
@@ -106,6 +108,7 @@ export function PixDialog({
         if (res.status !== status) setStatus(res.status);
         if (res.status === "PAID") {
           toast.success("Pagamento confirmado! Licença liberada.");
+          navigate({ to: "/obrigado", search: { transactionId: pix.transactionId } });
           onPaid();
         }
       } catch {
@@ -231,7 +234,7 @@ export function PixDialog({
                   </div>
                   <h3 className="text-xl font-black uppercase tracking-tight text-white mb-2">Pagamento Recebido!</h3>
                   <p className="text-sm text-muted-foreground mb-8">Sua licença foi ativada com sucesso em sua conta.</p>
-                  <Button variant="neon" className="w-full" onClick={onPaid}>Ver Licença Agora</Button>
+                  <Button variant="neon" className="w-full" onClick={() => navigate({ to: "/obrigado", search: { transactionId: pix.transactionId } })}>Ver Licença Agora</Button>
                 </div>
               ) : expired ? (
                 <div className="flex flex-col items-center justify-center text-center py-10">
