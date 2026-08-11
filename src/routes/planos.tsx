@@ -130,6 +130,10 @@ function PlanosPage() {
 
   function addToCart(plan: any) {
     const isFree = Number(plan.price) === 0;
+    
+    // Proteção contra cliques múltiplos rápidos
+    if (loadingPlan === plan.id) return;
+
     track("offer_view", { label: plan.name, value: Number(plan.price) });
     if (isFree) {
       void subscribe(plan.id, plan.name, true);
@@ -139,13 +143,9 @@ function PlanosPage() {
     setCart(current => {
       const existing = current.find(item => item.planId === plan.id);
       if (existing) {
-        // Se já existe, não adicionamos duplicado, apenas confirmamos a presença
-        // e mostramos sucesso (ou incrementamos se o usuário realmente quiser mais de um da mesma licença)
-        // Por padrão, licenças de software costumam ser 1 por tipo, mas vamos permitir incrementar se clicar de novo.
-        // O bug relatado era que "caia duas de uma vez", o que sugere um clique duplo ou renderização dupla.
-        return current.map(item => 
-          item.planId === plan.id ? { ...item, quantity: item.quantity + 1 } : item
-        );
+        // Impedir duplicação acidental: se já está no carrinho, não fazemos nada
+        // O usuário reclamou que cai duplicado sempre.
+        return current;
       }
       
       let imageUrl: string | null = planImage(plan);
