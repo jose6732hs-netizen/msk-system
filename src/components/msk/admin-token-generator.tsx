@@ -48,10 +48,9 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
   const [loading, setLoading] = useState(false);
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(initialIssued || null);
 
-  // Auto-select first plan when plans load
   useMemo(() => {
     if (plans.length > 0 && !planId) {
-      setPlanId(plans[0].id);
+      setPlanId(plans[0]["id"] as string);
     }
   }, [plans, planId]);
 
