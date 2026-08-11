@@ -284,7 +284,7 @@ export function TokenManager() {
                 </Button>
                 {available <= 0 && (
                   <p className="text-[0.7rem] font-bold text-destructive uppercase tracking-tighter sm:max-w-[200px] leading-tight">
-                    Nenhum token ativo! Navegue e garanta seu acesso premium.
+                    Você ainda não possui nenhum token ativo. Escolha um plano e garanta seu acesso premium.
                   </p>
                 )}
               </div>

@@ -51,7 +51,11 @@ export const Route = createFileRoute("/api/public/license/activate")({
             event_type: "invalid_attempt",
             metadata: { ip_hash: await hashValue(ip) },
           });
-          return jsonResponse({ success: false, error: "INVALID_LICENSE" }, 404);
+          return jsonResponse({ 
+            success: false, 
+            error: "INVALID_LICENSE",
+            message: "Token inválido. Confira os caracteres e tente novamente."
+          }, 404);
         }
 
         if (license.status === "revoked")

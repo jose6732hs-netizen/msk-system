@@ -45,7 +45,11 @@ export async function handleValidation(request: Request, bucket: string, limit: 
   const license = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
   if (!license) {
     await logEvent({ event_type: "invalid_attempt", metadata: { bucket, token: parsed.data.token.slice(-4) } });
-    return jsonResponse({ success: false, error: "LICENSE_INVALID" }, 404);
+    return jsonResponse({ 
+      success: false, 
+      error: "LICENSE_INVALID",
+      message: "Token inválido. Confira os caracteres e tente novamente."
+    }, 404);
   }
 
   const identity = parsed.data.installation_id ?? parsed.data.device_fingerprint;

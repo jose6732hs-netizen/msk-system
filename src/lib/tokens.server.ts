@@ -102,7 +102,7 @@ export async function loadTenantTokens(userId: string) {
 export async function generateTenantToken(userId: string) {
   const { rows, available } = await loadAllowances(userId);
   const slot = rows.find((a) => Number(a.used) < Number(a.total));
-  if (available <= 0 || !slot) throw new Error("nenhum token ativo ainda! navegue pelo site e garanta o seu acesso premium.");
+  if (available <= 0 || !slot) throw new Error("Você não possui saldo de tokens disponível. Garanta seu acesso premium na aba Planos.");
 
   let planId = slot.plan_id;
   if (!planId) {
