@@ -36,7 +36,7 @@ import { NotificationSettings } from "@/components/msk/notification-settings";
 import { Bell } from "lucide-react";
 
 import { MskLogo } from "@/components/msk/logo";
-import { adminLicenseAction, adminOverview, isAdmin } from "@/lib/admin.functions";
+import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
 
 const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
   {
@@ -107,7 +107,9 @@ function Admin() {
   const overviewFn = useServerFn(adminOverview);
   const actionFn = useServerFn(adminLicenseAction);
   const [search, setSearch] = useState("");
+  const [userSearch, setUserSearch] = useState("");
   const [term, setTerm] = useState("");
+  const [userTerm, setUserTerm] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("licenses");
   const [statusFilter, setStatusFilter] = useState("all");
