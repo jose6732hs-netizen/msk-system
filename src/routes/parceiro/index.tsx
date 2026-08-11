@@ -90,7 +90,7 @@ function AffiliateDashboard() {
   const { stats, affiliate, goal, sales } = data;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white selection:bg-primary selection:text-white">
+    <div className="min-h-screen bg-[#050505] text-white selection:bg-primary selection:text-white flex flex-col overflow-hidden">
       <AffiliateHeader 
         balance={stats.availableBalance}
         goalCurrent={goal.current}
@@ -100,21 +100,21 @@ function AffiliateDashboard() {
         isRefreshing={isRefreshing}
       />
 
-      <main className="container max-w-7xl mx-auto px-4 py-8 h-[calc(100vh-80px)] overflow-y-auto scrollbar-hide">
+      <main className="flex-1 container max-w-7xl mx-auto px-4 py-8 overflow-y-auto scrollbar-hide">
         <Tabs defaultValue="overview" className="space-y-10 focus:outline-none pb-32 md:pb-20">
-          <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-14 w-full max-w-md">
-            <TabsTrigger value="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-full">Painel</TabsTrigger>
+          <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-auto min-h-14 w-full max-w-md flex flex-wrap sm:flex-nowrap">
+            <TabsTrigger value="overview" id="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-12 sm:h-full">Painel</TabsTrigger>
             <TabsTrigger 
               value="awards" 
-              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full"
+              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full"
               onClick={() => navigate({ to: "/premiacoes" })}
             >
               <Award size={16} className="shrink-0" /> <span className="truncate">Premiações</span>
             </TabsTrigger>
-            <TabsTrigger value="referrals" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+            <TabsTrigger value="referrals" id="referrals" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full">
               <Users size={16} className="shrink-0" /> <span className="truncate">Indicações</span>
             </TabsTrigger>
-            <TabsTrigger value="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-full">
+            <TabsTrigger value="docs" id="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full">
               <FileText size={16} className="shrink-0" /> <span className="truncate">Documentos</span>
             </TabsTrigger>
           </TabsList>
@@ -152,7 +152,7 @@ function AffiliateDashboard() {
             </section>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard 
                 label="Cliques Totais" 
                 value={stats.clicks.toLocaleString()} 
