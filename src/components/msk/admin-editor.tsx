@@ -756,11 +756,15 @@ export function AdminEditorTab() {
                                 const fd = new FormData();
                                 fd.append('file', file);
                                 fd.append('key', 'branding-icon');
-                                const res = await uploadAsset({ data: fd as any });
+                                const res = await fetch("/api/public/cms/upload", {
+                                  method: "POST",
+                                  body: fd
+                                }).then(r => r.json());
+                                if (!res.url) throw new Error(res.error || "Upload falhou");
                                 updateSetting('branding', 'icon_url', res.url);
                                 toast.success("Ícone carregado!");
-                              } catch (err) {
-                                toast.error("Erro no upload");
+                              } catch (err: any) {
+                                toast.error("Erro no upload: " + (err.message || "Erro desconhecido"));
                               } finally {
                                 setUploading(null);
                               }
