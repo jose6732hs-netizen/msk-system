@@ -20,6 +20,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { useSupportLink } from "@/lib/support-link";
 import { MskLogo } from "@/components/msk/logo";
 import { getAccount, getMyToken, removeMyDevice, cancelMySubscription } from "@/lib/account.functions";
 import { ExtensionDownloadCard } from "@/components/msk/extension-download";
@@ -60,6 +61,7 @@ function fmt(d?: string | null) {
 
 function Painel() {
   const navigate = useNavigate();
+  const supportLink = useSupportLink("Olá! Preciso de suporte com minha licença MSK.");
   const qc = useQueryClient();
   const fetchAccount = useServerFn(getAccount);
   const revealFn = useServerFn(getMyToken);
@@ -222,6 +224,17 @@ function Painel() {
             <Link to="/documentacao" onClick={() => setMenuOpen(false)} className="rounded-2xl px-4 py-3 text-sm font-bold text-muted-foreground hover:bg-white/5 hover:text-foreground">
               Documentação
             </Link>
+            {supportLink && (
+              <a
+                href={supportLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setMenuOpen(false)}
+                className="rounded-2xl px-4 py-3 text-sm font-bold text-[#25D366] hover:bg-[#25D366]/10"
+              >
+                Suporte
+              </a>
+            )}
             <Button
               variant="neonOutline"
               size="sm"
