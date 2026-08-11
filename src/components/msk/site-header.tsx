@@ -81,8 +81,8 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
       <div className="flex items-center">
         <Sheet>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="sm" aria-label="Menu">
-              <Menu className="h-6 w-6 text-neon" />
+            <Button variant="ghost" size="sm" aria-label="Menu" className="relative h-10 w-10 p-0 border border-white/10 rounded-xl hover:bg-white/5">
+              <Menu className="h-6 w-6 text-primary" />
             </Button>
           </SheetTrigger>
           <SheetContent className="w-full sm:w-64 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh]">

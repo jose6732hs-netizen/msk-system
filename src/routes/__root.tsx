@@ -375,8 +375,8 @@ function MobileNavigation() {
                 </button>
               </div>
               <div className="mx-auto mb-6 h-1 w-12 rounded-full bg-white/15 shrink-0" />
-              <nav className="flex flex-col gap-2 px-6">
-              <div className="mb-6 grid grid-cols-2 gap-3">
+              <nav className="flex flex-col gap-2 px-6 overflow-y-auto">
+              <div className="mb-6 grid grid-cols-2 gap-3 pt-2">
                 <Button
                   variant="neon"
                   className="relative flex h-16 flex-col items-center justify-center gap-1 rounded-2xl overflow-hidden"
