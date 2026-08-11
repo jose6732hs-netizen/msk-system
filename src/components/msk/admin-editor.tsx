@@ -217,144 +217,116 @@ export function AdminEditorTab() {
           )}
           
           {activeSection === 'banners' && (
+            <BannerManager
+              title="Banners da Landing"
+              banners={(localSettings as any).hero?.banners ?? DEFAULT_LANDING_BANNERS}
+              defaults={DEFAULT_LANDING_BANNERS}
+              uploadKeyPrefix="landing-banner"
+              uploading={uploading}
+              setUploading={setUploading}
+              uploadAsset={uploadAsset}
+              onChange={(list) => updateSetting('hero', 'banners', list)}
+              onSave={() => handleSave('hero')}
+              onPublish={() => handlePublish('hero')}
+            />
+          )}
+
+          {activeSection === 'panel' && (
+            <BannerManager
+              title="Banners do Painel (Tenants)"
+              banners={(localSettings as any).panel?.banners ?? DEFAULT_PANEL_BANNERS}
+              defaults={DEFAULT_PANEL_BANNERS}
+              uploadKeyPrefix="panel-banner"
+              uploading={uploading}
+              setUploading={setUploading}
+              uploadAsset={uploadAsset}
+              onChange={(list) => updateSetting('panel', 'banners', list)}
+              onSave={() => handleSave('panel')}
+              onPublish={() => handlePublish('panel')}
+            />
+          )}
+
+          {activeSection === 'images' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
-              <div className="flex items-center justify-between">
-                <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Gerenciar Banners da Landing</label>
-                <Button 
-                  size="sm" 
-                  variant="neonOutline"
-                  onClick={() => {
-                    const currentBanners = (localSettings as any).hero?.banners || [];
-                    updateSetting('hero', 'banners', [...currentBanners, { url: '', alt: '', active: true, order: currentBanners.length }]);
-                  }}
-                >
-                  + Adicionar Banner
-                </Button>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <div>
+                  <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Todas as Imagens do Site</h4>
+                  <p className="text-[0.6rem] font-bold text-muted-foreground">Visualize e substitua qualquer imagem usada na plataforma</p>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {((localSettings as any).hero?.banners || []).map((banner: any, index: number) => (
-                  <div key={index} className="glass group rounded-2xl p-4 border border-white/5 space-y-4 hover:border-primary/30 transition-all hover:bg-white/5">
-                    <div className="flex items-start gap-4">
-                      <div className="h-24 w-40 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden relative group/img">
-                        {banner.url ? (
-                          <img src={banner.url} className="h-full w-full object-cover group-hover/img:scale-110 transition-transform duration-500" />
-                        ) : (
-                          <ImageIcon className="h-6 w-6 text-muted-foreground/30" />
-                        )}
-                      </div>
-
-                      <div className="flex-1 space-y-3">
-                        <div className="flex gap-2">
-                          <Input 
-                            placeholder="URL da Imagem"
-                            value={banner.url}
-                            onChange={(e) => {
-                              const newBanners = [...(localSettings as any).hero.banners];
-                              newBanners[index].url = e.target.value;
-                              updateSetting('hero', 'banners', newBanners);
-                            }}
-                            className="text-[0.7rem]"
-                          />
-                          <Button 
-                            size="icon" 
-                            variant="neonOutline" 
-                            className="shrink-0"
-                            onClick={() => {
-                              const input = document.createElement('input');
-                              input.type = 'file';
-                              input.accept = 'image/*';
-                              input.onchange = async (e) => {
-                                const file = (e.target as HTMLInputElement).files?.[0];
-                                if (file) {
-                                  setUploading(`banner-${index}`);
-                                  try {
-                                    const fd = new FormData();
-                                    fd.append('file', file);
-                                    fd.append('key', `landing-banner-${index}`);
-                                    const res = await uploadAsset({ data: fd as any });
-                                    const newBanners = [...(localSettings as any).hero.banners];
-                                    newBanners[index].url = res.url;
-                                    updateSetting('hero', 'banners', newBanners);
-                                    toast.success("Imagem carregada!");
-                                  } catch (err) {
-                                    toast.error("Erro no upload");
-                                  } finally {
-                                    setUploading(null);
-                                  }
-                                }
-                              };
-                              input.click();
-                            }}
-                            disabled={uploading === `banner-${index}`}
-                          >
-                            {uploading === `banner-${index}` ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          <Input 
-                            placeholder="Texto Alternativo (Alt)"
-                            value={banner.alt}
-                            onChange={(e) => {
-                              const newBanners = [...(localSettings as any).hero.banners];
-                              newBanners[index].alt = e.target.value;
-                              updateSetting('hero', 'banners', newBanners);
-                            }}
-                            className="text-[0.7rem] flex-1"
-                          />
-                          <Input 
-                            type="number"
-                            placeholder="Ordem"
-                            value={banner.order || 0}
-                            onChange={(e) => {
-                              const newBanners = [...(localSettings as any).hero.banners];
-                              newBanners[index].order = parseInt(e.target.value) || 0;
-                              updateSetting('hero', 'banners', newBanners);
-                            }}
-                            className="text-[0.7rem] w-16"
-                          />
-                          <div className="flex items-center gap-2 px-2">
-                            <input 
-                              type="checkbox"
-                              checked={banner.active !== false}
-                              onChange={(e) => {
-                                const newBanners = [...(localSettings as any).hero.banners];
-                                newBanners[index].active = e.target.checked;
-                                updateSetting('hero', 'banners', newBanners);
-                              }}
-                              className="w-4 h-4 accent-primary"
-                            />
-                            <span className="text-[0.6rem] font-bold uppercase text-muted-foreground">Ativo</span>
+              {SITE_IMAGE_GROUPS.map((group) => (
+                <div key={group} className="space-y-3">
+                  <p className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-primary/70">{group}</p>
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {SITE_IMAGE_SLOTS.filter((s) => s.group === group).map((slot) => {
+                      const current = (localSettings as any).site_images?.[slot.key] ?? slot.defaultUrl;
+                      return (
+                        <div key={slot.key} className="glass space-y-3 rounded-2xl border border-white/5 p-3 transition-all hover:border-primary/30">
+                          <div className="flex items-center gap-3">
+                            <div className="grid h-16 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                              {current ? (
+                                <img src={current} alt={slot.label} className="h-full w-full object-contain" />
+                              ) : (
+                                <ImageIcon className="h-5 w-5 text-muted-foreground/30" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-[0.65rem] font-black uppercase tracking-widest">{slot.label}</p>
+                              <p className="truncate text-[0.55rem] font-bold text-muted-foreground">{slot.hint}</p>
+                            </div>
                           </div>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="shrink-0 text-red-500 hover:text-red-400 hover:bg-red-500/10"
-                            onClick={() => {
-                              const newBanners = (localSettings as any).hero.banners.filter((_: any, i: number) => i !== index);
-                              updateSetting('hero', 'banners', newBanners);
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
+                          <div className="flex gap-2">
+                            <Input
+                              value={current}
+                              placeholder="URL da imagem"
+                              onChange={(e) => updateSetting('site_images', slot.key, e.target.value)}
+                              className="h-9 text-[0.65rem]"
+                            />
+                            <Button
+                              size="icon"
+                              variant="neonOutline"
+                              className="h-9 w-9 shrink-0"
+                              disabled={uploading === slot.key}
+                              onClick={() => pickAndUpload({
+                                accept: 'image/*',
+                                key: slot.key,
+                                setUploading,
+                                uploadAsset,
+                                onDone: (url) => updateSetting('site_images', slot.key, url),
+                              })}
+                            >
+                              {uploading === slot.key ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9 shrink-0 text-muted-foreground"
+                              title="Restaurar imagem original"
+                              onClick={() => updateSetting('site_images', slot.key, slot.defaultUrl)}
+                            >
+                              <History className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
 
-              <div className="flex gap-3 pt-4">
-                <Button onClick={() => handleSave('hero')} variant="neonOutline" className="flex-1 font-black">
+              <div className="flex gap-3 pt-2">
+                <Button onClick={() => handleSave('site_images')} variant="neonOutline" className="flex-1 font-black">
                   <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
                 </Button>
-                <Button onClick={() => handlePublish('hero')} variant="neon" className="flex-1 font-black">
-                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Banners
+                <Button onClick={() => handlePublish('site_images')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Imagens
                 </Button>
               </div>
             </div>
           )}
+
           
           {activeSection === 'partners' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
