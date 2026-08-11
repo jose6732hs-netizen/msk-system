@@ -178,6 +178,7 @@ export async function loadAffiliateOverview(
     },
     stats,
     goal: { target: goalTarget, current: stats.availableBalance, progress: Math.round(progress * 100) / 100, reached: goalTarget > 0 && stats.availableBalance >= goalTarget },
+
     goals,
     series: Object.values(series).sort((a, b) => a.date.localeCompare(b.date)),
     sales: saleRows.slice(0, 100).map((s) => {
