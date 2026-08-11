@@ -206,6 +206,7 @@ function RootComponent() {
 
 import { Home, CreditCard, LayoutDashboard, Share2, Menu, X, Download, ShieldCheck, ShoppingCart, ChevronRight, Bell } from "lucide-react";
 import { PwaInstallBanner } from "@/components/msk/pwa-install-banner";
+import { MskLogo } from "@/components/msk/logo";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { getExtensionDownload } from "@/lib/extension.functions";
