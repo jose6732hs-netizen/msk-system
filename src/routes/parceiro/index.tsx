@@ -19,6 +19,7 @@ import {
   Award
 } from "lucide-react";
 import { DocumentsTab } from "@/components/parceiro/documents-tab";
+import { AffiliateWelcomeDialog } from "@/components/parceiro/affiliate-welcome-dialog";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
