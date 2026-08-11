@@ -22,7 +22,7 @@ export const Route = createFileRoute('/api/public/cms/upload')({
           const fileName = `cms/${key || 'asset'}-${Date.now()}.${extension}`
           
           // Use a bucket that exists and is public
-          const url = await uploadPublicFile(file, fileName, "extension-builds")
+          const url = await uploadPublicFile(file, fileName, "cms-media")
           
           return new Response(JSON.stringify({ url }), {
             headers: { 'Content-Type': 'application/json' }
