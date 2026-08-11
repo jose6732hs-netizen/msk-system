@@ -25,7 +25,7 @@ export const registerPushDevice = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => subscriptionSchema.parse(d))
   .handler(async ({ context, data }) => {
     // Usar push_subscriptions conforme instrução 3
-    const { error } = await context.supabase.from("push_subscriptions").upsert(
+    const { error } = await (context.supabase as any).from("push_subscriptions").upsert(
       {
         user_id: context.userId,
         device_id: data.deviceId,
@@ -47,7 +47,7 @@ export const registerPushDevice = createServerFn({ method: "POST" })
 export const listMyPushDevices = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data } = await context.supabase
+    const { data } = await (context.supabase as any)
       .from("push_subscriptions")
       .select("id,device_id,browser,platform,is_active,last_seen_at,created_at")
       .eq("user_id", context.userId)
