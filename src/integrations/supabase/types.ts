@@ -1677,31 +1677,45 @@ export type Database = {
         Row: {
           created_at: string
           document: string | null
+          document_hash: string | null
           email: string | null
           id: string
           name: string | null
           phone: string | null
+          referred_by_affiliate_id: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
           document?: string | null
+          document_hash?: string | null
           email?: string | null
           id: string
           name?: string | null
           phone?: string | null
+          referred_by_affiliate_id?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
           document?: string | null
+          document_hash?: string | null
           email?: string | null
           id?: string
           name?: string | null
           phone?: string | null
+          referred_by_affiliate_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_affiliate_id_fkey"
+            columns: ["referred_by_affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_devices: {
         Row: {

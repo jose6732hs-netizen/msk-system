@@ -28,7 +28,7 @@ export async function loadAdminAffiliates(search = "") {
       ? supabaseAdmin.from("profiles").select("id,name,email").in("id", userIds)
       : { data: [] as Record<string, any>[] },
     affiliateIds.length
-      ? supabaseAdmin.from("affiliate_referrals").select("affiliate_id, status").in("affiliate_id", affiliateIds)
+      ? supabaseAdmin.from("affiliate_referrals").select("id, affiliate_id, status, user_id").in("affiliate_id", affiliateIds)
       : { data: [] as Record<string, any>[] },
     affiliateIds.length
       ? supabaseAdmin.from("affiliate_conversions").select("affiliate_id, amount, commission_amount, status").in("affiliate_id", affiliateIds)
@@ -213,7 +213,7 @@ export async function saveCommissionOverride(
       affiliate_id: input.affiliateId ?? null,
       plan_id: input.planId ?? null,
       rate: input.rate ?? null,
-      fixed_amount: input.fixedAmount ?? null,
+      fixed_amount: input.fixed_amount ?? null,
       updated_at: new Date().toISOString(),
     } as never,
     { onConflict: "affiliate_id,plan_id" },
