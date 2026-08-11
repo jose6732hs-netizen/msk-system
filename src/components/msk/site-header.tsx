@@ -17,7 +17,7 @@ const NAV = [
   { to: "/parceiro", label: "Afiliados" },
 ] as const;
 
-export function SiteHeader() {
+export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolean }) {
   const navigate = useNavigate();
   const [signedIn, setSignedIn] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -75,6 +75,78 @@ export function SiteHeader() {
     );
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  if (mobileMenuOnly) {
+    return (
+      <div className="flex items-center">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="sm" aria-label="Menu">
+              <Menu className="h-6 w-6 text-neon" />
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:w-64 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh]">
+            <nav className="mt-8 flex flex-col gap-4 text-sm px-6">
+              <div className="flex items-center justify-between mb-8">
+                <MskLogo size={32} />
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 border border-white/10 rounded-xl">
+                    <X className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+              </div>
+              
+              <div className="flex flex-col gap-2 mb-4 border-b border-border/50 pb-4">
+                {signedIn ? (
+                  <>
+                    <Link 
+                      to="/painel" 
+                      className="flex items-center gap-2 font-bold text-primary p-2"
+                      onClick={() => document.body.click()}
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Meu Painel
+                    </Link>
+                  </>
+                ) : (
+                  <Link 
+                    to="/auth" 
+                    className="flex items-center gap-2 font-bold text-primary p-2"
+                    onClick={() => document.body.click()}
+                  >
+                    Entrar / Cadastrar
+                  </Link>
+                )}
+              </div>
+
+              {NAV.map((item) => (
+                <Link 
+                  key={item.to} 
+                  to={item.to} 
+                  className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
+                  onClick={() => document.body.click()}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              
+              <Button 
+                variant="neon" 
+                className="mt-4 w-full h-12 rounded-xl"
+                onClick={() => {
+                  downloadExtension();
+                  document.body.click();
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Baixar Extensão
+              </Button>
+            </nav>
+          </SheetContent>
+        </Sheet>
+      </div>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-[50] border-b border-border/60 bg-background/70 backdrop-blur-xl lg:block hidden">
