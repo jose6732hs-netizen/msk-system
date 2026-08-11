@@ -124,6 +124,21 @@ function Metric({ label, value }: { label: string; value: string }) {
 }
 
 export function TokenManager() {
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const [tab, setTab] = useState("tokens");
+
+  // Vindo de "gerar licença grátis" na landing: abre direto a aba de teste.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const wantsTrial =
+      new URLSearchParams(window.location.search).get("tab") === "trial" ||
+      localStorage.getItem("msk_open_trial") === "1";
+    if (!wantsTrial) return;
+    localStorage.removeItem("msk_open_trial");
+    setTab("trial");
+    setTimeout(() => sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
+  }, []);
+
   const qc = useQueryClient();
   const fetchOverview = useServerFn(getTokenOverview);
   const genFn = useServerFn(generateToken);
@@ -227,8 +242,12 @@ export function TokenManager() {
   const available = allowance?.available ?? 0;
 
   return (
-    <section className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3">
-      <Tabs defaultValue="tokens">
+    <section
+      id="tokens"
+      ref={sectionRef}
+      className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3"
+    >
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="tokens">
             <KeyRound className="mr-2 h-4 w-4" /> Meus Tokens

@@ -9,8 +9,17 @@ export function generateDeliveryMessage(data: {
   activationInfo: string;
   expirationInfo: string;
   licenseStatus: string;
+  isTrial?: boolean;
 }) {
-  return `🎉 PEDIDO APROVADO COM SUCESSO! 🎉
+  const header = data.isTrial
+    ? `🎉 SEU TESTE GRATUITO FOI LIBERADO! 🎉
+
+Olá! 👋
+
+Sua licença de teste foi gerada com sucesso! 💚
+
+Obrigado por experimentar o nosso produto — aproveite todos os recursos liberados durante o período de teste. 🚀`
+    : `🎉 PEDIDO APROVADO COM SUCESSO! 🎉
 
 Olá! 👋
 
@@ -18,7 +27,19 @@ Seu pedido foi aprovado com sucesso! 💚
 
 Muito obrigado pela sua compra e pela confiança em nosso produto. 🚀
 
-Seu acesso já está disponível e sua licença foi gerada com sucesso.
+Seu acesso já está disponível e sua licença foi gerada com sucesso.`;
+
+  const closing = data.isTrial
+    ? `🎉 Bom teste!
+
+Se gostar da experiência, é só escolher um plano para continuar sem interrupções. 🚀💚`
+    : `🎉 Obrigado pela confiança!
+
+Esperamos que você aproveite ao máximo sua experiência. 🚀💚
+
+Bom uso! 🔥`;
+
+  return `${header}
 
 ━━━━━━━━━━━━━━━━━━
 
@@ -87,11 +108,7 @@ Nossa equipe estará pronta para ajudar você. 🤝
 
 ━━━━━━━━━━━━━━━━━━
 
-🎉 Obrigado pela confiança!
-
-Esperamos que você aproveite ao máximo sua experiência. 🚀💚
-
-Bom uso! 🔥`;
+${closing}`;
 }
 
 export function copyToClipboard(text: string, successMessage: string = "Copiado com sucesso!") {

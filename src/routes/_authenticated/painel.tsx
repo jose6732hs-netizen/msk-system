@@ -25,6 +25,7 @@ import { getAccount, getMyToken, removeMyDevice, cancelMySubscription } from "@/
 import { ExtensionDownloadCard } from "@/components/msk/extension-download";
 import { TokenManager } from "@/components/msk/token-manager";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
+import { NotificationSettings } from "@/components/msk/notification-settings";
 
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
@@ -431,6 +432,14 @@ function Painel() {
         {!isLoading && (
           <div className="mt-6 grid gap-6">
             <TokenManager />
+
+            <section className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3">
+              <h3 className="text-sm font-black uppercase tracking-widest">Notificações</h3>
+              <p className="mb-5 text-xs text-muted-foreground">
+                Escolha o que você quer receber — inclusive fora do app.
+              </p>
+              <NotificationSettings scope="user" />
+            </section>
           </div>
         )}
       </main>
