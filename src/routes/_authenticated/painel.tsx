@@ -221,42 +221,44 @@ function Painel() {
         </div>
 
         {/* Tutoriais Aba no Painel */}
-        <section className="mb-8">
-          <div className="flex items-center gap-3 mb-6">
+        <section className="mb-8 space-y-10">
+          <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Eye className="h-4 w-4 text-primary" />
             </div>
             <h2 className="text-xl font-bold uppercase tracking-tighter">Tutoriais e Explicações</h2>
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {(cms?.['tutorials']?.videos || []).length > 0 ? (
-              (cms['tutorials'].videos as any[]).map((video: any, i: number) => (
-                <div key={i} className="glass rounded-2xl overflow-hidden border border-white/5 group bg-white/[0.02]">
-                  <div className="aspect-video bg-black/40 relative">
-                    <iframe
-                      src={video.url.includes('youtube.com') || video.url.includes('youtu.be') 
-                        ? video.url.replace('watch?v=', 'embed/') 
-                        : video.url.includes('vimeo.com') 
-                          ? video.url.replace('vimeo.com/', 'player.vimeo.com/video/') 
-                          : video.url}
-                      className="w-full h-full"
-                      allowFullScreen
-                    />
-                  </div>
-                  <div className="p-4">
-                    <h4 className="font-bold text-sm uppercase tracking-tighter mb-1 line-clamp-1">{video.title}</h4>
-                    <p className="text-[10px] text-white/50 line-clamp-2">{video.description}</p>
-                  </div>
+
+          {normalizeTutorials(cms?.['tutorials']).length === 0 ? (
+            <div className="glass rounded-2xl border border-white/5 p-8 text-center">
+              <p className="text-xs font-black uppercase tracking-widest text-white/30">Nenhum tutorial postado ainda</p>
+            </div>
+          ) : (
+            normalizeTutorials(cms?.['tutorials']).map((section, si) => (
+              <div key={si} className="space-y-4">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-black uppercase tracking-tighter sm:text-2xl">{section.title || `Etapa ${si + 1}`}</h3>
+                  {section.description && <p className="max-w-3xl text-xs text-white/50 sm:text-sm">{section.description}</p>}
+                  <div className="h-1 w-12 rounded-full bg-primary" />
                 </div>
-              ))
-            ) : (
-              <div className="col-span-full p-8 text-center glass rounded-2xl border border-white/5">
-                <p className="text-xs text-white/30 uppercase tracking-widest font-black">Nenhum tutorial postado ainda</p>
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {section.videos.map((video, i) => (
+                    <div key={i} className="glass overflow-hidden rounded-2xl border border-white/5 bg-white/[0.02]">
+                      <div className="aspect-video bg-black/40">
+                        <TutorialPlayer video={video} />
+                      </div>
+                      <div className="p-4">
+                        <h4 className="mb-1 line-clamp-1 text-sm font-bold uppercase tracking-tighter">{video.title}</h4>
+                        <p className="line-clamp-2 text-[10px] text-white/50">{video.description}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
+            ))
+          )}
         </section>
+
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
