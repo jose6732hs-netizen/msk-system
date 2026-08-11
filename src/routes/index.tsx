@@ -1,4 +1,4 @@
-// Financeiro - Links de Divulgação - Configurações: estas opções agora estão visíveis no menu principal do painel para facilitar o acesso. - MODO MSK ATIVO - EDIÇÃO DE IMAGENS DE OFERTAS DISPONÍVEL - MSK SISTEM 100%
+// MSK SISTEM 100% - Infraestrutura de notificações e banners corrigida.
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";

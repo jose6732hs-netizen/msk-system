@@ -82,15 +82,36 @@ export async function testVapidConnection() {
   const keys = await getVapidKeys();
   if (!keys) return { ok: false, message: "Nenhuma chave VAPID configurada." };
   try {
-    const raw = Uint8Array.from(atob(keys.privateKey.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
-    const key = await crypto.subtle.importKey("pkcs8", raw as BufferSource, { name: "ECDSA", namedCurve: "P-256" }, false, [
-      "sign",
-    ]);
-    await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, new TextEncoder().encode("ping") as BufferSource);
+    // Normaliza a chave privada para base64 padrão (atob é sensível a URL-safe e padding)
+    const normalized = keys.privateKey
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .trim();
+    
+    // Adiciona padding se necessário
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    
+    const raw = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+    
+    const key = await crypto.subtle.importKey(
+      "pkcs8",
+      raw as BufferSource,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"]
+    );
+    
+    await crypto.subtle.sign(
+      { name: "ECDSA", hash: "SHA-256" },
+      key,
+      new TextEncoder().encode("ping") as BufferSource
+    );
+
     const { count } = await supabaseAdmin
       .from("push_devices")
       .select("id", { count: "exact", head: true })
       .eq("active", true as never);
+
     return {
       ok: true,
       message: `Chaves válidas (${keys.source === "database" ? "cadastradas no admin" : "secrets do servidor"}).`,
@@ -98,6 +119,12 @@ export async function testVapidConnection() {
       devices: count ?? 0,
     };
   } catch (e) {
-    return { ok: false, message: `Chave privada inválida: ${(e as Error).message}` };
+    const err = e as Error;
+    // Se o erro for de importação de chave PKCS8, damos uma dica melhor
+    let msg = err.message;
+    if (msg.includes("PKCS8")) {
+      msg = "Chave privada inválida: O formato PKCS8 é obrigatório. Certifique-se de usar uma chave privada VAPID válida.";
+    }
+    return { ok: false, message: `Erro na chave: ${msg}` };
   }
 }
