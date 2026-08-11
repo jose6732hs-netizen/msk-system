@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Eye, EyeOff, RefreshCw, Trophy, Menu, Award } from "lucide-react";
+import { Eye, EyeOff, RefreshCw, Trophy, Menu, X, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
+import { affiliateRoutes } from "@/lib/parceiro/routes";
 
 interface AffiliateHeaderProps {
   balance: number;
