@@ -398,26 +398,30 @@ function PlanosPage() {
         ) : (
           <div className="relative mt-8 sm:mt-12 group w-full overflow-hidden">
             {/* Carousel Controls */}
-            <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex justify-between px-1 sm:px-4 z-20 pointer-events-none opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex justify-between px-1 sm:px-4 z-20 pointer-events-none opacity-100 transition-opacity">
               <button
                 aria-label="Ofertas anteriores"
-                className="p-2 sm:p-3 rounded-full bg-black/70 border border-white/10 text-white backdrop-blur-md pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all"
-                onClick={() => {
+                className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   const container = document.getElementById('plans-carousel');
                   if (container) container.scrollBy({ left: -(container.clientWidth * 0.8), behavior: 'smooth' });
                 }}
               >
-                <ChevronLeft className="h-5 w-5 sm:h-6 sm:w-6" />
+                <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               </button>
               <button
                 aria-label="Próximas ofertas"
-                className="p-2 sm:p-3 rounded-full bg-black/70 border border-white/10 text-white backdrop-blur-md pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all"
-                onClick={() => {
+                className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
                   const container = document.getElementById('plans-carousel');
                   if (container) container.scrollBy({ left: container.clientWidth * 0.8, behavior: 'smooth' });
                 }}
               >
-                <ChevronRight className="h-5 w-5 sm:h-6 sm:w-6" />
+                <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               </button>
             </div>
 
