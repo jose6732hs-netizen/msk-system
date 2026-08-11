@@ -1276,6 +1276,7 @@ export type Database = {
           id: string
           last_validation: string | null
           max_devices: number
+          metadata: Json | null
           plan_id: string
           product_id: string | null
           reseller_id: string | null
@@ -1301,6 +1302,7 @@ export type Database = {
           id?: string
           last_validation?: string | null
           max_devices?: number
+          metadata?: Json | null
           plan_id: string
           product_id?: string | null
           reseller_id?: string | null
@@ -1326,6 +1328,7 @@ export type Database = {
           id?: string
           last_validation?: string | null
           max_devices?: number
+          metadata?: Json | null
           plan_id?: string
           product_id?: string | null
           reseller_id?: string | null
