@@ -103,7 +103,7 @@ export function AffiliateHeader({
               style={{ width: `${Math.min(100, Math.max(2, goalProgress))}%` }}
             />
             <span className="absolute inset-0 flex items-center justify-center truncate px-2 text-[10px] font-black tracking-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] sm:text-[11px]">
-              R$ {balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} / {(goalTarget ?? 1000) >= 1000000 ? `${((goalTarget ?? 1000) / 1000000).toFixed(0)}M` : (goalTarget ?? 1000) >= 1000 ? `${((goalTarget ?? 1000) / 1000).toFixed(0)}k` : goalTarget}
+              {balance.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} / {(goalTarget ?? 1000) >= 1000000 ? `${((goalTarget ?? 1000) / 1000000).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}M` : (goalTarget ?? 1000) >= 1000 ? `${((goalTarget ?? 1000) / 1000).toLocaleString('pt-BR', { minimumFractionDigits: 1 })}k` : (goalTarget ?? 0).toLocaleString('pt-BR')}
             </span>
           </div>
         </div>
