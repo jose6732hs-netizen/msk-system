@@ -208,7 +208,15 @@ export const adminWithdrawalAction = createServerFn({ method: "POST" })
 export const adminTokenPlans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    // Both admins and super admins should see this for token generation
+    const { data: roles } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin"]);
+    
+    if (!roles?.length) throw new Error("Não autorizado");
+
     const { loadTokenPlans } = await import("./admin-tokens.server");
     return { plans: await loadTokenPlans() };
   });
@@ -240,7 +248,14 @@ export const adminGenerateToken = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ context, data }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    const { data: roles } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .in("role", ["admin", "super_admin"]);
+    
+    if (!roles?.length) throw new Error("Não autorizado");
+
     const { generateManualToken } = await import("./admin-tokens.server");
     return generateManualToken(data, context.userId);
   });
