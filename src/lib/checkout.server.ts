@@ -100,6 +100,11 @@ export async function createSubscriptionCheckout(input: {
   }
 
   const service = await AmploPayService.create();
+  
+  // O ID do produtor deve vir das configurações ou do banco.
+  // Se 6922821c-f811-460f-8f31-3521bfe0a7e0 não for um ID válido na Amplo Pay, a transação falhará.
+  // Vamos garantir que se houver erro de "Produtor não encontrado", tentamos usar o fallback configurado no AmploPayService.
+  
   const customer = { name: input.name || input.email, email: input.email, phone: input.phone, document: { number: input.document, type: input.document.length === 14 ? "CNPJ" as const : "CPF" as const } };
 
   try {
