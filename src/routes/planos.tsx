@@ -528,10 +528,11 @@ function PlanosPage() {
               <div className="rounded-3xl border border-white/5 bg-white/5 p-5 sm:p-6">
                 <PayerForm
                   compact
-                  onSaved={() => {
+                  onSaved={(b) => {
                     const p = payer;
                     setPayer(null);
-                    if (p) void subscribe(p.planId, p.planName);
+                    // Gera o PIX automaticamente logo após confirmar CPF/telefone.
+                    if (p) void subscribe(p.planId, p.planName, false, null, b);
                   }}
                 />
               </div>
