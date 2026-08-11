@@ -54,7 +54,7 @@ export const Route = createFileRoute("/api/public/license/activate")({
           return jsonResponse({ 
             success: false, 
             error: "INVALID_LICENSE",
-            message: "Token inválido. Confira os caracteres e tente novamente."
+            message: "Token inválido. Confira os caracteres e tente novamente. (Não encontrado no banco)"
           }, 404);
         }
 

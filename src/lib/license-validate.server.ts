@@ -48,7 +48,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     return jsonResponse({ 
       success: false, 
       error: "LICENSE_INVALID",
-      message: "Token inválido. Confira os caracteres e tente novamente."
+      message: "Token inválido. Confira os caracteres e tente novamente. (Não encontrado no banco)"
     }, 404);
   }
 
