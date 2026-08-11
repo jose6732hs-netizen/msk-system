@@ -18,8 +18,10 @@
 .animate-carousel-loop {
   display: flex;
   width: max-content;
-  animation: carousel-loop 40s linear infinite;
+  animation: carousel-loop 80s linear infinite;
+  will-change: transform;
 }
+
 
 .pause-animation:hover {
   animation-play-state: paused;

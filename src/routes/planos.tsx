@@ -433,10 +433,12 @@ function PlanosPage() {
 
             <div 
               id="plans-carousel"
-              className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth snap-x snap-mandatory px-4 sm:px-10 touch-pan-x scroll-p-4 sm:scroll-p-10"
+              className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth px-4 sm:px-10 touch-pan-x pointer-events-auto"
             >
               {/* Loop Infinito: Usamos a classe animate-carousel-loop do global CSS */}
-              <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10">
+              <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10 pointer-events-auto">
+
+
 
 
               {[...(plans || []), ...(plans || [])].map((plan, idx) => {
@@ -448,7 +450,8 @@ function PlanosPage() {
                   <article
                     key={`${plan.id}-${idx}`}
                     onClick={() => addToCart(plan)}
-                    className={`relative flex flex-col min-w-[260px] w-[260px] sm:min-w-[320px] sm:w-[320px] shrink-0 snap-center rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden transition-all duration-500 cursor-pointer hover:shadow-[0_40px_80px_-20px_rgba(var(--primary-rgb),0.4)] sm:hover:translate-y-[-12px] ${
+                    className={`relative flex flex-col min-w-[260px] w-[260px] sm:min-w-[320px] sm:w-[320px] shrink-0 rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden transition-all duration-500 cursor-pointer hover:shadow-[0_40px_80px_-20px_rgba(var(--primary-rgb),0.4)] sm:hover:translate-y-[-12px] ${
+
                       highlighted 
                         ? "bg-[#0A0A0A] border-2 border-primary shadow-[0_0_80px_-15px_rgba(var(--primary-rgb),0.5)] sm:scale-105 z-10" 
                         : "bg-[#0A0A0A] border border-white/10 hover:border-primary/50"
