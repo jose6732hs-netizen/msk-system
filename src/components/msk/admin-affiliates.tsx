@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { resetAffiliateWithdrawalSecurity } from "@/lib/parceiro/wallet.functions";
 import { Loader2, Save, Search, Users, Copy, ExternalLink, Calendar, Mail, Hash, ShieldCheck, ShieldAlert, BarChart3, Wallet, FileText, CheckCircle2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -286,15 +287,45 @@ function AffiliateRow({
           </Button>
           <Button
             variant={blocked ? "neon" : "destructive"}
-            className="h-9 flex-1"
+            className="h-9 flex-1 whitespace-normal leading-tight text-[11px] sm:text-xs"
             onClick={() => onUpdate({ status: blocked ? "active" : "blocked" })}
           >
             {blocked ? "Desbloquear" : "Bloquear"}
           </Button>
         </div>
+        <div className="sm:col-span-5 flex flex-wrap items-center gap-2 border-t border-white/5 pt-3">
+          <span className="text-[10px] font-bold uppercase text-white/40">Segurança de saque</span>
+          <Button
+            variant="glass"
+            className="h-9 whitespace-normal text-[11px] leading-tight"
+            onClick={() => void resetSecurity(affiliate["id"], false)}
+          >
+            Liberar saque (zerar tentativas)
+          </Button>
+          <Button
+            variant="glass"
+            className="h-9 whitespace-normal text-[11px] leading-tight"
+            onClick={() => void resetSecurity(affiliate["id"], true)}
+          >
+            Redefinir senha de saque
+          </Button>
+        </div>
       </div>
     </div>
   );
+}
+
+async function resetSecurity(affiliateId: string, clearPassword: boolean) {
+  try {
+    await resetAffiliateWithdrawalSecurity({ data: { affiliateId, clearPassword } });
+    toast.success(
+      clearPassword
+        ? "Senha de saque redefinida — o parceiro pode criar uma nova."
+        : "Saque liberado e tentativas zeradas.",
+    );
+  } catch (e) {
+    toast.error((e as Error).message);
+  }
 }
 
 function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> }) {
