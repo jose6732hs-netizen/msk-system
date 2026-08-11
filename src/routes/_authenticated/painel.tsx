@@ -363,6 +363,7 @@ function Painel() {
                </div>
             </section>
 
+            <AffiliateRequestCard />
             <ExtensionDownloadCard />
 
             <section className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3">
