@@ -192,35 +192,35 @@ function AffiliateDashboard() {
                     
                     <div className="space-y-4">
                       {sales.length > 0 ? sales.map((sale: any) => (
-                        <div key={sale.id} className="group p-5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all flex items-center justify-between">
-                           <div className="flex items-center gap-4">
+                        <div key={sale.id} className="group p-5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                           <div className="flex items-center gap-4 min-w-0">
                               <div className={cn(
-                                "w-12 h-12 rounded-full flex items-center justify-center",
+                                "w-12 h-12 rounded-full flex items-center justify-center shrink-0",
                                 sale.status === 'PAID' ? "bg-green-500/10 text-green-500" : 
                                 sale.status === 'PENDING' ? "bg-amber-500/10 text-amber-500" : 
                                 "bg-red-500/10 text-red-500"
                               )}>
                                  <ShoppingCart size={20} />
                               </div>
-                              <div>
-                                 <p className="font-bold text-white group-hover:text-primary transition-colors">{sale.plan}</p>
+                              <div className="min-w-0">
+                                 <p className="font-bold text-white group-hover:text-primary transition-colors truncate">{sale.plan}</p>
                                  <div className="flex flex-col gap-0.5 mt-1">
-                                   <p className="text-[10px] font-bold text-white/60">{sale.customerName}</p>
-                                   <div className="flex items-center gap-2">
+                                   <p className="text-[10px] font-bold text-white/60 truncate">{sale.customerName}</p>
+                                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                                      <p className="text-xs text-white/40">{new Date(sale.createdAt).toLocaleString('pt-BR')}</p>
-                                     <span className="text-white/10 text-[8px]">•</span>
-                                     <p className="text-xs text-white/40 font-mono italic">{sale.customer}</p>
+                                     <span className="text-white/10 text-[8px] hidden sm:inline">•</span>
+                                     <p className="text-xs text-white/40 font-mono italic truncate max-w-[120px] sm:max-w-none">{sale.customer}</p>
                                    </div>
                                  </div>
                               </div>
                            </div>
-                           <div className="text-right flex flex-col items-end gap-1">
-                              <div className="flex flex-col items-end">
-                                <p className="font-bold text-lg leading-none">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                           <div className="text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
+                              <div className="flex flex-col items-start sm:items-end order-1 sm:order-none">
+                                <p className="font-bold text-lg leading-none break-all">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                                 <p className="text-[9px] text-white/40 font-medium">Sua comissão ({sale.rate}%)</p>
                               </div>
                               <div className={cn(
-                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider",
+                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider whitespace-nowrap order-2 sm:order-none",
                                 sale.status === 'PAID' ? "bg-green-500/20 text-green-500" : 
                                 sale.status === 'PENDING' ? "bg-amber-500/20 text-amber-500" : 
                                 "bg-red-500/20 text-red-500"
