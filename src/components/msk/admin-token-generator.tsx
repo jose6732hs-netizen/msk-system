@@ -34,7 +34,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
   const plansFn = useServerFn(adminTokenPlans);
   const generateFn = useServerFn(adminGenerateToken);
 
-  const { data } = useQuery({ queryKey: ["admin-token-plans"], queryFn: () => plansFn() });
+  const { data, isLoading, refetch } = useQuery({ queryKey: ["admin-token-plans"], queryFn: () => plansFn() });
   const plans = data?.plans ?? [];
 
   const [email, setEmail] = useState("");
@@ -47,6 +47,13 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(initialIssued || null);
+
+  useMemo(() => {
+    const firstPlanId = plans?.[0]?.["id"] as string | undefined;
+    if (firstPlanId && !planId) {
+      setPlanId(firstPlanId);
+    }
+  }, [plans, planId]);
 
   useMemo(() => {
     if (initialIssued) {
@@ -62,9 +69,10 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const plan = planId || (plans[0]?.["id"] as string | undefined);
+    const plan = planId || (plans.length > 0 ? (plans[0]?.["id"] as string) : "");
+    
     if (!plan) {
-      toast.error("Cadastre um plano antes de gerar tokens.");
+      toast.error("Erro: Nenhum plano selecionado ou disponível.");
       return;
     }
     setLoading(true);
@@ -160,7 +168,14 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
           <Label htmlFor="tk-plan">Plano</Label>
           <Select value={planId} onValueChange={setPlanId}>
             <SelectTrigger id="tk-plan" className="h-10 w-full">
-              <SelectValue placeholder="Escolha o plano da licença" />
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Carregando planos...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder="Escolha o plano da licença" />
+              )}
             </SelectTrigger>
             <SelectContent className="max-h-72">
               {plans && plans.length > 0 ? (
@@ -174,9 +189,14 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
                     </div>
                   </SelectItem>
                 ))
-              ) : (
+              ) : !isLoading ? (
                 <div className="px-3 py-2 text-sm text-muted-foreground">
-                  Nenhum plano disponível para emissão manual.
+                  Nenhum plano disponível para emissão manual. Verifique se existem planos cadastrados.
+                </div>
+              ) : (
+                <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Buscando planos...
                 </div>
               )}
             </SelectContent>

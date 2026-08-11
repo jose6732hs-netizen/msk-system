@@ -121,9 +121,17 @@ export async function generateManualToken(
 
 
 export async function loadTokenPlans() {
-  const { data } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("plans")
     .select("id,name,slug,is_lifetime,max_devices,active,price,currency,duration_label,duration_days")
     .order("sort_order", { ascending: true });
+  
+  if (error) {
+    console.error("Error loading plans for manual token generation:", error);
+    return [];
+  }
+  
+  // Return all plans for the super admin, even if "active" is false in some context,
+  // but usually they are all true now after our migration.
   return (data ?? []) as Record<string, any>[];
 }
