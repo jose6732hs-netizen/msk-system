@@ -305,10 +305,11 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
   }, [license, fullToken]);
 
   const message = useMemo(() => deliveryData ? generateDeliveryMessage(deliveryData) : "", [deliveryData]);
+  const salesMessage = useMemo(() => deliveryData ? generateSalesMessage(deliveryData) : "", [deliveryData]);
 
   if (!licenseId || isLoading || !deliveryData) return null;
 
-  const handleCopy = (type: "token" | "message" | "all") => {
+  const handleCopy = (type: "token" | "message" | "all" | "sales") => {
     let text = "";
     let toastMsg = "";
 
@@ -318,8 +319,11 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
     } else if (type === "message") {
       text = message;
       toastMsg = "✅ Mensagem completa copiada!";
+    } else if (type === "sales") {
+      text = salesMessage;
+      toastMsg = "✅ Texto de vendas copiado!";
     } else {
-      text = `PRODUTO: ${deliveryData.productName}\nPLANO: ${deliveryData.planName}\nLICENÇA: ${fullToken}\nVALIDADE: ${deliveryData.planDuration}\nINSTRUÇÕES: Instale a extensão e informe sua licença.`;
+      text = `PRODUTO: ${deliveryData.productName}\nPLANO: ${deliveryData.planName}\nLICENÇA: ${fullToken}\nVALIDADE: ${deliveryData.planDuration}\nDISPOSITIVOS: ${deliveryData.maxDevices}\nINSTRUÇÕES: Instale a extensão e informe sua licença.`;
       toastMsg = "✅ Todos os dados copiados!";
     }
 
