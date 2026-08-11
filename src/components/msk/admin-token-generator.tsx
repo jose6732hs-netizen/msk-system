@@ -379,6 +379,17 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
             {copiedType === "message" ? <ClipboardCheck className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
             Copiar Mensagem Completa
           </Button>
+
+          <Button
+            className="w-full justify-start gap-3 h-12 rounded-xl text-xs font-bold uppercase tracking-wider"
+            variant="neonOutline"
+            onClick={() => handleCopy("sales")}
+          >
+            {copiedType === "sales" ? <ClipboardCheck className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
+            Copiar Texto de Vendas
+          </Button>
+
+
           
           <div className="grid grid-cols-2 gap-2">
             <Button 
