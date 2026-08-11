@@ -439,7 +439,7 @@ function PlanosPage() {
               <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10">
 
 
-              {(plans || []).map((plan, idx) => {
+              {[...(plans || []), ...(plans || [])].map((plan, idx) => {
                 const highlighted = plan.slug === "monthly";
                 const isFree = Number(plan.price) === 0;
                 const isDaily = plan.slug === "daily";
@@ -449,12 +449,12 @@ function PlanosPage() {
                     key={`${plan.id}-${idx}`}
                     onClick={() => addToCart(plan)}
                     className={`relative flex flex-col min-w-[260px] w-[260px] sm:min-w-[320px] sm:w-[320px] shrink-0 snap-center rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden transition-all duration-500 cursor-pointer hover:shadow-[0_40px_80px_-20px_rgba(var(--primary-rgb),0.4)] sm:hover:translate-y-[-12px] ${
-
                       highlighted 
                         ? "bg-[#0A0A0A] border-2 border-primary shadow-[0_0_80px_-15px_rgba(var(--primary-rgb),0.5)] sm:scale-105 z-10" 
                         : "bg-[#0A0A0A] border border-white/10 hover:border-primary/50"
                     }`}
                   >
+
                     <div className="relative h-40 sm:h-52 w-full overflow-hidden p-3 pb-0 sm:p-4 sm:pb-0">
                       <img 
                         src={planImage(plan)} 
