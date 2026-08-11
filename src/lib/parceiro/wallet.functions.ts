@@ -39,3 +39,23 @@ export const requestAffiliateWithdrawal = createServerFn({ method: "POST" })
     const { requestWithdrawal } = await import("./wallet.server");
     return requestWithdrawal(context.userId, data);
   });
+
+export const getAffiliateWalletStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { loadWalletStatus } = await import("./wallet.server");
+    return loadWalletStatus(context.userId);
+  });
+
+/** Suporte/Super Admin: desbloqueia o saque de um parceiro. */
+export const resetAffiliateWithdrawalSecurity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ affiliateId: z.string().uuid(), clearPassword: z.boolean().optional() }).parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { assertAdmin } = await import("@/lib/admin-guard");
+    await assertAdmin(context.supabase, context.userId);
+    const { resetWithdrawalSecurity } = await import("./wallet.server");
+    return resetWithdrawalSecurity(data.affiliateId, context.userId, data.clearPassword === true);
+  });
