@@ -6,7 +6,8 @@ import {
   Users, 
   Award, 
   FileText,
-  Settings
+  Settings,
+  MessageCircle
 } from "lucide-react";
 
 export const affiliateRoutes = [
@@ -42,5 +43,12 @@ export const affiliateRoutes = [
     icon: Wallet,
     action: "openWallet",
     description: "Saques e saldo disponível"
+  },
+  {
+    label: "Suporte",
+    to: "/parceiro",
+    icon: MessageCircle,
+    action: "support",
+    description: "Falar com o suporte no WhatsApp"
   }
 ];
