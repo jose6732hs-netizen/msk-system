@@ -99,6 +99,7 @@ function AffiliateDashboard() {
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
       />
+      <AffiliateWelcomeDialog />
 
       <main className="flex-1 container max-w-7xl mx-auto px-4 py-8 overflow-y-auto scrollbar-hide min-w-0">
         <div className="space-y-10 focus:outline-none pb-32 md:pb-20">
