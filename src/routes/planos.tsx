@@ -459,7 +459,7 @@ function PlanosPage() {
                       </div>
                     </div>
 
-                    <div className="p-4 sm:p-8 flex flex-col flex-1">
+                    <div className="p-5 sm:p-8 flex flex-col flex-1">
                       <div className="mb-4 sm:mb-6">
                         <h2 className={`text-[0.6rem] sm:text-xs font-black uppercase tracking-[0.2em] break-words ${highlighted ? "text-primary" : "text-muted-foreground"}`}>
                           {plan.name}
