@@ -31,10 +31,10 @@ function LandingPage() {
         <section className="relative z-10 pt-20 pb-12 sm:pt-32 sm:pb-20">
           <div className="container px-4 mx-auto text-center">
             <h1 className="text-5xl font-black tracking-tighter uppercase sm:text-8xl mb-6">
-              MSK <span className="neon-text">SISTEM</span>
+              SEJA <span className="neon-text">BEM-VINDO</span>
             </h1>
             <p className="max-w-2xl mx-auto text-sm sm:text-base font-medium text-muted-foreground uppercase tracking-[0.2em] mb-12">
-              Performance Incomparável • Gestão Inteligente • Resultados Reais
+              A MAIOR PLATAFORMA DE SOLUÇÕES DIGITAIS • MSK SISTEM
             </p>
           </div>
         </section>
