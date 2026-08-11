@@ -224,7 +224,7 @@ export const getLicenseForTransaction = createServerFn({ method: "GET" })
     // Validar que a transação pertence ao usuário e está paga
     const { data: tx } = await supabaseAdmin
       .from("transactions")
-      .select("id,status,user_id")
+      .select("id,status,user_id,amount,metadata")
       .eq("id", data.transactionId)
       .eq("user_id", context.userId)
       .maybeSingle();
@@ -249,5 +249,9 @@ export const getLicenseForTransaction = createServerFn({ method: "GET" })
       
     if (!license) throw new Error("Licença ainda não gerada. Tente novamente em alguns segundos.");
 
-    return license;
+    return {
+      ...license,
+      amount_paid: tx.amount,
+      transaction_metadata: tx.metadata
+    };
   });
