@@ -347,7 +347,13 @@ function Admin() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/30">
-                        {(data?.licenses ?? []).map((l: any) => {
+                        {(data?.licenses ?? []).filter((l: any) => {
+                          if (statusFilter === "all") return true;
+                          const exp = l.expires_at && new Date(l.expires_at) < new Date();
+                          if (statusFilter === "expired") return exp;
+                          if (statusFilter === "active") return l.status === "active" && !exp;
+                          return l.status === statusFilter;
+                        }).map((l: any) => {
                           const isOnline = l.last_validation && new Date(l.last_validation).getTime() > Date.now() - 300000;
                           const isExpired = l.expires_at && new Date(l.expires_at) < new Date();
                           return (
