@@ -21,6 +21,7 @@ import { Route as PremiacoesRouteImport } from './routes/premiacoes'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedObrigadoRouteImport } from './routes/_authenticated/obrigado'
 import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as AuthenticatedRevendedorRouteImport } from './routes/_authenticated/revendedor'
 import { Route as AfiliadoCodeRouteImport } from './routes/afiliado.$code'
@@ -104,6 +105,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedObrigadoRoute = AuthenticatedObrigadoRouteImport.update({
+  id: '/obrigado',
+  path: '/obrigado',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPainelRoute = AuthenticatedPainelRouteImport.update({
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/obrigado': typeof AuthenticatedObrigadoRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
@@ -282,6 +289,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/obrigado': typeof AuthenticatedObrigadoRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/obrigado': typeof AuthenticatedObrigadoRoute
   '/_authenticated/painel': typeof AuthenticatedPainelRoute
   '/_authenticated/revendedor': typeof AuthenticatedRevendedorRoute
   '/afiliado/$code': typeof AfiliadoCodeRoute
@@ -358,6 +367,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
+    | '/obrigado'
     | '/painel'
     | '/revendedor'
     | '/afiliado/$code'
@@ -394,6 +404,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
+    | '/obrigado'
     | '/painel'
     | '/revendedor'
     | '/afiliado/$code'
@@ -431,6 +442,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/admin'
+    | '/_authenticated/obrigado'
     | '/_authenticated/painel'
     | '/_authenticated/revendedor'
     | '/afiliado/$code'
@@ -575,6 +587,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/obrigado': {
+      id: '/_authenticated/obrigado'
+      path: '/obrigado'
+      fullPath: '/obrigado'
+      preLoaderRoute: typeof AuthenticatedObrigadoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/painel': {
@@ -743,12 +762,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedObrigadoRoute: typeof AuthenticatedObrigadoRoute
   AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
   AuthenticatedRevendedorRoute: typeof AuthenticatedRevendedorRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedObrigadoRoute: AuthenticatedObrigadoRoute,
   AuthenticatedPainelRoute: AuthenticatedPainelRoute,
   AuthenticatedRevendedorRoute: AuthenticatedRevendedorRoute,
 }
