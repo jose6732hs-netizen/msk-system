@@ -101,10 +101,49 @@ export function AdminEditorTab() {
     return <div className="flex h-64 items-center justify-center"><RefreshCw className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
+  const SECTIONS: { id: Section; label: string; icon: any; desc: string }[] = [
+    { id: 'hero', label: 'Hero / Textos', icon: Monitor, desc: 'Título, subtítulo e CTA' },
+    { id: 'images', label: 'Imagens do Site', icon: ImageIcon, desc: 'Todas as imagens editáveis' },
+    { id: 'banners', label: 'Banners Landing', icon: Layout, desc: 'Ordenar e ativar' },
+    { id: 'panel', label: 'Banners Painel', icon: Users, desc: 'Exclusivos dos tenants' },
+    { id: 'partners', label: 'Parceiros', icon: Users, desc: 'Chamada de afiliados' },
+    { id: 'branding', label: 'Extensão / Branding', icon: Palette, desc: 'Ícones e cores' },
+    { id: 'awards', label: 'Premiações / Placas', icon: Trophy, desc: 'Placas 1K a 5M' },
+    { id: 'copy', label: 'Copies / Suporte', icon: Type, desc: 'Links e textos globais' },
+    { id: 'tutorials', label: 'Tutoriais / Vídeos', icon: FileText, desc: 'Como funciona' },
+  ];
+
   return (
-    <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+    <div className="flex flex-col gap-6 lg:flex-row">
+      {/* Steps Sidebar */}
+      <aside className="lg:w-64 lg:shrink-0">
+        <div className="glass sticky top-6 rounded-3xl border border-white/5 p-3">
+          <p className="px-3 py-2 text-[0.55rem] font-black uppercase tracking-[0.2em] text-primary/70">Etapas do site</p>
+          <nav className="flex gap-2 overflow-x-auto no-scrollbar lg:flex-col lg:overflow-visible">
+            {SECTIONS.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveSection(item.id)}
+                className={`flex shrink-0 items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all lg:w-full ${
+                  activeSection === item.id
+                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                }`}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="min-w-0">
+                  <span className="block text-[0.65rem] font-black uppercase tracking-widest">{item.label}</span>
+                  <span className={`hidden lg:block truncate text-[0.55rem] font-bold ${activeSection === item.id ? "opacity-70" : "opacity-50"}`}>{item.desc}</span>
+                </span>
+              </button>
+            ))}
+          </nav>
+        </div>
+      </aside>
+
+      <div className="grid min-w-0 flex-1 grid-cols-1 gap-8 xl:grid-cols-2">
       {/* Editor Panel */}
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -120,32 +159,8 @@ export function AdminEditorTab() {
           </Button>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-3 no-scrollbar rounded-2xl bg-black/20 p-2 border border-white/5 shadow-inner">
-          {[
-            { id: 'hero', label: 'Hero / Texto', icon: Monitor },
-            { id: 'banners', label: 'Banners Landing', icon: ImageIcon },
-            { id: 'partners', label: 'Parceiros', icon: Users },
-            { id: 'branding', label: 'Extensão / Branding', icon: Palette },
-            { id: 'awards', label: 'Premiações / Placas', icon: Trophy },
-            { id: 'copy', label: 'Copies / Suporte', icon: Type },
-            { id: 'tutorials', label: 'Tutoriais / Explicações', icon: FileText },
-          ].map((item: any) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveSection(item.id)}
-              className={`flex items-center gap-2 shrink-0 rounded-xl px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition-all ${
-                activeSection === item.id 
-                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]" 
-                  : "bg-white/5 text-muted-foreground hover:bg-white/10 hover:text-foreground"
-              }`}
-            >
-              <item.icon className="h-3.5 w-3.5" />
-              {item.label}
-            </button>
-          ))}
-        </div>
-
         <div className="glass rounded-3xl p-6 space-y-6">
+
           
           {activeSection === 'hero' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
