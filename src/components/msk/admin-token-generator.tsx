@@ -261,7 +261,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
 
 function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: string; fullToken?: string | null }) {
   const getDetailsFn = useServerFn(adminGetLicenseDetails);
-  const [copiedType, setCopiedType] = useState<"token" | "message" | "all" | null>(null);
+  const [copiedType, setCopiedType] = useState<"token" | "message" | "all" | "sales" | null>(null);
 
   const { data: license, isLoading } = useQuery({
     queryKey: ["admin-license-details", licenseId],
