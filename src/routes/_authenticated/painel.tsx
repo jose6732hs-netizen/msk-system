@@ -319,6 +319,9 @@ function Painel() {
             <div className="md:col-span-2 lg:col-span-1">
               <LicenseCard 
                 license={license} 
+                token={token}
+                busy={busy}
+                onReveal={reveal}
                 onCopyToken={() => {
                   navigator.clipboard.writeText(token ?? license.token_preview ?? "");
                   toast.success("Token copiado com sucesso!");
