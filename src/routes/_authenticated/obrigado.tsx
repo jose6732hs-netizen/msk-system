@@ -172,11 +172,15 @@ function ObrigadoPage() {
                 <CheckCircle2 className="h-12 w-12 text-emerald-400" />
               </div>
               <h1 className="text-4xl sm:text-7xl font-black tracking-tighter uppercase leading-[0.9] mb-4">
-                Pagamento <span className="neon-text">Confirmado!</span>
+                🎉 LICENÇA GERADA <span className="neon-text">COM SUCESSO!</span>
               </h1>
               <p className="text-lg sm:text-2xl text-white/60 font-medium max-w-2xl mx-auto">
-                Obrigado pela sua compra! Tudo certo com seu pedido. Sua licença foi gerada e já está disponível para você.
+                Produto: <span className="text-primary font-black">MSK Suite - Extensão Premium</span>
               </p>
+              <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Gerador de Entrega Profissional</span>
+              </div>
             </div>
 
             <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 max-w-3xl mx-auto">
@@ -197,27 +201,48 @@ function ObrigadoPage() {
               />
             </div>
 
-            <div className="p-10 rounded-[3rem] bg-white/5 border border-white/10 max-w-2xl mx-auto space-y-6">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <ShieldCheck className="h-4 w-4 text-primary" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Garantia de Entrega MSK</span>
+            <div className="p-8 sm:p-12 rounded-[3rem] bg-white/5 border border-white/10 max-w-2xl mx-auto space-y-8 text-left">
+              <div>
+                <h3 className="text-xl font-black uppercase tracking-tighter mb-4 flex items-center gap-2">
+                  <Rocket className="text-primary" /> Passo a Passo de Ativação
+                </h3>
+                <ul className="space-y-4">
+                  <li className="flex gap-4">
+                    <span className="flex-none w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-black">1</span>
+                    <p className="text-sm text-white/60 leading-relaxed">Baixe e instale a extensão MSK SISTEM no seu navegador Chrome.</p>
+                  </li>
+                  <li className="flex gap-4">
+                    <span className="flex-none w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-black">2</span>
+                    <p className="text-sm text-white/60 leading-relaxed">Clique no botão abaixo para ver sua licença e copiar seu <b>Token de Ativação</b>.</p>
+                  </li>
+                  <li className="flex gap-4">
+                    <span className="flex-none w-6 h-6 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[10px] font-black">3</span>
+                    <p className="text-sm text-white/60 leading-relaxed">Abra a extensão e cole o token para liberar o acesso ilimitado.</p>
+                  </li>
+                </ul>
               </div>
-              <p className="text-sm text-white/40 leading-relaxed italic">
-                "Você pode acessar os detalhes da sua licença, consultar a validade e acompanhar o prazo de expiração diretamente no seu painel."
-              </p>
-              <Button 
-                variant="neon" 
-                size="lg" 
-                className="w-full h-16 rounded-2xl font-black uppercase tracking-widest text-sm shadow-2xl shadow-primary/20 group"
-                onClick={() => {
-                  localStorage.setItem("msk_highlight_license", license.id);
-                  navigate({ to: "/painel" });
-                }}
-              >
-                🔑 Ver Minha Licença <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <div className="pt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-white/20 uppercase tracking-widest">
-                <CheckCircle2 size={12} /> Compra realizada com sucesso
+
+              <div className="pt-6 border-t border-white/5">
+                <Button 
+                  variant="neon" 
+                  size="lg" 
+                  className="w-full h-16 rounded-2xl font-black uppercase tracking-widest text-sm shadow-2xl shadow-primary/20 group"
+                  onClick={() => {
+                    localStorage.setItem("msk_highlight_license", license.id);
+                    navigate({ to: "/painel" });
+                  }}
+                >
+                  🔑 Ver Minha Licença & Suporte <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+                <div className="flex items-center gap-2 text-[10px] font-bold text-white/20 uppercase tracking-widest">
+                  <CheckCircle2 size={12} /> Entrega Automática Garantida
+                </div>
+                <Link to="/suporte" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline underline-offset-4">
+                  Precisa de Ajuda? Falar com Suporte
+                </Link>
               </div>
             </div>
           </div>
