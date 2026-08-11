@@ -204,10 +204,13 @@ function AffiliateDashboard() {
                               </div>
                               <div>
                                  <p className="font-bold text-white group-hover:text-primary transition-colors">{sale.plan}</p>
-                                 <div className="flex items-center gap-2 mt-1">
-                                   <p className="text-xs text-white/40">{new Date(sale.createdAt).toLocaleString('pt-BR')}</p>
-                                   <span className="text-white/10 text-[8px]">•</span>
-                                   <p className="text-xs text-white/40 font-mono">{sale.customer}</p>
+                                 <div className="flex flex-col gap-0.5 mt-1">
+                                   <p className="text-[10px] font-bold text-white/60">{sale.customerName}</p>
+                                   <div className="flex items-center gap-2">
+                                     <p className="text-xs text-white/40">{new Date(sale.createdAt).toLocaleString('pt-BR')}</p>
+                                     <span className="text-white/10 text-[8px]">•</span>
+                                     <p className="text-xs text-white/40 font-mono italic">{sale.customer}</p>
+                                   </div>
                                  </div>
                               </div>
                            </div>
