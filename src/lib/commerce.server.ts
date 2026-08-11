@@ -160,6 +160,12 @@ export async function issueStandaloneLicense(input: {
       
       reseller_id: input.resellerId ?? null,
       transaction_id: input.transactionId ?? null,
+      metadata: { 
+        plan_name_snapshot: plan.name,
+        plan_price_snapshot: plan.price,
+        plan_duration_snapshot: plan.duration_days,
+        plan_slug_snapshot: plan.slug
+      }
     } as never)
     .select("id")
     .single();

@@ -281,19 +281,26 @@ export async function resolveCommission(input: {
   let fixed = 0;
   let source: ResolvedCommission["source"] = "default";
 
+  // 1. Override por plano específico para este afiliado
   if (byPlan) {
     rate = Number(byPlan.rate);
     fixed = Number(byPlan.fixed_amount);
     source = "override_plan";
-  } else if (global) {
+  } 
+  // 2. Override global para este afiliado
+  else if (global) {
     rate = Number(global.rate);
     fixed = Number(global.fixed_amount);
     source = "override_global";
-  } else if (plan && (Number(plan.affiliate_commission_rate ?? 0) > 0 || Number(plan.affiliate_commission_fixed ?? 0) > 0)) {
+  } 
+  // 3. Configuração padrão do Plano
+  else if (plan && (Number(plan.affiliate_commission_rate ?? 0) > 0 || Number(plan.affiliate_commission_fixed ?? 0) > 0)) {
     rate = Number(plan.affiliate_commission_rate ?? 0);
     fixed = Number(plan.affiliate_commission_fixed ?? 0);
     source = "plan";
-  } else {
+  } 
+  // 4. Padrão do sistema/afiliado
+  else {
     rate = Number(affiliate?.commission_rate ?? 0);
     source = "default";
   }
@@ -326,6 +333,8 @@ export async function registerPendingCommission(input: {
         amount: resolved.amount,
         base_amount: input.amount,
         rate: resolved.rate,
+        commission_percentage: resolved.rate, // Snapshot da porcentagem
+        commission_amount: resolved.amount, // Snapshot do valor
         source: resolved.source,
         status: "PENDING",
       } as never,
@@ -387,11 +396,16 @@ export async function approveCommissionForTransaction(tx: {
     commissionId = data?.id ?? null;
     amount = resolved.amount;
   } else {
+    // Atualiza a comissão existente com os valores calculados no momento do pagamento (snapshot)
     await supabaseAdmin
       .from("affiliate_commissions")
       .update({ 
         status: "APPROVED", 
         amount: resolved.amount,
+        rate: resolved.rate,
+        commission_percentage: resolved.rate,
+        commission_amount: resolved.amount,
+        source: resolved.source,
         approved_at: new Date().toISOString(), 
         updated_at: new Date().toISOString() 
       } as any)

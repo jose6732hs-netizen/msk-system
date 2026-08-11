@@ -166,9 +166,12 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
               {plans && plans.length > 0 ? (
                 plans.map((p: any) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                    {p.is_lifetime ? " — Vitalício" : ""}
-                    {p.active === false ? " (oculto no site)" : ""}
+                    <div className="flex flex-col gap-0.5">
+                      <span className="font-bold">{p.name}</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {p.price > 0 ? `R$ ${p.price.toFixed(2)}` : "Grátis"} • {p.duration_label || (p.is_lifetime ? "Vitalício" : `${p.duration_days} dias`)}
+                      </span>
+                    </div>
                   </SelectItem>
                 ))
               ) : (

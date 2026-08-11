@@ -18,6 +18,7 @@ type PlanForm = {
   name: string;
   description: string;
   price: number;
+  currency: string;
   duration_label: string;
   duration_unit: string;
   duration_value: number;
@@ -27,6 +28,8 @@ type PlanForm = {
   active: boolean;
   sort_order: number;
   image_url: string;
+  affiliate_commission_rate?: number;
+  affiliate_commission_fixed?: number;
 };
 
 const EMPTY: PlanForm = {
@@ -34,6 +37,7 @@ const EMPTY: PlanForm = {
   name: "",
   description: "",
   price: 0,
+  currency: "BRL",
   duration_label: "30 dias",
   duration_unit: "day",
   duration_value: 30,
@@ -43,6 +47,8 @@ const EMPTY: PlanForm = {
   active: true,
   sort_order: 0,
   image_url: "",
+  affiliate_commission_rate: 0,
+  affiliate_commission_fixed: 0,
 };
 
 /** Gestão das assinaturas: planos publicados no site + assinaturas ativas. */
@@ -65,6 +71,7 @@ export function AdminSubscriptionsTab({
       name: plan["name"] ?? "",
       description: plan["description"] ?? "",
       price: Number(plan["price"] ?? 0),
+      currency: plan["currency"] ?? "BRL",
       duration_label: plan["duration_label"] ?? "",
       duration_unit: plan["duration_unit"] ?? "day",
       duration_value: Number(plan["duration_value"] ?? 30),
@@ -74,6 +81,8 @@ export function AdminSubscriptionsTab({
       active: plan["active"] !== false,
       sort_order: Number(plan["sort_order"] ?? 0),
       image_url: plan["image_url"] ?? "",
+      affiliate_commission_rate: plan["affiliate_commission_rate"] ?? 0,
+      affiliate_commission_fixed: plan["affiliate_commission_fixed"] ?? 0,
     });
   }
 
@@ -169,6 +178,19 @@ export function AdminSubscriptionsTab({
                 inputMode="decimal"
                 value={String(editing.price)}
                 onChange={(e) => setEditing({ ...editing, price: Number(e.target.value || 0) })}
+              />
+            </Field>
+            <Field label="Comissão Afiliado (%)">
+              <Input
+                inputMode="decimal"
+                value={String(editing.affiliate_commission_rate ?? 0)}
+                onChange={(e) => setEditing({ ...editing, affiliate_commission_rate: Number(e.target.value || 0) })}
+              />
+            </Field>
+            <Field label="Moeda">
+              <Input
+                value={editing.currency || "BRL"}
+                onChange={(e) => setEditing({ ...editing, currency: e.target.value.toUpperCase() })}
               />
             </Field>
             <Field label="Descrição">

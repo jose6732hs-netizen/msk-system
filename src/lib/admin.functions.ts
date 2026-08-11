@@ -102,6 +102,8 @@ const planSchema = z.object({
   active: z.boolean().default(true),
   sort_order: z.number().int().default(0),
   image_url: z.string().max(400).default("").optional(),
+  affiliate_commission_rate: z.number().min(0).max(100).default(0),
+  affiliate_commission_fixed: z.number().min(0).default(0),
 });
 
 export const adminSavePlan = createServerFn({ method: "POST" })
