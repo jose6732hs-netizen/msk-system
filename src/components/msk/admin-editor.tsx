@@ -843,6 +843,85 @@ export function AdminEditorTab() {
               </div>
             </div>
           )}
+          {activeSection === 'splits' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Configurações Financeiras / Splits</h4>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[0.65rem] font-black uppercase tracking-widest text-primary">Comissão Padrão Afiliados</label>
+                      <select 
+                        className="bg-black/40 border border-white/10 rounded-lg text-[0.6rem] px-2 py-1 outline-none"
+                        value={(localSettings as any).splits?.affiliate_type ?? 'percent'}
+                        onChange={(e) => updateSetting('splits', 'affiliate_type', e.target.value)}
+                      >
+                        <option value="percent">Porcentagem (%)</option>
+                        <option value="fixed">Fixo (R$)</option>
+                      </select>
+                    </div>
+                    <div className="relative">
+                      <Input 
+                        type="number"
+                        placeholder="Valor"
+                        value={(localSettings as any).splits?.affiliate_value ?? '10'}
+                        onChange={(e) => updateSetting('splits', 'affiliate_value', e.target.value)}
+                        className="pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[0.6rem] font-bold text-muted-foreground">
+                        {(localSettings as any).splits?.affiliate_type === 'fixed' ? 'BRL' : '%'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[0.65rem] font-black uppercase tracking-widest text-secondary">Comissão Padrão Revendedores</label>
+                      <select 
+                        className="bg-black/40 border border-white/10 rounded-lg text-[0.6rem] px-2 py-1 outline-none"
+                        value={(localSettings as any).splits?.reseller_type ?? 'percent'}
+                        onChange={(e) => updateSetting('splits', 'reseller_type', e.target.value)}
+                      >
+                        <option value="percent">Porcentagem (%)</option>
+                        <option value="fixed">Fixo (R$)</option>
+                      </select>
+                    </div>
+                    <div className="relative">
+                      <Input 
+                        type="number"
+                        placeholder="Valor"
+                        value={(localSettings as any).splits?.reseller_value ?? '5'}
+                        onChange={(e) => updateSetting('splits', 'reseller_value', e.target.value)}
+                        className="pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[0.6rem] font-bold text-muted-foreground">
+                        {(localSettings as any).splits?.reseller_type === 'fixed' ? 'BRL' : '%'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-white/5">
+                   <p className="text-[0.6rem] text-muted-foreground leading-relaxed italic">
+                     * Os splits são aplicados automaticamente na Amplo Pay. O produtor principal recebe o valor restante após as deduções.
+                   </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('splits')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+                </Button>
+                <Button onClick={() => handlePublish('splits')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Splits
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* History / Audit */}
