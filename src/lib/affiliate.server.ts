@@ -28,6 +28,12 @@ export async function getGoals() {
   return getSetting<Goals>("affiliate_goals", DEFAULT_GOALS);
 }
 
+export async function getAffiliateGoal(currentBalance: number) {
+  const tiers = [1000, 10000, 100000, 500000, 1000000, 5000000];
+  const nextTier = tiers.find((t) => t > currentBalance) || tiers[tiers.length - 1];
+  return nextTier;
+}
+
 /* ------------------------------- Rastreio ------------------------------- */
 
 export async function trackVisit(input: {
