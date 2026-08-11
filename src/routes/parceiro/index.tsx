@@ -395,12 +395,12 @@ function StatCard({ label, value, icon, color }: StatCardProps) {
   };
 
   return (
-    <div className="bg-[#0F0F0F] border border-white/10 p-6 rounded-[2rem] hover:border-white/20 transition-all group">
-       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4 transition-transform group-hover:scale-110", colors[color])}>
+    <div className="bg-[#0F0F0F] border border-white/10 p-5 sm:p-6 rounded-[2rem] hover:border-white/20 transition-all group overflow-hidden flex flex-col h-full">
+       <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4 shrink-0 transition-transform group-hover:scale-110", colors[color])}>
          {icon}
        </div>
-       <p className="text-xs font-bold text-white/40 uppercase tracking-widest mb-1">{label}</p>
-       <h4 className="text-2xl font-bold tracking-tight">{value}</h4>
+       <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 truncate w-full">{label}</p>
+       <h4 className="text-xl sm:text-2xl font-bold tracking-tight break-words line-clamp-2">{value}</h4>
     </div>
   );
 }
