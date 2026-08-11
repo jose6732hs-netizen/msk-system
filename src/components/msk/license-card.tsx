@@ -188,19 +188,30 @@ export function LicenseCard({ license, token, busy, onReveal, onCopyToken, highl
           </div>
         )}
 
-        <div className="mt-10 flex flex-wrap gap-4 pt-8 border-t border-white/5">
+        <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3">Token de Ativação</p>
+          <p className="font-mono text-lg text-primary break-all mb-4">
+            {token ?? license.token_preview ?? "MSK-••••-••••-••••-••••"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="neonOutline" onClick={onReveal} disabled={busy} className="h-9 px-4 text-[10px] uppercase font-black">
+              {busy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} {token ? "Ocultar" : "Revelar"}
+            </Button>
+            <Button size="sm" variant="neon" onClick={onCopyToken} disabled={!token && !license.token_preview} className="h-9 px-4 text-[10px] uppercase font-black">
+              <Copy size={14} /> Copiar
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-wrap gap-4 pt-6 border-t border-white/5">
           <Button 
-            variant="neon" 
-            className="rounded-xl h-11 px-6 font-bold text-xs gap-2"
-            onClick={() => onCopyToken?.()}
-          >
-            <Copy size={16} /> Copiar Token de Acesso
-          </Button>
-          <Button 
+            asChild
             variant="ghost" 
             className="rounded-xl h-11 px-6 font-bold text-xs gap-2 text-white/60 hover:text-white hover:bg-white/5"
           >
-            <ExternalLink size={16} /> Ver Detalhes da Transação
+            <a href={`https://amplopay.com/transacao/${license.transaction_id}`} target="_blank" rel="noopener noreferrer">
+              <ExternalLink size={16} /> Ver no Gateway
+            </a>
           </Button>
         </div>
       </div>
