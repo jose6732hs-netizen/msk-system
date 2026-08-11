@@ -11,23 +11,22 @@ import {
 
 export const affiliateRoutes = [
   {
-    label: "Visão Geral",
+    label: "Painel",
     to: "/parceiro",
     icon: LayoutDashboard,
     description: "Acompanhe seu desempenho geral"
+  },
+  {
+    label: "Ranking",
+    to: "/admin", // Seguindo a lógica anterior de ver histórico de vendas/ranking
+    icon: TrendingUp,
+    description: "Veja sua posição no ranking"
   },
   {
     label: "Premiações",
     to: "/premiacoes",
     icon: Award,
     description: "Resgate prêmios por desempenho"
-  },
-  {
-    label: "Vendas",
-    to: "/parceiro",
-    hash: "sales", // In case we want to jump to sections
-    icon: ShoppingCart,
-    description: "Histórico de vendas indicadas"
   },
   {
     label: "Indicações",

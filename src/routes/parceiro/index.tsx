@@ -101,31 +101,8 @@ function AffiliateDashboard() {
       />
 
       <main className="flex-1 container max-w-7xl mx-auto px-4 py-8 overflow-y-auto scrollbar-hide min-w-0">
-        <Tabs defaultValue="overview" className="space-y-10 focus:outline-none pb-32 md:pb-20">
-          <TabsList className="bg-[#0F0F0F] border border-white/10 p-1 rounded-2xl h-auto min-h-14 w-full max-w-lg flex flex-wrap sm:flex-nowrap">
-            <TabsTrigger value="overview" id="overview" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary h-12 sm:h-full">Painel</TabsTrigger>
-            <TabsTrigger 
-              value="ranking" 
-              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full px-2"
-            >
-              <TrendingUp size={16} className="shrink-0" /> <span className="truncate">Ranking</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="awards" 
-              className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full"
-              onClick={() => navigate({ to: "/premiacoes" })}
-            >
-              <Award size={16} className="shrink-0" /> <span className="truncate">Premiações</span>
-            </TabsTrigger>
-            <TabsTrigger value="referrals" id="referrals" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full">
-              <Users size={16} className="shrink-0" /> <span className="truncate">Indicações</span>
-            </TabsTrigger>
-            <TabsTrigger value="docs" id="docs" className="flex-1 rounded-xl font-bold data-[state=active]:bg-primary flex items-center justify-center gap-2 h-12 sm:h-full">
-              <FileText size={16} className="shrink-0" /> <span className="truncate">Documentos</span>
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-10 focus:outline-none animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="space-y-10 focus:outline-none pb-32 md:pb-20">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 space-y-10">
             {/* Carousel Banner */}
             <div className="w-full">
               <PanelCarousel />
