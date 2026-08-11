@@ -49,7 +49,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(initialIssued || null);
 
   useMemo(() => {
-    if (plans.length > 0 && !planId) {
+    if (plans && plans.length > 0 && !planId) {
       setPlanId(plans[0]["id"] as string);
     }
   }, [plans, planId]);
