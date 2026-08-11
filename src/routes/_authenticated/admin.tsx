@@ -31,6 +31,9 @@ const levels = [
   { threshold: "5M", title: "Diamante Raro", description: "Lenda. Quem chegou no topo.", image: award5mAsset.url },
 ];
 import { AdminPushTestsTab } from "@/components/msk/admin-push-tests";
+import { AdminSubscriptionsTab } from "@/components/msk/admin-subscriptions";
+import { NotificationSettings } from "@/components/msk/notification-settings";
+import { Bell } from "lucide-react";
 
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin } from "@/lib/admin.functions";
@@ -67,6 +70,7 @@ const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: 
     items: [
       { value: "tracking", label: "Analytics", Icon: TrendingUp },
       { value: "push", label: "Push / Testes", Icon: MessageSquare },
+      { value: "notifications", label: "Notificações", Icon: Bell },
       { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
       { value: "logs", label: "Auditoria", Icon: Clock },
     ],
@@ -446,6 +450,67 @@ function Admin() {
                 {activeTab === "affiliates" && <AdminAffiliatesTab />}
                 {activeTab === "extension" && <AdminExtensionTab />}
                 {activeTab === "push" && <AdminPushTestsTab />}
+                {activeTab === "notifications" && <NotificationSettings scope="admin" />}
+                {activeTab === "subs" && (
+                  <AdminSubscriptionsTab
+                    plans={(data?.plans ?? []) as Record<string, any>[]}
+                    subscriptions={(data?.subscriptions ?? []) as Record<string, any>[]}
+                  />
+                )}
+                {activeTab === "payments" && (
+                  <div className="space-y-2">
+                    {((data?.payments ?? []) as Record<string, any>[]).map((p) => (
+                      <div
+                        key={p["id"]}
+                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 px-4 py-3 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{p["profiles"]?.email ?? "—"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {p["provider"]} · {fmt(p["created_at"])}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-right">
+                          <p className="font-black text-primary">
+                            {Number(p["amount"] ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                          </p>
+                          <p className="text-[0.6rem] font-black uppercase text-muted-foreground">{p["status"]}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {!data?.payments?.length && (
+                      <p className="text-sm text-muted-foreground">Nenhum pagamento registrado ainda.</p>
+                    )}
+                  </div>
+                )}
+                {activeTab === "webhooks" && (
+                  <div className="space-y-2">
+                    {((data?.webhooks ?? []) as Record<string, any>[]).map((w) => (
+                      <div
+                        key={w["id"]}
+                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 px-4 py-3 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{w["event_type"]}</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {w["provider"]} · {fmt(w["created_at"])} {w["error"] ? `· ${w["error"]}` : ""}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            "shrink-0 rounded-full px-2.5 py-0.5 text-[0.6rem] font-black uppercase",
+                            w["processed"] ? "bg-emerald-500/20 text-emerald-400" : "bg-yellow-500/20 text-yellow-500",
+                          )}
+                        >
+                          {w["processed"] ? "Processado" : "Pendente"}
+                        </span>
+                      </div>
+                    ))}
+                    {!data?.webhooks?.length && (
+                      <p className="text-sm text-muted-foreground">Nenhum webhook recebido ainda.</p>
+                    )}
+                  </div>
+                )}
                 {activeTab === "awards" && (
                   <div className="space-y-6">
                     <div className="flex items-center gap-3 mb-6">

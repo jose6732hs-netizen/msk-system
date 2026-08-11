@@ -293,13 +293,14 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
       : (license.status === "active" && !plan?.is_lifetime ? "Será definida após a ativação" : "N/A");
 
     return {
-      productName: "MSK SISTEMe - Extensão Premium",
+      productName: "MSK Suite - Extensão Premium",
       planName: plan?.name || (isTrial ? "Teste Gratuito" : "Manual"),
       planDuration: duration,
       maxDevices: license.max_devices || 1,
       licenseKey: fullToken,
       activationInfo,
       expirationInfo: plan?.is_lifetime ? "VITALÍCIA" : expirationInfo,
+      isTrial,
       licenseStatus: license.status === "active" ? "🟢 Ativa / Disponível" : `🔴 ${license.status.toUpperCase()}`,
     };
   }, [license, fullToken]);
