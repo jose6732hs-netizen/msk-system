@@ -72,9 +72,11 @@ export async function generateVapidPair() {
   ])) as CryptoKeyPair;
   const pub = new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey));
   const priv = new Uint8Array(await crypto.subtle.exportKey("pkcs8", kp.privateKey));
-  let s = "";
-  for (const b of priv) s += String.fromCharCode(b);
-  return { publicKey: b64url(pub), privateKey: btoa(s) };
+  
+  return { 
+    publicKey: b64url(pub), 
+    privateKey: b64url(priv) // Usando b64url consistentemente
+  };
 }
 
 /** Valida as chaves configuradas assinando um token VAPID de teste. */
@@ -88,10 +90,21 @@ export async function testVapidConnection() {
       .replace(/_/g, "/")
       .trim();
     
-    // Adiciona padding se necessário
     const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-    
-    const raw = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+    let raw = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+
+    // Suporte para chaves RAW (32 bytes) convertendo para PKCS#8
+    if (raw.length === 32) {
+      const pkcs8Wrapper = new Uint8Array([
+        0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
+        0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01,
+        0x01, 0x04, 0x20
+      ]);
+      const out = new Uint8Array(pkcs8Wrapper.length + raw.length);
+      out.set(pkcs8Wrapper, 0);
+      out.set(raw, pkcs8Wrapper.length);
+      raw = out;
+    }
     
     const key = await crypto.subtle.importKey(
       "pkcs8",

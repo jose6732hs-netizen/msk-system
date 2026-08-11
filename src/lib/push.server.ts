@@ -47,18 +47,49 @@ async function vapidToken(audience: string): Promise<{ jwt: string; publicKey: s
     enc.encode(JSON.stringify({ aud: audience, exp: Math.floor(Date.now() / 1000) + 12 * 3600, sub: subject })),
   );
   const unsigned = `${header}.${payload}`;
-
-  const normalized = privateKey.replace(/-/g, "+").replace(/_/g, "/").trim();
-  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
-  const raw = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
   
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    raw as BufferSource,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"]
-  );
+  // Diagnóstico seguro: não logar a chave completa
+  // console.log(`VAPID private key found: YES, Size: ${privateKey.length}, Prefix: ${privateKey.substring(0, 10)}...`);
+
+  // A chave VAPID privada costuma ser Base64 ou Base64URL do formato PKCS8 ou Raw (32 bytes)
+  // O Web Crypto importKey "pkcs8" espera um DER-encoded PKCS#8 PrivateKeyInfo.
+  
+  let raw: Uint8Array;
+  try {
+    // Tenta decodificar assumindo Base64/Base64URL
+    const normalized = privateKey.replace(/-/g, "+").replace(/_/g, "/").trim();
+    const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+    raw = Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+  } catch (e) {
+    throw new Error(`FALHA_DECODIFICAR_BASE64: ${(e as Error).message}`);
+  }
+
+  // Se a chave tem 32 bytes, ela está no formato RAW (D). 
+  // O Web Crypto importKey "pkcs8" PRECISA de um wrapper PKCS#8.
+  if (raw.length === 32) {
+    // Converte RAW (32 bytes) para PKCS#8 (para P-256)
+    // Estrutura ASN.1 para PKCS#8 PrivateKeyInfo (v1) com ECDSA P-256
+    const pkcs8Wrapper = new Uint8Array([
+      0x30, 0x41, 0x02, 0x01, 0x00, 0x30, 0x13, 0x06, 0x07, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x02, 0x01,
+      0x06, 0x08, 0x2a, 0x86, 0x48, 0xce, 0x3d, 0x03, 0x01, 0x07, 0x04, 0x27, 0x30, 0x25, 0x02, 0x01,
+      0x01, 0x04, 0x20
+    ]);
+    raw = concat(pkcs8Wrapper, raw);
+  }
+  
+  let key: CryptoKey;
+  try {
+    key = await crypto.subtle.importKey(
+      "pkcs8",
+      raw as BufferSource,
+      { name: "ECDSA", namedCurve: "P-256" },
+      false,
+      ["sign"]
+    );
+  } catch (e) {
+    throw new Error(`PKCS8_IMPORT_FAILED: ${(e as Error).message}. RawLength: ${raw.length}`);
+  }
+
   const sig = new Uint8Array(
     await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, enc.encode(unsigned) as BufferSource),
   );
