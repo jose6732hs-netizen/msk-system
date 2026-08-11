@@ -25,6 +25,191 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
+import {
+  SITE_IMAGE_SLOTS,
+  SITE_IMAGE_GROUPS,
+  DEFAULT_LANDING_BANNERS,
+  DEFAULT_PANEL_BANNERS,
+} from "@/lib/site-images";
+import { ChevronUp, ChevronDown } from "lucide-react";
+
+type BannerItem = { url: string; alt?: string; active?: boolean; order?: number };
+
+async function pickAndUpload(opts: {
+  accept: string;
+  key: string;
+  setUploading: (v: string | null) => void;
+  uploadAsset: (args: any) => Promise<any>;
+  onDone: (url: string) => void;
+}) {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = opts.accept;
+  input.onchange = async (e) => {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    opts.setUploading(opts.key);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("key", opts.key);
+      const res = await opts.uploadAsset({ data: fd as any });
+      opts.onDone(res.url);
+      toast.success("Arquivo carregado!");
+    } catch {
+      toast.error("Erro no upload");
+    } finally {
+      opts.setUploading(null);
+    }
+  };
+  input.click();
+}
+
+function BannerManager(props: {
+  title: string;
+  banners: BannerItem[];
+  defaults: BannerItem[];
+  uploadKeyPrefix: string;
+  uploading: string | null;
+  setUploading: (v: string | null) => void;
+  uploadAsset: (args: any) => Promise<any>;
+  onChange: (list: BannerItem[]) => void;
+  onSave: () => void;
+  onPublish: () => void;
+}) {
+  const list = [...(props.banners || [])].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const commit = (next: BannerItem[]) => props.onChange(next.map((b, i) => ({ ...b, order: i })));
+
+  const move = (index: number, dir: -1 | 1) => {
+    const next = [...list];
+    const target = index + dir;
+    if (target < 0 || target >= next.length) return;
+    const a = next[index]!;
+    next[index] = next[target]!;
+    next[target] = a;
+    commit(next);
+  };
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h4 className="text-[0.7rem] font-black uppercase tracking-widest">{props.title}</h4>
+          <p className="text-[0.6rem] font-bold text-muted-foreground">{list.length} banner(s) — use as setas para reordenar</p>
+        </div>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" className="text-[0.6rem] font-black uppercase" onClick={() => commit([...list, ...props.defaults])}>
+            Importar do site
+          </Button>
+          <Button size="sm" variant="neonOutline" onClick={() => commit([...list, { url: "", alt: "", active: true }])}>
+            + Adicionar
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {list.map((banner, index) => (
+          <div key={index} className="glass space-y-4 rounded-2xl border border-white/5 p-4 transition-all hover:border-primary/30">
+            <div className="flex items-start gap-4">
+              <div className="flex flex-col gap-1">
+                <Button size="icon" variant="ghost" className="h-7 w-7" disabled={index === 0} onClick={() => move(index, -1)}>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </Button>
+                <span className="text-center text-[0.6rem] font-black text-primary/70">{index + 1}</span>
+                <Button size="icon" variant="ghost" className="h-7 w-7" disabled={index === list.length - 1} onClick={() => move(index, 1)}>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="grid h-24 w-40 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                {banner.url ? (
+                  <img src={banner.url} alt={banner.alt || ""} className="h-full w-full object-cover" />
+                ) : (
+                  <ImageIcon className="h-6 w-6 text-muted-foreground/30" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1 space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="URL da imagem"
+                    value={banner.url}
+                    onChange={(e) => {
+                      const next = [...list];
+                      next[index] = { ...banner, url: e.target.value };
+                      commit(next);
+                    }}
+                    className="text-[0.7rem]"
+                  />
+                  <Button
+                    size="icon"
+                    variant="neonOutline"
+                    className="shrink-0"
+                    disabled={props.uploading === `${props.uploadKeyPrefix}-${index}`}
+                    onClick={() => pickAndUpload({
+                      accept: "image/*",
+                      key: `${props.uploadKeyPrefix}-${index}`,
+                      setUploading: props.setUploading,
+                      uploadAsset: props.uploadAsset,
+                      onDone: (url) => {
+                        const next = [...list];
+                        next[index] = { ...banner, url };
+                        commit(next);
+                      },
+                    })}
+                  >
+                    {props.uploading === `${props.uploadKeyPrefix}-${index}` ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Texto alternativo (alt)"
+                    value={banner.alt ?? ""}
+                    onChange={(e) => {
+                      const next = [...list];
+                      next[index] = { ...banner, alt: e.target.value };
+                      commit(next);
+                    }}
+                    className="flex-1 text-[0.7rem]"
+                  />
+                  <label className="flex items-center gap-2 px-2">
+                    <input
+                      type="checkbox"
+                      checked={banner.active !== false}
+                      onChange={(e) => {
+                        const next = [...list];
+                        next[index] = { ...banner, active: e.target.checked };
+                        commit(next);
+                      }}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    <span className="text-[0.6rem] font-bold uppercase text-muted-foreground">Ativo</span>
+                  </label>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="shrink-0 text-red-500 hover:bg-red-500/10 hover:text-red-400"
+                    onClick={() => commit(list.filter((_, i) => i !== index))}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex gap-3 pt-4">
+        <Button onClick={props.onSave} variant="neonOutline" className="flex-1 font-black">
+          <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+        </Button>
+        <Button onClick={props.onPublish} variant="neon" className="flex-1 font-black">
+          <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Banners
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 
 type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards';
 
