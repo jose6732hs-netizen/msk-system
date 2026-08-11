@@ -184,15 +184,21 @@ export async function loadAffiliateOverview(
     sales: saleRows.slice(0, 100).map((s) => {
       const c = commissionByTx.get(s.id) as Record<string, any> | undefined;
       const user = userById.get(s.user_id as string);
+      const amount = Number(s.amount ?? 0);
+      const rate = Number(c?.["rate"] ?? row["commission_rate"] ?? 0);
+      // Se a comissão ainda não foi registrada (venda pendente), estima pelo percentual do afiliado
+      const commission = c?.["amount"] != null
+        ? Number(c["amount"])
+        : Math.round(amount * (rate / 100) * 100) / 100;
       return {
         id: s.id,
         customer: maskEmail(user?.email),
         customerName: user?.name || "Usuário",
         plan: (s as Record<string, any>)["plans"]?.name ?? "—",
-        amount: Number(s.amount),
-        rate: Number(c?.["rate"] ?? 0),
-        commission: Number(c?.["amount"] ?? 0),
-        commissionStatus: c?.["status"] ?? "NONE",
+        amount,
+        rate,
+        commission,
+        commissionStatus: c?.["status"] ?? (s.status === "PAID" ? "PENDING" : "ESTIMATED"),
         status: s.status,
         createdAt: s.created_at,
       };
