@@ -206,7 +206,9 @@ function PlanosPage() {
     
     if (isFree && !session.session) {
       localStorage.setItem("selected_free_plan", planId);
-      navigate({ to: "/auth", search: { next: "/planos" } });
+      // Após logar, o painel abre direto na aba de token de teste.
+      localStorage.setItem("msk_open_trial", "1");
+      navigate({ to: "/auth", search: { next: "/painel" } });
       return;
     }
 
@@ -221,6 +223,7 @@ function PlanosPage() {
         const { requestTrial } = await import("@/lib/commerce.functions");
         await requestTrial({ data: { planId } });
         toast.success("Teste gratuito ativado com sucesso!");
+        localStorage.setItem("msk_open_trial", "1");
         navigate({ to: "/painel" });
         return;
       } catch (e) {
