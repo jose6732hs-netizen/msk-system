@@ -123,7 +123,7 @@ export async function generateManualToken(
 export async function loadTokenPlans() {
   const { data } = await supabaseAdmin
     .from("plans")
-    .select("id,name,slug,is_lifetime,max_devices,active")
+    .select("id,name,slug,is_lifetime,max_devices,active,price,currency,duration_label,duration_days")
     .order("sort_order", { ascending: true });
   return (data ?? []) as Record<string, any>[];
 }
