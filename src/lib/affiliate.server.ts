@@ -333,6 +333,8 @@ export async function registerPendingCommission(input: {
         amount: resolved.amount,
         base_amount: input.amount,
         rate: resolved.rate,
+        commission_percentage: resolved.rate, // Snapshot da porcentagem
+        commission_amount: resolved.amount, // Snapshot do valor
         source: resolved.source,
         status: "PENDING",
       } as never,
@@ -401,6 +403,8 @@ export async function approveCommissionForTransaction(tx: {
         status: "APPROVED", 
         amount: resolved.amount,
         rate: resolved.rate,
+        commission_percentage: resolved.rate,
+        commission_amount: resolved.amount,
         source: resolved.source,
         approved_at: new Date().toISOString(), 
         updated_at: new Date().toISOString() 
