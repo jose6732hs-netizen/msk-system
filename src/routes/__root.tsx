@@ -120,6 +120,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isBoard =
+    pathname.startsWith("/painel") ||
+    pathname.startsWith("/admin") ||
+    pathname.startsWith("/parceiro") ||
+    pathname.startsWith("/revendedor");
+
   return (
     <html lang="en">
       <head>
