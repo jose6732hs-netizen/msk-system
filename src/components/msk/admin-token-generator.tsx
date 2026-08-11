@@ -34,7 +34,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
   const plansFn = useServerFn(adminTokenPlans);
   const generateFn = useServerFn(adminGenerateToken);
 
-  const { data } = useQuery({ queryKey: ["admin-token-plans"], queryFn: () => plansFn() });
+  const { data, isLoading } = useQuery({ queryKey: ["admin-token-plans"], queryFn: () => plansFn() });
   const plans = data?.plans ?? [];
 
   const [email, setEmail] = useState("");
