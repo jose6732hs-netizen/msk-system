@@ -21,12 +21,32 @@ const subscriptionSchema = z.object({
 });
 
 export const registerPushDevice = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => subscriptionSchema.parse(d))
-  .handler(async ({ context, data }) => {
-    const { error } = await (context.supabase as any).from("push_devices").upsert(
+  .handler(async ({ data }) => {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const { createClient } = await import("@supabase/supabase-js");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const SUPABASE_URL = process.env['SUPABASE_URL']!;
+    const SUPABASE_PUBLISHABLE_KEY = process.env['SUPABASE_PUBLISHABLE_KEY']!;
+
+    const request = getRequest();
+    const authHeader = request.headers.get('authorization');
+    let userId: string | null = null;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.replace('Bearer ', '');
+      const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        global: { headers: { Authorization: `Bearer ${token}` } },
+        auth: { persistSession: false }
+      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) userId = user.id;
+    }
+
+    const { error } = await (supabaseAdmin as any).from("push_devices").upsert(
       {
-        user_id: context.userId,
+        user_id: userId,
         device_id: data.deviceId,
         endpoint: data.endpoint,
         p256dh: data.p256dh,
