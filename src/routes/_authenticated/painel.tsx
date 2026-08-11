@@ -316,51 +316,16 @@ function Painel() {
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
             
-            <section className="glass rounded-[2rem] p-6 md:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">Sua licença</h2>
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase ${statusStyle(license.status)}`}
-                >
-                  {license.status}
-                </span>
-              </div>
-
-              <div className="mt-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
-                <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-                  Token de ativação
-                </p>
-                <p className="mt-2 break-all font-mono text-lg text-primary">
-                  {token ?? license.token_preview ?? "MSK-••••-••••-••••-••••"}
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <Button size="sm" variant="neonOutline" onClick={reveal} disabled={busy}>
-                    {busy ? <Loader2 className="animate-spin" /> : <Eye />} Revelar
-                  </Button>
-                  <Button size="sm" variant="neon" onClick={copy} disabled={!token}>
-                    <Copy /> Copiar
-                  </Button>
-                </div>
-              </div>
-
-              <dl className="mt-6 grid gap-4 sm:grid-cols-2">
-                {[
-                  ["Plano", plan?.name ?? "—"],
-                  ["Expira em", license.expires_at ? fmt(license.expires_at) : "Vitalício"],
-                  ["Ativada em", fmt(license.activated_at)],
-                  ["Última validação", fmt(license.last_validation)],
-                  ["Dispositivos permitidos", String(license.max_devices)],
-                  ["Dispositivos ativos", String(data?.devices.length ?? 0)],
-                ].map(([k, v]) => (
-                  <div key={k as string}>
-                    <dt className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-                      {k}
-                    </dt>
-                    <dd className="mt-1 text-sm">{v}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
+            <div className="md:col-span-2 lg:col-span-1">
+              <LicenseCard 
+                license={license} 
+                onCopyToken={() => {
+                  navigator.clipboard.writeText(token ?? license.token_preview ?? "");
+                  toast.success("Token copiado com sucesso!");
+                }}
+                highlighted={highlightedId === license.id}
+              />
+            </div>
 
             <section className="glass rounded-[2rem] p-6 md:p-8">
               <h2 className="text-lg font-semibold">Plano Atual</h2>
