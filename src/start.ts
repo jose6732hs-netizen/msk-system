@@ -30,12 +30,12 @@ export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
   requestMiddleware: [errorMiddleware, csrfMiddleware],
   onClientStart: async () => {
-    // Tenta registrar push apenas se suportado e se houver um service worker ativo
-    if ("serviceWorker" in navigator && "PushManager" in window) {
+    // Tenta renovar registro de push se já foi habilitado anteriormente e temos permissão
+    if (localStorage.getItem("msk_push_enabled") === "1" && pushPermission() === "granted") {
       try {
-        await registerPushSubscription();
+        await enablePushNotifications();
       } catch (err) {
-        console.warn("Falha ao registrar push automaticamente:", err);
+        console.warn("Falha ao renovar push automaticamente:", err);
       }
     }
   },
