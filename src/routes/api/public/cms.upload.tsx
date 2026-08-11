@@ -7,7 +7,6 @@ export const Route = createFileRoute('/api/public/cms/upload')({
     handlers: {
       POST: async ({ request }) => {
         try {
-          // No TanStack Start v1, o FormData é acessado diretamente da Web Request
           const formData = await request.formData()
           const file = formData.get('file') as File
           const key = formData.get('key') as string
@@ -22,6 +21,7 @@ export const Route = createFileRoute('/api/public/cms/upload')({
           const extension = file.name.split('.').pop()
           const fileName = `cms/${key || 'asset'}-${Date.now()}.${extension}`
           
+          // Use a bucket that exists and is public
           const url = await uploadPublicFile(file, fileName, "extension-builds")
           
           return new Response(JSON.stringify({ url }), {
