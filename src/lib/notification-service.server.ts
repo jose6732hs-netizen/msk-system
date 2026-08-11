@@ -37,40 +37,35 @@ export async function sendProfessionalNotification(params: {
   const emoji = EMOJI_MAP[type] || "🔔";
   const finalTitle = `${emoji} ${title}`;
 
-  // 1. Verificar preferências
-  const { data: profile } = await supabaseAdmin
-    .from("profiles")
-    .select("notification_preferences")
-    .eq("id", userId)
-    .single() as any;
-  
-  const prefs = (profile?.notification_preferences as Record<string, boolean>) || {};
-  if (prefs[type] === false) return { skipped: true, reason: "preference_off" };
-
-  // 2. Registrar Notificação Interna
+  // 1. Registrar Notificação Interna
   const { data: notif, error: nErr } = await supabaseAdmin.from("notifications").insert({
     user_id: userId,
+    audience: "user",
     type,
     title: finalTitle,
     body,
     emoji,
     link: link || "/painel",
-    data: (metadata || {}) as any,
+    metadata: (metadata || {}) as any,
     status: "pending"
   } as any).select("id").single() as any;
 
   if (nErr) throw nErr;
 
-  // 3. Buscar Dispositivos Ativos (uso push_subscriptions conforme schema criado)
+  // 2. Buscar Dispositivos Ativos
   const { data: devices } = await (supabaseAdmin as any)
-    .from("push_subscriptions")
-    .select("*")
+    .from("push_devices")
+    .select("id,endpoint,p256dh,auth,device_id")
     .eq("user_id", userId)
-    .eq("is_active", true);
+    .eq("active", true);
 
-  if (!devices || devices.length === 0) return { internal: notif.id, push: 0 };
+  if (!devices || devices.length === 0) {
+    await supabaseAdmin.from("notifications").update({ status: "sent", sent_at: new Date().toISOString() } as any).eq("id", notif.id);
+    return { internal: notif.id, push: 0 };
+  }
 
   let sent = 0;
+  let lastError: string | null = null;
   for (const device of devices) {
     const res = await sendWebPush({
       endpoint: device.endpoint,
@@ -84,27 +79,21 @@ export async function sendProfessionalNotification(params: {
       tag: type
     });
 
-    // Registrar Log
-    await (supabaseAdmin as any).from("push_notification_logs").insert({
-      notification_id: notif.id,
-      user_id: userId,
-      device_id: device.device_id,
-      status: res.ok ? "delivered" : "failed",
-      error_message: res.ok ? null : (res.error || `HTTP ${res.status}`),
-      sent_at: new Date().toISOString()
-    } as any);
-
     if (res.ok) sent++;
-    else if (res.gone) {
-      await (supabaseAdmin as any).from("push_subscriptions").update({ is_active: false }).eq("id", device.id);
+    else {
+      lastError = res.error || `HTTP ${res.status}`;
+      if (res.gone) {
+        await (supabaseAdmin as any).from("push_devices").update({ active: false }).eq("id", device.id);
+      }
     }
   }
 
   // Atualizar notificação original
   await supabaseAdmin.from("notifications").update({
-    push_sent: sent > 0,
-    push_sent_at: sent > 0 ? new Date().toISOString() : null,
-    status: "sent"
+    status: "sent",
+    sent_at: new Date().toISOString(),
+    push_status: sent > 0 ? "delivered" : "failed",
+    push_error: sent > 0 ? null : lastError
   } as any).eq("id", notif.id);
 
   return { internal: notif.id, push: sent };
