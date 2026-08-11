@@ -44,7 +44,20 @@ export async function handleValidation(request: Request, bucket: string, limit: 
 
   const license = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
   if (!license) {
-    await logEvent({ event_type: "invalid_attempt", metadata: { bucket, token: parsed.data.token.slice(-4) } });
+    const { hashToken } = await import("./license.server");
+    const sentHash = await hashToken(parsed.data.token);
+    
+    // Log the error for admin debugging in license_events
+    await logEvent({ 
+      event_type: "invalid_attempt", 
+      metadata: { 
+        bucket, 
+        token_last4: parsed.data.token.slice(-4),
+        sent_hash: sentHash,
+        error: "Token not found in database"
+      } 
+    });
+
     return jsonResponse({ 
       success: false, 
       error: "LICENSE_INVALID",

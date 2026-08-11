@@ -63,8 +63,13 @@ export async function verifySignature(data: string, signature: string): Promise<
 
 /** Hash com pepper do servidor — só o hash é usado para lookup/validação. */
 export async function hashToken(token: string): Promise<string> {
-  const data = new TextEncoder().encode(`${encKey()}::${token.trim().toUpperCase()}`);
-  return toHex(await crypto.subtle.digest("SHA-256", data));
+  const tokenStr = token.trim().toUpperCase();
+  const key = encKey();
+  const payload = `${key}::${tokenStr}`;
+  const data = new TextEncoder().encode(payload);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hash = toHex(hashBuffer);
+  return hash;
 }
 
 export async function hashValue(value: string): Promise<string> {

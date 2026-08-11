@@ -45,11 +45,17 @@ export const Route = createFileRoute("/api/public/license/activate")({
 
         const license = (await findLicenseByToken(body.token)) as any;
 
-
         if (!license) {
+          const { hashToken } = await import("@/lib/license.server");
+          const tokenHash = await hashToken(body.token);
+
           await logEvent({
             event_type: "invalid_attempt",
-            metadata: { ip_hash: await hashValue(ip) },
+            metadata: { 
+              ip_hash: await hashValue(ip),
+              token_hash_sent: tokenHash,
+              error: "Token not found during activation"
+            },
           });
           return jsonResponse({ 
             success: false, 
