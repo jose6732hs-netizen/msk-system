@@ -10,7 +10,7 @@ import { affiliateRoutes } from "@/lib/parceiro/routes";
 interface AffiliateHeaderProps {
   balance: number;
   goalCurrent: number;
-  goalTarget: number;
+  goalTarget: number | undefined;
   goalProgress: number;
   onRefresh: () => void;
   isRefreshing?: boolean;
