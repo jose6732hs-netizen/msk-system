@@ -6,6 +6,13 @@ import { Check, Copy, KeyRound, Loader2, MessageSquare, ShieldCheck, ClipboardCh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { adminGenerateToken, adminTokenPlans, adminGetLicenseDetails } from "@/lib/admin.functions";
 import { generateDeliveryMessage, generateSalesMessage, copyToClipboard } from "@/lib/delivery-message";
 
@@ -151,35 +158,41 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
 
         <div className="space-y-1.5">
           <Label htmlFor="tk-plan">Plano</Label>
-          <select
-            id="tk-plan"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={planId}
-            onChange={(e) => setPlanId(e.target.value)}
-          >
-            <option value="">{(plans[0]?.["name"] as string) ?? "Selecione"}</option>
-            {plans.map((p: any) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
+          <Select value={planId} onValueChange={setPlanId}>
+            <SelectTrigger id="tk-plan" className="h-10 w-full">
+              <SelectValue placeholder="Escolha o plano da licença" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {plans.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                  {p.is_lifetime ? " — Vitalício" : ""}
+                  {p.active === false ? " (oculto no site)" : ""}
+                </SelectItem>
+              ))}
+              {!plans.length && (
+                <div className="px-3 py-2 text-sm text-muted-foreground">
+                  Nenhum plano cadastrado.
+                </div>
+              )}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="tk-duration">Validade</Label>
-          <select
-            id="tk-duration"
-            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value as Duration)}
-          >
-            {DURATIONS.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </select>
+          <Select value={duration} onValueChange={(v) => setDuration(v as Duration)}>
+            <SelectTrigger id="tk-duration" className="h-10 w-full">
+              <SelectValue placeholder="Escolha a validade" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              {DURATIONS.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {duration === "custom" && (
