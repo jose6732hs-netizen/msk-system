@@ -62,7 +62,7 @@ export async function loadAffiliateOverview(
     supabaseAdmin.from("affiliates").select("*").eq("id", affiliate.id).maybeSingle(),
     supabaseAdmin
       .from("affiliate_referrals")
-      .select("id,status,first_seen_at,signed_up_at,converted_at,user_id")
+      .select("id,status,first_seen_at,signed_up_at,converted_at,user_id,profiles:user_id(name,email)")
       .eq("affiliate_id", affiliate.id)
       .order("first_seen_at", { ascending: false })
       .limit(500),
@@ -190,12 +190,14 @@ export async function loadAffiliateOverview(
         createdAt: s.created_at,
       };
     }),
-    referrals: (referrals ?? []).slice(0, 100).map((r) => ({
+    referrals: (referrals ?? []).slice(0, 100).map((r: any) => ({
       id: r.id,
       status: r.status,
       firstSeenAt: r.first_seen_at,
       signedUpAt: r.signed_up_at,
       convertedAt: r.converted_at,
+      email: maskEmail(r.profiles?.email),
+      name: r.profiles?.name || "Usuário",
     })),
     commissions: commissionRows.slice(0, 100),
     withdrawals: withdrawals ?? [],

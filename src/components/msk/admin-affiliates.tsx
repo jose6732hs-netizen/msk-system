@@ -125,22 +125,41 @@ export function AdminAffiliatesTab() {
 
         <div className="mt-4 space-y-3">
           {(data?.affiliates ?? []).map((a: Record<string, any>) => (
-            <AffiliateRow
-              key={a["id"]}
-              affiliate={a}
-              onUpdate={(patch) =>
-                run(
-                  () => update({ data: { affiliateId: a["id"], ...patch } as never }),
-                  "Afiliado atualizado",
-                )
-              }
-              onAdjust={(amount, reason) =>
-                run(
-                  () => adjust({ data: { affiliateId: a["id"], amount, reason } }),
-                  "Saldo ajustado",
-                )
-              }
-            />
+            <div key={a["id"]} className="space-y-3">
+              <AffiliateRow
+                affiliate={a}
+                onUpdate={(patch) =>
+                  run(
+                    () => update({ data: { affiliateId: a["id"], ...patch } as never }),
+                    "Afiliado atualizado",
+                  )
+                }
+                onAdjust={(amount, reason) =>
+                  run(
+                    () => adjust({ data: { affiliateId: a["id"], amount, reason } }),
+                    "Saldo ajustado",
+                  )
+                }
+              />
+              <div className="ml-16 mr-4 bg-white/5 rounded-xl p-4 border border-white/5">
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-3 flex items-center gap-2">
+                  <Users size={12} /> Últimos indicados por {a["name"]}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  {a["referrals"]?.length ? a["referrals"].map((r: any) => (
+                    <div key={r.id} className="flex items-center gap-2 bg-black/20 p-2 rounded-lg border border-white/5">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                        <Users size={14} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-white truncate">{r.name}</p>
+                        <p className="text-[9px] text-white/40 truncate">{r.email}</p>
+                      </div>
+                    </div>
+                  )) : <p className="text-[9px] text-white/20 italic">Nenhum indicado direto.</p>}
+                </div>
+              </div>
+            </div>
           ))}
           {!data?.affiliates?.length && (
             <p className="text-sm text-muted-foreground">Nenhum afiliado encontrado.</p>

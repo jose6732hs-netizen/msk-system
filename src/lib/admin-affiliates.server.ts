@@ -28,7 +28,7 @@ export async function loadAdminAffiliates(search = "") {
       ? supabaseAdmin.from("profiles").select("id,name,email").in("id", userIds)
       : { data: [] as Record<string, any>[] },
     affiliateIds.length
-      ? supabaseAdmin.from("affiliate_referrals").select("affiliate_id, status").in("affiliate_id", affiliateIds)
+      ? supabaseAdmin.from("affiliate_referrals").select("id, affiliate_id, status, user_id").in("affiliate_id", affiliateIds)
       : { data: [] as Record<string, any>[] },
     affiliateIds.length
       ? supabaseAdmin.from("affiliate_conversions").select("affiliate_id, amount, commission_amount, status").in("affiliate_id", affiliateIds)
@@ -84,6 +84,21 @@ export async function loadAdminAffiliates(search = "") {
     .map((a) => {
       const profile = byUser.get(a["user_id"]);
       const stats = statsMap.get(a["id"]);
+      
+      // Get referrals with profile info for this affiliate
+      const affReferrals = (referrals ?? [])
+        .filter(r => r["affiliate_id"] === a["id"])
+        .slice(0, 5)
+        .map(r => {
+          const p = byUser.get(r["user_id"]);
+          return {
+            id: r["id"],
+            name: p?.name ?? "Usuário",
+            email: p?.email ?? "—",
+            status: r["status"]
+          };
+        });
+
       const row: Record<string, any> = {
         ...(a as Record<string, any>),
         name: profile?.name ?? "—",
@@ -96,6 +111,7 @@ export async function loadAdminAffiliates(search = "") {
         commission_pending: stats?.pending ?? a["pending_balance"] ?? 0,
         commission_paid: stats?.paid ?? a["total_paid"] ?? 0,
         documents: docsByAffiliate.get(a["id"]) || [],
+        referrals: affReferrals,
       };
       return row;
     })
