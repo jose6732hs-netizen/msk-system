@@ -121,7 +121,7 @@ export function NotificationSettings({ scope = "user" }: { scope?: "user" | "adm
         <Loader2 className="h-5 w-5 animate-spin text-primary" />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {(isAdmin ? ["admin_sales"] : NOTIFICATION_KEYS).map((key) => {
+          {(isAdmin ? ["admin_sales", "pix_approved"] : NOTIFICATION_KEYS).map((key) => {
             const info = LABELS[key]!;
             const value = data?.[key] !== false;
             return (
