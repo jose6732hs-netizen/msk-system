@@ -282,7 +282,7 @@ export function AdminSubscriptionsTab({
                       <img
                         src={editing.image_url}
                         alt="Preview"
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain"
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
@@ -297,21 +297,24 @@ export function AdminSubscriptionsTab({
                   </div>
                   <div className="flex-1 space-y-3">
                     <div className="flex gap-2">
-                      <Input
-                        placeholder="URL da Imagem"
-                        value={editing.image_url}
-                        onChange={(e) => setEditing({ ...editing, image_url: e.target.value })}
-                        className="flex-1"
-                      />
                       <Button
-                        size="icon"
                         variant="neonOutline"
-                        className="shrink-0"
+                        className="gap-2"
                         disabled={uploading === (editing.id || "new-plan")}
                         onClick={() => void pickAndUpload(editing.id)}
                       >
                         <Upload className="h-4 w-4" />
+                        {editing.image_url ? "Substituir imagem" : "Enviar imagem"}
                       </Button>
+                      {editing.image_url ? (
+                        <Button
+                          variant="ghost"
+                          className="text-xs"
+                          onClick={() => setEditing({ ...editing, image_url: "" })}
+                        >
+                          Remover
+                        </Button>
+                      ) : null}
                     </div>
                     <p className="text-[0.65rem] font-medium text-muted-foreground uppercase leading-relaxed">
                       Recomendado: 1200x800px. A imagem aparecerá no carrossel de planos e no checkout.
