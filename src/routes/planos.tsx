@@ -317,7 +317,7 @@ function PlanosPage() {
           </div>
 
           {cart.length > 0 && (
-            <div className="glass p-0 rounded-[2.5rem] border border-white/10 w-full lg:min-w-[420px] lg:w-auto animate-in fade-in slide-in-from-top-4 lg:slide-in-from-right-4 shadow-2xl overflow-hidden bg-[#0F0F0F] ring-2 ring-primary/20">
+            <div className="glass p-0 rounded-[1.5rem] sm:rounded-[2.5rem] border border-white/10 w-full lg:min-w-[420px] lg:w-auto animate-in fade-in slide-in-from-top-4 lg:slide-in-from-right-4 shadow-2xl overflow-hidden bg-[#0F0F0F] ring-2 ring-primary/20">
               <div className="bg-primary/10 px-4 py-2 flex items-center gap-2 border-b border-primary/20 animate-pulse">
                 <ShoppingCart className="h-3 w-3 text-primary" />
                 <span className="text-[10px] font-black text-primary uppercase tracking-tighter">Material Adicionado com Sucesso</span>
