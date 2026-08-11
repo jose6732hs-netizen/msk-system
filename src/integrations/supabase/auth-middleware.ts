@@ -55,8 +55,7 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
     const authHeader = request.headers.get('authorization');
 
     if (!authHeader) {
-      // Retornamos 401 explicitamente em vez de Error para o TanStack Start tratar como resposta HTTP
-      return new Response('Unauthorized: No authorization header provided', { status: 401 });
+      throw new Error('Unauthorized: No authorization header provided');
     }
 
     if (!authHeader.startsWith('Bearer ')) {
