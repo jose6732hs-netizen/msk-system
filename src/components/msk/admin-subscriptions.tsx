@@ -90,6 +90,11 @@ export function AdminSubscriptionsTab({
         }).then(r => r.json());
         
         if (!res.url) throw new Error(res.error || "Upload falhou");
+        
+        if (editing) {
+          setEditing({ ...editing, image_url: res.url });
+        }
+        toast.success("Imagem carregada!");
       } catch (err) {
         toast.error("Erro no upload: " + (err as Error).message);
       } finally {
