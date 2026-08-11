@@ -24,6 +24,7 @@ import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { AffiliateRequestCard } from "@/components/msk/affiliate-request-card";
 
 export const Route = createFileRoute("/parceiro/")({
   component: AffiliateDashboard,
@@ -72,20 +73,14 @@ function AffiliateDashboard() {
 
   if (!data.enrolled) {
     return (
-      <div className="min-h-screen bg-[#050505]/70 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-[#0F0F0F] border border-white/10 p-8 rounded-[2.5rem] text-center">
-          <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Users className="text-primary" size={40} />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Seja um Parceiro</h2>
-          <p className="text-white/40 mb-8">Você ainda não faz parte do nosso programa de parceiros. Comece a lucrar agora!</p>
-          <Button asChild variant="neon" className="w-full h-12 font-bold text-lg rounded-xl">
-            <Link to="/auth" search={{ mode: 'signup', next: '/parceiro' }} className="inline-flex items-center justify-center w-full h-12 font-bold text-lg rounded-xl">Quero Me Tornar Parceiro</Link>
-          </Button>
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
+        <div className="max-w-4xl w-full">
+          <AffiliateRequestCard />
         </div>
       </div>
     );
   }
+
 
   const { stats, affiliate, goal, sales } = data;
 
