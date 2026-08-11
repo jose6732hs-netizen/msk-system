@@ -318,11 +318,12 @@ function MobileNavigation() {
 
   return (
     <div
-      className="lg:hidden fixed inset-x-0 bottom-0 z-[120] w-full max-w-full"
+      className="hidden fixed inset-x-0 bottom-0 z-[120] w-full max-w-full"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       {/* Fade para o conteúdo não colar na barra */}
       <div className="pointer-events-none absolute inset-x-0 -top-10 h-10 bg-gradient-to-t from-background to-transparent" />
+
 
       <nav className="grid w-full grid-cols-5 items-stretch gap-0 border-t border-white/10 bg-background/90 px-1 py-1.5 backdrop-blur-2xl">
         {navItems.map((item) => {
@@ -362,7 +363,7 @@ function MobileNavigation() {
           </SheetTrigger>
           <SheetContent
             side="bottom"
-            className="h-[100dvh] max-h-screen border-none bg-background/95 p-0 backdrop-blur-3xl focus:outline-none"
+            className="h-[100dvh] max-h-screen border-none bg-background/95 p-0 backdrop-blur-3xl focus:outline-none [&>button]:hidden"
           >
             <div className="flex h-full flex-col overflow-y-auto pb-10">
               <div className="flex items-center justify-between px-6 pt-6 mb-4">
@@ -375,8 +376,8 @@ function MobileNavigation() {
                 </button>
               </div>
               <div className="mx-auto mb-6 h-1 w-12 rounded-full bg-white/15 shrink-0" />
-              <nav className="flex flex-col gap-2 px-6">
-              <div className="mb-6 grid grid-cols-2 gap-3">
+              <nav className="flex flex-col gap-2 px-6 overflow-y-auto">
+              <div className="mb-6 grid grid-cols-2 gap-3 pt-2">
                 <Button
                   variant="neon"
                   className="relative flex h-16 flex-col items-center justify-center gap-1 rounded-2xl overflow-hidden"

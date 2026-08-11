@@ -1,4 +1,4 @@
-// MSK SISTEM 100% - Infraestrutura de notificações e banners corrigida.
+// MSK SISTEM 100% - Navegação mobile e infraestrutura corrigida.
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
