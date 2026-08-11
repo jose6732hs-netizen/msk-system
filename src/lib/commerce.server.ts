@@ -283,43 +283,17 @@ export async function settlePaidTransaction(transactionId: string) {
     return { deposit: true };
   }
 
-  // Comissão de afiliado (calculada e aprovada no servidor).
+  // Comissão de afiliado processada internamente (processInternalCommission é chamado no webhook).
+  // Mantemos apenas a notificação se a comissão já tiver sido registrada ou delegamos para a função interna.
   {
-    const { approveCommissionForTransaction, affiliateForUser, markReferralConverted, recordAffiliateEvent } = await import(
+    const { affiliateForUser, markReferralConverted, recordAffiliateEvent } = await import(
       "./affiliate.server"
     );
     const { sendNotification } = await import("./notifications.functions");
     
     const affiliateId = tx.affiliate_id ?? (tx.user_id ? await affiliateForUser(tx.user_id) : null);
-    if (affiliateId && tx.purpose !== "deposit") {
-      if (!tx.affiliate_id) {
-        await supabaseAdmin.from("transactions").update({ affiliate_id: affiliateId }).eq("id", tx.id);
-      }
-      const commissionId = await approveCommissionForTransaction({
-        id: tx.id,
-        affiliate_id: affiliateId,
-        plan_id: tx.plan_id,
-        amount,
-        user_id: tx.user_id,
-      });
-
-      // Notificar afiliado sobre a venda
-      const { data: affProfile } = await supabaseAdmin.from("affiliates").select("user_id").eq("id", affiliateId).single();
-      if (affProfile?.user_id && commissionId) {
-        const { data: comm } = await supabaseAdmin.from("affiliate_commissions").select("amount").eq("id", commissionId).single();
-        if (comm) {
-          await (sendNotification as any)({
-            data: {
-              title: "Nova Venda!",
-              body: `Você recebeu uma comissão de R$ ${Number(comm.amount).toFixed(2)}.`,
-              emoji: "💰",
-              userIds: [affProfile.user_id],
-              link: "/parceiros"
-            },
-            context: { supabase: supabaseAdmin, userId: "system" }
-          });
-        }
-      }
+    if (affiliateId && tx.purpose !== "deposit" && !tx.affiliate_id) {
+      await supabaseAdmin.from("transactions").update({ affiliate_id: affiliateId }).eq("id", tx.id);
     }
 
     if (tx.user_id) {
