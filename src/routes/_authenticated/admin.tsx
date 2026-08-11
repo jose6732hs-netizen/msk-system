@@ -415,7 +415,7 @@ function Admin() {
                           if (statusFilter === "active") return l.status === "active" && !exp;
                           return l.status === statusFilter;
                         }).map((l: any) => {
-                          const isOnline = l.last_validation && new Date(l.last_validation).getTime() > Date.now() - 300000;
+                          const isOnline = l.last_validation && new Date(l.last_validation).getTime() > Date.now() - 60000;
                           const isExpired = l.expires_at && new Date(l.expires_at) < new Date();
                           return (
                             <tr key={l.id} className="group hover:bg-muted/5 transition-colors">

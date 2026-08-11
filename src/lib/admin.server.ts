@@ -118,6 +118,9 @@ export async function runLicenseAction(
   const { error } = await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
   if (error) throw error;
 
+  // Real-time notification logic could be added here to force client refresh
+  // but status updates are already reflected on next validation.
+
   await logEvent({
     license_id: license.id,
     user_id: license.user_id,
