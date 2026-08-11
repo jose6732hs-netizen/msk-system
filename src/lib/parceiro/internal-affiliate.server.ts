@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logAudit } from "@/lib/audit.server";
+import { sendNotification } from "@/lib/notifications.functions";
 
 /**
  * Registra uma comissão internamente no sistema e atualiza a carteira do afiliado.
@@ -125,6 +126,20 @@ export async function processInternalCommission(transactionId: string) {
 
   // Marcar transação como processada
   await supabaseAdmin.from("transactions").update({ commission_registered: true }).eq("id", tx.id);
+
+  // Notificar afiliado
+  if (affiliate.user_id) {
+    await (sendNotification as any)({
+      data: {
+        title: "Comissão Recebida! 💰",
+        body: `Você ganhou R$ ${commissionAmount.toFixed(2)} por uma venda.`,
+        emoji: "💰",
+        userIds: [affiliate.user_id],
+        link: "/parceiro"
+      },
+      context: { supabase: supabaseAdmin, userId: "system" }
+    });
+  }
 
   await logAudit({
     userId: affiliate.user_id,
