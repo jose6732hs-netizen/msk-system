@@ -23,7 +23,7 @@ export async function processInternalCommission(transactionId: string) {
       .select("affiliate_id")
       .eq("user_id", tx.user_id)
       .maybeSingle();
-    affiliateId = ref?.affiliate_id;
+    affiliateId = ref?.affiliate_id ?? null;
   }
 
   if (!affiliateId) return null;
