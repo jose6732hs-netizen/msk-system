@@ -34,7 +34,47 @@ import { AdminPushTestsTab } from "@/components/msk/admin-push-tests";
 
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin } from "@/lib/admin.functions";
-import { HeroCarousel } from "@/components/msk/hero-carousel";
+
+const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
+  {
+    title: "Operação",
+    items: [
+      { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
+      { value: "tokens", label: "Gerar Licença", Icon: KeyRound },
+      { value: "users", label: "Usuários", Icon: Users },
+      { value: "subs", label: "Assinaturas", Icon: Zap },
+      { value: "extension", label: "Extensão", Icon: Monitor },
+    ],
+  },
+  {
+    title: "Financeiro",
+    items: [
+      { value: "finance", label: "Financeiro", Icon: TrendingUp },
+      { value: "gateway", label: "Gateway", Icon: ShieldAlert },
+      { value: "affiliates", label: "Afiliados", Icon: Users },
+      { value: "payments", label: "Pagamentos", Icon: DollarSign },
+    ],
+  },
+  {
+    title: "Conteúdo",
+    items: [
+      { value: "editor", label: "Editor Site", Icon: Activity },
+      { value: "awards", label: "Premiações", Icon: Trophy },
+    ],
+  },
+  {
+    title: "Sistema",
+    items: [
+      { value: "tracking", label: "Analytics", Icon: TrendingUp },
+      { value: "push", label: "Push / Testes", Icon: MessageSquare },
+      { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
+      { value: "logs", label: "Auditoria", Icon: Clock },
+    ],
+  },
+];
+
+const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
+
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({
