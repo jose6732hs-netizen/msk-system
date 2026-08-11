@@ -240,9 +240,9 @@ function ObrigadoPage() {
                 <div className="flex items-center gap-2 text-[10px] font-bold text-white/20 uppercase tracking-widest">
                   <CheckCircle2 size={12} /> Entrega Automática Garantida
                 </div>
-                <Link to="/suporte" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline underline-offset-4">
+                <a href="https://t.me/msksistem" target="_blank" rel="noopener noreferrer" className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline underline-offset-4">
                   Precisa de Ajuda? Falar com Suporte
-                </Link>
+                </a>
               </div>
             </div>
           </div>
