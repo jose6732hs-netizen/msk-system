@@ -10,7 +10,9 @@ import {
   Copy,
   ExternalLink,
   RefreshCw,
-  Rocket
+  Rocket,
+  Eye,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -18,11 +20,14 @@ import { cn } from "@/lib/utils";
 
 interface LicenseCardProps {
   license: any;
-  onCopyToken?: () => void;
+  token?: string | null;
+  busy?: boolean;
+  onReveal?: () => void;
+  onCopyToken: () => void;
   highlighted?: boolean;
 }
 
-export function LicenseCard({ license, onCopyToken, highlighted }: LicenseCardProps) {
+export function LicenseCard({ license, token, busy, onReveal, onCopyToken, highlighted }: LicenseCardProps) {
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
