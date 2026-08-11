@@ -113,7 +113,11 @@ async function call<T>(
   });
   const text = await res.text();
   if (!res.ok) {
-    console.error(`[amplopay] ${method} ${path} falhou [${res.status}]`);
+    console.error(`[amplopay] ${method} ${path} falhou [${res.status}]`, text);
+    // Se o produtor não foi encontrado, damos uma dica melhor
+    if (res.status === 400 && text.includes("não encontrado")) {
+      throw new Error(`Amplo Pay [400]: Configuração de Produtor Inválida. Verifique o ID do produtor nas configurações de Split.`);
+    }
     throw new Error(`Amplo Pay [${res.status}]: ${text.slice(0, 400)}`);
   }
   try {
