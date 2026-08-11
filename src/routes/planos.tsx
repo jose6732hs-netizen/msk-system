@@ -447,7 +447,7 @@ function PlanosPage() {
                         : "bg-[#0A0A0A] border border-white/10 hover:border-primary/50"
                     }`}
                   >
-                    <div className="relative h-32 sm:h-52 w-full overflow-hidden p-2 pb-0 sm:p-3 sm:pb-0">
+                    <div className="relative h-40 sm:h-52 w-full overflow-hidden p-3 pb-0 sm:p-4 sm:pb-0">>
                       <img 
                         src={planImage(plan)} 
                         alt={plan.name} 
