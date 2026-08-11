@@ -35,7 +35,6 @@ export function pushPermission(): NotificationPermission | "unsupported" {
 
 /**
  * Pede permissão ao navegador e registra o dispositivo para receber push.
- * Retorna o motivo da falha em vez de lançar, para a UI decidir o que mostrar.
  */
 export async function enablePushNotifications(): Promise<
   { ok: true } | { ok: false; reason: "unsupported" | "denied" | "no-vapid" | "error"; message: string }
@@ -58,8 +57,10 @@ export async function enablePushNotifications(): Promise<
       };
     }
 
+    // Registrar service worker
     const reg = await navigator.serviceWorker.register("/push-sw.js", { scope: "/" });
     await navigator.serviceWorker.ready;
+    
     const existing = await reg.pushManager.getSubscription();
     const sub =
       existing ??
@@ -69,20 +70,26 @@ export async function enablePushNotifications(): Promise<
       }));
 
     const json = sub.toJSON() as { endpoint?: string; keys?: { p256dh?: string; auth?: string } };
+    
+    // Identificador único do dispositivo (simples)
+    const deviceId = `${navigator.platform}-${Math.abs(navigator.userAgent.length * 7919)}`;
+
     await registerPushDevice({
       data: {
         endpoint: json.endpoint ?? sub.endpoint,
         p256dh: json.keys?.p256dh ?? bufToB64url(sub.getKey("p256dh")),
         auth: json.keys?.auth ?? bufToB64url(sub.getKey("auth")),
-        deviceId: `${navigator.platform}-${Math.abs(navigator.userAgent.length * 7919)}`,
+        deviceId,
         browser: navigator.userAgent.split(") ").pop() ?? "desconhecido",
         platform: navigator.platform,
         userAgent: navigator.userAgent.slice(0, 380),
       },
     });
+    
     localStorage.setItem("msk_push_enabled", "1");
     return { ok: true };
   } catch (e) {
+    console.error("[push] Erro ao habilitar:", e);
     return { ok: false, reason: "error", message: (e as Error).message };
   }
 }

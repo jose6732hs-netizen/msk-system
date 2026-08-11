@@ -129,16 +129,14 @@ export async function processInternalCommission(transactionId: string) {
 
   // Notificar afiliado
   if (affiliate.user_id) {
-    await (sendNotification as any)({
-      data: {
-        title: "Comissão Recebida! 💰",
-        body: `Você ganhou R$ ${commissionAmount.toFixed(2)} por uma venda.`,
-        emoji: "💰",
-        userIds: [affiliate.user_id],
-        link: "/parceiro"
-      },
-      context: { supabase: supabaseAdmin, userId: "system" }
-    });
+    const { sendProfessionalNotification } = await import("@/lib/notification-service.server");
+    await sendProfessionalNotification({
+      userId: affiliate.user_id,
+      type: "commission_earned",
+      title: "Venda aprovada!",
+      body: `Você ganhou R$ ${commissionAmount.toFixed(2)} de comissão em uma nova venda.`,
+      link: "/parceiro"
+    }).catch(e => console.error("Push Affiliate fail:", e));
   }
 
   await logAudit({
