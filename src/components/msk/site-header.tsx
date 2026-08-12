@@ -69,12 +69,34 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
-      setSignedIn(!!session),
-    );
-    return () => sub.subscription.unsubscribe();
+    let alive = true;
+    async function syncRole(userId: string | null) {
+      if (!userId) {
+        if (alive) setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .in("role", ["admin", "super_admin"]);
+      if (alive) setIsAdmin(!!data?.length);
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSignedIn(!!data.session);
+      void syncRole(data.session?.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSignedIn(!!session);
+      void syncRole(session?.user?.id ?? null);
+    });
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
+
 
   if (mobileMenuOnly) {
     return (
