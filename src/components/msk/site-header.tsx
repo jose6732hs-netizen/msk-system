@@ -20,6 +20,8 @@ const NAV = [
 export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolean }) {
   const navigate = useNavigate();
   const [signedIn, setSignedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
