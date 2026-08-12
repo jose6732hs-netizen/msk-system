@@ -60,11 +60,21 @@ export function pushPermission(): NotificationPermission | "unsupported" {
  * Pede permissão ao navegador e registra o dispositivo para receber push.
  */
 export async function enablePushNotifications(): Promise<
-  { ok: true } | { ok: false; reason: "unsupported" | "denied" | "no-vapid" | "error"; message: string }
+  | { ok: true }
+  | { ok: false; reason: "unsupported" | "denied" | "no-vapid" | "error" | "ios-install"; message: string }
 > {
+  if (needsIosInstall()) {
+    return {
+      ok: false,
+      reason: "ios-install",
+      message:
+        "No iPhone/iPad, toque em Compartilhar e depois em \"Adicionar à Tela de Início\". Abra o app pelo ícone e ative as notificações por lá.",
+    };
+  }
   if (!pushSupported()) {
     return { ok: false, reason: "unsupported", message: "Este navegador não suporta notificações push." };
   }
+
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
