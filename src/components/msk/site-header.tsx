@@ -258,14 +258,17 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                         <LayoutDashboard className="h-4 w-4" />
                         Meu Painel
                       </Link>
-                      <Link 
-                        to="/admin" 
-                        className="flex items-center gap-2 font-bold text-cyan-400 p-2"
-                        onClick={() => document.body.click()}
-                      >
-                        <ShieldCheck className="h-4 w-4" />
-                        Admin
-                      </Link>
+                      {isAdmin ? (
+                        <Link 
+                          to="/admin" 
+                          className="flex items-center gap-2 font-bold text-cyan-400 p-2"
+                          onClick={() => document.body.click()}
+                        >
+                          <ShieldCheck className="h-4 w-4" />
+                          Admin
+                        </Link>
+                      ) : null}
+
                     </>
                   ) : (
                     <Link 
