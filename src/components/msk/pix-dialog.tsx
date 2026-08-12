@@ -83,21 +83,30 @@ export function PixDialog({
   // Sempre mostramos QR: se o gateway não mandar imagem, geramos base64 do copia-e-cola.
   useEffect(() => {
     let alive = true;
-    if (pix.qrCode) {
-      setQrData(pix.qrCode.startsWith("data:") ? pix.qrCode : `data:image/png;base64,${pix.qrCode}`);
-      return;
+
+    // 1) Preferimos gerar o QR localmente a partir do código copia-e-cola:
+    //    funciona em qualquer dispositivo, mesmo quando o gateway não devolve imagem.
+    if (pix.pixCode && pix.pixCode.length > 20) {
+      void QRCode.toDataURL(pix.pixCode, { width: 512, margin: 1, errorCorrectionLevel: "M" })
+        .then((url) => {
+          if (alive) setQrData(url);
+        })
+        .catch(() => {
+          if (!alive) return;
+          // 2) Fallback: imagem enviada pelo gateway (data URI, URL ou base64 puro).
+          setQrData(normalizeGatewayQr(pix.qrCode));
+        });
+      return () => {
+        alive = false;
+      };
     }
-    if (!pix.pixCode) {
-      setQrData(null);
-      return;
-    }
-    void QRCode.toDataURL(pix.pixCode, { width: 512, margin: 1 })
-      .then((url) => alive && setQrData(url))
-      .catch(() => alive && setQrData(null));
+
+    setQrData(normalizeGatewayQr(pix.qrCode));
     return () => {
       alive = false;
     };
   }, [pix.qrCode, pix.pixCode]);
+
 
   // O status final é sempre o do backend/gateway — nunca só o cronômetro.
   useEffect(() => {
