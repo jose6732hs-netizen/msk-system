@@ -20,6 +20,8 @@ const NAV = [
 export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolean }) {
   const navigate = useNavigate();
   const [signedIn, setSignedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
@@ -69,12 +71,34 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSignedIn(!!data.session));
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) =>
-      setSignedIn(!!session),
-    );
-    return () => sub.subscription.unsubscribe();
+    let alive = true;
+    async function syncRole(userId: string | null) {
+      if (!userId) {
+        if (alive) setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .in("role", ["admin", "super_admin"]);
+      if (alive) setIsAdmin(!!data?.length);
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSignedIn(!!data.session);
+      void syncRole(data.session?.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setSignedIn(!!session);
+      void syncRole(session?.user?.id ?? null);
+    });
+    return () => {
+      alive = false;
+      sub.subscription.unsubscribe();
+    };
   }, []);
+
 
   if (mobileMenuOnly) {
     return (
@@ -234,14 +258,17 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                         <LayoutDashboard className="h-4 w-4" />
                         Meu Painel
                       </Link>
-                      <Link 
-                        to="/admin" 
-                        className="flex items-center gap-2 font-bold text-cyan-400 p-2"
-                        onClick={() => document.body.click()}
-                      >
-                        <ShieldCheck className="h-4 w-4" />
-                        Admin
-                      </Link>
+                      {isAdmin ? (
+                        <Link 
+                          to="/admin" 
+                          className="flex items-center gap-2 font-bold text-cyan-400 p-2"
+                          onClick={() => document.body.click()}
+                        >
+                          <ShieldCheck className="h-4 w-4" />
+                          Admin
+                        </Link>
+                      ) : null}
+
                     </>
                   ) : (
                     <Link 

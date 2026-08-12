@@ -19,12 +19,34 @@ function bufToB64url(buf: ArrayBuffer | null) {
   return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/** iPhone/iPad (inclui iPadOS que se identifica como Mac com toque). */
+export function isIos() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && (navigator as any).maxTouchPoints > 1);
+}
+
+/** App aberto pela tela de início (modo standalone) — obrigatório para push no iOS. */
+export function isStandalone() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches === true ||
+    (window.navigator as any).standalone === true
+  );
+}
+
+/** No iOS o push só existe quando o site foi instalado na tela de início (iOS 16.4+). */
+export function needsIosInstall() {
+  return isIos() && !isStandalone();
+}
+
 export function pushSupported() {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
-    "Notification" in window
+    "Notification" in window &&
+    !needsIosInstall()
   );
 }
 
@@ -33,15 +55,26 @@ export function pushPermission(): NotificationPermission | "unsupported" {
   return Notification.permission;
 }
 
+
 /**
  * Pede permissão ao navegador e registra o dispositivo para receber push.
  */
 export async function enablePushNotifications(): Promise<
-  { ok: true } | { ok: false; reason: "unsupported" | "denied" | "no-vapid" | "error"; message: string }
+  | { ok: true }
+  | { ok: false; reason: "unsupported" | "denied" | "no-vapid" | "error" | "ios-install"; message: string }
 > {
+  if (needsIosInstall()) {
+    return {
+      ok: false,
+      reason: "ios-install",
+      message:
+        "No iPhone/iPad, toque em Compartilhar e depois em \"Adicionar à Tela de Início\". Abra o app pelo ícone e ative as notificações por lá.",
+    };
+  }
   if (!pushSupported()) {
     return { ok: false, reason: "unsupported", message: "Este navegador não suporta notificações push." };
   }
+
   try {
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {

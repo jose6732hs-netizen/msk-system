@@ -1,14 +1,25 @@
 import { useState, useEffect } from "react";
 import { Bell, ShieldCheck, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { enablePushNotifications, pushPermission, pushSupported } from "@/lib/push-client";
+import { enablePushNotifications, needsIosInstall, pushPermission, pushSupported } from "@/lib/push-client";
 import { toast } from "sonner";
 
 export function PushPermissionPrompt() {
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [iosMode, setIosMode] = useState(false);
 
   useEffect(() => {
+    const dismissedIos = localStorage.getItem("msk_push_dismissed");
+    // iPhone/iPad fora do modo app: o iOS só entrega push depois de instalar na tela de início.
+    if (needsIosInstall()) {
+      if (!dismissedIos) {
+        setIosMode(true);
+        const timer = setTimeout(() => setShow(true), 3000);
+        return () => clearTimeout(timer);
+      }
+      return undefined;
+    }
     // Só mostra se for suportado e não tiver permissão
     if (pushSupported()) {
       const perm = pushPermission();
@@ -27,6 +38,7 @@ export function PushPermissionPrompt() {
   }, []);
 
   const handleEnable = async () => {
+    if (iosMode) return;
     setLoading(true);
     const res = await enablePushNotifications();
     setLoading(false);
@@ -72,24 +84,36 @@ export function PushPermissionPrompt() {
           <div className="space-y-2">
             <h3 className="font-bold text-foreground flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-primary" />
-              Ative as notificações
+              {iosMode ? "Instale o app no iPhone" : "Ative as notificações"}
             </h3>
             <p className="text-xs text-muted-foreground leading-relaxed">
-              Receba atualizações importantes sobre pagamentos, vendas, comissões e sua conta em tempo real.
+              {iosMode
+                ? "No iOS as notificações só funcionam com o app instalado: toque em Compartilhar → Adicionar à Tela de Início e abra pelo ícone MSK para ativar."
+                : "Receba atualizações importantes sobre pagamentos, vendas, comissões e sua conta em tempo real."}
             </p>
           </div>
         </div>
 
         <div className="mt-6 flex flex-col gap-2">
-          <Button 
-            variant="neon" 
-            className="w-full rounded-xl font-bold uppercase tracking-wider text-xs h-11"
-            onClick={handleEnable}
-            disabled={loading}
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Ativar notificações
-          </Button>
+          {iosMode ? (
+            <Button
+              variant="neon"
+              className="w-full rounded-xl font-bold uppercase tracking-wider text-xs h-11"
+              onClick={handleDismiss}
+            >
+              Entendi
+            </Button>
+          ) : (
+            <Button 
+              variant="neon" 
+              className="w-full rounded-xl font-bold uppercase tracking-wider text-xs h-11"
+              onClick={handleEnable}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Ativar notificações
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             className="w-full rounded-xl text-xs text-muted-foreground hover:text-foreground"
