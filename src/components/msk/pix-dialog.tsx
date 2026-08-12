@@ -56,7 +56,16 @@ function useCountdown(expiresAt?: string | null) {
   return { left, label: `${mm}:${ss}` };
 }
 
+/** Normaliza o QR devolvido pelo gateway (data URI, URL http ou base64 puro). */
+function normalizeGatewayQr(raw?: string | null) {
+  const value = (raw ?? "").trim();
+  if (!value) return null;
+  if (value.startsWith("data:") || /^https?:\/\//i.test(value)) return value;
+  return `data:image/png;base64,${value}`;
+}
+
 /** Modal PIX com expiração de 2 minutos e confirmação oficial via backend. */
+
 export function PixDialog({
   pix,
   onClose,
