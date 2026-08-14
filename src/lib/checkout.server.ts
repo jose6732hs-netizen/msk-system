@@ -369,14 +369,17 @@ export async function createPixCheckout(input: {
         userId: input.userId,
         type: "pix_created",
         title: "PIX gerado",
-        body: `Seu PIX de ${gross} foi gerado. Pague em até 2 minutos para liberar a licença.`,
+        body: `🧾 PIX gerado: ${gross}\n⏱️ Pague em até 2 minutos para liberar sua licença`,
         link: "/painel",
+        recipientRole: "user",
+        transactionId: tx.id,
       }).catch(() => {});
       await notifyAdmins({
         type: "pix_created",
         title: "Nova venda gerada",
-        body: `Um PIX no valor bruto de ${gross} foi gerado por um cliente.`,
+        body: `🧾 Nova venda gerada\n💵 Valor bruto: ${gross}`,
         link: "/admin",
+        transactionId: tx.id,
         metadata: { transactionId: tx.id, amount: Number(finalPrice) },
       }).catch(() => {});
     } catch (e) {

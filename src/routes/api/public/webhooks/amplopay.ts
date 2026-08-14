@@ -184,8 +184,9 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
             await notifyAdmins({
               type: "sale_approved",
               title: "Venda aprovada",
-              body: `Nova venda aprovada no valor bruto de ${gross}.`,
+              body: `✅ Venda aprovada\n💵 Valor bruto: ${gross}`,
               link: "/admin",
+              transactionId: tx.id,
               metadata: { transactionId: tx.id, amount: Number(tx.amount) },
             }).catch(e => console.error("Push Admin fail:", e));
 
@@ -200,8 +201,10 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
                 userId: paidTx.user_id,
                 type: "pix_approved",
                 title: "Pagamento confirmado",
-                body: `Recebemos seu pagamento de ${gross}. Sua licença já está liberada.`,
+                body: `✅ Pagamento aprovado\n💵 Valor: ${gross}\n🔑 Sua licença já está liberada`,
                 link: "/painel",
+                recipientRole: "user",
+                transactionId: tx.id,
               }).catch(e => console.error("Push comprador fail:", e));
             }
           } else if (failEvents.includes(eventType)) {

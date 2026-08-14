@@ -1,4 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+const brl = (v: number) => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 import { logAudit } from "@/lib/audit.server";
 import { sendNotification } from "@/lib/notifications.functions";
 
@@ -133,9 +135,11 @@ export async function processInternalCommission(transactionId: string) {
     await sendProfessionalNotification({
       userId: affiliate.user_id,
       type: "commission_earned",
-      title: "Venda aprovada!",
-      body: `Você ganhou R$ ${commissionAmount.toFixed(2)} (${percentage}% de R$ ${grossAmount.toFixed(2)}) de comissão nesta venda.`,
+      title: "Venda aprovada",
+      body: `💚 Sua comissão é de ${brl(commissionAmount)}\n💵 Valor da venda: ${brl(grossAmount)}\n🏦 Saldo já creditado na sua carteira`,
       link: "/parceiro",
+      recipientRole: "affiliate",
+      transactionId: tx.id,
       metadata: { grossAmount, percentage, commissionAmount, transactionId: tx.id }
     }).catch(e => console.error("Push Affiliate fail:", e));
   }
