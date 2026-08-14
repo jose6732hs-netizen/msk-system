@@ -1975,6 +1975,68 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notification_logs: {
+        Row: {
+          body: string
+          created_at: string
+          device_id: string | null
+          endpoint: string | null
+          error: string | null
+          event_type: string
+          http_status: number | null
+          id: string
+          notification_id: string | null
+          payload: Json
+          recipient_role: string
+          status: string
+          title: string
+          transaction_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          device_id?: string | null
+          endpoint?: string | null
+          error?: string | null
+          event_type: string
+          http_status?: number | null
+          id?: string
+          notification_id?: string | null
+          payload?: Json
+          recipient_role?: string
+          status?: string
+          title: string
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          device_id?: string | null
+          endpoint?: string | null
+          error?: string | null
+          event_type?: string
+          http_status?: number | null
+          id?: string
+          notification_id?: string | null
+          payload?: Json
+          recipient_role?: string
+          status?: string
+          title?: string
+          transaction_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "push_notification_logs_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reseller_deposits: {
         Row: {
           amount: number
