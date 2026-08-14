@@ -228,7 +228,7 @@ export const adminSentNotifications = createServerFn({ method: "GET" })
 
 export const adminPushLogs = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { role?: string; event?: string; search?: string; limit?: number } | undefined) => d ?? {})
+  .inputValidator((d: { role?: string | undefined; event?: string | undefined; search?: string | undefined; limit?: number | undefined } | undefined) => d ?? {})
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
