@@ -31,6 +31,7 @@ const levels = [
   { threshold: "5M", title: "Diamante Raro", description: "Lenda. Quem chegou no topo.", image: award5mAsset.url },
 ];
 import { AdminPushTestsTab } from "@/components/msk/admin-push-tests";
+import { AdminPushLogsTab } from "@/components/msk/admin-push-logs";
 import { AdminSubscriptionsTab } from "@/components/msk/admin-subscriptions";
 import { NotificationSettings } from "@/components/msk/notification-settings";
 import { Bell } from "lucide-react";
@@ -73,6 +74,7 @@ const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: 
     items: [
       { value: "tracking", label: "Analytics", Icon: TrendingUp },
       { value: "push", label: "Push / Testes", Icon: MessageSquare },
+      { value: "push_logs", label: "Log de Push", Icon: MessageSquare },
       { value: "notifications", label: "Notificações", Icon: Bell },
       { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
       { value: "logs", label: "Auditoria", Icon: Clock },
@@ -494,6 +496,7 @@ function Admin() {
                 {activeTab === "wallets" && <AdminWalletsTab />}
                 {activeTab === "withdrawals" && <AdminWithdrawalsTab />}
                 {activeTab === "push" && <AdminPushTestsTab />}
+                {activeTab === "push_logs" && <AdminPushLogsTab />}
                 {activeTab === "notifications" && <NotificationSettings scope="admin" />}
                 {activeTab === "subs" && (
                   <AdminSubscriptionsTab
