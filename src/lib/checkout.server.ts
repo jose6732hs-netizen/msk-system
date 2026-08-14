@@ -356,6 +356,33 @@ export async function createPixCheckout(input: {
       metadata: { amount: finalPrice, plan: planSlug, bulk: isBulk },
     });
 
+    // Notificações de "venda gerada" (comprador + administradores) — nunca quebram o checkout.
+    try {
+      const { sendProfessionalNotification, notifyAdmins } = await import(
+        "./notification-service.server"
+      );
+      const gross = Number(finalPrice).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+      });
+      await sendProfessionalNotification({
+        userId: input.userId,
+        type: "pix_created",
+        title: "PIX gerado",
+        body: `Seu PIX de ${gross} foi gerado. Pague em até 2 minutos para liberar a licença.`,
+        link: "/painel",
+      }).catch(() => {});
+      await notifyAdmins({
+        type: "pix_created",
+        title: "Nova venda gerada",
+        body: `Um PIX no valor bruto de ${gross} foi gerado por um cliente.`,
+        link: "/admin",
+        metadata: { transactionId: tx.id, amount: Number(finalPrice) },
+      }).catch(() => {});
+    } catch (e) {
+      console.error("[checkout] notificação pix_created falhou:", e);
+    }
+
     return {
       transactionId: tx.id,
       identifier,
