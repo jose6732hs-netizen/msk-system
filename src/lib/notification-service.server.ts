@@ -99,6 +99,28 @@ export async function sendProfessionalNotification(params: {
   return { internal: notif.id, push: sent };
 }
 
+/** Envia a mesma notificação para todos os administradores (admin e super admin). */
+export async function notifyAdmins(params: {
+  type: NotificationType;
+  title: string;
+  body: string;
+  link?: string;
+  metadata?: Record<string, any>;
+}) {
+  const { data: roles } = await supabaseAdmin
+    .from("user_roles")
+    .select("user_id")
+    .in("role", ["admin", "super_admin"] as never);
+
+  const ids = Array.from(new Set((roles ?? []).map((r: any) => r.user_id).filter(Boolean)));
+  for (const userId of ids) {
+    await sendProfessionalNotification({ userId, ...params }).catch((e) =>
+      console.error("[notifyAdmins] falha:", e),
+    );
+  }
+  return ids.length;
+}
+
 export function getPlanEmoji(planName: string): string {
   const name = planName.toLowerCase();
   if (name.includes("pro")) return "🚀";
