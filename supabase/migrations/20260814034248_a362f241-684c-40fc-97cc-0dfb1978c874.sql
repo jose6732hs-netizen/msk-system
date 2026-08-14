@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.create_affiliate_wallet_on_affiliate_creation() FROM authenticated, anon;
