@@ -168,23 +168,41 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
 
           if (paidEvents.includes(eventType)) {
             const { processInternalCommission } = await import("@/lib/parceiro/internal-affiliate.server");
-            const { sendProfessionalNotification } = await import("@/lib/notification-service.server");
-            
+            const { sendProfessionalNotification, notifyAdmins } = await import(
+              "@/lib/notification-service.server"
+            );
+
             await settlePaidTransaction(tx.id);
             await processInternalCommission(tx.id).catch(err => console.error("[webhook] Erro comissão:", err));
 
-            // Notificação de Venda para Super Admin
-            const { data: admins } = await supabaseAdmin.from("user_roles").select("user_id").eq("role", "super_admin");
-            for (const admin of (admins || [])) {
-              if (admin.user_id) {
-                await sendProfessionalNotification({
-                  userId: admin.user_id,
-                  type: "sale_approved",
-                  title: "Venda aprovada",
-                  body: `Uma nova venda de R$ ${Number(tx.amount).toFixed(2)} foi aprovada.`,
-                  link: `/admin/vendas`
-                }).catch(e => console.error("Push Admin fail:", e));
-              }
+            const gross = Number(tx.amount).toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            });
+
+            // Notificação de venda (valor bruto) para todos os administradores
+            await notifyAdmins({
+              type: "sale_approved",
+              title: "Venda aprovada",
+              body: `Nova venda aprovada no valor bruto de ${gross}.`,
+              link: "/admin",
+              metadata: { transactionId: tx.id, amount: Number(tx.amount) },
+            }).catch(e => console.error("Push Admin fail:", e));
+
+            // Notificação de compra confirmada para o comprador
+            const { data: paidTx } = await supabaseAdmin
+              .from("transactions")
+              .select("user_id")
+              .eq("id", tx.id)
+              .maybeSingle();
+            if (paidTx?.user_id) {
+              await sendProfessionalNotification({
+                userId: paidTx.user_id,
+                type: "pix_approved",
+                title: "Pagamento confirmado",
+                body: `Recebemos seu pagamento de ${gross}. Sua licença já está liberada.`,
+                link: "/painel",
+              }).catch(e => console.error("Push comprador fail:", e));
             }
           } else if (failEvents.includes(eventType)) {
             await supabaseAdmin.from("transactions").update({ status: "FAILED" }).eq("id", tx.id);

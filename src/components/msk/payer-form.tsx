@@ -134,13 +134,23 @@ export function PayerForm({
           )}
         </div>
       </div>
-      <div className="flex gap-2">
-        <Button type="submit" variant="neon" size="sm" disabled={!docOk || !phoneOk || save.isPending}>
-          {save.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Salvar dados
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button
+          type="submit"
+          variant="neon"
+          className="h-12 w-full whitespace-normal break-words px-4 text-center text-xs font-black uppercase leading-tight tracking-widest sm:flex-1"
+          disabled={!docOk || !phoneOk || save.isPending}
+        >
+          {save.isPending && <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />}
+          Salvar e gerar PIX
         </Button>
         {complete && (
-          <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(false)}>
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-12 w-full text-xs sm:w-auto"
+            onClick={() => setEditing(false)}
+          >
             Cancelar
           </Button>
         )}
