@@ -509,7 +509,10 @@ function PlanosPage() {
                           flex items-center justify-center
                           ${loadingPlan === plan.id ? "opacity-70 pointer-events-none" : ""}`}
                         disabled={loadingPlan === plan.id}
-                        onClick={() => addToCart(plan)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(plan);
+                        }}
                       >
                         {loadingPlan === plan.id ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
