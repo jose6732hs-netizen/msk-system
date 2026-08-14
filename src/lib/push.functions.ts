@@ -225,3 +225,45 @@ export const adminSentNotifications = createServerFn({ method: "GET" })
       totalFailed: list.filter((n) => n.status === "failed").length,
     };
   });
+
+export const adminPushLogs = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { role?: string | undefined; event?: string | undefined; search?: string | undefined; limit?: number | undefined } | undefined) => d ?? {})
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let q = (supabaseAdmin as any)
+      .from("push_notification_logs")
+      .select("id,user_id,recipient_role,event_type,title,body,payload,endpoint,status,error,http_status,transaction_id,created_at")
+      .order("created_at", { ascending: false })
+      .limit(Math.min(data.limit ?? 100, 300));
+
+    if (data.role && data.role !== "all") q = q.eq("recipient_role", data.role);
+    if (data.event && data.event !== "all") q = q.eq("event_type", data.event);
+    if (data.search) q = q.or(`title.ilike.%${data.search}%,body.ilike.%${data.search}%`);
+
+    const { data: rows, error } = await q;
+    if (error) throw error;
+
+    const list = (rows ?? []) as any[];
+    const userIds = Array.from(new Set(list.map((r) => r.user_id).filter(Boolean)));
+    const emails: Record<string, string> = {};
+    if (userIds.length) {
+      const { data: profs } = await supabaseAdmin
+        .from("profiles")
+        .select("id,email,name")
+        .in("id", userIds as never);
+      for (const p of (profs ?? []) as any[]) emails[p.id] = p.email || p.name || p.id;
+    }
+
+    return {
+      logs: list.map((r) => ({ ...r, recipient: r.user_id ? (emails[r.user_id] ?? r.user_id) : "—" })),
+      stats: {
+        total: list.length,
+        delivered: list.filter((r) => r.status === "delivered").length,
+        failed: list.filter((r) => r.status === "failed").length,
+        noDevice: list.filter((r) => r.status === "no_device").length,
+      },
+    };
+  });

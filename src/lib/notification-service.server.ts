@@ -25,6 +25,16 @@ const EMOJI_MAP: Record<NotificationType | string, string> = {
   system: "🔔"
 };
 
+export type RecipientRole = "user" | "affiliate" | "admin";
+
+async function logPush(row: Record<string, any>) {
+  try {
+    await (supabaseAdmin as any).from("push_notification_logs").insert(row);
+  } catch (e) {
+    console.error("[push-log] falha ao registrar:", e);
+  }
+}
+
 export async function sendProfessionalNotification(params: {
   userId: string;
   type: NotificationType;
@@ -32,8 +42,10 @@ export async function sendProfessionalNotification(params: {
   body: string;
   link?: string;
   metadata?: Record<string, any>;
+  recipientRole?: RecipientRole;
+  transactionId?: string | null;
 }) {
-  const { userId, type, title, body, link, metadata } = params;
+  const { userId, type, title, body, link, metadata, recipientRole = "user", transactionId } = params;
   const emoji = EMOJI_MAP[type] || "🔔";
   const finalTitle = `${emoji} ${title}`;
 
@@ -52,6 +64,16 @@ export async function sendProfessionalNotification(params: {
 
   if (nErr) throw nErr;
 
+  const payload = {
+    title: finalTitle,
+    body,
+    link: link || "/painel",
+    notificationId: notif.id,
+    tag: type,
+    metadata: metadata || {},
+  };
+  const txId = transactionId ?? (metadata?.["transactionId"] as string | undefined) ?? null;
+
   // 2. Buscar Dispositivos Ativos
   const { data: devices } = await (supabaseAdmin as any)
     .from("push_devices")
@@ -61,6 +83,18 @@ export async function sendProfessionalNotification(params: {
 
   if (!devices || devices.length === 0) {
     await supabaseAdmin.from("notifications").update({ status: "sent", sent_at: new Date().toISOString() } as any).eq("id", notif.id);
+    await logPush({
+      notification_id: notif.id,
+      user_id: userId,
+      recipient_role: recipientRole,
+      event_type: type,
+      title: finalTitle,
+      body,
+      payload,
+      status: "no_device",
+      error: "Nenhum dispositivo ativo",
+      transaction_id: txId,
+    });
     return { internal: notif.id, push: 0 };
   }
 
@@ -71,13 +105,7 @@ export async function sendProfessionalNotification(params: {
       endpoint: device.endpoint,
       p256dh: device.p256dh,
       auth: device.auth
-    }, {
-      title: finalTitle,
-      body,
-      link: link || "/painel",
-      notificationId: notif.id,
-      tag: type
-    });
+    }, payload);
 
     if (res.ok) sent++;
     else {
@@ -86,6 +114,22 @@ export async function sendProfessionalNotification(params: {
         await (supabaseAdmin as any).from("push_devices").update({ active: false }).eq("id", device.id);
       }
     }
+
+    await logPush({
+      notification_id: notif.id,
+      user_id: userId,
+      recipient_role: recipientRole,
+      event_type: type,
+      title: finalTitle,
+      body,
+      payload,
+      device_id: device.id,
+      endpoint: device.endpoint,
+      status: res.ok ? "delivered" : res.gone ? "expired" : "failed",
+      error: res.ok ? null : (res.error || null),
+      http_status: (res as any).status ?? null,
+      transaction_id: txId,
+    });
   }
 
   // Atualizar notificação original
@@ -106,6 +150,7 @@ export async function notifyAdmins(params: {
   body: string;
   link?: string;
   metadata?: Record<string, any>;
+  transactionId?: string | null;
 }) {
   const { data: roles } = await supabaseAdmin
     .from("user_roles")
@@ -114,12 +159,13 @@ export async function notifyAdmins(params: {
 
   const ids = Array.from(new Set((roles ?? []).map((r: any) => r.user_id).filter(Boolean)));
   for (const userId of ids) {
-    await sendProfessionalNotification({ userId, ...params }).catch((e) =>
+    await sendProfessionalNotification({ userId, ...params, recipientRole: "admin" }).catch((e) =>
       console.error("[notifyAdmins] falha:", e),
     );
   }
   return ids.length;
 }
+
 
 export function getPlanEmoji(planName: string): string {
   const name = planName.toLowerCase();
