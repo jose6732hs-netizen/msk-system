@@ -134,8 +134,9 @@ export async function processInternalCommission(transactionId: string) {
       userId: affiliate.user_id,
       type: "commission_earned",
       title: "Venda aprovada!",
-      body: `Você ganhou R$ ${commissionAmount.toFixed(2)} de comissão em uma nova venda.`,
-      link: "/parceiro"
+      body: `Você ganhou R$ ${commissionAmount.toFixed(2)} (${percentage}% de R$ ${grossAmount.toFixed(2)}) de comissão nesta venda.`,
+      link: "/parceiro",
+      metadata: { grossAmount, percentage, commissionAmount, transactionId: tx.id }
     }).catch(e => console.error("Push Affiliate fail:", e));
   }
 
