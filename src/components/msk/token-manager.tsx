@@ -55,6 +55,16 @@ function fmtDateTime(iso?: string | null) {
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
+/** Duração legível (ex.: "30 dias", "15 minutos") a partir de milissegundos. */
+function fmtDuration(ms: number) {
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) return `${minutes} minuto${minutes === 1 ? "" : "s"} de validade`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} hora${hours === 1 ? "" : "s"} de validade`;
+  const days = Math.round(hours / 24);
+  return `${days} dia${days === 1 ? "" : "s"} de validade`;
+}
+
 /** Regressiva baseada no relógio do servidor (offset calculado na resposta da API). */
 function useServerNow(serverTime?: string | null) {
   const offset = useRef(0);
