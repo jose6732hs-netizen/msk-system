@@ -48,7 +48,7 @@ export async function loadTenantTokens(userId: string) {
   const { data } = await supabaseAdmin
     .from("licenses")
     .select(
-      "id,status,type,token_preview,token_last4,created_at,activated_at,expires_at,max_devices,plans(name,slug)",
+      "id,status,type,token_preview,token_last4,created_at,activated_at,expires_at,max_devices,metadata,plans(name,slug)",
     )
     .eq("user_id", userId)
     .or(`expires_at.is.null,expires_at.gt.${fewHoursAgo}`)
@@ -75,14 +75,18 @@ export async function loadTenantTokens(userId: string) {
   return list.map((l) => {
     const expired = l["expires_at"] && new Date(l["expires_at"]).getTime() <= now;
     const device = bound.get(l["id"]);
+    const pendingMs = Number((l["metadata"] as any)?.["pending_duration_ms"] ?? 0);
+    const awaiting = l["status"] === "inactive" && !l["expires_at"];
     const status =
       l["status"] === "revoked" || l["status"] === "suspended"
         ? l["status"]
         : expired
           ? "expired"
-          : device
-            ? "active"
-            : "available";
+          : awaiting
+            ? "pending"
+            : device
+              ? "active"
+              : "available";
     return {
       id: l["id"],
       preview: l["token_preview"],
@@ -94,6 +98,7 @@ export async function loadTenantTokens(userId: string) {
       activated_at: l["activated_at"],
       expires_at: l["expires_at"],
       max_devices: l["max_devices"],
+      pending_duration_ms: pendingMs || null,
     };
   });
 }
