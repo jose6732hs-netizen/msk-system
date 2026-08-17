@@ -107,7 +107,7 @@ export async function enablePushNotifications(): Promise<
     // Identificador único do dispositivo (simples)
     const deviceId = `${navigator.platform}-${Math.abs(navigator.userAgent.length * 7919)}`;
 
-    await registerPushDevice({
+    const reg2 = await registerPushDevice({
       data: {
         endpoint: json.endpoint ?? sub.endpoint,
         p256dh: json.keys?.p256dh ?? bufToB64url(sub.getKey("p256dh")),
@@ -119,8 +119,17 @@ export async function enablePushNotifications(): Promise<
       },
     });
     
+    if (!reg2?.ok) {
+      localStorage.removeItem("msk_push_enabled");
+      return {
+        ok: false as const,
+        reason: "error" as const,
+        message: "Entre na sua conta para ativar as notificações neste dispositivo.",
+      };
+    }
+
     localStorage.setItem("msk_push_enabled", "1");
-    return { ok: true };
+    return { ok: true as const };
   } catch (e) {
     console.error("[push] Erro ao habilitar:", e);
     return { ok: false, reason: "error", message: (e as Error).message };

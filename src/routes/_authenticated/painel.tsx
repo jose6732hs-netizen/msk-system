@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useSupportLink } from "@/lib/support-link";
 import { MskLogo } from "@/components/msk/logo";
 import { getAccount, getMyToken, removeMyDevice, cancelMySubscription } from "@/lib/account.functions";
+import { generateToken } from "@/lib/tokens.functions";
 import { ExtensionDownloadCard } from "@/components/msk/extension-download";
 import { TokenManager } from "@/components/msk/token-manager";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
@@ -67,6 +68,21 @@ function Painel() {
   const revealFn = useServerFn(getMyToken);
   const removeFn = useServerFn(removeMyDevice);
   const cancelFn = useServerFn(cancelMySubscription);
+  const generateLicenseFn = useServerFn(generateToken);
+  const [generatingLicense, setGeneratingLicense] = useState(false);
+
+  async function handleGenerateNewLicense() {
+    setGeneratingLicense(true);
+    try {
+      await generateLicenseFn();
+      await qc.invalidateQueries();
+      toast.success("Nova licença gerada! O tempo começa quando você ativar na extensão.");
+    } catch (e) {
+      toast.error((e as Error).message || "Não foi possível gerar uma nova licença.");
+    } finally {
+      setGeneratingLicense(false);
+    }
+  }
   const [token, setToken] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -346,6 +362,8 @@ function Painel() {
                   navigator.clipboard.writeText(token ?? license.token_preview ?? "");
                   toast.success("Token copiado com sucesso!");
                 }}
+                onGenerateNew={handleGenerateNewLicense}
+                generating={generatingLicense}
                 highlighted={highlightedId === license.id}
               />
             </div>

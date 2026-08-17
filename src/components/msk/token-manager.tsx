@@ -35,6 +35,7 @@ function useHasSession() {
 
 const STATUS_LABEL: Record<string, string> = {
   available: "Disponível",
+  pending: "⏳ Aguardando ativação",
   active: "🟢 Ativo",
   expired: "🟡 Expirado",
   revoked: "🔴 Revogado",
@@ -44,6 +45,7 @@ const STATUS_LABEL: Record<string, string> = {
 function statusStyle(status: string) {
   if (status === "active") return "text-primary border-primary/40 bg-primary/10";
   if (status === "available") return "text-foreground border-border bg-muted/30";
+  if (status === "pending") return "text-amber-400 border-amber-400/40 bg-amber-400/10";
   if (status === "revoked") return "text-red-500 border-red-500/40 bg-red-500/10";
   return "text-destructive border-destructive/40 bg-destructive/10";
 }
@@ -51,6 +53,16 @@ function statusStyle(status: string) {
 function fmtDateTime(iso?: string | null) {
   if (!iso) return "Vitalício";
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+/** Duração legível (ex.: "30 dias", "15 minutos") a partir de milissegundos. */
+function fmtDuration(ms: number) {
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) return `${minutes} minuto${minutes === 1 ? "" : "s"} de validade`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) return `${hours} hora${hours === 1 ? "" : "s"} de validade`;
+  const days = Math.round(hours / 24);
+  return `${days} dia${days === 1 ? "" : "s"} de validade`;
 }
 
 /** Regressiva baseada no relógio do servidor (offset calculado na resposta da API). */
@@ -296,7 +308,9 @@ export function TokenManager() {
                   </p>
                   <p className="mt-2 break-all font-mono text-lg text-primary">{fresh.token}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    Expira em: {fmtDateTime(fresh.expires_at)}
+                    {fresh.expires_at
+                      ? `Expira em: ${fmtDateTime(fresh.expires_at)}`
+                      : "A validade começa a contar quando o token for ativado na extensão."}
                   </p>
                   <Button size="sm" variant="neon" className="mt-3" onClick={() => copy(fresh.token)}>
                     <Copy /> Copiar
@@ -467,11 +481,38 @@ export function TokenManager() {
                                 <Link to="/planos">Adquirir nova licença</Link>
                               </Button>
                             </div>
+                          ) : t.status === 'pending' ? (
+                            <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/20 text-amber-400">
+                                  <Clock className="h-5 w-5" />
+                                </div>
+                                <div>
+                                  <p className="text-[0.65rem] font-black uppercase tracking-widest text-amber-400">Aguardando ativação</p>
+                                  <h5 className="text-xs font-black text-white uppercase tracking-tighter">
+                                    {t.pending_duration_ms ? fmtDuration(t.pending_duration_ms) : "Validade integral"}
+                                  </h5>
+                                </div>
+                              </div>
+                              <p className="text-[0.6rem] font-bold leading-relaxed text-muted-foreground uppercase">
+                                O tempo começa a contar somente quando você colar este token na extensão. O contador regressivo aparece aqui após a ativação.
+                              </p>
+                            </div>
                           ) : (
                             <span className="inline-block rounded-full border border-white/5 bg-white/5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
                               Vitalício
                             </span>
                           )}
+
+                          <Button
+                            variant="neonOutline"
+                            size="sm"
+                            onClick={onGenerate}
+                            disabled={busy}
+                            className="mt-4 w-full rounded-xl py-5 text-[0.6rem] font-black uppercase tracking-widest"
+                          >
+                            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Gerar nova licença
+                          </Button>
                         </div>
 
                       </div>

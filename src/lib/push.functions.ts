@@ -44,6 +44,11 @@ export const registerPushDevice = createServerFn({ method: "POST" })
       if (user) userId = user.id;
     }
 
+    if (!userId) {
+      // Sem sessão válida não há como vincular o dispositivo (user_id é obrigatório).
+      return { ok: false as const, reason: "unauthenticated" as const };
+    }
+
     const { error } = await (supabaseAdmin as any).from("push_devices").upsert(
       {
         user_id: userId,
@@ -60,7 +65,7 @@ export const registerPushDevice = createServerFn({ method: "POST" })
       { onConflict: "endpoint" },
     );
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true as const };
   });
 
 export const listMyPushDevices = createServerFn({ method: "GET" })
