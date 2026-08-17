@@ -24,10 +24,12 @@ interface LicenseCardProps {
   busy?: boolean;
   onReveal?: () => void;
   onCopyToken: () => void;
+  onGenerateNew?: () => void;
+  generating?: boolean;
   highlighted?: boolean;
 }
 
-export function LicenseCard({ license, token, busy, onReveal, onCopyToken, highlighted }: LicenseCardProps) {
+export function LicenseCard({ license, token, busy, onReveal, onCopyToken, onGenerateNew, generating, highlighted }: LicenseCardProps) {
   const [timeLeft, setTimeLeft] = useState<{
     days: number;
     hours: number;
@@ -65,6 +67,7 @@ export function LicenseCard({ license, token, busy, onReveal, onCopyToken, highl
     return () => clearInterval(timer);
   }, [license.expires_at]);
 
+  const awaitingActivation = license.status === "inactive" && !license.expires_at;
   const status = timeLeft?.isExpired ? "expired" : license.status;
   const plan = license.plans;
 
@@ -155,6 +158,20 @@ export function LicenseCard({ license, token, busy, onReveal, onCopyToken, highl
           />
         </div>
 
+        {awaitingActivation && (
+          <div className="p-8 rounded-[2rem] border border-amber-400/30 bg-amber-400/10">
+            <div className="flex flex-col items-center gap-3 text-center">
+              <Clock className="h-6 w-6 text-amber-400" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">
+                Aguardando ativação na extensão
+              </span>
+              <p className="text-xs text-white/50 font-medium max-w-md">
+                A contagem regressiva começa apenas quando você colar este token na extensão MSK. Depois disso, o tempo restante aparece aqui.
+              </p>
+            </div>
+          </div>
+        )}
+
         {timeLeft && !plan?.is_lifetime && (
           <div className={cn(
             "p-8 rounded-[2rem] border overflow-hidden relative group transition-all duration-500",
@@ -204,6 +221,16 @@ export function LicenseCard({ license, token, busy, onReveal, onCopyToken, highl
         </div>
 
         <div className="mt-8 flex flex-wrap gap-4 pt-6 border-t border-white/5">
+          {onGenerateNew && (
+            <Button
+              variant="neon"
+              onClick={onGenerateNew}
+              disabled={generating}
+              className="rounded-xl h-11 px-6 font-black uppercase tracking-widest text-[10px]"
+            >
+              {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Gerar nova licença
+            </Button>
+          )}
           <Button 
             asChild
             variant="ghost" 
