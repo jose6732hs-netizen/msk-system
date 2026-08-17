@@ -75,7 +75,7 @@ function Painel() {
     setGeneratingLicense(true);
     try {
       await generateLicenseFn();
-      await queryClient.invalidateQueries();
+      await qc.invalidateQueries();
       toast.success("Nova licença gerada! O tempo começa quando você ativar na extensão.");
     } catch (e) {
       toast.error((e as Error).message || "Não foi possível gerar uma nova licença.");
