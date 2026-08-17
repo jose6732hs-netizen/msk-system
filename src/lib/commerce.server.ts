@@ -144,6 +144,11 @@ export async function issueStandaloneLicense(input: {
     expires = computeExpiry(unit, val, now);
   }
 
+  const isInstant = input.type === "trial" || input.type === "test";
+  // Licenças pagas só começam a contar quando o cliente ativa na extensão.
+  const pendingDurationMs = !isInstant && expires ? new Date(expires).getTime() - now.getTime() : null;
+  if (pendingDurationMs !== null) expires = null;
+
   const token = generateLicenseToken();
   const { data, error } = await supabaseAdmin
     .from("licenses")
@@ -154,9 +159,9 @@ export async function issueStandaloneLicense(input: {
       token_encrypted: await encryptToken(token),
       token_last4: token.slice(-4),
       token_preview: maskToken(token),
-      status: input.type === "trial" || input.type === "test" ? "active" : "inactive",
+      status: isInstant ? "active" : "inactive",
       type: input.type ?? "paid",
-      activated_at: input.type === "trial" || input.type === "test" ? now.toISOString() : null,
+      activated_at: isInstant ? now.toISOString() : null,
       starts_at: now.toISOString(),
       expires_at: expires,
       max_devices: input.maxDevices ?? plan.max_devices,
@@ -168,7 +173,8 @@ export async function issueStandaloneLicense(input: {
         plan_price_snapshot: plan.price,
         plan_duration_snapshot: plan.duration_days,
         plan_slug_snapshot: plan.slug,
-        features_snapshot: plan.features || {}
+        features_snapshot: plan.features || {},
+        ...(pendingDurationMs !== null ? { pending_duration_ms: pendingDurationMs } : {})
       }
     } as never)
     .select("id")

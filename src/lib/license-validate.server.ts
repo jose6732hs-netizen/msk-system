@@ -21,6 +21,7 @@ type LicenseRow = {
   status: string;
   expires_at: string | null;
   max_devices: number;
+  metadata: Record<string, unknown> | null;
   plans: { slug: string; name: string; features: Record<string, boolean> } | null;
 };
 
@@ -71,10 +72,19 @@ export async function handleValidation(request: Request, bucket: string, limit: 
 
   // Se a licença está 'inactive', vamos ativá-la agora se for o primeiro uso.
   if (license.status === "inactive") {
-    await supabaseAdmin
-      .from("licenses")
-      .update({ status: "active", activated_at: new Date().toISOString() })
-      .eq("id", license.id);
+    const activatedAt = new Date();
+    const pending = Number((license.metadata as any)?.["pending_duration_ms"] ?? 0);
+    const patch: Record<string, unknown> = {
+      status: "active",
+      activated_at: activatedAt.toISOString(),
+    };
+    // O contador só começa quando o cliente ativa o token na extensão.
+    if (!license.expires_at && pending > 0) {
+      const expiresAt = new Date(activatedAt.getTime() + pending).toISOString();
+      patch["expires_at"] = expiresAt;
+      license.expires_at = expiresAt;
+    }
+    await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
     license.status = "active";
   }
 

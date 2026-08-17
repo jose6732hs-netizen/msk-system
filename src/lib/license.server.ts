@@ -167,7 +167,7 @@ export type ResolvedLicense = {
 };
 
 const LICENSE_SELECT =
-  "id,user_id,plan_id,subscription_id,status,expires_at,max_devices,activated_at,plans(slug,name,features)";
+  "id,user_id,plan_id,subscription_id,status,expires_at,max_devices,activated_at,type,metadata,plans(slug,name,features)";
 
 /** Busca licença pelo hash e aplica expiração automática. */
 export async function findLicenseByToken(token: string) {
