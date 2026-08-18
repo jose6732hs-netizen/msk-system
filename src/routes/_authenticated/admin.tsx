@@ -325,11 +325,11 @@ function Admin() {
             <>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
                 {[
-                  ["Total de Afiliados", stats?.users, Users, "text-blue-400"],
+                  ["Usuários", stats?.users, Users, "text-blue-400"],
                   ["Licenças Ativas", stats?.activeLicenses, Zap, "text-yellow-400"],
-                  ["Comissões do Mês", "R$ 0,00", TrendingUp, "text-primary"],
-                  ["Conversões", 0, Activity, "text-cyan-400"],
-                  ["Receita Gerada", "R$ 0,00", DollarSign, "text-emerald-400"],
+                  ["Comissões do Mês", brl(stats?.monthCommissions), TrendingUp, "text-primary"],
+                  ["Vendas Aprovadas", stats?.conversions ?? 0, Activity, "text-cyan-400"],
+                  ["Receita Aprovada", brl(stats?.revenue), DollarSign, "text-emerald-400"],
                 ].map(([k, v, Icon, color]: any) => (
                   <div key={k} className="glass group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all hover:border-primary/40">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
