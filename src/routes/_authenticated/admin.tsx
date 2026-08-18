@@ -427,6 +427,15 @@ function Admin() {
             </Button>
           </header>
 
+          {owner?.subs && (
+            <FilterChips
+              className="mb-6"
+              value={activeTab}
+              onChange={setActiveTab}
+              chips={owner.subs.map((s) => ({ id: s.value, label: s.label }))}
+            />
+          )}
+
           {activeTab === "licenses" && (
             <>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
