@@ -43,10 +43,15 @@ export async function loadFinanceOverview() {
       .limit(80),
   ]);
 
-  const paid = (transactions ?? []).filter((t: any) => t.status === "PAID");
+  const st = (t: any) => String(t?.status ?? "").toUpperCase();
+  const PAID_STATUSES = ["PAID", "APPROVED", "COMPLETED"];
+  const OPEN_STATUSES = ["PENDING", "WAITING_PAYMENT", "AWAITING_PAYMENT", "PROCESSING"];
+  const paid = (transactions ?? []).filter((t: any) => PAID_STATUSES.includes(st(t)) || t.paid_at);
   const revenue = paid.reduce((s: number, t: any) => s + Number(t.amount), 0);
   const generatedRevenue = (transactions ?? []).reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const pendingTransactions = (transactions ?? []).filter((t: any) => t.status === "PENDING");
+  const pendingTransactions = (transactions ?? []).filter(
+    (t: any) => OPEN_STATUSES.includes(st(t)) && !t.paid_at,
+  );
   const pendingRevenue = pendingTransactions.reduce((s: number, t: any) => s + Number(t.amount), 0);
   const approvedCommissions = (commissions ?? [])
     .filter((c: any) => ["AVAILABLE", "APPROVED", "PAID"].includes(c.status))
