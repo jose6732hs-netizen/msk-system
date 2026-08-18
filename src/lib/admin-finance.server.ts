@@ -45,6 +45,18 @@ export async function loadFinanceOverview() {
 
   const paid = (transactions ?? []).filter((t: any) => t.status === "PAID");
   const revenue = paid.reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const generatedRevenue = (transactions ?? []).reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const pendingTransactions = (transactions ?? []).filter((t: any) => t.status === "PENDING");
+  const pendingRevenue = pendingTransactions.reduce((s: number, t: any) => s + Number(t.amount), 0);
+  const approvedCommissions = (commissions ?? [])
+    .filter((c: any) => ["AVAILABLE", "APPROVED", "PAID"].includes(c.status))
+    .reduce((s: number, c: any) => s + Number(c.amount), 0);
+  const pendingCommissions = (commissions ?? [])
+    .filter((c: any) => c.status === "PENDING")
+    .reduce((s: number, c: any) => s + Number(c.amount), 0);
+  const pendingWithdrawalValue = (withdrawals ?? [])
+    .filter((w: any) => w.status === "PENDING")
+    .reduce((s: number, w: any) => s + Number(w.amount), 0);
 
   let gatewayBalance: Record<string, any> | null = null;
   try {
@@ -63,8 +75,18 @@ export async function loadFinanceOverview() {
     gatewayBalance,
     stats: {
       revenue,
+      generatedRevenue,
+      pendingRevenue,
+      approvedCommissions,
+      pendingCommissions,
+      netRevenue: revenue - approvedCommissions,
+      averageTicket: paid.length ? revenue / paid.length : 0,
+      conversionRate: transactions?.length ? (paid.length / transactions.length) * 100 : 0,
+      pendingWithdrawalValue,
+      activeAffiliates: (affiliates ?? []).filter((a: any) => a.status === "active").length,
+      totalAffiliateSales: (affiliates ?? []).reduce((sum: number, a: any) => sum + Number(a.total_sales), 0),
       paidCount: paid.length,
-      pending: (transactions ?? []).filter((t: any) => t.status === "PENDING").length,
+      pending: pendingTransactions.length,
       pendingWithdrawals: (withdrawals ?? []).filter((w: any) => w.status === "PENDING").length,
     },
   };

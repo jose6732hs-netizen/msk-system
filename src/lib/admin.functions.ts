@@ -97,6 +97,8 @@ const planSchema = z
   currency: z.string().min(3).max(3).default("BRL"),
   duration_label: z.string().max(40).default(""),
   duration_days: z.number().int().min(1).nullable(),
+  duration_unit: z.enum(["minutes", "hours", "days", "weeks", "months", "lifetime"]).default("days"),
+  duration_value: z.number().int().min(1).default(30),
   is_lifetime: z.boolean().default(false),
   auto_renew: z.boolean().default(true),
   max_devices: z.number().int().min(1).max(100).default(1),

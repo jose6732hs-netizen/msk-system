@@ -149,7 +149,16 @@ export async function runLicenseAction(
 
 export async function savePlan(plan: Record<string, any>) {
   const payload = { ...plan };
-  if (payload["is_lifetime"]) payload["duration_days"] = null;
+  if (payload["is_lifetime"]) {
+    payload["duration_days"] = null;
+    payload["duration_unit"] = "lifetime";
+    payload["duration_value"] = 1;
+  } else {
+    const days = Number(payload["duration_days"] ?? payload["duration_value"] ?? 1);
+    payload["duration_days"] = days;
+    payload["duration_unit"] = "days";
+    payload["duration_value"] = days;
+  }
   if (payload["id"]) {
     const { id, ...rest } = payload;
     const { error } = await supabaseAdmin.from("plans").update(rest as never).eq("id", id);

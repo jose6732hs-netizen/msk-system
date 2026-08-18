@@ -6,7 +6,8 @@ import { logAudit } from "./audit.server";
 import { buildSplits, mapGatewayStatus, recordPaymentEvent } from "./financial.server";
 
 function periodicityFromPlan(plan: { duration_unit?: string | null; duration_value?: number | null }) {
-  const unit = (plan.duration_unit ?? "months").toLowerCase();
+  const rawUnit = (plan.duration_unit ?? "months").toLowerCase();
+  const unit = ({ day: "days", week: "weeks", month: "months" } as Record<string, string>)[rawUnit] ?? rawUnit;
   const value = Number(plan.duration_value ?? 1) || 1;
   if (unit === "days") return { periodicityType: "DAYS" as const, periodicity: value };
   if (unit === "weeks") return { periodicityType: "WEEKS" as const, periodicity: value };

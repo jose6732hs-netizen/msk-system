@@ -50,11 +50,11 @@ export async function processInternalCommission(transactionId: string) {
   // 5. Verificar idempotência
   const { data: existing } = await supabaseAdmin
     .from("affiliate_commissions")
-    .select("id")
+    .select("id,status")
     .eq("transaction_id", transactionId)
     .eq("affiliate_id", affiliateId)
     .maybeSingle();
-  if (existing) return existing.id;
+  if (existing && ["AVAILABLE", "APPROVED", "PAID"].includes(existing.status)) return existing.id;
 
   // 6. Obter carteira
   const { data: wallet } = await supabaseAdmin
@@ -77,9 +77,7 @@ export async function processInternalCommission(transactionId: string) {
   // 8. Registrar Comissão e Atualizar Carteira (Operação Atômica via RPC ou Sequencial Segura)
   const availableAt = isImmediate ? new Date().toISOString() : new Date(Date.now() + holdDays * 86400000).toISOString();
   
-  const { data: commission, error: cErr } = await supabaseAdmin
-    .from("affiliate_commissions")
-    .insert({
+  const commissionPayload = {
       affiliate_id: affiliateId,
       user_id: tx.user_id,
       transaction_id: tx.id,
@@ -89,10 +87,14 @@ export async function processInternalCommission(transactionId: string) {
       amount: commissionAmount, // legacia compatibility
       status: isImmediate ? 'AVAILABLE' : 'PENDING',
       available_at: availableAt,
-      wallet_id: wallet.id
-    } as never)
-    .select("id")
-    .single();
+      wallet_id: wallet.id,
+      approved_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  const commissionQuery = existing
+    ? supabaseAdmin.from("affiliate_commissions").update(commissionPayload as never).eq("id", existing.id)
+    : supabaseAdmin.from("affiliate_commissions").insert(commissionPayload as never);
+  const { data: commission, error: cErr } = await commissionQuery.select("id").single();
 
   if (cErr) throw cErr;
 
@@ -136,11 +138,11 @@ export async function processInternalCommission(transactionId: string) {
       userId: affiliate.user_id,
       type: "commission_earned",
       title: "Venda aprovada",
-      body: `💚 Sua comissão é de ${brl(commissionAmount)}\n💵 Valor da venda: ${brl(grossAmount)}\n🏦 Saldo já creditado na sua carteira`,
+      body: `💚 Comissão recebida: ${brl(commissionAmount)}\n💵 Venda aprovada: ${brl(grossAmount)}\n🏦 Valor creditado na sua carteira`,
       link: "/parceiro",
       recipientRole: "affiliate",
       transactionId: tx.id,
-      metadata: { grossAmount, percentage, commissionAmount, transactionId: tx.id }
+      metadata: { grossAmount, commissionAmount, transactionId: tx.id }
     }).catch(e => console.error("Push Affiliate fail:", e));
   }
 

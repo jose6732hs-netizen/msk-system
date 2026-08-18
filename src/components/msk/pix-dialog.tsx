@@ -155,14 +155,11 @@ export function PixDialog({
   if (typeof document === "undefined") return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100000] flex items-start sm:items-center justify-center p-0 sm:p-4 bg-background/95 backdrop-blur-xl overflow-y-auto overscroll-contain">
+    <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-background/95 p-0 backdrop-blur-xl sm:p-4">
 
-      <div className="relative w-full max-w-4xl min-h-full sm:min-h-0 animate-in fade-in zoom-in duration-300">
-        {/* Background decorative glow */}
-        <div className="absolute -top-24 -left-24 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-primary/20 rounded-full blur-[100px] pointer-events-none" />
+      <div className="relative h-full w-full max-w-4xl animate-in fade-in zoom-in duration-300 sm:h-auto sm:max-h-[calc(100dvh-2rem)]">
 
-        <div className="glass relative overflow-hidden sm:rounded-[2.5rem] border-x-0 sm:border-x border-y border-white/10 shadow-2xl min-h-screen sm:min-h-0 flex flex-col sm:block">
+        <div className="glass relative flex h-full flex-col overflow-hidden border-y border-white/10 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl sm:border-x">
           {/* Header Bar */}
           <div className="flex items-center justify-between px-6 sm:px-8 py-4 sm:py-6 border-b border-white/5 bg-white/5">
             <div className="flex items-center gap-4">
@@ -177,17 +174,21 @@ export function PixDialog({
                 </div>
               </div>
             </div>
-            <button
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={onClose}
-              className="group flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 transition-all hover:bg-white/5 hover:border-white/20"
+              className="group h-10 w-10 shrink-0 rounded-xl border border-white/10"
+              aria-label="Fechar checkout"
             >
               <X className="h-4 w-4 text-muted-foreground group-hover:text-foreground" />
-            </button>
+            </Button>
           </div>
 
-          <div className="grid lg:grid-cols-[1fr_400px] flex-1 overflow-y-auto">
+          <div className="grid min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid-cols-[1fr_400px]">
             {/* Left Content - Details */}
-            <div className="p-6 sm:p-10 border-r border-white/5 overflow-hidden">
+            <div className="overflow-hidden border-r border-white/5 p-5 sm:p-8">
               <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-6 sm:mb-8">
                 <div className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-1.5 border border-white/10">
                   <Clock className="h-3.5 w-3.5 text-primary" />
@@ -207,7 +208,7 @@ export function PixDialog({
                 </div>
               </div>
 
-              <div className="mb-10 flex flex-col sm:flex-row items-start gap-6">
+              <div className="mb-8 flex flex-col items-start gap-5 sm:flex-row">
                 {pix.imageUrl && (
                   <div className="h-32 w-32 shrink-0 rounded-[2rem] overflow-hidden border border-white/10 bg-white/5 shadow-2xl">
                     <img src={pix.imageUrl} alt={pix.planName} className="h-full w-full object-contain transition-transform duration-700 hover:scale-110" />
@@ -218,7 +219,7 @@ export function PixDialog({
                     {pix.planName ?? "Assinatura Pro"}
                   </h2>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-4xl sm:text-6xl font-black text-primary tracking-tighter drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)] whitespace-nowrap">{brl(pix.amount)}</span>
+                    <span className="text-3xl font-black text-primary drop-shadow-[0_0_15px_hsl(var(--primary)/0.4)] sm:text-5xl">{brl(pix.amount)}</span>
                     <span className="text-[0.65rem] font-black text-muted-foreground uppercase tracking-[0.2em]">Pagamento Único</span>
                   </div>
                 </div>
@@ -244,7 +245,7 @@ export function PixDialog({
             </div>
 
             {/* Right Content - Payment Actions */}
-            <div className="p-6 sm:p-10 bg-black/20 flex flex-col justify-center min-h-[500px] lg:min-h-0">
+            <div className="flex min-h-[430px] flex-col justify-center bg-black/20 p-6 sm:p-8 lg:min-h-0">
               {status === "PAID" ? (
                 <div className="flex flex-col items-center justify-center text-center py-10">
                   <div className="h-20 w-20 rounded-full bg-emerald-500/20 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
