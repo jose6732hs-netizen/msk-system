@@ -286,33 +286,54 @@ function Admin() {
               <p className="px-4 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
                 {group.title}
               </p>
-              {group.items.map(({ value, label, Icon }) => {
+              {group.items.map(({ value, label, Icon, subs }) => {
                 const hasPendingAffiliates = value === 'affiliates' && 
                   data?.affiliates?.some((a: any) => a.verification_status === 'PENDING');
+                const isOpen = owner?.value === value;
 
                 return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setActiveTab(value)}
-                    className={cn(
-                      "w-full flex items-center justify-between rounded-xl px-4 py-3 text-[0.68rem] font-black uppercase tracking-widest transition-all",
-                      activeTab === value
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                    )}
-                  >
-                    <div className="flex items-center gap-3 truncate">
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{label}</span>
-                    </div>
-                    {hasPendingAffiliates && (
-                      <div className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                  <div key={value} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(value)}
+                      className={cn(
+                        "w-full flex items-center justify-between rounded-xl px-4 py-3 text-[0.68rem] font-black uppercase tracking-widest transition-all",
+                        isOpen
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{label}</span>
+                      </div>
+                      {hasPendingAffiliates && (
+                        <div className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                        </div>
+                      )}
+                    </button>
+                    {isOpen && subs && (
+                      <div className="ml-5 space-y-0.5 border-l border-primary/25 pl-3">
+                        {subs.map((s) => (
+                          <button
+                            key={s.value}
+                            type="button"
+                            onClick={() => setActiveTab(s.value)}
+                            className={cn(
+                              "block w-full truncate rounded-lg px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest transition-colors",
+                              activeTab === s.value
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground/70 hover:text-foreground",
+                            )}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
                       </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
