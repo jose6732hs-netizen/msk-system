@@ -34,7 +34,7 @@ export async function processInternalCommission(transactionId: string) {
   // 3. Obter configurações do afiliado
   const { data: affiliate } = await supabaseAdmin
     .from("affiliates")
-    .select("id, commission_rate, user_id")
+    .select("id, commission_rate, user_id, total_sales, total_commission, available_balance, pending_balance")
     .eq("id", affiliateId)
     .single();
 

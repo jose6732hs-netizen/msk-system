@@ -130,7 +130,8 @@ export function AdminSubscriptionsTab({
   async function save(form: PlanForm) {
     setBusy(true);
     try {
-      const normalizedPrice = Number(String(form.price).replace(/\./g, "").replace(",", "."));
+      const rawPrice = String(form.price).trim();
+      const normalizedPrice = Number(rawPrice.includes(",") ? rawPrice.replace(/\./g, "").replace(",", ".") : rawPrice);
       if (!Number.isFinite(normalizedPrice)) throw new Error("Informe um preço válido, como 5,90.");
       await saveFn({
         data: {
