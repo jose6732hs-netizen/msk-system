@@ -37,9 +37,11 @@ function AffiliateDashboard() {
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["affiliate-overview"],
     queryFn: () => fetchOverview({ data: {} }),
+    retry: false,
+    staleTime: 30_000,
   });
 
   // Expor função de abrir modal globalmente para o header
