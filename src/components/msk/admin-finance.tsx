@@ -65,6 +65,8 @@ export function AdminFinanceTab() {
   }
 
   const s = data?.stats;
+  const allTx = (data?.transactions ?? []) as any[];
+  const filteredTx = allTx.filter((t) => txFilter === "all" || txGroup(t) === txFilter);
 
   return (
     <div className="space-y-8">
