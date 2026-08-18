@@ -92,7 +92,9 @@ export async function loadFinanceOverview() {
       totalAffiliateSales: (affiliates ?? []).reduce((sum: number, a: any) => sum + Number(a.total_sales), 0),
       paidCount: paid.length,
       pending: pendingTransactions.length,
-      pendingWithdrawals: (withdrawals ?? []).filter((w: any) => w.status === "PENDING").length,
+      pendingWithdrawals: (withdrawals ?? []).filter(
+        (w: any) => String(w.status).toUpperCase() === "PENDING",
+      ).length,
     },
   };
 }
