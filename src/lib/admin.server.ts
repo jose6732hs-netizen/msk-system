@@ -53,7 +53,7 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .from("license_events")
         .select("id,event_type,created_at,license_id,metadata")
         .order("created_at", { ascending: false })
-        .limit(60),
+        .limit(80),
       supabaseAdmin
         .from("license_devices")
         .select("id,license_id,device_name,browser,os,last_seen,status")
