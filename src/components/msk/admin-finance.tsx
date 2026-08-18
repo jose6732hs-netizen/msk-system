@@ -38,16 +38,19 @@ export function AdminFinanceTab() {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="overflow-hidden rounded-lg border border-primary/30 bg-background/40 shadow-[0_0_28px_hsl(var(--primary)/0.12)]">
         {[
-          ["Receita paga", brl(s?.revenue)],
-          ["Transações pagas", String(s?.paidCount ?? 0)],
-          ["Pendentes", String(s?.pending ?? 0)],
-          ["Saques a aprovar", String(s?.pendingWithdrawals ?? 0)],
-        ].map(([k, v]) => (
-          <div key={k} className="rounded-xl border border-border/60 p-4">
-            <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">{k}</p>
-            <p className="mt-1 text-xl font-bold text-primary">{v}</p>
+          [["Receita aprovada", brl(s?.revenue)], ["Receita gerada", brl(s?.generatedRevenue)], ["Receita líquida", brl(s?.netRevenue)], ["Ticket médio", brl(s?.averageTicket)]],
+          [["Vendas aprovadas", String(s?.paidCount ?? 0)], ["Conversão", `${Number(s?.conversionRate ?? 0).toFixed(1)}%`], ["Em checkout", String(s?.pending ?? 0)], ["Valor pendente", brl(s?.pendingRevenue)]],
+          [["Comissões pagas", brl(s?.approvedCommissions)], ["Comissões pendentes", brl(s?.pendingCommissions)], ["Saques pendentes", brl(s?.pendingWithdrawalValue)], ["Vendas afiliadas", String(s?.totalAffiliateSales ?? 0)]],
+        ].map((row, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-2 border-b border-primary/20 last:border-b-0 lg:grid-cols-4">
+            {row.map(([k, v]) => (
+              <div key={k} className="min-w-0 border-r border-primary/15 p-4 last:border-r-0 transition-colors hover:bg-primary/5">
+                <p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{k}</p>
+                <p className="mt-1 truncate text-lg font-bold text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.45)]">{v}</p>
+              </div>
+            ))}
           </div>
         ))}
       </div>

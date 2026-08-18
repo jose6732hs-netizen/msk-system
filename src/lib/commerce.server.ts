@@ -41,7 +41,7 @@ export async function ensureAffiliate(userId: string) {
     .maybeSingle();
   if (existing) return existing;
 
-  const commissions = await getSetting<{ affiliate: number }>("commissions", { affiliate: 60 });
+  const commissions = await getSetting<{ affiliate: number }>("commissions", { affiliate: 30 });
   const { data, error } = await supabaseAdmin
     .from("affiliates")
     .insert({ user_id: userId, code: randomCode("AF"), commission_rate: commissions.affiliate, status: "pending", verification_status: "PENDING" })
@@ -139,7 +139,8 @@ export async function issueStandaloneLicense(input: {
     expires = new Date(now.getTime() + input.durationDays * 86400000).toISOString();
   } else if (!plan.is_lifetime) {
     // Herda do plano: duration_unit + duration_value ou fallback duration_days
-    const unit = (plan as any).duration_unit || "days";
+    const rawUnit = String((plan as any).duration_unit || "days").toLowerCase();
+    const unit = ({ minute: "minutes", hour: "hours", day: "days", week: "weeks", month: "months" } as Record<string, string>)[rawUnit] ?? rawUnit;
     const val = Number((plan as any).duration_value || plan.duration_days || 30);
     expires = computeExpiry(unit, val, now);
   }
@@ -360,9 +361,15 @@ export async function settlePaidTransaction(transactionId: string) {
       userId: tx.user_id 
     }));
     
-    // Podemos armazenar a assinatura ou enviá-la no log
+    const { data: licenseSnapshot } = await supabaseAdmin
+      .from("licenses")
+      .select("metadata")
+      .eq("id", issued.licenseId)
+      .maybeSingle();
+
+    // Preserva a duração pendente e os dados do plano ao incluir a assinatura.
     await supabaseAdmin.from("licenses").update({ 
-      metadata: { signature } 
+      metadata: { ...((licenseSnapshot?.metadata as Record<string, unknown> | null) ?? {}), signature }
     } as any).eq("id", issued.licenseId);
 
 

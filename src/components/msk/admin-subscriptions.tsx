@@ -19,7 +19,7 @@ type PlanForm = {
   slug: string;
   name: string;
   description: string;
-  price: number;
+  price: number | string;
   currency: string;
   duration_label: string;
   duration_unit: string;
@@ -38,7 +38,7 @@ const EMPTY: PlanForm = {
   slug: "",
   name: "",
   description: "",
-  price: 0,
+  price: "0,00",
   currency: "BRL",
   duration_label: "30 dias",
   duration_unit: "day",
@@ -111,7 +111,7 @@ export function AdminSubscriptionsTab({
       slug: plan["slug"] ?? "",
       name: plan["name"] ?? "",
       description: plan["description"] ?? "",
-      price: Number(plan["price"] ?? 0),
+      price: Number(plan["price"] ?? 0).toFixed(2).replace(".", ","),
       currency: plan["currency"] ?? "BRL",
       duration_label: plan["duration_label"] ?? "",
       duration_unit: plan["duration_unit"] ?? "day",
@@ -130,7 +130,17 @@ export function AdminSubscriptionsTab({
   async function save(form: PlanForm) {
     setBusy(true);
     try {
-      await saveFn({ data: form as never });
+      const rawPrice = String(form.price).trim();
+      const normalizedPrice = Number(rawPrice.includes(",") ? rawPrice.replace(/\./g, "").replace(",", ".") : rawPrice);
+      if (!Number.isFinite(normalizedPrice)) throw new Error("Informe um preço válido, como 5,90.");
+      await saveFn({
+        data: {
+          ...form,
+          price: normalizedPrice,
+          duration_unit: form.is_lifetime ? "lifetime" : "days",
+          duration_value: form.is_lifetime ? 1 : (form.duration_days ?? 1),
+        } as never,
+      });
       await qc.invalidateQueries({ queryKey: ["admin-overview"] });
       toast.success(form.id ? "Plano atualizado" : "Plano criado e publicado no site");
       setEditing(null);
@@ -210,8 +220,9 @@ export function AdminSubscriptionsTab({
             <Field label="Preço (R$)">
               <Input
                 inputMode="decimal"
-                value={String(editing.price)}
-                onChange={(e) => setEditing({ ...editing, price: Number(e.target.value || 0) })}
+                placeholder="5,90"
+                value={editing.price}
+                onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^\d,.]/g, "") })}
               />
             </Field>
             <Field label="Comissão Afiliado (%)">
@@ -249,7 +260,7 @@ export function AdminSubscriptionsTab({
                 ] as const).map((opt) => {
                   const current = editing.is_lifetime
                     ? "lifetime"
-                    : Number(editing.price) === 0
+                    : Number(String(editing.price).replace(",", ".")) === 0
                       ? "free"
                       : "days";
                   return (
@@ -306,7 +317,7 @@ export function AdminSubscriptionsTab({
                   })
                 }
               />
-              {!editing.is_lifetime && Number(editing.price) === 0 && (
+              {!editing.is_lifetime && Number(String(editing.price).replace(",", ".")) === 0 && (
                 <p className="mt-1 text-xs text-emerald-400">
                   Oferta gratuita: licença de teste por {editing.duration_days ?? 7} dias.
                 </p>
