@@ -62,7 +62,7 @@ export async function loadAffiliateOverview(
     supabaseAdmin.from("affiliates").select("*").eq("id", affiliate.id).maybeSingle(),
     supabaseAdmin
       .from("affiliate_referrals")
-      .select("id,status,first_seen_at,signed_up_at,converted_at,user_id,profiles:user_id(name,email)")
+      .select("id,status,first_seen_at,signed_up_at,converted_at,user_id")
       .eq("affiliate_id", affiliate.id)
       .order("first_seen_at", { ascending: false })
       .limit(500),
@@ -103,9 +103,16 @@ export async function loadAffiliateOverview(
   ]);
 
   const row = (fresh ?? affiliate) as Record<string, any>;
-  const buyerIds = [...new Set((sales ?? []).map((s) => s.user_id).filter(Boolean))] as string[];
-  const { data: buyers } = buyerIds.length
-    ? await supabaseAdmin.from("profiles").select("id,email,name").in("id", buyerIds)
+  const profileIds = [
+    ...new Set(
+      [
+        ...(sales ?? []).map((s) => s.user_id),
+        ...(referrals ?? []).map((r: any) => r.user_id),
+      ].filter(Boolean),
+    ),
+  ] as string[];
+  const { data: buyers } = profileIds.length
+    ? await supabaseAdmin.from("profiles").select("id,email,name").in("id", profileIds)
     : { data: [] as { id: string; email: string; name: string }[] };
   const userById = new Map((buyers ?? []).map((b) => [b.id, { email: b.email, name: b.name }]));
   const commissionRows = commissions ?? [];
@@ -203,15 +210,18 @@ export async function loadAffiliateOverview(
         createdAt: s.created_at,
       };
     }),
-    referrals: (referrals ?? []).slice(0, 100).map((r: any) => ({
-      id: r.id,
-      status: r.status,
-      firstSeenAt: r.first_seen_at,
-      signedUpAt: r.signed_up_at,
-      convertedAt: r.converted_at,
-      email: maskEmail(r.profiles?.email),
-      name: r.profiles?.name || "Usuário",
-    })),
+    referrals: (referrals ?? []).slice(0, 100).map((r: any) => {
+      const p = userById.get(r.user_id as string);
+      return {
+        id: r.id,
+        status: r.status,
+        firstSeenAt: r.first_seen_at,
+        signedUpAt: r.signed_up_at,
+        convertedAt: r.converted_at,
+        email: maskEmail(p?.email),
+        name: p?.name || "Usuário",
+      };
+    }),
     commissions: commissionRows.slice(0, 100),
     withdrawals: withdrawals ?? [],
     ledger: ledger ?? [],

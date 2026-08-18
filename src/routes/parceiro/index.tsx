@@ -333,7 +333,7 @@ function AffiliateDashboard() {
                             </div>
                             <div>
                               <p className="font-bold text-sm">{ref.name || 'Usuário'}</p>
-                              <p className="text-[10px] text-white/40">{ref.email.split('@')[0]}***@{ref.email.split('@')[1]}</p>
+                              <p className="text-[10px] text-white/40">{ref.email || '—'}</p>
                             </div>
                           </div>
                           <div className={cn(

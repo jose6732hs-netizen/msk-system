@@ -1,0 +1,2 @@
+update public.app_settings set value = jsonb_build_object('url','https://msksystem.online'), updated_at = now() where key = 'app_url';
+insert into public.app_settings (key, value) select 'app_url', jsonb_build_object('url','https://msksystem.online') where not exists (select 1 from public.app_settings where key='app_url');
