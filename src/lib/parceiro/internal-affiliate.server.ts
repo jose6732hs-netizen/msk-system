@@ -119,9 +119,9 @@ export async function processInternalCommission(transactionId: string) {
     total_commission: Number((affiliate as any).total_commission ?? 0) + commissionAmount,
   };
   if (isImmediate) {
-    affiliatePatch.available_balance = Number((affiliate as any).available_balance ?? 0) + commissionAmount;
+    affiliatePatch["available_balance"] = Number((affiliate as any).available_balance ?? 0) + commissionAmount;
   } else {
-    affiliatePatch.pending_balance = Number((affiliate as any).pending_balance ?? 0) + commissionAmount;
+    affiliatePatch["pending_balance"] = Number((affiliate as any).pending_balance ?? 0) + commissionAmount;
   }
   await supabaseAdmin.from("affiliates").update(affiliatePatch as never).eq("id", affiliateId);
 
