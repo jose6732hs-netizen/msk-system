@@ -40,10 +40,10 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .order("created_at", { ascending: false })
         .limit(50),
       supabaseAdmin
-        .from("payments")
-        .select("id,amount,currency,status,provider,created_at,profiles:user_id(email)")
+        .from("transactions")
+        .select("id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at,profiles:user_id(email)")
         .order("created_at", { ascending: false })
-        .limit(50),
+        .limit(80),
       supabaseAdmin
         .from("webhook_events")
         .select("id,provider,event_type,event_id,processed,created_at,error")
@@ -53,7 +53,7 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .from("license_events")
         .select("id,event_type,created_at,license_id,metadata")
         .order("created_at", { ascending: false })
-        .limit(60),
+        .limit(80),
       supabaseAdmin
         .from("license_devices")
         .select("id,license_id,device_name,browser,os,last_seen,status")
@@ -67,6 +67,22 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .limit(50),
     ]);
 
+  const { data: commissions } = await supabaseAdmin
+    .from("affiliate_commissions")
+    .select("id,amount,status,created_at")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const isPaid = (t: any) =>
+    ["PAID", "APPROVED", "COMPLETED"].includes(String(t.status ?? "").toUpperCase()) || !!t.paid_at;
+  const paidTx = (payments ?? []).filter(isPaid);
+  const revenue = paidTx.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const monthCommissions = (commissions ?? [])
+    .filter((c: any) => new Date(c.created_at) >= monthStart)
+    .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
 
   return {
     licenses: (licenses ?? []) as Record<string, any>[],
@@ -79,11 +95,17 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     devices: (devices ?? []) as Record<string, any>[],
     affiliates: (affiliates ?? []) as Record<string, any>[],
 
+    commissions: (commissions ?? []) as Record<string, any>[],
+
     stats: {
       users: users?.length ?? 0,
       licenses: licenses?.length ?? 0,
       activeLicenses: (licenses ?? []).filter((l: any) => l.status === "active").length,
       devices: devices?.length ?? 0,
+      revenue,
+      monthCommissions,
+      conversions: paidTx.length,
+      transactions: (payments ?? []).length,
     },
   };
 }

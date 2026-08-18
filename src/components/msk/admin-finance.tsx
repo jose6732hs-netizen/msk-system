@@ -5,10 +5,18 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { adminFinanceOverview, adminSyncPayments, adminWithdrawalAction } from "@/lib/admin.functions";
+import { FilterChips } from "@/components/msk/filter-chips";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString("pt-BR") : "—");
+
+const txGroup = (t: any) => {
+  const s = String(t?.status ?? "").toUpperCase();
+  if (["PAID", "APPROVED", "COMPLETED"].includes(s) || t?.paid_at) return "paid";
+  if (["PENDING", "WAITING", "PROCESSING"].includes(s)) return "pending";
+  return "failed";
+};
 
 export function AdminFinanceTab() {
   const qc = useQueryClient();
@@ -16,6 +24,7 @@ export function AdminFinanceTab() {
   const actionFn = useServerFn(adminWithdrawalAction);
   const syncFn = useServerFn(adminSyncPayments);
   const [syncing, setSyncing] = useState(false);
+  const [txFilter, setTxFilter] = useState("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-finance"],
@@ -57,6 +66,8 @@ export function AdminFinanceTab() {
   }
 
   const s = data?.stats;
+  const allTx = (data?.transactions ?? []) as any[];
+  const filteredTx = allTx.filter((t) => txFilter === "all" || txGroup(t) === txFilter);
 
   return (
     <div className="space-y-8">
@@ -112,7 +123,18 @@ export function AdminFinanceTab() {
       </Section>
 
       <Section title="Transações">
-        {(data?.transactions ?? []).map((t: any) => (
+        <FilterChips
+          className="mb-3"
+          value={txFilter}
+          onChange={setTxFilter}
+          chips={[
+            { id: "all", label: "Todas", count: allTx.length },
+            { id: "paid", label: "Aprovadas", count: allTx.filter((t) => txGroup(t) === "paid").length },
+            { id: "pending", label: "Pendentes", count: allTx.filter((t) => txGroup(t) === "pending").length },
+            { id: "failed", label: "Não pagas", count: allTx.filter((t) => txGroup(t) === "failed").length },
+          ]}
+        />
+        {filteredTx.map((t: any) => (
           <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 py-3 text-sm">
             <span className="font-mono text-xs">{t.identifier}</span>
             <span>{t.profiles?.email ?? "—"}</span>
@@ -122,7 +144,7 @@ export function AdminFinanceTab() {
             <span className="text-xs text-muted-foreground">{fmt(t.created_at)}</span>
           </div>
         ))}
-        {!data?.transactions.length && <Empty />}
+        {!filteredTx.length && <Empty />}
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">

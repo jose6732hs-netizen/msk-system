@@ -39,6 +39,7 @@ import { Bell } from "lucide-react";
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
 import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
+import { FilterChips } from "@/components/msk/filter-chips";
 
 const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
   {
@@ -106,6 +107,17 @@ function fmt(d?: string | null) {
   return d ? new Date(d).toLocaleString("pt-BR") : "—";
 }
 
+const brl = (v: unknown) =>
+  Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const SALE_PAID = ["PAID", "APPROVED", "COMPLETED"];
+const saleGroup = (t: any) => {
+  const s = String(t?.status ?? "").toUpperCase();
+  if (SALE_PAID.includes(s) || t?.paid_at) return "paid";
+  if (["PENDING", "WAITING", "PROCESSING"].includes(s)) return "pending";
+  return "failed";
+};
+
 function Admin() {
   const qc = useQueryClient();
   const checkAdmin = useServerFn(isAdmin);
@@ -119,6 +131,7 @@ function Admin() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("licenses");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [salesFilter, setSalesFilter] = useState("all");
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(null);
 
   const { data: role, isLoading: roleLoading } = useQuery({
@@ -325,11 +338,11 @@ function Admin() {
             <>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
                 {[
-                  ["Total de Afiliados", stats?.users, Users, "text-blue-400"],
+                  ["Usuários", stats?.users, Users, "text-blue-400"],
                   ["Licenças Ativas", stats?.activeLicenses, Zap, "text-yellow-400"],
-                  ["Comissões do Mês", "R$ 0,00", TrendingUp, "text-primary"],
-                  ["Conversões", 0, Activity, "text-cyan-400"],
-                  ["Receita Gerada", "R$ 0,00", DollarSign, "text-emerald-400"],
+                  ["Comissões do Mês", brl(stats?.monthCommissions), TrendingUp, "text-primary"],
+                  ["Vendas Aprovadas", stats?.conversions ?? 0, Activity, "text-cyan-400"],
+                  ["Receita Aprovada", brl(stats?.revenue), DollarSign, "text-emerald-400"],
                 ].map(([k, v, Icon, color]: any) => (
                   <div key={k} className="glass group relative overflow-hidden rounded-2xl p-4 sm:p-5 transition-all hover:border-primary/40">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -346,27 +359,21 @@ function Admin() {
               </div>
 
               <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-hide">
-                  {[
-                    { id: "all", label: "Todas", color: "bg-foreground text-background" },
-                    { id: "active", label: "Ativas", color: "bg-emerald-500 text-black" },
-                    { id: "expired", label: "Expiradas", color: "bg-yellow-500 text-black" },
-                    { id: "suspended", label: "Suspensas", color: "bg-orange-500 text-black" },
-                    { id: "revoked", label: "Revogadas", color: "bg-red-500 text-white" },
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setStatusFilter(f.id)}
-                      className={cn(
-                        "shrink-0 rounded-xl border border-white/5 px-4 py-2 text-[0.6rem] font-black uppercase tracking-widest transition-all",
-                        statusFilter === f.id ? f.color : "bg-muted/10 text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+                <FilterChips
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  chips={(() => {
+                    const list = (data?.licenses ?? []) as any[];
+                    const exp = (l: any) => l.expires_at && new Date(l.expires_at) < new Date();
+                    return [
+                      { id: "all", label: "Todas", count: list.length },
+                      { id: "active", label: "Ativas", count: list.filter((l) => l.status === "active" && !exp(l)).length },
+                      { id: "expired", label: "Expiradas", count: list.filter(exp).length },
+                      { id: "suspended", label: "Suspensas", count: list.filter((l) => l.status === "suspended").length },
+                      { id: "revoked", label: "Revogadas", count: list.filter((l) => l.status === "revoked").length },
+                    ];
+                  })()}
+                />
 
                 <form
                   className="flex w-full gap-2 lg:max-w-sm"
@@ -504,32 +511,58 @@ function Admin() {
                     subscriptions={(data?.subscriptions ?? []) as Record<string, any>[]}
                   />
                 )}
-                {activeTab === "payments" && (
-                  <div className="space-y-2">
-                    {((data?.payments ?? []) as Record<string, any>[]).map((p) => (
-                      <div
-                        key={p["id"]}
-                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 px-4 py-3 text-sm"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{p["profiles"]?.email ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {p["provider"]} · {fmt(p["created_at"])}
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="font-black text-primary">
-                            {Number(p["amount"] ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                          </p>
-                          <p className="text-[0.6rem] font-black uppercase text-muted-foreground">{p["status"]}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {!data?.payments?.length && (
-                      <p className="text-sm text-muted-foreground">Nenhum pagamento registrado ainda.</p>
-                    )}
-                  </div>
-                )}
+                {activeTab === "payments" && (() => {
+                  const sales = (data?.payments ?? []) as Record<string, any>[];
+                  const filtered = sales.filter((p) => salesFilter === "all" || saleGroup(p) === salesFilter);
+                  return (
+                    <div className="space-y-4">
+                      <FilterChips
+                        value={salesFilter}
+                        onChange={setSalesFilter}
+                        chips={[
+                          { id: "all", label: "Todas", count: sales.length },
+                          { id: "paid", label: "Aprovadas", count: sales.filter((p) => saleGroup(p) === "paid").length },
+                          { id: "pending", label: "Pendentes", count: sales.filter((p) => saleGroup(p) === "pending").length },
+                          { id: "failed", label: "Não pagas", count: sales.filter((p) => saleGroup(p) === "failed").length },
+                        ]}
+                      />
+                      {filtered.map((p) => {
+                        const group = saleGroup(p);
+                        return (
+                          <div
+                            key={p["id"]}
+                            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 bg-background/30 px-4 py-3 text-sm transition-colors hover:border-primary/40"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{p["profiles"]?.email ?? "—"}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {p["provider"]} · {p["method"] ?? "pix"} · {fmt(p["created_at"])}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="font-black text-primary">{brl(p["amount"])}</p>
+                              <span
+                                className={cn(
+                                  "mt-1 inline-block rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase",
+                                  group === "paid"
+                                    ? "bg-emerald-500/15 text-emerald-400"
+                                    : group === "pending"
+                                      ? "bg-yellow-500/15 text-yellow-500"
+                                      : "bg-red-500/15 text-red-400",
+                                )}
+                              >
+                                {p["status"]}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {!filtered.length && (
+                        <p className="text-sm text-muted-foreground">Nenhuma venda neste filtro.</p>
+                      )}
+                    </div>
+                  );
+                })()}
                 {activeTab === "webhooks" && (
                   <div className="space-y-2">
                     {((data?.webhooks ?? []) as Record<string, any>[]).map((w) => (
