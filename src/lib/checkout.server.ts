@@ -313,9 +313,12 @@ export async function createPixCheckout(input: {
         amount: finalPrice,
       });
     }
+    const { absoluteUrl } = await import("./app-url.server");
+    const callbackUrl = await absoluteUrl("/api/public/webhooks/amplopay").catch(() => "");
     const result = await service.createPix({
       identifier,
       amountCents,
+      ...(callbackUrl ? { callbackUrl } : {}),
       customer: { 
         name: input.name || input.email, 
         email: input.email, 
