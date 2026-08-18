@@ -67,6 +67,22 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .limit(50),
     ]);
 
+  const { data: commissions } = await supabaseAdmin
+    .from("affiliate_commissions")
+    .select("id,amount,status,created_at")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  const isPaid = (t: any) =>
+    ["PAID", "APPROVED", "COMPLETED"].includes(String(t.status ?? "").toUpperCase()) || !!t.paid_at;
+  const paidTx = (payments ?? []).filter(isPaid);
+  const revenue = paidTx.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const monthCommissions = (commissions ?? [])
+    .filter((c: any) => new Date(c.created_at) >= monthStart)
+    .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
 
   return {
     licenses: (licenses ?? []) as Record<string, any>[],
