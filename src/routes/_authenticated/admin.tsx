@@ -106,6 +106,17 @@ function fmt(d?: string | null) {
   return d ? new Date(d).toLocaleString("pt-BR") : "—";
 }
 
+const brl = (v: unknown) =>
+  Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+const SALE_PAID = ["PAID", "APPROVED", "COMPLETED"];
+const saleGroup = (t: any) => {
+  const s = String(t?.status ?? "").toUpperCase();
+  if (SALE_PAID.includes(s) || t?.paid_at) return "paid";
+  if (["PENDING", "WAITING", "PROCESSING"].includes(s)) return "pending";
+  return "failed";
+};
+
 function Admin() {
   const qc = useQueryClient();
   const checkAdmin = useServerFn(isAdmin);
