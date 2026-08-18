@@ -131,6 +131,7 @@ function Admin() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("licenses");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [salesFilter, setSalesFilter] = useState("all");
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(null);
 
   const { data: role, isLoading: roleLoading } = useQuery({
