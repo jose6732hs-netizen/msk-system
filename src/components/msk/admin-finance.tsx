@@ -60,6 +60,15 @@ export function AdminFinanceTab() {
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Métricas em tempo real · atualização automática a cada 60s
+        </p>
+        <Button size="sm" variant="neonOutline" disabled={syncing} onClick={sync}>
+          <RefreshCw className={`mr-2 h-3 w-3 ${syncing ? "animate-spin" : ""}`} />
+          Sincronizar pagamentos
+        </Button>
+      </div>
       <div className="overflow-hidden rounded-lg border border-primary/30 bg-background/40 shadow-[0_0_28px_hsl(var(--primary)/0.12)]">
         {[
           [["Receita aprovada", brl(s?.revenue)], ["Receita gerada", brl(s?.generatedRevenue)], ["Receita líquida", brl(s?.netRevenue)], ["Ticket médio", brl(s?.averageTicket)]],
