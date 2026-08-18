@@ -358,27 +358,21 @@ function Admin() {
               </div>
 
               <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <div className="flex flex-nowrap gap-1.5 overflow-x-auto scrollbar-hide">
-                  {[
-                    { id: "all", label: "Todas", color: "bg-foreground text-background" },
-                    { id: "active", label: "Ativas", color: "bg-emerald-500 text-black" },
-                    { id: "expired", label: "Expiradas", color: "bg-yellow-500 text-black" },
-                    { id: "suspended", label: "Suspensas", color: "bg-orange-500 text-black" },
-                    { id: "revoked", label: "Revogadas", color: "bg-red-500 text-white" },
-                  ].map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      onClick={() => setStatusFilter(f.id)}
-                      className={cn(
-                        "shrink-0 rounded-xl border border-white/5 px-4 py-2 text-[0.6rem] font-black uppercase tracking-widest transition-all",
-                        statusFilter === f.id ? f.color : "bg-muted/10 text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {f.label}
-                    </button>
-                  ))}
-                </div>
+                <FilterChips
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  chips={(() => {
+                    const list = (data?.licenses ?? []) as any[];
+                    const exp = (l: any) => l.expires_at && new Date(l.expires_at) < new Date();
+                    return [
+                      { id: "all", label: "Todas", count: list.length },
+                      { id: "active", label: "Ativas", count: list.filter((l) => l.status === "active" && !exp(l)).length },
+                      { id: "expired", label: "Expiradas", count: list.filter(exp).length },
+                      { id: "suspended", label: "Suspensas", count: list.filter((l) => l.status === "suspended").length },
+                      { id: "revoked", label: "Revogadas", count: list.filter((l) => l.status === "revoked").length },
+                    ];
+                  })()}
+                />
 
                 <form
                   className="flex w-full gap-2 lg:max-w-sm"
