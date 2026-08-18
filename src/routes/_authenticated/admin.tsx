@@ -41,49 +41,103 @@ import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/l
 import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
 import { FilterChips } from "@/components/msk/filter-chips";
 
-const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
+type NavItem = {
+  value: string;
+  label: string;
+  Icon: typeof Users;
+  subs?: { value: string; label: string }[];
+};
+
+const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Operação",
     items: [
       { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
-      { value: "tokens", label: "Gerar Licença", Icon: KeyRound },
+      {
+        value: "tokens",
+        label: "Licenças",
+        Icon: KeyRound,
+        subs: [
+          { value: "tokens", label: "Gerar licença" },
+          { value: "subs", label: "Planos & Ofertas" },
+          { value: "extension", label: "Extensão" },
+        ],
+      },
       { value: "users", label: "Usuários", Icon: Users },
-      { value: "subs", label: "Assinaturas", Icon: Zap },
-      { value: "extension", label: "Extensão", Icon: Monitor },
     ],
   },
   {
     title: "Financeiro",
     items: [
-      { value: "finance", label: "Financeiro", Icon: TrendingUp },
-      { value: "gateway", label: "Gateway", Icon: ShieldAlert },
+      {
+        value: "finance",
+        label: "Financeiro",
+        Icon: TrendingUp,
+        subs: [
+          { value: "finance", label: "Resumo" },
+          { value: "payments", label: "Vendas" },
+          { value: "wallets", label: "Carteiras" },
+          { value: "withdrawals", label: "Saques" },
+          { value: "gateway", label: "Gateway" },
+        ],
+      },
       { value: "affiliates", label: "Afiliados", Icon: Users },
-      { value: "wallets", label: "Carteiras", Icon: Wallet },
-      { value: "withdrawals", label: "Saques", Icon: DollarSign },
-      { value: "payments", label: "Vendas Amplo", Icon: DollarSign },
     ],
   },
   {
     title: "Conteúdo",
     items: [
-      { value: "editor", label: "Editor Site", Icon: Activity },
-      { value: "awards", label: "Premiações", Icon: Trophy },
+      {
+        value: "editor",
+        label: "Site & Marca",
+        Icon: Activity,
+        subs: [
+          { value: "editor", label: "Editor do site" },
+          { value: "awards", label: "Premiações" },
+        ],
+      },
     ],
   },
   {
     title: "Sistema",
     items: [
       { value: "tracking", label: "Analytics", Icon: TrendingUp },
-      { value: "push", label: "Push / Testes", Icon: MessageSquare },
-      { value: "push_logs", label: "Log de Push", Icon: MessageSquare },
-      { value: "notifications", label: "Notificações", Icon: Bell },
-      { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
-      { value: "logs", label: "Auditoria", Icon: Clock },
+      {
+        value: "notifications",
+        label: "Notificações",
+        Icon: Bell,
+        subs: [
+          { value: "notifications", label: "Preferências" },
+          { value: "push", label: "Enviar / Testar" },
+          { value: "push_logs", label: "Log de envios" },
+        ],
+      },
+      {
+        value: "logs",
+        label: "Auditoria",
+        Icon: Clock,
+        subs: [
+          { value: "logs", label: "Registros" },
+          { value: "webhooks", label: "Webhooks" },
+        ],
+      },
     ],
   },
 ];
 
-const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
+const ALL_NAV = NAV_GROUPS.flatMap((g) =>
+  g.items.flatMap((i) => [
+    { value: i.value, label: i.label },
+    ...(i.subs ?? []).map((s) => ({ value: s.value, label: s.label })),
+  ]),
+);
+
+/** Item de menu que contém a aba ativa (para destaque e sub-abas). */
+function navOwner(tab: string): NavItem | undefined {
+  return NAV_GROUPS.flatMap((g) => g.items).find(
+    (i) => i.value === tab || (i.subs ?? []).some((s) => s.value === tab),
+  );
+}
 
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -132,6 +186,7 @@ function Admin() {
   const [activeTab, setActiveTab] = useState("licenses");
   const [statusFilter, setStatusFilter] = useState("all");
   const [salesFilter, setSalesFilter] = useState("all");
+  const owner = navOwner(activeTab);
   const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(null);
 
   const { data: role, isLoading: roleLoading } = useQuery({
@@ -232,33 +287,54 @@ function Admin() {
               <p className="px-4 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
                 {group.title}
               </p>
-              {group.items.map(({ value, label, Icon }) => {
+              {group.items.map(({ value, label, Icon, subs }) => {
                 const hasPendingAffiliates = value === 'affiliates' && 
                   data?.affiliates?.some((a: any) => a.verification_status === 'PENDING');
+                const isOpen = owner?.value === value;
 
                 return (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => setActiveTab(value)}
-                    className={cn(
-                      "w-full flex items-center justify-between rounded-xl px-4 py-3 text-[0.68rem] font-black uppercase tracking-widest transition-all",
-                      activeTab === value
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                        : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
-                    )}
-                  >
-                    <div className="flex items-center gap-3 truncate">
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{label}</span>
-                    </div>
-                    {hasPendingAffiliates && (
-                      <div className="relative flex h-2 w-2">
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                  <div key={value} className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab(value)}
+                      className={cn(
+                        "w-full flex items-center justify-between rounded-xl px-4 py-3 text-[0.68rem] font-black uppercase tracking-widest transition-all",
+                        isOpen
+                          ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                          : "text-muted-foreground hover:bg-white/5 hover:text-foreground",
+                      )}
+                    >
+                      <div className="flex items-center gap-3 truncate">
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span className="truncate">{label}</span>
+                      </div>
+                      {hasPendingAffiliates && (
+                        <div className="relative flex h-2 w-2">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
+                        </div>
+                      )}
+                    </button>
+                    {isOpen && subs && (
+                      <div className="ml-5 space-y-0.5 border-l border-primary/25 pl-3">
+                        {subs.map((s) => (
+                          <button
+                            key={s.value}
+                            type="button"
+                            onClick={() => setActiveTab(s.value)}
+                            className={cn(
+                              "block w-full truncate rounded-lg px-3 py-2 text-left text-[0.62rem] font-bold uppercase tracking-widest transition-colors",
+                              activeTab === s.value
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground/70 hover:text-foreground",
+                            )}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
                       </div>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -298,18 +374,35 @@ function Admin() {
                     <p className="px-2 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
                       {group.title}
                     </p>
-                    {group.items.map(({ value, label, Icon }) => (
-                      <button
-                        key={value}
-                        onClick={() => { setActiveTab(value); setMenuOpen(false); }}
-                        className={cn(
-                          "w-full flex items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all",
-                          activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                    {group.items.map(({ value, label, Icon, subs }) => (
+                      <div key={value}>
+                        <button
+                          onClick={() => { setActiveTab(value); if (!subs) setMenuOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all",
+                            owner?.value === value ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                          )}
+                        >
+                          <Icon className="h-5 w-5 shrink-0" />
+                          {label}
+                        </button>
+                        {owner?.value === value && subs && (
+                          <div className="ml-6 space-y-0.5 border-l border-primary/25 pl-3">
+                            {subs.map((s) => (
+                              <button
+                                key={s.value}
+                                onClick={() => { setActiveTab(s.value); setMenuOpen(false); }}
+                                className={cn(
+                                  "block w-full rounded-lg px-3 py-2.5 text-left text-xs font-bold transition-colors",
+                                  activeTab === s.value ? "text-primary" : "text-muted-foreground/70",
+                                )}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
                         )}
-                      >
-                        <Icon className="h-5 w-5 shrink-0" />
-                        {label}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 ))}
@@ -333,6 +426,15 @@ function Admin() {
               <KeyRound className="h-4 w-4" /> Gerar licença
             </Button>
           </header>
+
+          {owner?.subs && (
+            <FilterChips
+              className="mb-6"
+              value={activeTab}
+              onChange={setActiveTab}
+              chips={owner.subs.map((s) => ({ id: s.value, label: s.label }))}
+            />
+          )}
 
           {activeTab === "licenses" && (
             <>
