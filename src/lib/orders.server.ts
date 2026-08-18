@@ -23,6 +23,12 @@ export async function expireStalePix(userId: string) {
 }
 
 export async function listOrders(userId: string, limit = 40) {
+  try {
+    const { reconcileOpenTransactions } = await import("./reconcile.server");
+    await reconcileOpenTransactions({ userId, hours: 72, limit: 10 });
+  } catch {
+    /* noop */
+  }
   await expireStalePix(userId);
   const { data } = await supabaseAdmin
     .from("transactions")
