@@ -46,6 +46,13 @@ export async function listPendingPayments(userId: string) {
 }
 
 export async function getOrder(userId: string, transactionId: string) {
+  // Confirma no gateway antes de expirar (webhook pode falhar/atrasar).
+  try {
+    const { reconcileTransaction } = await import("./reconcile.server");
+    await reconcileTransaction(transactionId);
+  } catch (e) {
+    console.error("[orders] reconciliação falhou:", (e as Error).message);
+  }
   await expireStalePix(userId);
   const { data } = await supabaseAdmin
     .from("transactions")
