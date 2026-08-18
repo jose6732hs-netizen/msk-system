@@ -24,6 +24,7 @@ export function AdminFinanceTab() {
   const actionFn = useServerFn(adminWithdrawalAction);
   const syncFn = useServerFn(adminSyncPayments);
   const [syncing, setSyncing] = useState(false);
+  const [txFilter, setTxFilter] = useState("all");
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-finance"],
