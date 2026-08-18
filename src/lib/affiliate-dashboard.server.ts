@@ -62,7 +62,7 @@ export async function loadAffiliateOverview(
     supabaseAdmin.from("affiliates").select("*").eq("id", affiliate.id).maybeSingle(),
     supabaseAdmin
       .from("affiliate_referrals")
-      .select("id,status,first_seen_at,signed_up_at,converted_at,user_id,profiles:user_id(name,email)")
+      .select("id,status,first_seen_at,signed_up_at,converted_at,user_id")
       .eq("affiliate_id", affiliate.id)
       .order("first_seen_at", { ascending: false })
       .limit(500),
