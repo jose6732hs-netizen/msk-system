@@ -374,18 +374,35 @@ function Admin() {
                     <p className="px-2 pb-1 text-[0.55rem] font-black uppercase tracking-[0.2em] text-muted-foreground/50">
                       {group.title}
                     </p>
-                    {group.items.map(({ value, label, Icon }) => (
-                      <button
-                        key={value}
-                        onClick={() => { setActiveTab(value); setMenuOpen(false); }}
-                        className={cn(
-                          "w-full flex items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all",
-                          activeTab === value ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                    {group.items.map(({ value, label, Icon, subs }) => (
+                      <div key={value}>
+                        <button
+                          onClick={() => { setActiveTab(value); if (!subs) setMenuOpen(false); }}
+                          className={cn(
+                            "w-full flex items-center gap-4 rounded-2xl px-4 py-3.5 text-sm font-bold transition-all",
+                            owner?.value === value ? "bg-primary/10 text-primary" : "text-muted-foreground",
+                          )}
+                        >
+                          <Icon className="h-5 w-5 shrink-0" />
+                          {label}
+                        </button>
+                        {owner?.value === value && subs && (
+                          <div className="ml-6 space-y-0.5 border-l border-primary/25 pl-3">
+                            {subs.map((s) => (
+                              <button
+                                key={s.value}
+                                onClick={() => { setActiveTab(s.value); setMenuOpen(false); }}
+                                className={cn(
+                                  "block w-full rounded-lg px-3 py-2.5 text-left text-xs font-bold transition-colors",
+                                  activeTab === s.value ? "text-primary" : "text-muted-foreground/70",
+                                )}
+                              >
+                                {s.label}
+                              </button>
+                            ))}
+                          </div>
                         )}
-                      >
-                        <Icon className="h-5 w-5 shrink-0" />
-                        {label}
-                      </button>
+                      </div>
                     ))}
                   </div>
                 ))}
