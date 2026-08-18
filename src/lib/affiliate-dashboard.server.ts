@@ -210,15 +210,18 @@ export async function loadAffiliateOverview(
         createdAt: s.created_at,
       };
     }),
-    referrals: (referrals ?? []).slice(0, 100).map((r: any) => ({
-      id: r.id,
-      status: r.status,
-      firstSeenAt: r.first_seen_at,
-      signedUpAt: r.signed_up_at,
-      convertedAt: r.converted_at,
-      email: maskEmail(r.profiles?.email),
-      name: r.profiles?.name || "Usuário",
-    })),
+    referrals: (referrals ?? []).slice(0, 100).map((r: any) => {
+      const p = userById.get(r.user_id as string);
+      return {
+        id: r.id,
+        status: r.status,
+        firstSeenAt: r.first_seen_at,
+        signedUpAt: r.signed_up_at,
+        convertedAt: r.converted_at,
+        email: maskEmail(p?.email),
+        name: p?.name || "Usuário",
+      };
+    }),
     commissions: commissionRows.slice(0, 100),
     withdrawals: withdrawals ?? [],
     ledger: ledger ?? [],
