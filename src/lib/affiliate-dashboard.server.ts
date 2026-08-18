@@ -103,9 +103,16 @@ export async function loadAffiliateOverview(
   ]);
 
   const row = (fresh ?? affiliate) as Record<string, any>;
-  const buyerIds = [...new Set((sales ?? []).map((s) => s.user_id).filter(Boolean))] as string[];
-  const { data: buyers } = buyerIds.length
-    ? await supabaseAdmin.from("profiles").select("id,email,name").in("id", buyerIds)
+  const profileIds = [
+    ...new Set(
+      [
+        ...(sales ?? []).map((s) => s.user_id),
+        ...(referrals ?? []).map((r: any) => r.user_id),
+      ].filter(Boolean),
+    ),
+  ] as string[];
+  const { data: buyers } = profileIds.length
+    ? await supabaseAdmin.from("profiles").select("id,email,name").in("id", profileIds)
     : { data: [] as { id: string; email: string; name: string }[] };
   const userById = new Map((buyers ?? []).map((b) => [b.id, { email: b.email, name: b.name }]));
   const commissionRows = commissions ?? [];
