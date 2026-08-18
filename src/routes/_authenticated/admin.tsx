@@ -41,49 +41,103 @@ import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/l
 import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
 import { FilterChips } from "@/components/msk/filter-chips";
 
-const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
+type NavItem = {
+  value: string;
+  label: string;
+  Icon: typeof Users;
+  subs?: { value: string; label: string }[];
+};
+
+const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Operação",
     items: [
       { value: "licenses", label: "Dashboard", Icon: LayoutDashboard },
-      { value: "tokens", label: "Gerar Licença", Icon: KeyRound },
+      {
+        value: "tokens",
+        label: "Licenças",
+        Icon: KeyRound,
+        subs: [
+          { value: "tokens", label: "Gerar licença" },
+          { value: "subs", label: "Planos & Ofertas" },
+          { value: "extension", label: "Extensão" },
+        ],
+      },
       { value: "users", label: "Usuários", Icon: Users },
-      { value: "subs", label: "Assinaturas", Icon: Zap },
-      { value: "extension", label: "Extensão", Icon: Monitor },
     ],
   },
   {
     title: "Financeiro",
     items: [
-      { value: "finance", label: "Financeiro", Icon: TrendingUp },
-      { value: "gateway", label: "Gateway", Icon: ShieldAlert },
+      {
+        value: "finance",
+        label: "Financeiro",
+        Icon: TrendingUp,
+        subs: [
+          { value: "finance", label: "Resumo" },
+          { value: "payments", label: "Vendas" },
+          { value: "wallets", label: "Carteiras" },
+          { value: "withdrawals", label: "Saques" },
+          { value: "gateway", label: "Gateway" },
+        ],
+      },
       { value: "affiliates", label: "Afiliados", Icon: Users },
-      { value: "wallets", label: "Carteiras", Icon: Wallet },
-      { value: "withdrawals", label: "Saques", Icon: DollarSign },
-      { value: "payments", label: "Vendas Amplo", Icon: DollarSign },
     ],
   },
   {
     title: "Conteúdo",
     items: [
-      { value: "editor", label: "Editor Site", Icon: Activity },
-      { value: "awards", label: "Premiações", Icon: Trophy },
+      {
+        value: "editor",
+        label: "Site & Marca",
+        Icon: Activity,
+        subs: [
+          { value: "editor", label: "Editor do site" },
+          { value: "awards", label: "Premiações" },
+        ],
+      },
     ],
   },
   {
     title: "Sistema",
     items: [
       { value: "tracking", label: "Analytics", Icon: TrendingUp },
-      { value: "push", label: "Push / Testes", Icon: MessageSquare },
-      { value: "push_logs", label: "Log de Push", Icon: MessageSquare },
-      { value: "notifications", label: "Notificações", Icon: Bell },
-      { value: "webhooks", label: "Webhooks", Icon: ShieldAlert },
-      { value: "logs", label: "Auditoria", Icon: Clock },
+      {
+        value: "notifications",
+        label: "Notificações",
+        Icon: Bell,
+        subs: [
+          { value: "notifications", label: "Preferências" },
+          { value: "push", label: "Enviar / Testar" },
+          { value: "push_logs", label: "Log de envios" },
+        ],
+      },
+      {
+        value: "logs",
+        label: "Auditoria",
+        Icon: Clock,
+        subs: [
+          { value: "logs", label: "Registros" },
+          { value: "webhooks", label: "Webhooks" },
+        ],
+      },
     ],
   },
 ];
 
-const ALL_NAV = NAV_GROUPS.flatMap((g) => g.items);
+const ALL_NAV = NAV_GROUPS.flatMap((g) =>
+  g.items.flatMap((i) => [
+    { value: i.value, label: i.label },
+    ...(i.subs ?? []).map((s) => ({ value: s.value, label: s.label })),
+  ]),
+);
+
+/** Item de menu que contém a aba ativa (para destaque e sub-abas). */
+function navOwner(tab: string): NavItem | undefined {
+  return NAV_GROUPS.flatMap((g) => g.items).find(
+    (i) => i.value === tab || (i.subs ?? []).some((s) => s.value === tab),
+  );
+}
 
 
 export const Route = createFileRoute("/_authenticated/admin")({
