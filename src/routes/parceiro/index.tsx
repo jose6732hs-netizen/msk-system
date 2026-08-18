@@ -37,9 +37,11 @@ function AffiliateDashboard() {
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ["affiliate-overview"],
     queryFn: () => fetchOverview({ data: {} }),
+    retry: false,
+    staleTime: 30_000,
   });
 
   // Expor função de abrir modal globalmente para o header
@@ -60,12 +62,48 @@ function AffiliateDashboard() {
     toast.success("Link copiado!");
   };
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#050505]/70 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
           <p className="text-white/40 font-medium animate-pulse">Carregando painel...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    const msg = String((error as Error | null)?.message ?? "");
+    const unauth = /unauthor|401|sess/i.test(msg);
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-4 rounded-2xl border border-primary/20 bg-background/50 p-8 text-center backdrop-blur-xl">
+          <h1 className="text-xl font-black">
+            {unauth ? "Entre para acessar o painel" : "Não foi possível carregar o painel"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {unauth
+              ? "Você precisa estar logado na sua conta para ver o painel de parceiro."
+              : "Tente novamente em alguns instantes."}
+          </p>
+          <div className="flex justify-center gap-2">
+            {unauth ? (
+              <Button variant="neon" onClick={() => navigate({ to: "/auth" })}>
+                Fazer login
+              </Button>
+            ) : (
+              <Button
+                variant="neon"
+                onClick={() => queryClient.invalidateQueries({ queryKey: ["affiliate-overview"] })}
+              >
+                Tentar novamente
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => navigate({ to: "/" })}>
+              Voltar ao site
+            </Button>
+          </div>
         </div>
       </div>
     );
