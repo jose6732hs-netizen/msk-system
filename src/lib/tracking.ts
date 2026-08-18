@@ -34,8 +34,30 @@ export function readEvents(): TrackEvent[] {
   }
 }
 
+/** Mapeamento dos eventos internos para eventos padrão do Meta Pixel. */
+const PIXEL_MAP: Record<TrackEvent["type"], string | null> = {
+  pageview: null, // já disparado pelo hook de rota
+  offer_view: "ViewContent",
+  add_to_cart: "AddToCart",
+  remove_from_cart: null,
+  checkout_start: "InitiateCheckout",
+  pix_generated: "AddPaymentInfo",
+  purchase: "Purchase",
+  cart_abandoned: null,
+};
+
 export function track(type: TrackEvent["type"], data: Partial<TrackEvent> = {}) {
   if (!isBrowser()) return;
+  const pixelEvent = PIXEL_MAP[type];
+  if (pixelEvent) {
+    void import("./meta-pixel").then(({ pixelTrack }) =>
+      pixelTrack(pixelEvent, {
+        content_name: data.label ?? data.path ?? type,
+        value: Number(data.value ?? 0),
+        currency: "BRL",
+      }),
+    );
+  }
   const evt: TrackEvent = {
     id: crypto.randomUUID(),
     type,

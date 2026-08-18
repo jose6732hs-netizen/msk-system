@@ -1,9 +1,10 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { adminFinanceOverview, adminWithdrawalAction } from "@/lib/admin.functions";
+import { adminFinanceOverview, adminSyncPayments, adminWithdrawalAction } from "@/lib/admin.functions";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -13,8 +14,29 @@ export function AdminFinanceTab() {
   const qc = useQueryClient();
   const loadFn = useServerFn(adminFinanceOverview);
   const actionFn = useServerFn(adminWithdrawalAction);
+  const syncFn = useServerFn(adminSyncPayments);
+  const [syncing, setSyncing] = useState(false);
 
-  const { data, isLoading } = useQuery({ queryKey: ["admin-finance"], queryFn: () => loadFn() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-finance"],
+    queryFn: () => loadFn(),
+    refetchInterval: 60_000,
+  });
+
+  async function sync() {
+    setSyncing(true);
+    try {
+      const res = await syncFn({ data: {} } as never);
+      await qc.invalidateQueries({ queryKey: ["admin-finance"] });
+      toast.success(
+        `Sincronizado: ${res.checked} transações verificadas, ${res.updated} aprovadas.`,
+      );
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function act(withdrawalId: string, action: "approve" | "reject") {
     try {
@@ -38,6 +60,15 @@ export function AdminFinanceTab() {
 
   return (
     <div className="space-y-8">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          Métricas em tempo real · atualização automática a cada 60s
+        </p>
+        <Button size="sm" variant="neonOutline" disabled={syncing} onClick={sync}>
+          <RefreshCw className={`mr-2 h-3 w-3 ${syncing ? "animate-spin" : ""}`} />
+          Sincronizar pagamentos
+        </Button>
+      </div>
       <div className="overflow-hidden rounded-lg border border-primary/30 bg-background/40 shadow-[0_0_28px_hsl(var(--primary)/0.12)]">
         {[
           [["Receita aprovada", brl(s?.revenue)], ["Receita gerada", brl(s?.generatedRevenue)], ["Receita líquida", brl(s?.netRevenue)], ["Ticket médio", brl(s?.averageTicket)]],

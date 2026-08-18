@@ -191,6 +191,15 @@ export const adminFinanceOverview = createServerFn({ method: "GET" })
     return loadFinanceOverview();
   });
 
+/** Reconcilia no gateway todas as transações em aberto (vendas aprovadas que não vieram por webhook). */
+export const adminSyncPayments = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { reconcileOpenTransactions } = await import("./reconcile.server");
+    return reconcileOpenTransactions({ hours: 24 * 30, limit: 80 });
+  });
+
 export const adminUpdateSettings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>

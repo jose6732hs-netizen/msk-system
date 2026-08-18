@@ -23,6 +23,12 @@ export async function expireStalePix(userId: string) {
 }
 
 export async function listOrders(userId: string, limit = 40) {
+  try {
+    const { reconcileOpenTransactions } = await import("./reconcile.server");
+    await reconcileOpenTransactions({ userId, hours: 72, limit: 10 });
+  } catch {
+    /* noop */
+  }
   await expireStalePix(userId);
   const { data } = await supabaseAdmin
     .from("transactions")
@@ -46,6 +52,13 @@ export async function listPendingPayments(userId: string) {
 }
 
 export async function getOrder(userId: string, transactionId: string) {
+  // Confirma no gateway antes de expirar (webhook pode falhar/atrasar).
+  try {
+    const { reconcileTransaction } = await import("./reconcile.server");
+    await reconcileTransaction(transactionId);
+  } catch (e) {
+    console.error("[orders] reconciliação falhou:", (e as Error).message);
+  }
   await expireStalePix(userId);
   const { data } = await supabaseAdmin
     .from("transactions")
