@@ -510,32 +510,58 @@ function Admin() {
                     subscriptions={(data?.subscriptions ?? []) as Record<string, any>[]}
                   />
                 )}
-                {activeTab === "payments" && (
-                  <div className="space-y-2">
-                    {((data?.payments ?? []) as Record<string, any>[]).map((p) => (
-                      <div
-                        key={p["id"]}
-                        className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 px-4 py-3 text-sm"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">{p["profiles"]?.email ?? "—"}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {p["provider"]} · {fmt(p["created_at"])}
-                          </p>
-                        </div>
-                        <div className="shrink-0 text-right">
-                          <p className="font-black text-primary">
-                            {Number(p["amount"] ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                          </p>
-                          <p className="text-[0.6rem] font-black uppercase text-muted-foreground">{p["status"]}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {!data?.payments?.length && (
-                      <p className="text-sm text-muted-foreground">Nenhum pagamento registrado ainda.</p>
-                    )}
-                  </div>
-                )}
+                {activeTab === "payments" && (() => {
+                  const sales = (data?.payments ?? []) as Record<string, any>[];
+                  const filtered = sales.filter((p) => salesFilter === "all" || saleGroup(p) === salesFilter);
+                  return (
+                    <div className="space-y-4">
+                      <FilterChips
+                        value={salesFilter}
+                        onChange={setSalesFilter}
+                        chips={[
+                          { id: "all", label: "Todas", count: sales.length },
+                          { id: "paid", label: "Aprovadas", count: sales.filter((p) => saleGroup(p) === "paid").length },
+                          { id: "pending", label: "Pendentes", count: sales.filter((p) => saleGroup(p) === "pending").length },
+                          { id: "failed", label: "Não pagas", count: sales.filter((p) => saleGroup(p) === "failed").length },
+                        ]}
+                      />
+                      {filtered.map((p) => {
+                        const group = saleGroup(p);
+                        return (
+                          <div
+                            key={p["id"]}
+                            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 bg-background/30 px-4 py-3 text-sm transition-colors hover:border-primary/40"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate font-medium">{p["profiles"]?.email ?? "—"}</p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {p["provider"]} · {p["method"] ?? "pix"} · {fmt(p["created_at"])}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="font-black text-primary">{brl(p["amount"])}</p>
+                              <span
+                                className={cn(
+                                  "mt-1 inline-block rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase",
+                                  group === "paid"
+                                    ? "bg-emerald-500/15 text-emerald-400"
+                                    : group === "pending"
+                                      ? "bg-yellow-500/15 text-yellow-500"
+                                      : "bg-red-500/15 text-red-400",
+                                )}
+                              >
+                                {p["status"]}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {!filtered.length && (
+                        <p className="text-sm text-muted-foreground">Nenhuma venda neste filtro.</p>
+                      )}
+                    </div>
+                  );
+                })()}
                 {activeTab === "webhooks" && (
                   <div className="space-y-2">
                     {((data?.webhooks ?? []) as Record<string, any>[]).map((w) => (
