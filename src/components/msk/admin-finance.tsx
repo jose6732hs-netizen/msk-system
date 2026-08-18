@@ -112,7 +112,18 @@ export function AdminFinanceTab() {
       </Section>
 
       <Section title="Transações">
-        {(data?.transactions ?? []).map((t: any) => (
+        <FilterChips
+          className="mb-3"
+          value={txFilter}
+          onChange={setTxFilter}
+          chips={[
+            { id: "all", label: "Todas", count: allTx.length },
+            { id: "paid", label: "Aprovadas", count: allTx.filter((t) => txGroup(t) === "paid").length },
+            { id: "pending", label: "Pendentes", count: allTx.filter((t) => txGroup(t) === "pending").length },
+            { id: "failed", label: "Não pagas", count: allTx.filter((t) => txGroup(t) === "failed").length },
+          ]}
+        />
+        {filteredTx.map((t: any) => (
           <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 py-3 text-sm">
             <span className="font-mono text-xs">{t.identifier}</span>
             <span>{t.profiles?.email ?? "—"}</span>
@@ -122,7 +133,7 @@ export function AdminFinanceTab() {
             <span className="text-xs text-muted-foreground">{fmt(t.created_at)}</span>
           </div>
         ))}
-        {!data?.transactions.length && <Empty />}
+        {!filteredTx.length && <Empty />}
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
