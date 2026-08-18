@@ -95,11 +95,17 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     devices: (devices ?? []) as Record<string, any>[],
     affiliates: (affiliates ?? []) as Record<string, any>[],
 
+    commissions: (commissions ?? []) as Record<string, any>[],
+
     stats: {
       users: users?.length ?? 0,
       licenses: licenses?.length ?? 0,
       activeLicenses: (licenses ?? []).filter((l: any) => l.status === "active").length,
       devices: devices?.length ?? 0,
+      revenue,
+      monthCommissions,
+      conversions: paidTx.length,
+      transactions: (payments ?? []).length,
     },
   };
 }
