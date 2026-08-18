@@ -98,7 +98,7 @@ export async function processInternalCommission(transactionId: string) {
 
   if (cErr) throw cErr;
 
-  // Atualizar Saldo da Carteira
+  // Atualizar saldo consolidado usado pelo painel do afiliado.
   const balancePatch: any = {
     total_earned: Number(wallet.total_earned) + commissionAmount,
     updated_at: new Date().toISOString()
@@ -113,6 +113,17 @@ export async function processInternalCommission(transactionId: string) {
   }
 
   await supabaseAdmin.from("affiliate_wallets").update(balancePatch).eq("id", wallet.id);
+
+  const affiliatePatch: Record<string, number> = {
+    total_sales: Number((affiliate as any).total_sales ?? 0) + 1,
+    total_commission: Number((affiliate as any).total_commission ?? 0) + commissionAmount,
+  };
+  if (isImmediate) {
+    affiliatePatch.available_balance = Number((affiliate as any).available_balance ?? 0) + commissionAmount;
+  } else {
+    affiliatePatch.pending_balance = Number((affiliate as any).pending_balance ?? 0) + commissionAmount;
+  }
+  await supabaseAdmin.from("affiliates").update(affiliatePatch as never).eq("id", affiliateId);
 
   // Registrar Transação de Carteira
   await supabaseAdmin.from("affiliate_wallet_transactions").insert({
