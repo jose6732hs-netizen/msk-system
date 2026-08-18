@@ -13,6 +13,8 @@ let loaded = false;
 export function initMetaPixel() {
   if (typeof window === "undefined" || loaded) return;
   loaded = true;
+  // O snippet base já é injetado no <head> do site; evita init/PageView duplicados.
+  if (window.fbq) return;
 
   /* eslint-disable */
   (function (f: any, b: Document, e: string, v: string) {
