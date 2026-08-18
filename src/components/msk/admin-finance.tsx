@@ -14,8 +14,29 @@ export function AdminFinanceTab() {
   const qc = useQueryClient();
   const loadFn = useServerFn(adminFinanceOverview);
   const actionFn = useServerFn(adminWithdrawalAction);
+  const syncFn = useServerFn(adminSyncPayments);
+  const [syncing, setSyncing] = useState(false);
 
-  const { data, isLoading } = useQuery({ queryKey: ["admin-finance"], queryFn: () => loadFn() });
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-finance"],
+    queryFn: () => loadFn(),
+    refetchInterval: 60_000,
+  });
+
+  async function sync() {
+    setSyncing(true);
+    try {
+      const res = await syncFn({ data: {} } as never);
+      await qc.invalidateQueries({ queryKey: ["admin-finance"] });
+      toast.success(
+        `Sincronizado: ${res.checked} transações verificadas, ${res.updated} aprovadas.`,
+      );
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function act(withdrawalId: string, action: "approve" | "reject") {
     try {
