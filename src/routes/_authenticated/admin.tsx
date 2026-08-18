@@ -39,6 +39,7 @@ import { Bell } from "lucide-react";
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
 import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
+import { FilterChips } from "@/components/msk/filter-chips";
 
 const NAV_GROUPS: { title: string; items: { value: string; label: string; Icon: typeof Users }[] }[] = [
   {
