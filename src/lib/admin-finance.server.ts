@@ -54,13 +54,13 @@ export async function loadFinanceOverview() {
   );
   const pendingRevenue = pendingTransactions.reduce((s: number, t: any) => s + Number(t.amount), 0);
   const approvedCommissions = (commissions ?? [])
-    .filter((c: any) => ["AVAILABLE", "APPROVED", "PAID"].includes(c.status))
+    .filter((c: any) => ["AVAILABLE", "APPROVED", "PAID"].includes(String(c.status).toUpperCase()))
     .reduce((s: number, c: any) => s + Number(c.amount), 0);
   const pendingCommissions = (commissions ?? [])
-    .filter((c: any) => c.status === "PENDING")
+    .filter((c: any) => String(c.status).toUpperCase() === "PENDING")
     .reduce((s: number, c: any) => s + Number(c.amount), 0);
   const pendingWithdrawalValue = (withdrawals ?? [])
-    .filter((w: any) => w.status === "PENDING")
+    .filter((w: any) => String(w.status).toUpperCase() === "PENDING")
     .reduce((s: number, w: any) => s + Number(w.amount), 0);
 
   let gatewayBalance: Record<string, any> | null = null;
