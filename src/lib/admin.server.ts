@@ -40,10 +40,10 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .order("created_at", { ascending: false })
         .limit(50),
       supabaseAdmin
-        .from("payments")
-        .select("id,amount,currency,status,provider,created_at,profiles:user_id(email)")
+        .from("transactions")
+        .select("id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at,profiles:user_id(email)")
         .order("created_at", { ascending: false })
-        .limit(50),
+        .limit(80),
       supabaseAdmin
         .from("webhook_events")
         .select("id,provider,event_type,event_id,processed,created_at,error")
