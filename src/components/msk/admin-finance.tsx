@@ -5,10 +5,18 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { adminFinanceOverview, adminSyncPayments, adminWithdrawalAction } from "@/lib/admin.functions";
+import { FilterChips } from "@/components/msk/filter-chips";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString("pt-BR") : "—");
+
+const txGroup = (t: any) => {
+  const s = String(t?.status ?? "").toUpperCase();
+  if (["PAID", "APPROVED", "COMPLETED"].includes(s) || t?.paid_at) return "paid";
+  if (["PENDING", "WAITING", "PROCESSING"].includes(s)) return "pending";
+  return "failed";
+};
 
 export function AdminFinanceTab() {
   const qc = useQueryClient();
