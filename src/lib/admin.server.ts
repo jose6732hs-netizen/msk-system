@@ -117,8 +117,9 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     licenses: (licenses ?? []) as Record<string, any>[],
     users: (users ?? []) as Record<string, any>[],
     plans: (plans ?? []) as Record<string, any>[],
-    subscriptions: (subs ?? []) as Record<string, any>[],
-    payments: (payments ?? []) as Record<string, any>[],
+    subscriptions: subsFull as Record<string, any>[],
+    payments: paymentsFull as Record<string, any>[],
+
     webhooks: (webhooks ?? []) as Record<string, any>[],
     events: (events ?? []) as Record<string, any>[],
     devices: (devices ?? []) as Record<string, any>[],
