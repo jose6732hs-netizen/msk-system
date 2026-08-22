@@ -17,7 +17,7 @@ import { getVisitorId, readAffiliateRef } from "@/lib/urls";
 
 const searchSchema = z.object({ 
   next: z.string().optional(),
-  mode: z.enum(["login", "signup", "reset", "verify", "pre-signup"]).optional()
+  mode: z.enum(["login", "signup", "reset", "verify"]).optional()
 });
 
 type IconProps = { className?: string };
@@ -88,7 +88,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Mode = "login" | "signup" | "reset" | "verify" | "pre-signup";
+type Mode = "login" | "signup" | "reset" | "verify";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -103,20 +103,15 @@ function AuthPage() {
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
-    // Se vier do botão de afiliado, inicia no modo pré-cadastro
-    const isAffiliateFlow = search.next?.includes('parceiro') || 
-                            search.mode === 'pre-signup' ||
-                            search.mode === 'signup' ||
-                            document.referrer.includes('/parceiros');
+    const isAffiliateFlow =
+      search.next?.includes('parceiro') || document.referrer.includes('/parceiros');
 
     if (search.mode) {
-      setMode(search.mode as Mode);
-      if (search.mode === 'signup' || search.mode === 'login') {
-        setShowForm(true);
-      }
+      setMode(search.mode === 'pre-signup' ? 'signup' : (search.mode as Mode));
     } else if (isAffiliateFlow) {
-      setMode("pre-signup");
+      setMode("signup");
     }
+    setShowForm(true);
   }, [search.next, search.mode]);
 
 
@@ -160,7 +155,7 @@ function AuthPage() {
           }
         }
         
-        if (mode !== "pre-signup") {
+        if (true) {
           navigate({ to: search.next || "/painel" });
         }
       }
@@ -259,7 +254,7 @@ function AuthPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center px-5 py-12">
       <div className="pointer-events-none absolute inset-0 grid-lines opacity-30" />
-      <div className={`glass relative w-full transition-all duration-700 ease-in-out ${mode === 'pre-signup' && !showForm ? 'max-w-4xl p-10 md:p-16' : 'max-w-md p-8'} rounded-3xl neon-glow`}>
+      <div className="glass relative w-full max-w-md p-8 rounded-3xl neon-glow">
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             <Link to="/" className="inline-block">
               <MskLogo size={38} />
@@ -401,8 +396,8 @@ function AuthPage() {
                     <button
                       className="block w-full hover:text-primary"
                       onClick={() => {
-                        setShowForm(false);
-                        setMode("pre-signup");
+                        setShowForm(true);
+                        setMode("signup");
                       }}
                     >
                       Não tenho conta — criar agora
@@ -418,7 +413,6 @@ function AuthPage() {
               </div>
             )}
           </div>
-        )}
       </div>
     </div>
   );
