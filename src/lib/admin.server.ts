@@ -80,11 +80,27 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .limit(50),
     ]);
 
+  // e-mails de assinaturas/vendas (sem FK direta com profiles)
+  const relatedIds = [
+    ...new Set(
+      [...(subs ?? []), ...(payments ?? [])].map((r: any) => r.user_id).filter(Boolean),
+    ),
+  ];
+  const { data: relatedProfiles } = relatedIds.length
+    ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", relatedIds)
+    : { data: [] as any[] };
+  const emailMap = new Map((relatedProfiles ?? []).map((p: any) => [p.id, p]));
+  const withProfile = (rows: any[] | null) =>
+    (rows ?? []).map((r: any) => ({ ...r, profiles: r.user_id ? emailMap.get(r.user_id) ?? null : null }));
+  const subsFull = withProfile(subs as any[]);
+  const paymentsFull = withProfile(payments as any[]);
+
   const { data: commissions } = await supabaseAdmin
     .from("affiliate_commissions")
     .select("id,amount,status,created_at")
     .order("created_at", { ascending: false })
     .limit(200);
+
 
   const isPaid = (t: any) =>
     ["PAID", "APPROVED", "COMPLETED"].includes(String(t.status ?? "").toUpperCase()) || !!t.paid_at;
