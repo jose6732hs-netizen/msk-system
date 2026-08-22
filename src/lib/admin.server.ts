@@ -48,14 +48,15 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
       supabaseAdmin.from("plans").select("*").order("sort_order"),
       supabaseAdmin
         .from("subscriptions")
-        .select("id,status,current_period_end,cancel_at_period_end,plans(name),profiles:user_id(email)")
+        .select("id,user_id,status,current_period_end,cancel_at_period_end,plans(name)")
         .order("created_at", { ascending: false })
         .limit(50),
       supabaseAdmin
         .from("transactions")
-        .select("id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at,profiles:user_id(email)")
+        .select("id,user_id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at")
         .order("created_at", { ascending: false })
         .limit(80),
+
       supabaseAdmin
         .from("webhook_events")
         .select("id,provider,event_type,event_id,processed,created_at,error")
