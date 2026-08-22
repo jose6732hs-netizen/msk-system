@@ -91,10 +91,11 @@ export async function loadFinanceOverview() {
   }
 
   return {
-    transactions: (transactions ?? []) as Record<string, any>[],
-    withdrawals: (withdrawals ?? []) as Record<string, any>[],
-    affiliates: (affiliates ?? []) as Record<string, any>[],
-    resellers: (resellers ?? []) as Record<string, any>[],
+    transactions: transactionsFull as Record<string, any>[],
+    withdrawals: withdrawalsFull as Record<string, any>[],
+    affiliates: affiliatesFull as Record<string, any>[],
+    resellers: resellersFull as Record<string, any>[],
+
     commissions: (commissions ?? []) as Record<string, any>[],
     audit: (audit ?? []) as Record<string, any>[],
     gatewayBalance,
