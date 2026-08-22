@@ -106,7 +106,7 @@ function AuthPage() {
       search.next?.includes('parceiro') || document.referrer.includes('/parceiros');
 
     if (search.mode) {
-      setMode(search.mode === 'pre-signup' ? 'signup' : (search.mode as Mode));
+      setMode(search.mode as Mode);
     } else if (isAffiliateFlow) {
       setMode("signup");
     }
