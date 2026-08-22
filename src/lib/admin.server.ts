@@ -8,20 +8,32 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   let licenseQuery = supabaseAdmin
     .from("licenses")
     .select(
-      "id,user_id,status,expires_at,created_at,max_devices,token_preview,token_last4,last_validation,plans(name,slug),profiles:user_id(name,email)",
+      "id,user_id,status,expires_at,created_at,max_devices,token_preview,token_last4,last_validation,plans(name,slug)",
     )
     .order("created_at", { ascending: false })
     .limit(100);
   if (term) licenseQuery = licenseQuery.ilike("token_last4", `%${term.slice(-4)}%`);
-  const { data: licenses } = await licenseQuery;
+  const { data: licensesRaw } = await licenseQuery;
 
   let profileQuery = supabaseAdmin
     .from("profiles")
-    .select("id,name,email,created_at,status")
+    .select("id,name,email,created_at")
     .order("created_at", { ascending: false })
     .limit(100);
   if (uTerm) profileQuery = profileQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
   const { data: users } = await profileQuery;
+
+  // profiles não tem FK direta com licenses: junção manual
+  const ownerIds = [...new Set((licensesRaw ?? []).map((l: any) => l.user_id).filter(Boolean))];
+  const { data: owners } = ownerIds.length
+    ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", ownerIds)
+    : { data: [] as any[] };
+  const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o]));
+  const licenses = (licensesRaw ?? []).map((l: any) => ({
+    ...l,
+    profiles: l.user_id ? ownerMap.get(l.user_id) ?? null : null,
+  }));
+
 
   const [
     { data: plans },
@@ -36,14 +48,15 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
       supabaseAdmin.from("plans").select("*").order("sort_order"),
       supabaseAdmin
         .from("subscriptions")
-        .select("id,status,current_period_end,cancel_at_period_end,plans(name),profiles:user_id(email)")
+        .select("id,user_id,status,current_period_end,cancel_at_period_end,plans(name)")
         .order("created_at", { ascending: false })
         .limit(50),
       supabaseAdmin
         .from("transactions")
-        .select("id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at,profiles:user_id(email)")
+        .select("id,user_id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at")
         .order("created_at", { ascending: false })
         .limit(80),
+
       supabaseAdmin
         .from("webhook_events")
         .select("id,provider,event_type,event_id,processed,created_at,error")
@@ -67,11 +80,27 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
         .limit(50),
     ]);
 
+  // e-mails de assinaturas/vendas (sem FK direta com profiles)
+  const relatedIds = [
+    ...new Set(
+      [...(subs ?? []), ...(payments ?? [])].map((r: any) => r.user_id).filter(Boolean),
+    ),
+  ];
+  const { data: relatedProfiles } = relatedIds.length
+    ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", relatedIds)
+    : { data: [] as any[] };
+  const emailMap = new Map((relatedProfiles ?? []).map((p: any) => [p.id, p]));
+  const withProfile = (rows: any[] | null) =>
+    (rows ?? []).map((r: any) => ({ ...r, profiles: r.user_id ? emailMap.get(r.user_id) ?? null : null }));
+  const subsFull = withProfile(subs as any[]);
+  const paymentsFull = withProfile(payments as any[]);
+
   const { data: commissions } = await supabaseAdmin
     .from("affiliate_commissions")
     .select("id,amount,status,created_at")
     .order("created_at", { ascending: false })
     .limit(200);
+
 
   const isPaid = (t: any) =>
     ["PAID", "APPROVED", "COMPLETED"].includes(String(t.status ?? "").toUpperCase()) || !!t.paid_at;
@@ -88,8 +117,9 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     licenses: (licenses ?? []) as Record<string, any>[],
     users: (users ?? []) as Record<string, any>[],
     plans: (plans ?? []) as Record<string, any>[],
-    subscriptions: (subs ?? []) as Record<string, any>[],
-    payments: (payments ?? []) as Record<string, any>[],
+    subscriptions: subsFull as Record<string, any>[],
+    payments: paymentsFull as Record<string, any>[],
+
     webhooks: (webhooks ?? []) as Record<string, any>[],
     events: (events ?? []) as Record<string, any>[],
     devices: (devices ?? []) as Record<string, any>[],

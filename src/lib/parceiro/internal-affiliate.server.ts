@@ -12,7 +12,8 @@ export async function processInternalCommission(transactionId: string) {
   // 1. Buscar transação
   const { data: tx } = await supabaseAdmin
     .from("transactions")
-    .select("*, profiles:user_id(id)")
+    .select("*")
+
     .eq("id", transactionId)
     .single();
 
