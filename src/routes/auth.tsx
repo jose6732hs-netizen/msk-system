@@ -94,7 +94,6 @@ function AuthPage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [mode, setMode] = useState<Mode>("login");
-  const [showForm, setShowForm] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -111,7 +110,6 @@ function AuthPage() {
     } else if (isAffiliateFlow) {
       setMode("signup");
     }
-    setShowForm(true);
   }, [search.next, search.mode]);
 
 
@@ -155,9 +153,7 @@ function AuthPage() {
           }
         }
         
-        if (true) {
-          navigate({ to: search.next || "/painel" });
-        }
+        navigate({ to: search.next || "/painel" });
       }
     });
   }, [navigate, mode, search.next]);
@@ -396,7 +392,6 @@ function AuthPage() {
                     <button
                       className="block w-full hover:text-primary"
                       onClick={() => {
-                        setShowForm(true);
                         setMode("signup");
                       }}
                     >
