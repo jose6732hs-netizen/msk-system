@@ -13,22 +13,22 @@ export async function loadFinanceOverview() {
   ] = await Promise.all([
     supabaseAdmin
       .from("transactions")
-      .select("id,identifier,amount,status,method,purpose,created_at,paid_at,profiles:user_id(email)")
+      .select("id,user_id,identifier,amount,status,method,purpose,created_at,paid_at")
       .order("created_at", { ascending: false })
       .limit(80),
     supabaseAdmin
       .from("withdrawals")
-      .select("id,identifier,amount,status,pix_key_type,created_at,profiles:user_id(email)")
+      .select("id,user_id,identifier,amount,status,pix_key_type,created_at")
       .order("created_at", { ascending: false })
       .limit(50),
     supabaseAdmin
       .from("affiliates")
-      .select("id,code,status,total_sales,total_commission,available_balance,profiles:user_id(email)")
+      .select("id,user_id,code,status,total_sales,total_commission,available_balance")
       .order("total_commission", { ascending: false })
       .limit(50),
     supabaseAdmin
       .from("resellers")
-      .select("id,code,tier,status,available_balance,total_deposited,trials_available,trials_used,profiles:user_id(email)")
+      .select("id,user_id,code,tier,status,available_balance,total_deposited,trials_available,trials_used")
       .order("total_deposited", { ascending: false })
       .limit(50),
     supabaseAdmin
@@ -42,6 +42,26 @@ export async function loadFinanceOverview() {
       .order("created_at", { ascending: false })
       .limit(80),
   ]);
+
+  // profiles não possui FK direta com estas tabelas: junção manual por user_id
+  const ids = [
+    ...new Set(
+      [...(transactions ?? []), ...(withdrawals ?? []), ...(affiliates ?? []), ...(resellers ?? [])]
+        .map((r: any) => r.user_id)
+        .filter(Boolean),
+    ),
+  ];
+  const { data: profileRows } = ids.length
+    ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", ids)
+    : { data: [] as any[] };
+  const pMap = new Map((profileRows ?? []).map((p: any) => [p.id, p]));
+  const attach = (rows: any[] | null) =>
+    (rows ?? []).map((r: any) => ({ ...r, profiles: r.user_id ? pMap.get(r.user_id) ?? null : null }));
+  const transactionsFull = attach(transactions as any[]);
+  const withdrawalsFull = attach(withdrawals as any[]);
+  const affiliatesFull = attach(affiliates as any[]);
+  const resellersFull = attach(resellers as any[]);
+
 
   const st = (t: any) => String(t?.status ?? "").toUpperCase();
   const PAID_STATUSES = ["PAID", "APPROVED", "COMPLETED"];
