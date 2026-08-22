@@ -8,20 +8,32 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   let licenseQuery = supabaseAdmin
     .from("licenses")
     .select(
-      "id,user_id,status,expires_at,created_at,max_devices,token_preview,token_last4,last_validation,plans(name,slug),profiles:user_id(name,email)",
+      "id,user_id,status,expires_at,created_at,max_devices,token_preview,token_last4,last_validation,plans(name,slug)",
     )
     .order("created_at", { ascending: false })
     .limit(100);
   if (term) licenseQuery = licenseQuery.ilike("token_last4", `%${term.slice(-4)}%`);
-  const { data: licenses } = await licenseQuery;
+  const { data: licensesRaw } = await licenseQuery;
 
   let profileQuery = supabaseAdmin
     .from("profiles")
-    .select("id,name,email,created_at,status")
+    .select("id,name,email,created_at")
     .order("created_at", { ascending: false })
     .limit(100);
   if (uTerm) profileQuery = profileQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
   const { data: users } = await profileQuery;
+
+  // profiles não tem FK direta com licenses: junção manual
+  const ownerIds = [...new Set((licensesRaw ?? []).map((l: any) => l.user_id).filter(Boolean))];
+  const { data: owners } = ownerIds.length
+    ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", ownerIds)
+    : { data: [] as any[] };
+  const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o]));
+  const licenses = (licensesRaw ?? []).map((l: any) => ({
+    ...l,
+    profiles: l.user_id ? ownerMap.get(l.user_id) ?? null : null,
+  }));
+
 
   const [
     { data: plans },
