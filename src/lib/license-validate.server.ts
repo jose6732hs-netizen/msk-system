@@ -19,6 +19,7 @@ type LicenseRow = {
   id: string;
   user_id: string;
   status: string;
+  type: string;
   expires_at: string | null;
   max_devices: number;
   metadata: Record<string, unknown> | null;

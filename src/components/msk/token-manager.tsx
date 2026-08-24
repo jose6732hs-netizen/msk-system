@@ -441,6 +441,16 @@ export function TokenManager() {
                                     <Link to="/planos">Adquirir nova licença</Link>
                                   </Button>
                                 </div>
+                              ) : t.status === 'pending' ? (
+                                <div className="flex flex-col items-center justify-center py-6 border-2 border-dashed border-primary/20 rounded-2xl bg-primary/5">
+                                  <div className="flex items-center gap-3 text-primary animate-pulse mb-2">
+                                    <div className="h-2 w-2 rounded-full bg-primary" />
+                                    <span className="text-xs font-black uppercase tracking-[0.2em]">Aguardando Ativação</span>
+                                  </div>
+                                  <p className="text-[0.65rem] text-muted-foreground uppercase font-bold italic text-center px-4">
+                                    Insira o token na extensão para iniciar o tempo regressivo
+                                  </p>
+                                </div>
                               ) : (
                                 <>
                                   <div className="flex items-center gap-1.5">
