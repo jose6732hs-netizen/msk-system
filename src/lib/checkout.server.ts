@@ -296,7 +296,6 @@ export async function createPixCheckout(input: {
     .single();
   if (error) throw error;
 
-  const service = await AmploPayService.create();
   try {
     // Split desativado para afiliados (carteira interna)
     const splits = await buildSplits({
@@ -313,30 +312,28 @@ export async function createPixCheckout(input: {
         amount: finalPrice,
       });
     }
-    const { absoluteUrl } = await import("./app-url.server");
-    const callbackUrl = await absoluteUrl("/api/public/webhooks/amplopay").catch(() => "");
-    const result = await service.createPix({
+    const { createPixWithFailover } = await import("./payments/gateway.server");
+    const { provider, result, pixCode } = await createPixWithFailover({
       identifier,
       amountCents,
-      ...(callbackUrl ? { callbackUrl } : {}),
-      customer: { 
-        name: input.name || input.email, 
-        email: input.email, 
-        phone: input.phone, 
-        document: { number: input.document, type: input.document.length === 14 ? "CNPJ" : "CPF" } 
+      customer: {
+        name: input.name || input.email,
+        email: input.email,
+        phone: input.phone,
+        document: { number: input.document, type: input.document.length === 14 ? "CNPJ" : "CPF" },
       },
       items,
       splits,
       metadata: { transactionId: tx.id },
     });
 
-    const pixCode = result.pix?.code ?? null;
     const qr = result.pix?.base64 ?? result.pix?.image ?? null;
     const providerId = result.transactionId ?? result.id ?? null;
 
     await supabaseAdmin
       .from("transactions")
       .update({
+        provider,
         provider_transaction_id: providerId,
         pix_code: pixCode,
         pix_qrcode: qr,
@@ -346,6 +343,7 @@ export async function createPixCheckout(input: {
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", tx.id);
+
 
     if (isBulk) {
       const { clearCart } = await import("./cart.server");
