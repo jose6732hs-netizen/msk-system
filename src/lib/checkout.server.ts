@@ -384,9 +384,32 @@ export async function createPixCheckout(input: {
         transactionId: tx.id,
         metadata: { transactionId: tx.id, amount: Number(finalPrice) },
       }).catch(() => {});
+
+      // Afiliado dono do link: mensagem própria (nunca a do comprador).
+      if (affiliateId) {
+        const { data: aff } = await supabaseAdmin
+          .from("affiliates")
+          .select("user_id,commission_rate")
+          .eq("id", affiliateId)
+          .maybeSingle();
+        if (aff?.user_id && aff.user_id !== input.userId) {
+          const estimated = Number(finalPrice) * (Number(aff.commission_rate || 30) / 100);
+          await sendProfessionalNotification({
+            userId: aff.user_id,
+            type: "pix_created",
+            title: "Venda gerada pelo seu link",
+            body: `🧾 Venda gerada: ${gross}\n⏳ Aguardando o pagamento do cliente\n💚 Comissão prevista: ${estimated.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
+            link: "/parceiro",
+            recipientRole: "affiliate",
+            transactionId: tx.id,
+            metadata: { transactionId: tx.id, amount: Number(finalPrice) },
+          }).catch(() => {});
+        }
+      }
     } catch (e) {
       console.error("[checkout] notificação pix_created falhou:", e);
     }
+
 
     return {
       transactionId: tx.id,
