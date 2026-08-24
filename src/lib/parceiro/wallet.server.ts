@@ -146,6 +146,9 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
 
   if (!affiliate.pix_key) throw new Error("Cadastre uma chave PIX para receber.");
 
+  // Garante que vendas aprovadas já viraram saldo antes de validar o saque.
+  await settlePendingCommissions(affiliate.id).catch(() => undefined);
+
   // 1. Obter carteira interna
   const { data: wallet } = await supabaseAdmin
     .from("affiliate_wallets")
