@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-// QUANDO EU ESCHER A OPCAO DO GATWAY EX ESCOLHI SEGILO PAY DEVE APARECER OS REVIW DELA E NAO DA AMPLOPAY NOS CAMPOS
+// TEM DUPLICACAO DE X BOTAO DE FECHAR OS MENUS
 // PROMPT MESTRE — ROTA DE LICENÇA CONECTADA ÀS OFERTAS (PLANOS)
 // Infraestrutura unificada: OFERTA → LICENÇA → VALIDAÇÃO baseada em public.plans.
 // Painel Admin e landing page otimizados para mobile
