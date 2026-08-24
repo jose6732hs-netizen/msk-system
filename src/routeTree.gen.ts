@@ -43,6 +43,7 @@ import { Route as ApiPublicLicenseMeRouteImport } from './routes/api/public/lice
 import { Route as ApiPublicLicenseValidateRouteImport } from './routes/api/public/license/validate'
 import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/public/webhooks/amplopay'
 import { Route as ApiPublicWebhooksPaymentRouteImport } from './routes/api/public/webhooks/payment'
+import { Route as ApiPublicWebhooksSigilopayRouteImport } from './routes/api/public/webhooks/sigilopay'
 import { Route as ApiPublicExtRuntimeBundleRouteImport } from './routes/api/public/ext/runtime/bundle'
 import { Route as ApiPublicExtRuntimeManifestRouteImport } from './routes/api/public/ext/runtime/manifest'
 import { Route as ApiPublicLicenseDeviceRemoveRouteImport } from './routes/api/public/license/device/remove'
@@ -227,6 +228,12 @@ const ApiPublicWebhooksPaymentRoute =
     path: '/api/public/webhooks/payment',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksSigilopayRoute =
+  ApiPublicWebhooksSigilopayRouteImport.update({
+    id: '/api/public/webhooks/sigilopay',
+    path: '/api/public/webhooks/sigilopay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicExtRuntimeBundleRoute =
   ApiPublicExtRuntimeBundleRouteImport.update({
     id: '/api/public/ext/runtime/bundle',
@@ -280,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
+  '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -318,6 +326,7 @@ export interface FileRoutesByTo {
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
+  '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -358,6 +367,7 @@ export interface FileRoutesById {
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
+  '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -398,6 +408,7 @@ export interface FileRouteTypes {
     | '/api/public/license/validate'
     | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/payment'
+    | '/api/public/webhooks/sigilopay'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/api/public/license/validate'
     | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/payment'
+    | '/api/public/webhooks/sigilopay'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -475,6 +487,7 @@ export interface FileRouteTypes {
     | '/api/public/license/validate'
     | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/payment'
+    | '/api/public/webhooks/sigilopay'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -510,6 +523,7 @@ export interface RootRouteChildren {
   ApiPublicLicenseValidateRoute: typeof ApiPublicLicenseValidateRoute
   ApiPublicWebhooksAmplopayRoute: typeof ApiPublicWebhooksAmplopayRoute
   ApiPublicWebhooksPaymentRoute: typeof ApiPublicWebhooksPaymentRoute
+  ApiPublicWebhooksSigilopayRoute: typeof ApiPublicWebhooksSigilopayRoute
   ApiPublicExtRuntimeBundleRoute: typeof ApiPublicExtRuntimeBundleRoute
   ApiPublicExtRuntimeManifestRoute: typeof ApiPublicExtRuntimeManifestRoute
   ApiPublicLicenseDeviceRemoveRoute: typeof ApiPublicLicenseDeviceRemoveRoute
@@ -755,6 +769,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksPaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/sigilopay': {
+      id: '/api/public/webhooks/sigilopay'
+      path: '/api/public/webhooks/sigilopay'
+      fullPath: '/api/public/webhooks/sigilopay'
+      preLoaderRoute: typeof ApiPublicWebhooksSigilopayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/ext/runtime/bundle': {
       id: '/api/public/ext/runtime/bundle'
       path: '/api/public/ext/runtime/bundle'
@@ -839,6 +860,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicLicenseValidateRoute: ApiPublicLicenseValidateRoute,
   ApiPublicWebhooksAmplopayRoute: ApiPublicWebhooksAmplopayRoute,
   ApiPublicWebhooksPaymentRoute: ApiPublicWebhooksPaymentRoute,
+  ApiPublicWebhooksSigilopayRoute: ApiPublicWebhooksSigilopayRoute,
   ApiPublicExtRuntimeBundleRoute: ApiPublicExtRuntimeBundleRoute,
   ApiPublicExtRuntimeManifestRoute: ApiPublicExtRuntimeManifestRoute,
   ApiPublicLicenseDeviceRemoveRoute: ApiPublicLicenseDeviceRemoveRoute,
