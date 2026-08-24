@@ -113,10 +113,14 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     .filter((c: any) => new Date(c.created_at) >= monthStart)
     .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
 
-  const { data: cms } = await supabaseAdmin.from("cms_settings").select("*").eq("id", "production").maybeSingle();
+  const { data: appSettings } = await (supabaseAdmin as any).from("app_settings").select("*");
+  const cms = (appSettings || []).reduce((acc: any, curr: any) => {
+    acc[curr.key] = curr.value;
+    return acc;
+  }, {});
 
   return {
-    cms_settings: cms ?? {},
+    cms_settings: cms,
     licenses: (licenses ?? []) as Record<string, any>[],
     users: (users ?? []) as Record<string, any>[],
     plans: (plans ?? []) as Record<string, any>[],
