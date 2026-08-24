@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-// O tempo de 2 minutos para este PIX acabou. Gere um novo código. Gerar Novo PIX AO CLICAR NO BOTAO DE GERAR NOVO PI NAO GERA UM
+// Identifique falhas, erros de lógica e bugs no código fornecido. Forneça a correção exata para cada problema encontrado, acompanhada de uma explicação clara sobre a causa raiz e a solução aplicada, garantindo que o código funcione perfeitamente e sem erros.
 // PROMPT MESTRE — ROTA DE LICENÇA CONECTADA ÀS OFERTAS (PLANOS)
 // Infraestrutura unificada: OFERTA → LICENÇA → VALIDAÇÃO baseada em public.plans.
 // Painel Admin e landing page otimizados para mobile
