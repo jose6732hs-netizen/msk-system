@@ -280,7 +280,13 @@ export function WalletModal({
               </TabsContent>
 
               <TabsContent value="settings" className="mt-0">
-                <WithdrawalPasswordModal isAlreadySet={passwordSet} />
+                <WithdrawalPasswordModal 
+                  isAlreadySet={passwordSet} 
+                  onSuccess={() => {
+                    refetchStatus();
+                    setActiveTab("overview");
+                  }} 
+                />
               </TabsContent>
             </Tabs>
           </div>
