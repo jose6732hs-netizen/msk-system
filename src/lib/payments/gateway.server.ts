@@ -31,9 +31,16 @@ export async function getGatewayConfig(): Promise<GatewayConfig> {
   return { primary, failover: value.failover !== false };
 }
 
-export async function saveGatewayConfig(config: Partial<GatewayConfig>) {
+export async function saveGatewayConfig(config: {
+  primary?: ProviderId | undefined;
+  failover?: boolean | undefined;
+}) {
   const current = await getGatewayConfig();
-  const next: GatewayConfig = { ...current, ...config };
+  const next: GatewayConfig = {
+    primary: config.primary ?? current.primary,
+    failover: config.failover ?? current.failover,
+  };
+
   const { error } = await supabaseAdmin
     .from("app_settings")
     .upsert(
