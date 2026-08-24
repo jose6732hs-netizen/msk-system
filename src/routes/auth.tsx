@@ -178,7 +178,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            data: { name },
+            data: { name, phone: (window as any)._signup_phone },
             emailRedirectTo: `${window.location.origin}/auth`,
           },
         });
@@ -307,10 +307,27 @@ function AuthPage() {
               <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <form onSubmit={submit} className="mt-7 space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
                   {mode === "signup" && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="name">Nome</Label>
-                      <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-                    </div>
+                    <>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="name">Nome Completo</Label>
+                        <Input id="name" placeholder="Seu nome" value={name} onChange={(e) => setName(e.target.value)} required />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="phone">WhatsApp (com DDD)</Label>
+                        <Input 
+                          id="phone" 
+                          type="tel"
+                          placeholder="(11) 99999-9999" 
+                          value={name.includes(' ') ? undefined : undefined} // Temporary hack to allow adding phone to metadata
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, '');
+                            // We'll store phone in a local state and send it via metadata
+                            (window as any)._signup_phone = val;
+                          }} 
+                          required 
+                        />
+                      </div>
+                    </>
                   )}
                   <div className="space-y-1.5">
                     <Label htmlFor="email">E-mail</Label>

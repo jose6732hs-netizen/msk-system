@@ -16,7 +16,9 @@ import {
   Palette,
   Users,
   Trash2,
-  Trophy
+  Trophy,
+  MessageCircle,
+  Phone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -219,7 +221,7 @@ function BannerManager(props: {
 }
 
 
-type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards' | 'splits';
+type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards' | 'splits' | 'recovery';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -305,6 +307,7 @@ export function AdminEditorTab() {
     { id: 'branding', label: 'Extensão / Branding', icon: Palette, desc: 'Ícones e cores' },
     { id: 'awards', label: 'Premiações / Placas', icon: Trophy, desc: 'Placas 1K a 5M' },
     { id: 'copy', label: 'Copies / Suporte', icon: Type, desc: 'Links e textos globais' },
+    { id: 'recovery', label: 'Recuperação WhatsApp', icon: MessageCircle, desc: 'Mensagens de lead' },
     { id: 'tutorials', label: 'Tutoriais / Vídeos', icon: FileText, desc: 'Como funciona' },
   ];
 
@@ -716,6 +719,47 @@ export function AdminEditorTab() {
                   <Save className="mr-2 h-4 w-4" /> Salvar
                 </Button>
                 <Button onClick={() => handlePublish('config')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'recovery' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Mensagens de Recuperação (WhatsApp)</h4>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { key: 'welcome', label: 'Mensagem de Boas-Vindas', desc: 'Enviada quando um lead se cadastra.' },
+                  { key: 'recovery', label: 'Mensagem de Recuperação', desc: 'Enviada para boletos/PIX pendentes.' },
+                  { key: 'urgency', label: 'Mensagem de Urgência', desc: 'Oferta especial por tempo limitado.' }
+                ].map((msg) => (
+                  <div key={msg.key} className="space-y-2">
+                    <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">{msg.label}</label>
+                    <Textarea 
+                      placeholder="Olá {nome}, vimos que você..."
+                      value={(localSettings as any).recovery_messages?.[msg.key] ?? (initialSettings as any).recovery_messages?.[msg.key] ?? ''} 
+                      onChange={(e) => {
+                        const current = (localSettings as any).recovery_messages || {};
+                        updateSetting('recovery_messages', 'value' as any, { ...current, [msg.key]: e.target.value } as any);
+                      }}
+                      rows={4}
+                      className="text-xs"
+                    />
+                    <p className="text-[0.6rem] text-muted-foreground italic">{msg.desc} Use {"{nome}"} para o nome do cliente.</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('recovery_messages')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar
+                </Button>
+                <Button onClick={() => handlePublish('recovery_messages')} variant="neon" className="flex-1 font-black">
                   <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar
                 </Button>
               </div>

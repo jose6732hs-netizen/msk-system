@@ -19,6 +19,7 @@ type LicenseRow = {
   id: string;
   user_id: string;
   status: string;
+  type: string;
   expires_at: string | null;
   max_devices: number;
   metadata: Record<string, unknown> | null;
@@ -78,12 +79,35 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       status: "active",
       activated_at: activatedAt.toISOString(),
     };
+    
     // O contador só começa quando o cliente ativa o token na extensão.
     if (!license.expires_at && pending > 0) {
       const expiresAt = new Date(activatedAt.getTime() + pending).toISOString();
       patch["expires_at"] = expiresAt;
       license.expires_at = expiresAt;
+    } else if (!license.expires_at) {
+      // Tentar recuperar a duração dos snapshots do metadata
+      const snapVal = Number((license.metadata as any)?.["plan_duration_value_snapshot"] ?? 0);
+      const snapUnit = String((license.metadata as any)?.["plan_duration_unit_snapshot"] || 'days');
+      
+      if (snapVal > 0) {
+        let durationMs = snapVal * 86400000; // default days
+        if (snapUnit === 'minutes') durationMs = snapVal * 60000;
+        else if (snapUnit === 'hours') durationMs = snapVal * 3600000;
+        else if (snapUnit === 'weeks') durationMs = snapVal * 604800000;
+        else if (snapUnit === 'months') durationMs = snapVal * 2592000000;
+        
+        const expiresAt = new Date(activatedAt.getTime() + durationMs).toISOString();
+        patch["expires_at"] = expiresAt;
+        license.expires_at = expiresAt;
+      } else if (license.type === 'paid' || license.type === 'manual') {
+        // Fallback para 30 dias se for pago/manual e não tiver metadata
+        const expiresAt = new Date(activatedAt.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString();
+        patch["expires_at"] = expiresAt;
+        license.expires_at = expiresAt;
+      }
     }
+    
     await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
     license.status = "active";
   }
