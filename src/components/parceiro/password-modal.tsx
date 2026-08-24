@@ -9,9 +9,10 @@ import { cn } from "@/lib/utils";
 
 interface WithdrawalPasswordModalProps {
   isAlreadySet?: boolean | undefined;
+  onSuccess?: () => void;
 }
 
-export function WithdrawalPasswordModal({ isAlreadySet }: WithdrawalPasswordModalProps) {
+export function WithdrawalPasswordModal({ isAlreadySet, onSuccess }: WithdrawalPasswordModalProps) {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,6 +53,7 @@ export function WithdrawalPasswordModal({ isAlreadySet }: WithdrawalPasswordModa
     try {
       await setPasswordFn({ data: { passwordHash: password } });
       toast.success("Senha de saque configurada com sucesso!");
+      if (onSuccess) onSuccess();
     } catch (err: any) {
       toast.error(err.message || "Erro ao configurar senha");
     } finally {

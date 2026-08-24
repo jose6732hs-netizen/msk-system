@@ -59,7 +59,7 @@ export function WalletModal({
 
   const loadStatus = useServerFn(getAffiliateWalletStatus);
   const withdraw = useServerFn(requestAffiliateWithdrawal);
-  const { data: status } = useQuery({
+  const { data: status, refetch: refetchStatus } = useQuery({
     queryKey: ["affiliate-wallet-status"],
     queryFn: () => loadStatus({}),
     enabled: isOpen,
@@ -280,7 +280,13 @@ export function WalletModal({
               </TabsContent>
 
               <TabsContent value="settings" className="mt-0">
-                <WithdrawalPasswordModal isAlreadySet={passwordSet} />
+                <WithdrawalPasswordModal 
+                  isAlreadySet={passwordSet} 
+                  onSuccess={() => {
+                    refetchStatus();
+                    setActiveTab("overview");
+                  }} 
+                />
               </TabsContent>
             </Tabs>
           </div>
