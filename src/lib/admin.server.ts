@@ -17,7 +17,7 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
 
   let profileQuery = supabaseAdmin
     .from("profiles")
-    .select("id,name,email,created_at")
+    .select("id,name,email,created_at,phone")
     .order("created_at", { ascending: false })
     .limit(100);
   if (uTerm) profileQuery = profileQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
@@ -113,7 +113,10 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     .filter((c: any) => new Date(c.created_at) >= monthStart)
     .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
 
+  const { data: cms } = await supabaseAdmin.from("cms_settings").select("*").eq("id", "production").maybeSingle();
+
   return {
+    cms_settings: cms ?? {},
     licenses: (licenses ?? []) as Record<string, any>[],
     users: (users ?? []) as Record<string, any>[],
     plans: (plans ?? []) as Record<string, any>[],
