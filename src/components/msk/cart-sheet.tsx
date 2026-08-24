@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -42,9 +43,15 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
       // Sem sessão hidratada ainda? Evita chamar o serverFn sem Authorization.
       const { data: s } = await supabase.auth.getSession();
       if (!s.session?.access_token) {
-        return { lines: [], subtotal: 0, discount: 0, total: 0, pending: [] } as Awaited<
-          ReturnType<typeof getCart>
-        >;
+        return {
+          lines: [],
+          subtotal: 0,
+          discount: 0,
+          total: 0,
+          resellerCode: null,
+          affiliateCode: null,
+          pending: [],
+        } as Awaited<ReturnType<typeof getCart>>;
       }
       return getCart();
     },
