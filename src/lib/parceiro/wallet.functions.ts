@@ -31,7 +31,7 @@ export const requestAffiliateWithdrawal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
     z.object({
-      amount: z.number().min(20),
+      amount: z.number().min(29),
       passwordHash: z.string().min(6).max(128),
     }).parse(d)
   )

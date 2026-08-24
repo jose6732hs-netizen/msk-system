@@ -210,7 +210,7 @@ export function WalletModal({
                         ) : (
                           <>
                             <div>
-                              <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ 20,00)</label>
+                              <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ {minWithdrawal},00)</label>
                               <Input
                                 placeholder="0,00"
                                 inputMode="decimal"
