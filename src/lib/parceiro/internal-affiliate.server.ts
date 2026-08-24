@@ -57,14 +57,23 @@ export async function processInternalCommission(transactionId: string) {
     .maybeSingle();
   if (existing && ["AVAILABLE", "APPROVED", "PAID"].includes(existing.status)) return existing.id;
 
-  // 6. Obter carteira
-  const { data: wallet } = await supabaseAdmin
+  // 6. Obter carteira (cria se ainda não existir — nunca perder comissão)
+  let { data: wallet } = await supabaseAdmin
     .from("affiliate_wallets")
     .select("id, available_balance, total_earned")
     .eq("affiliate_id", affiliateId)
-    .single();
+    .maybeSingle();
 
+  if (!wallet) {
+    const { data: created } = await supabaseAdmin
+      .from("affiliate_wallets")
+      .insert({ affiliate_id: affiliateId } as never)
+      .select("id, available_balance, total_earned")
+      .maybeSingle();
+    wallet = created;
+  }
   if (!wallet) return null;
+
 
   // 7. Obter regras de liberação
   const { data: settings } = await supabaseAdmin

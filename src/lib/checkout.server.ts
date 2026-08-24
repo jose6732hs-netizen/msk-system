@@ -296,7 +296,6 @@ export async function createPixCheckout(input: {
     .single();
   if (error) throw error;
 
-  const service = await AmploPayService.create();
   try {
     // Split desativado para afiliados (carteira interna)
     const splits = await buildSplits({
@@ -313,30 +312,28 @@ export async function createPixCheckout(input: {
         amount: finalPrice,
       });
     }
-    const { absoluteUrl } = await import("./app-url.server");
-    const callbackUrl = await absoluteUrl("/api/public/webhooks/amplopay").catch(() => "");
-    const result = await service.createPix({
+    const { createPixWithFailover } = await import("./payments/gateway.server");
+    const { provider, result, pixCode } = await createPixWithFailover({
       identifier,
       amountCents,
-      ...(callbackUrl ? { callbackUrl } : {}),
-      customer: { 
-        name: input.name || input.email, 
-        email: input.email, 
-        phone: input.phone, 
-        document: { number: input.document, type: input.document.length === 14 ? "CNPJ" : "CPF" } 
+      customer: {
+        name: input.name || input.email,
+        email: input.email,
+        phone: input.phone,
+        document: { number: input.document, type: input.document.length === 14 ? "CNPJ" : "CPF" },
       },
       items,
       splits,
       metadata: { transactionId: tx.id },
     });
 
-    const pixCode = result.pix?.code ?? null;
     const qr = result.pix?.base64 ?? result.pix?.image ?? null;
     const providerId = result.transactionId ?? result.id ?? null;
 
     await supabaseAdmin
       .from("transactions")
       .update({
+        provider,
         provider_transaction_id: providerId,
         pix_code: pixCode,
         pix_qrcode: qr,
@@ -346,6 +343,7 @@ export async function createPixCheckout(input: {
         updated_at: new Date().toISOString(),
       } as any)
       .eq("id", tx.id);
+
 
     if (isBulk) {
       const { clearCart } = await import("./cart.server");
@@ -386,9 +384,32 @@ export async function createPixCheckout(input: {
         transactionId: tx.id,
         metadata: { transactionId: tx.id, amount: Number(finalPrice) },
       }).catch(() => {});
+
+      // Afiliado dono do link: mensagem própria (nunca a do comprador).
+      if (affiliateId) {
+        const { data: aff } = await supabaseAdmin
+          .from("affiliates")
+          .select("user_id,commission_rate")
+          .eq("id", affiliateId)
+          .maybeSingle();
+        if (aff?.user_id && aff.user_id !== input.userId) {
+          const estimated = Number(finalPrice) * (Number(aff.commission_rate || 30) / 100);
+          await sendProfessionalNotification({
+            userId: aff.user_id,
+            type: "pix_created",
+            title: "Venda gerada pelo seu link",
+            body: `🧾 Venda gerada: ${gross}\n⏳ Aguardando o pagamento do cliente\n💚 Comissão prevista: ${estimated.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
+            link: "/parceiro",
+            recipientRole: "affiliate",
+            transactionId: tx.id,
+            metadata: { transactionId: tx.id, amount: Number(finalPrice) },
+          }).catch(() => {});
+        }
+      }
     } catch (e) {
       console.error("[checkout] notificação pix_created falhou:", e);
     }
+
 
     return {
       transactionId: tx.id,

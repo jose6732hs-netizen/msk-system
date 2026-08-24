@@ -134,14 +134,16 @@ export const adminSavePlan = createServerFn({ method: "POST" })
     return savePlan(data);
   });
 
-/* ============ Gateway de pagamento (Amplo Pay) ============ */
+/* ============ Gateways de pagamento (Amplo Pay + SigiloPay) ============ */
+
+const providerSchema = z.enum(["amplopay", "sigilopay"]);
 
 export const adminGatewaySettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
-    const { getSettingsSummary } = await import("./payments/amplo-pay.server");
-    return getSettingsSummary();
+    const { getGatewayOverview } = await import("./payments/gateway.server");
+    return getGatewayOverview();
   });
 
 export const adminSaveGateway = createServerFn({ method: "POST" })
@@ -149,6 +151,7 @@ export const adminSaveGateway = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
     z
       .object({
+        provider: providerSchema,
         publicKey: z.string().min(8).max(400).optional(),
         secretKey: z.string().min(8).max(400).optional(),
         webhookSecret: z.string().min(8).max(400).optional(),
@@ -159,29 +162,51 @@ export const adminSaveGateway = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
-    const { saveCredentials, getSettingsSummary } = await import("./payments/amplo-pay.server");
+    const { saveCredentialsFor } = await import("./payments/credentials.server");
+    const { getGatewayOverview } = await import("./payments/gateway.server");
     const { logAudit } = await import("./audit.server");
-    await saveCredentials({ ...data, updatedBy: context.userId });
+    await saveCredentialsFor({ ...data, updatedBy: context.userId });
     await logAudit({
       userId: context.userId,
       action: "gateway.settings_updated",
       resource: "payment_settings",
-      metadata: { active: data.active ?? null },
+      metadata: { provider: data.provider, active: data.active ?? null },
     });
-    return getSettingsSummary();
+    return getGatewayOverview();
+  });
+
+/** Define o gateway preferido e liga/desliga o failover automático. */
+export const adminSetGatewayPreference = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({ primary: providerSchema.optional(), failover: z.boolean().optional() })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { saveGatewayConfig, getGatewayOverview } = await import("./payments/gateway.server");
+    await saveGatewayConfig(data);
+    return getGatewayOverview();
   });
 
 export const adminTestGateway = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: unknown) => z.object({ provider: providerSchema }).parse(d))
+  .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
-    const { testCredentials } = await import("./payments/amplo-pay.server");
     try {
+      if (data.provider === "sigilopay") {
+        const { testSigiloCredentials } = await import("./payments/sigilo-pay.server");
+        return await testSigiloCredentials();
+      }
+      const { testCredentials } = await import("./payments/amplo-pay.server");
       return await testCredentials();
     } catch (e) {
       return { ok: false as const, error: (e as Error).message };
     }
   });
+
 
 export const adminFinanceOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
