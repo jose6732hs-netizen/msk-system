@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+// a carteira de afiliados nao siobe os saldos de acordo com as comicoes e nem fica disponive pra sacar e o saque minimo sera de 29
 // AS NOTIFICACOES DE TSTE NAO CAI EM PUSH FORA DO SIT RESOLVA ISSO E AS DE PIX AO GERA EX SE EU INDIQUEI UMA PESSOA ELA GERA A COMPRA  CHEGA PRA MIN PEDINDO PRA PAGAR E NAO CEGA MENSAGEM EX VENDA GERADA SUA COMICAO E DE E O VALOR ETC E NEM QUANDO APROVAA E A EXTENCAO DEVE ATIVAR ALTOMATIamente o time regressivo com os dados da licenca apos ela srr validada
 // PROMPT MESTRE — ROTA DE LICENÇA CONECTADA ÀS OFERTAS (PLANOS)
 // Infraestrutura unificada: OFERTA → LICENÇA → VALIDAÇÃO baseada em public.plans.
