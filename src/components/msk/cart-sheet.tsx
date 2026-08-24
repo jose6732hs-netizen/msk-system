@@ -38,8 +38,18 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
 
   const { data, isLoading } = useQuery({
     queryKey: ["cart"],
-    queryFn: () => getCart(),
-    enabled: signedIn,
+    queryFn: async () => {
+      // Sem sessão hidratada ainda? Evita chamar o serverFn sem Authorization.
+      const { data: s } = await supabase.auth.getSession();
+      if (!s.session?.access_token) {
+        return { lines: [], subtotal: 0, discount: 0, total: 0, pending: [] } as Awaited<
+          ReturnType<typeof getCart>
+        >;
+      }
+      return getCart();
+    },
+    enabled: signedIn && typeof window !== "undefined",
+    retry: false,
   });
 
   const count = (data?.lines ?? []).reduce((acc, l) => acc + l.quantity, 0);
