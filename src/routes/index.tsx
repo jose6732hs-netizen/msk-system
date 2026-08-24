@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-// QUEM E SUPER ADMIN QUAL EMAIL
+// CONFORME SE APOS PAGAMENTO POIS JA FIZ MUITOS PAGAMENTOS E NAO APARECE TELA DE OBRIGADO COM A LICENCA NEM CONTOU N BOARD A VENDA
 // PROMPT MESTRE — ROTA DE LICENÇA CONECTADA ÀS OFERTAS (PLANOS)
 // Infraestrutura unificada: OFERTA → LICENÇA → VALIDAÇÃO baseada em public.plans.
 // Painel Admin e landing page otimizados para mobile
