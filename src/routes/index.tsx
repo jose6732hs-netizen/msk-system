@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+// quando entra no sit ou na carteira os numeros de valores saldo etc devem comecar subir do centavo ate o valor total bem profissional
 // Saldo Disponível
 // R$ 0,00  esse cliente tem indicacoes e a carteira dele ta sem saldo mesmo ele ter feito vendas  e a barra de progresso n topo do sit nao ta subindo de acordo com as vendas e nem o valor de vendas na meta pra premiacao dele e aq Status da Conta
 // Verificada so deve aparecer isso se reamente ele stiver mandados os dcumentos e o admin tiver aprovado a conta como verificada
