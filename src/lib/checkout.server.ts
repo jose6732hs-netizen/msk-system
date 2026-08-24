@@ -364,7 +364,7 @@ export async function createPixCheckout(input: {
         "./notification-service.server"
       );
 
-      const { data: planData } = await supabaseAdmin.from("plans").select("name").eq("id", input.planId).single();
+      const { data: planData } = await supabaseAdmin.from("plans").select("name").eq("id", input.planId || "").single();
       const planName = planData?.name || "Premium";
 
       const gross = Number(finalPrice).toLocaleString("pt-BR", {
