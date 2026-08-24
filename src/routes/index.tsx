@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+// Status da Conta  so deve mos6rar que e verificacda se a pessoa mandar documentos e crie no super admin a onde da de visualisar os docmentos enviads e botao de aprovar nalise ou reciusar e aba de texto pra dizer o motivo
 // ag arrume o poblema mude agte as que ja esta ativas as licencas tao dizendo vitalicia sendo diarias mensais etc conta como vitalicias aplique a correcao e conserte esse erro pra filtrar de acordo com o pagament ou como ela foi gerada pra mostrar o estatos real sem fake
 // as notificacoes de enda aprovada mostra o valor total e deve mostra somente o valor da comissao
 // quando entra no sit ou na carteira os numeros de valores saldo etc devem comecar subir do centavo ate o valor total bem profissional
