@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+// as notificacoes de enda aprovada mostra o valor total e deve mostra somente o valor da comissao
 // quando entra no sit ou na carteira os numeros de valores saldo etc devem comecar subir do centavo ate o valor total bem profissional
 // Saldo Disponível
 // R$ 0,00  esse cliente tem indicacoes e a carteira dele ta sem saldo mesmo ele ter feito vendas  e a barra de progresso n topo do sit nao ta subindo de acordo com as vendas e nem o valor de vendas na meta pra premiacao dele e aq Status da Conta
