@@ -78,12 +78,23 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       status: "active",
       activated_at: activatedAt.toISOString(),
     };
+    
     // O contador só começa quando o cliente ativa o token na extensão.
     if (!license.expires_at && pending > 0) {
       const expiresAt = new Date(activatedAt.getTime() + pending).toISOString();
       patch["expires_at"] = expiresAt;
       license.expires_at = expiresAt;
+    } else if (!license.expires_at && license.status === "inactive") {
+      // Se não tem expires_at nem pending_duration_ms, mas é do tipo trial/paid, 
+      // precisamos garantir que não fique "sem data de expiração" se deveria ter.
+      // Fallback para 30 dias se for pago e não tiver metadata (segurança)
+      if (license.type === 'paid' || license.type === 'manual') {
+        const expiresAt = new Date(activatedAt.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString();
+        patch["expires_at"] = expiresAt;
+        license.expires_at = expiresAt;
+      }
     }
+    
     await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
     license.status = "active";
   }

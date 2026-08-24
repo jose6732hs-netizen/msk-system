@@ -722,6 +722,44 @@ export function AdminEditorTab() {
             </div>
           )}
 
+          {activeSection === 'recovery' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 bg-primary rounded-full" />
+                <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Mensagens de Recuperação (WhatsApp)</h4>
+              </div>
+
+              <div className="space-y-4">
+                {[
+                  { key: 'welcome', label: 'Mensagem de Boas-Vindas', desc: 'Enviada quando um lead se cadastra.' },
+                  { key: 'recovery', label: 'Mensagem de Recuperação', desc: 'Enviada para boletos/PIX pendentes.' },
+                  { key: 'urgency', label: 'Mensagem de Urgência', desc: 'Oferta especial por tempo limitado.' }
+                ].map((msg) => (
+                  <div key={msg.key} className="space-y-2">
+                    <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">{msg.label}</label>
+                    <Textarea 
+                      placeholder="Olá {nome}, vimos que você..."
+                      value={(localSettings as any).recovery_messages?.[msg.key] ?? (initialSettings as any).recovery_messages?.[msg.key] ?? ''} 
+                      onChange={(e) => updateSetting('recovery_messages', msg.key, e.target.value)}
+                      rows={4}
+                      className="text-xs"
+                    />
+                    <p className="text-[0.6rem] text-muted-foreground italic">{msg.desc} Use {"{nome}"} para o nome do cliente.</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button onClick={() => handleSave('recovery_messages')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar
+                </Button>
+                <Button onClick={() => handlePublish('recovery_messages')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar
+                </Button>
+              </div>
+            </div>
+          )}
+
           {activeSection === 'tutorials' && (
             <TutorialsManager
               tutorials={(localSettings as any).tutorials}

@@ -371,7 +371,7 @@ export async function createPixCheckout(input: {
         userId: input.userId,
         type: "pix_created",
         title: "PIX gerado",
-        body: `🧾 PIX gerado: ${gross}\n⏱️ Pague em até 2 minutos para liberar sua licença`,
+        body: `🧾 PIX gerado: ${gross}\n📦 Plano: ${plan.name}\n⏱️ Pague em até 2 minutos para liberar sua licença`,
         link: "/painel",
         recipientRole: "user",
         transactionId: tx.id,
