@@ -219,7 +219,7 @@ function BannerManager(props: {
 }
 
 
-type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards' | 'splits';
+type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards' | 'splits' | 'recovery';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -305,6 +305,7 @@ export function AdminEditorTab() {
     { id: 'branding', label: 'Extensão / Branding', icon: Palette, desc: 'Ícones e cores' },
     { id: 'awards', label: 'Premiações / Placas', icon: Trophy, desc: 'Placas 1K a 5M' },
     { id: 'copy', label: 'Copies / Suporte', icon: Type, desc: 'Links e textos globais' },
+    { id: 'recovery', label: 'Recuperação WhatsApp', icon: UsersIcon, desc: 'Mensagens de lead' },
     { id: 'tutorials', label: 'Tutoriais / Vídeos', icon: FileText, desc: 'Como funciona' },
   ];
 
