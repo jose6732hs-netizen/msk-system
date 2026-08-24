@@ -251,8 +251,8 @@ function Admin() {
       return;
     }
     
-    // Obter mensagens configuradas do CMS
-    const cms = data?.cms_settings || {};
+    // Obter mensagens configuradas do CMS (armazenadas em app_settings)
+    const cms = (data as any)?.cms_settings || {};
     const messages = cms.recovery_messages || {};
     let msg = messages[type] || "";
     
