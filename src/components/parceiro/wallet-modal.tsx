@@ -59,7 +59,7 @@ export function WalletModal({
 
   const loadStatus = useServerFn(getAffiliateWalletStatus);
   const withdraw = useServerFn(requestAffiliateWithdrawal);
-  const { data: status } = useQuery({
+  const { data: status, refetch: refetchStatus } = useQuery({
     queryKey: ["affiliate-wallet-status"],
     queryFn: () => loadStatus({}),
     enabled: isOpen,
