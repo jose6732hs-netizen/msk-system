@@ -251,6 +251,7 @@ export async function loadWalletStatus(userId: string) {
     attempts: Number((aff as any).withdrawal_attempts ?? 0),
     blocked: !!(aff as any).withdrawal_blocked_at,
     withdrawalSuccess: false,
+    minWithdrawal: MIN_WITHDRAWAL,
   };
 }
 
