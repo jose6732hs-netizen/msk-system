@@ -60,6 +60,54 @@ export async function updatePixKey(userId: string, input: { type: string; key: s
 }
 
 const MAX_ATTEMPTS = 3;
+export const MIN_WITHDRAWAL = 29;
+
+/**
+ * Reprocessa vendas PAGAS que ainda não geraram comissão para o afiliado.
+ * Garante que o saldo da carteira suba de acordo com as vendas aprovadas.
+ */
+export async function settlePendingCommissions(affiliateId: string) {
+  const { data: referrals } = await supabaseAdmin
+    .from("affiliate_referrals")
+    .select("user_id")
+    .eq("affiliate_id", affiliateId);
+
+  const referredUserIds = (referrals ?? []).map((r: any) => r.user_id).filter(Boolean);
+
+  const { data: direct } = await supabaseAdmin
+    .from("transactions")
+    .select("id")
+    .eq("status", "PAID")
+    .eq("commission_registered", false)
+    .eq("affiliate_id", affiliateId);
+
+  const ids = new Set<string>((direct ?? []).map((t: any) => t.id));
+
+  if (referredUserIds.length > 0) {
+    const { data: viaReferral } = await supabaseAdmin
+      .from("transactions")
+      .select("id")
+      .eq("status", "PAID")
+      .eq("commission_registered", false)
+      .is("affiliate_id", null)
+      .in("user_id", referredUserIds);
+    for (const t of viaReferral ?? []) ids.add((t as any).id);
+  }
+
+  if (ids.size === 0) return 0;
+
+  const { processInternalCommission } = await import("./internal-affiliate.server");
+  let processed = 0;
+  for (const id of ids) {
+    try {
+      await processInternalCommission(id);
+      processed++;
+    } catch (e) {
+      console.error("[wallet] falha ao liquidar comissão", id, e);
+    }
+  }
+  return processed;
+}
 
 /** Solicita um saque usando o novo sistema de carteira interna. */
 export async function requestWithdrawal(userId: string, input: { amount: number; passwordHash: string }) {
