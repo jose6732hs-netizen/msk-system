@@ -363,6 +363,10 @@ export async function createPixCheckout(input: {
       const { sendProfessionalNotification, notifyAdmins } = await import(
         "./notification-service.server"
       );
+
+      const { data: planData } = await supabaseAdmin.from("plans").select("name").eq("id", input.planId).single();
+      const planName = planData?.name || "Premium";
+
       const gross = Number(finalPrice).toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL",
@@ -371,7 +375,7 @@ export async function createPixCheckout(input: {
         userId: input.userId,
         type: "pix_created",
         title: "PIX gerado",
-        body: `🧾 PIX gerado: ${gross}\n📦 Plano: ${plan.name}\n⏱️ Pague em até 2 minutos para liberar sua licença`,
+        body: `🧾 PIX gerado: ${gross}\n📦 Plano: ${planName}\n⏱️ Pague em até 2 minutos para liberar sua licença`,
         link: "/painel",
         recipientRole: "user",
         transactionId: tx.id,
