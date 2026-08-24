@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-// Me ajude a criar uma nova skill reutilizável para o Lovable. Faça as perguntas necessárias para entender: (1) qual tarefa específica essa skill resolve, (2) quando ela deve ser acionada, (3) qual o output esperado, (4) restrições/convenções do projeto que precisam ser seguidas. Em seguida, gere o prompt final da skill com nome, descrição curta (uma linha, focada em quando usar) e corpo do prompt pronto para colar. --- ESTA ERRADO AINDA
+// AS NOTIFICACOES DE TSTE NAO CAI EM PUSH FORA DO SIT RESOLVA ISSO E AS DE PIX AO GERA EX SE EU INDIQUEI UMA PESSOA ELA GERA A COMPRA  CHEGA PRA MIN PEDINDO PRA PAGAR E NAO CEGA MENSAGEM EX VENDA GERADA SUA COMICAO E DE E O VALOR ETC E NEM QUANDO APROA
 // PROMPT MESTRE — ROTA DE LICENÇA CONECTADA ÀS OFERTAS (PLANOS)
 // Infraestrutura unificada: OFERTA → LICENÇA → VALIDAÇÃO baseada em public.plans.
 // Painel Admin e landing page otimizados para mobile
