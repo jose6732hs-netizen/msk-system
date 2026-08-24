@@ -743,7 +743,10 @@ export function AdminEditorTab() {
                     <Textarea 
                       placeholder="Olá {nome}, vimos que você..."
                       value={(localSettings as any).recovery_messages?.[msg.key] ?? (initialSettings as any).recovery_messages?.[msg.key] ?? ''} 
-                      onChange={(e) => updateSetting('recovery_messages', msg.key, e.target.value)}
+                      onChange={(e) => {
+                        const current = (localSettings as any).recovery_messages || {};
+                        updateSetting('recovery_messages', 'value' as any, { ...current, [msg.key]: e.target.value } as any);
+                      }}
                       rows={4}
                       className="text-xs"
                     />
