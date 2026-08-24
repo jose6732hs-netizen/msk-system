@@ -108,7 +108,7 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
   if (!wallet) throw new Error("Carteira não encontrada.");
   
   const balance = Number(wallet.available_balance);
-  if (input.amount < 50) throw new Error("O valor mínimo para saque é R$ 50,00.");
+  if (input.amount < MIN_WITHDRAWAL) throw new Error(`O valor mínimo para saque é R$ ${MIN_WITHDRAWAL},00.`);
   if (balance < input.amount) throw new Error("Saldo insuficiente.");
 
   // 2. Registrar saque (Nova Tabela)
