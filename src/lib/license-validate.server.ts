@@ -85,11 +85,23 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       const expiresAt = new Date(activatedAt.getTime() + pending).toISOString();
       patch["expires_at"] = expiresAt;
       license.expires_at = expiresAt;
-    } else if (!license.expires_at && license.status === "inactive") {
-      // Se não tem expires_at nem pending_duration_ms, mas é do tipo trial/paid, 
-      // precisamos garantir que não fique "sem data de expiração" se deveria ter.
-      // Fallback para 30 dias se for pago e não tiver metadata (segurança)
-      if (license.type === 'paid' || license.type === 'manual') {
+    } else if (!license.expires_at) {
+      // Tentar recuperar a duração dos snapshots do metadata
+      const snapVal = Number((license.metadata as any)?.["plan_duration_value_snapshot"] ?? 0);
+      const snapUnit = String((license.metadata as any)?.["plan_duration_unit_snapshot"] || 'days');
+      
+      if (snapVal > 0) {
+        let durationMs = snapVal * 86400000; // default days
+        if (snapUnit === 'minutes') durationMs = snapVal * 60000;
+        else if (snapUnit === 'hours') durationMs = snapVal * 3600000;
+        else if (snapUnit === 'weeks') durationMs = snapVal * 604800000;
+        else if (snapUnit === 'months') durationMs = snapVal * 2592000000;
+        
+        const expiresAt = new Date(activatedAt.getTime() + durationMs).toISOString();
+        patch["expires_at"] = expiresAt;
+        license.expires_at = expiresAt;
+      } else if (license.type === 'paid' || license.type === 'manual') {
+        // Fallback para 30 dias se for pago/manual e não tiver metadata
         const expiresAt = new Date(activatedAt.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString();
         patch["expires_at"] = expiresAt;
         license.expires_at = expiresAt;
