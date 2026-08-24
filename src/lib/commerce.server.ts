@@ -173,6 +173,8 @@ export async function issueStandaloneLicense(input: {
         plan_name_snapshot: plan.name,
         plan_price_snapshot: plan.price,
         plan_duration_snapshot: plan.duration_days,
+        plan_duration_value_snapshot: plan.duration_value,
+        plan_duration_unit_snapshot: plan.duration_unit,
         plan_slug_snapshot: plan.slug,
         features_snapshot: plan.features || {},
         ...(pendingDurationMs !== null ? { pending_duration_ms: pendingDurationMs } : {})

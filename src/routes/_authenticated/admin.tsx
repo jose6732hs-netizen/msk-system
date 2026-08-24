@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Activity, Clock, KeyRound, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor, Trophy, Wallet } from "lucide-react";
+import { Activity, Clock, KeyRound, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Trash2, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, Monitor, Trophy, Wallet, Phone, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGatewayTab } from "@/components/msk/admin-gateway";
@@ -244,6 +244,31 @@ function Admin() {
       toast.error((e as Error).message);
     }
   }
+
+  const handleWhatsApp = (phone: string, name: string, type: 'welcome' | 'recovery' | 'urgency') => {
+    if (!phone) {
+      toast.error("Usuário sem telefone cadastrado");
+      return;
+    }
+    
+    // Obter mensagens configuradas do CMS
+    const cms = data?.cms_settings || {};
+    const messages = cms.recovery_messages || {};
+    let msg = messages[type] || "";
+    
+    if (!msg) {
+      const fallbacks = {
+        welcome: "Olá {nome}, seja bem-vindo ao MSK SISTEM! Estamos felizes em ter você conosco.",
+        recovery: "Olá {nome}, vimos que você gerou um PIX mas ainda não concluiu. Posso te ajudar com algo?",
+        urgency: "Olá {nome}, sua oferta especial expira em breve! Garanta seu acesso agora com desconto."
+      };
+      msg = fallbacks[type];
+    }
+    
+    const finalMsg = msg.replace(/{nome}/g, name || "cliente");
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(finalMsg)}`, '_blank');
+  };
 
   if (roleLoading) {
     return (
@@ -784,7 +809,38 @@ function Admin() {
                               </td>
                               <td className="p-4 text-xs text-muted-foreground">{fmt(u.created_at)}</td>
                               <td className="p-4 text-right">
-                                <div className="flex justify-end gap-2">
+                                <div className="flex justify-end gap-1.5">
+                                  {/* WhatsApp Recovery Actions */}
+                                  <div className="flex gap-1 border-r border-border/50 pr-2 mr-1">
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-7 w-7 text-emerald-500 hover:bg-emerald-500/10" 
+                                      title="Boas-Vindas"
+                                      onClick={() => handleWhatsApp(u.phone, u.name, 'welcome')}
+                                    >
+                                      <MessageCircle className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-7 w-7 text-yellow-500 hover:bg-yellow-500/10" 
+                                      title="Recuperação PIX"
+                                      onClick={() => handleWhatsApp(u.phone, u.name, 'recovery')}
+                                    >
+                                      <TrendingUp className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button 
+                                      size="icon" 
+                                      variant="ghost" 
+                                      className="h-7 w-7 text-red-500 hover:bg-red-500/10" 
+                                      title="Urgência"
+                                      onClick={() => handleWhatsApp(u.phone, u.name, 'urgency')}
+                                    >
+                                      <Activity className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </div>
+
                                   <Button 
                                     size="sm" 
                                     variant="ghost" 
