@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-// NO TEXTO DE LICENCA AO DEVE DIZER A EXPIRACAO EX HORARIO EXPECIFICO SO A HR QUE GEROU E DIZENDOQ UE EXPIRARAR APOS O PRASO DE ATIVACAO
+// QUEM E SUPER ADMIN QUAL EMAIL
 // PROMPT MESTRE — ROTA DE LICENÇA CONECTADA ÀS OFERTAS (PLANOS)
 // Infraestrutura unificada: OFERTA → LICENÇA → VALIDAÇÃO baseada em public.plans.
 // Painel Admin e landing page otimizados para mobile
