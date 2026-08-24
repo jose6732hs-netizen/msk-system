@@ -17,7 +17,6 @@ import {
   Users,
   Trash2,
   Trophy,
-  Users as UsersIcon,
   MessageCircle,
   Phone
 } from "lucide-react";
