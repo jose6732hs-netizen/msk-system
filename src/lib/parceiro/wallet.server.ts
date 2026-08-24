@@ -218,11 +218,26 @@ export async function loadWalletStatus(userId: string) {
 
   if (!aff) return null;
 
-  const { data: wallet } = await supabaseAdmin
+  // Liquida comissões pendentes de vendas já aprovadas antes de ler o saldo.
+  await settlePendingCommissions(aff.id).catch((e) =>
+    console.error("[wallet] settlePendingCommissions", e),
+  );
+
+  let { data: wallet } = await supabaseAdmin
     .from("affiliate_wallets")
     .select("available_balance, pending_balance")
     .eq("affiliate_id", aff.id)
     .maybeSingle();
+
+  if (!wallet) {
+    const { data: created } = await supabaseAdmin
+      .from("affiliate_wallets")
+      .insert({ affiliate_id: aff.id } as never)
+      .select("available_balance, pending_balance")
+      .maybeSingle();
+    wallet = created;
+  }
+
 
   return {
     balance: Number(wallet?.available_balance ?? 0),
