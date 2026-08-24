@@ -70,10 +70,12 @@ export function WalletModal({
   const savedPixKey = status?.pixKey ?? pixKey ?? undefined;
   const savedPixType = status?.pixKeyType ?? pixKeyType ?? undefined;
 
+  const minWithdrawal = status?.minWithdrawal ?? 29;
+
   async function submitWithdrawal() {
     const value = Number(String(amount).replace(",", "."));
-    if (!Number.isFinite(value) || value < 20) {
-      toast.error("O valor mínimo para saque é R$ 20,00.");
+    if (!Number.isFinite(value) || value < minWithdrawal) {
+      toast.error(`O valor mínimo para saque é R$ ${minWithdrawal},00.`);
       return;
     }
     if (password.length !== 6) {
@@ -208,7 +210,7 @@ export function WalletModal({
                         ) : (
                           <>
                             <div>
-                              <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ 20,00)</label>
+                              <label className="text-xs text-white/40 block mb-2">Valor do Saque (Mínimo R$ {minWithdrawal},00)</label>
                               <Input
                                 placeholder="0,00"
                                 inputMode="decimal"

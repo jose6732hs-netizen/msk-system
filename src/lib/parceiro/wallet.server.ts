@@ -60,6 +60,54 @@ export async function updatePixKey(userId: string, input: { type: string; key: s
 }
 
 const MAX_ATTEMPTS = 3;
+export const MIN_WITHDRAWAL = 29;
+
+/**
+ * Reprocessa vendas PAGAS que ainda não geraram comissão para o afiliado.
+ * Garante que o saldo da carteira suba de acordo com as vendas aprovadas.
+ */
+export async function settlePendingCommissions(affiliateId: string) {
+  const { data: referrals } = await supabaseAdmin
+    .from("affiliate_referrals")
+    .select("user_id")
+    .eq("affiliate_id", affiliateId);
+
+  const referredUserIds = (referrals ?? []).map((r: any) => r.user_id).filter(Boolean);
+
+  const { data: direct } = await supabaseAdmin
+    .from("transactions")
+    .select("id")
+    .eq("status", "PAID")
+    .eq("commission_registered", false)
+    .eq("affiliate_id", affiliateId);
+
+  const ids = new Set<string>((direct ?? []).map((t: any) => t.id));
+
+  if (referredUserIds.length > 0) {
+    const { data: viaReferral } = await supabaseAdmin
+      .from("transactions")
+      .select("id")
+      .eq("status", "PAID")
+      .eq("commission_registered", false)
+      .is("affiliate_id", null)
+      .in("user_id", referredUserIds);
+    for (const t of viaReferral ?? []) ids.add((t as any).id);
+  }
+
+  if (ids.size === 0) return 0;
+
+  const { processInternalCommission } = await import("./internal-affiliate.server");
+  let processed = 0;
+  for (const id of ids) {
+    try {
+      await processInternalCommission(id);
+      processed++;
+    } catch (e) {
+      console.error("[wallet] falha ao liquidar comissão", id, e);
+    }
+  }
+  return processed;
+}
 
 /** Solicita um saque usando o novo sistema de carteira interna. */
 export async function requestWithdrawal(userId: string, input: { amount: number; passwordHash: string }) {
@@ -98,6 +146,9 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
 
   if (!affiliate.pix_key) throw new Error("Cadastre uma chave PIX para receber.");
 
+  // Garante que vendas aprovadas já viraram saldo antes de validar o saque.
+  await settlePendingCommissions(affiliate.id).catch(() => undefined);
+
   // 1. Obter carteira interna
   const { data: wallet } = await supabaseAdmin
     .from("affiliate_wallets")
@@ -108,7 +159,7 @@ export async function requestWithdrawal(userId: string, input: { amount: number;
   if (!wallet) throw new Error("Carteira não encontrada.");
   
   const balance = Number(wallet.available_balance);
-  if (input.amount < 50) throw new Error("O valor mínimo para saque é R$ 50,00.");
+  if (input.amount < MIN_WITHDRAWAL) throw new Error(`O valor mínimo para saque é R$ ${MIN_WITHDRAWAL},00.`);
   if (balance < input.amount) throw new Error("Saldo insuficiente.");
 
   // 2. Registrar saque (Nova Tabela)
@@ -170,11 +221,26 @@ export async function loadWalletStatus(userId: string) {
 
   if (!aff) return null;
 
-  const { data: wallet } = await supabaseAdmin
+  // Liquida comissões pendentes de vendas já aprovadas antes de ler o saldo.
+  await settlePendingCommissions(aff.id).catch((e) =>
+    console.error("[wallet] settlePendingCommissions", e),
+  );
+
+  let { data: wallet } = await supabaseAdmin
     .from("affiliate_wallets")
     .select("available_balance, pending_balance")
     .eq("affiliate_id", aff.id)
     .maybeSingle();
+
+  if (!wallet) {
+    const { data: created } = await supabaseAdmin
+      .from("affiliate_wallets")
+      .insert({ affiliate_id: aff.id } as never)
+      .select("available_balance, pending_balance")
+      .maybeSingle();
+    wallet = created;
+  }
+
 
   return {
     balance: Number(wallet?.available_balance ?? 0),
@@ -185,6 +251,7 @@ export async function loadWalletStatus(userId: string) {
     attempts: Number((aff as any).withdrawal_attempts ?? 0),
     blocked: !!(aff as any).withdrawal_blocked_at,
     withdrawalSuccess: false,
+    minWithdrawal: MIN_WITHDRAWAL,
   };
 }
 
