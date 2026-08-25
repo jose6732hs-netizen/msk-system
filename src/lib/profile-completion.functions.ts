@@ -23,17 +23,11 @@ async function ensureProfile(userId: string, claims: unknown) {
   if (error) throw new Error(`Erro ao buscar perfil: ${error.message}`);
   if (data) return data as Record<string, any>;
 
-  // Login social (Google/Apple) pode autenticar antes de existir uma linha em profiles.
-  // Criamos somente o perfil mínimo; telefone continua obrigatório logo abaixo.
   const identity = claimIdentity(claims);
   const { data: created, error: createError } = await supabaseAdmin
     .from("profiles")
     .upsert(
-      {
-        id: userId,
-        email: identity.email,
-        name: identity.name,
-      } as any,
+      { id: userId, email: identity.email, name: identity.name } as any,
       { onConflict: "id" },
     )
     .select("id,name,email,phone,document")
@@ -49,9 +43,9 @@ export const getProfileCompletion = createServerFn({ method: "GET" })
     const profile = await ensureProfile(context.userId, context.claims);
     const phone = onlyDigits(String(profile["phone"] ?? ""));
     const document = onlyDigits(String(profile["document"] ?? ""));
-
     return {
       phone,
+      document,
       hasPhone: isValidPhoneBR(phone),
       hasDocument: isValidCPF(document),
     };
@@ -76,7 +70,33 @@ export const saveRequiredPhone = createServerFn({ method: "POST" })
       .from("profiles")
       .update({ phone: data.phone })
       .eq("id", context.userId);
-
     if (error) throw new Error(`Erro ao salvar telefone: ${error.message}`);
     return { ok: true, phone: data.phone };
+  });
+
+export const saveTrialIdentity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({ phone: z.string().min(10).max(20), cpf: z.string().min(11).max(20) })
+      .transform((value) => ({ phone: onlyDigits(value.phone), cpf: onlyDigits(value.cpf) }))
+      .superRefine((value, ctx) => {
+        if (!isValidPhoneBR(value.phone)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Telefone inválido.", path: ["phone"] });
+        }
+        if (!isValidCPF(value.cpf)) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: "CPF inválido.", path: ["cpf"] });
+        }
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await ensureProfile(context.userId, context.claims);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ phone: data.phone, document: data.cpf })
+      .eq("id", context.userId);
+    if (error) throw new Error(`Erro ao salvar os dados do teste: ${error.message}`);
+    return { ok: true, phone: data.phone, cpf: data.cpf };
   });
