@@ -7,6 +7,7 @@ import {
   logEvent,
   rateLimit,
 } from "./license.server";
+import { resolvePlanDuration } from "./plan-duration";
 
 export const validateSchema = z.object({
   token: z.string().min(8).max(64),
@@ -18,6 +19,7 @@ export const validateSchema = z.object({
 type LicenseRow = {
   id: string;
   user_id: string;
+  plan_id: string;
   status: string;
   type: string;
   expires_at: string | null;
@@ -32,6 +34,16 @@ const LOCKED = {
   download: false,
   background_tools: false,
 };
+
+async function recoverDurationFromPlan(planId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: plan } = await supabaseAdmin
+    .from("plans")
+    .select("name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit")
+    .eq("id", planId)
+    .maybeSingle();
+  return plan ? resolvePlanDuration(plan) : null;
+}
 
 /** Lógica compartilhada por /validate e /heartbeat. */
 export async function handleValidation(request: Request, bucket: string, limit: number) {
@@ -48,30 +60,29 @@ export async function handleValidation(request: Request, bucket: string, limit: 
   if (!license) {
     const { hashToken } = await import("./license.server");
     const sentHash = await hashToken(parsed.data.token);
-    
-    // Log the error for admin debugging in license_events
-    await logEvent({ 
-      event_type: "invalid_attempt", 
-      metadata: { 
-        bucket, 
+    await logEvent({
+      event_type: "invalid_attempt",
+      metadata: {
+        bucket,
         token_last4: parsed.data.token.slice(-4),
         sent_hash: sentHash,
-        error: "Token not found in database"
-      } 
+        error: "Token not found in database",
+      },
     });
-
-    return jsonResponse({ 
-      success: false, 
-      error: "LICENSE_INVALID",
-      message: "Token inválido. Confira os caracteres e tente novamente."
-    }, 404);
+    return jsonResponse(
+      {
+        success: false,
+        error: "LICENSE_INVALID",
+        message: "Token inválido. Confira os caracteres e tente novamente.",
+      },
+      404,
+    );
   }
 
   const identity = parsed.data.installation_id ?? parsed.data.device_fingerprint;
   if (!identity) return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
   const deviceHash = await hashValue(identity);
 
-  // Se a licença está 'inactive', vamos ativá-la agora se for o primeiro uso.
   if (license.status === "inactive") {
     const activatedAt = new Date();
     const pending = Number((license.metadata as any)?.["pending_duration_ms"] ?? 0);
@@ -79,35 +90,40 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       status: "active",
       activated_at: activatedAt.toISOString(),
     };
-    
-    // O contador só começa quando o cliente ativa o token na extensão.
+
     if (!license.expires_at && pending > 0) {
       const expiresAt = new Date(activatedAt.getTime() + pending).toISOString();
       patch["expires_at"] = expiresAt;
       license.expires_at = expiresAt;
     } else if (!license.expires_at) {
-      // Tentar recuperar a duração dos snapshots do metadata
+      // Compatibilidade com licenças antigas: primeiro snapshots; depois o plano real.
       const snapVal = Number((license.metadata as any)?.["plan_duration_value_snapshot"] ?? 0);
-      const snapUnit = String((license.metadata as any)?.["plan_duration_unit_snapshot"] || 'days');
-      
-      if (snapVal > 0) {
-        let durationMs = snapVal * 86400000; // default days
-        if (snapUnit === 'minutes') durationMs = snapVal * 60000;
-        else if (snapUnit === 'hours') durationMs = snapVal * 3600000;
-        else if (snapUnit === 'weeks') durationMs = snapVal * 604800000;
-        else if (snapUnit === 'months') durationMs = snapVal * 2592000000;
-        
-        const expiresAt = new Date(activatedAt.getTime() + durationMs).toISOString();
-        patch["expires_at"] = expiresAt;
-        license.expires_at = expiresAt;
-      } else if (license.type === 'paid' || license.type === 'manual') {
-        // Fallback para 30 dias se for pago/manual e não tiver metadata
-        const expiresAt = new Date(activatedAt.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString();
+      const snapUnit = String((license.metadata as any)?.["plan_duration_unit_snapshot"] || "");
+      let recoveredMs = 0;
+
+      if (snapVal > 0 && snapUnit) {
+        try {
+          recoveredMs =
+            resolvePlanDuration({ duration_value: snapVal, duration_unit: snapUnit }).milliseconds ?? 0;
+        } catch {
+          recoveredMs = 0;
+        }
+      }
+
+      if (!(recoveredMs > 0) && license.plan_id) {
+        const resolved = await recoverDurationFromPlan(license.plan_id);
+        if (resolved?.lifetime) recoveredMs = 0;
+        else recoveredMs = resolved?.milliseconds ?? 0;
+      }
+
+      if (recoveredMs > 0) {
+        const expiresAt = new Date(activatedAt.getTime() + recoveredMs).toISOString();
         patch["expires_at"] = expiresAt;
         license.expires_at = expiresAt;
       }
+      // Sem duração recuperável, não inventa 30 dias. O plano precisa ser corrigido no admin.
     }
-    
+
     await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
     license.status = "active";
   }
@@ -133,7 +149,6 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     device = data as DeviceRow | null;
   }
 
-  // Auto-registro se a licença é ativa e o dispositivo é novo
   if (!device && license.status === "active") {
     const { data: newDev, error: devErr } = await supabaseAdmin
       .from("license_devices")
@@ -147,7 +162,6 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       } as never)
       .select("id,status")
       .single();
-    
     if (!devErr) device = newDev as DeviceRow;
   }
 
@@ -177,7 +191,6 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     success: active,
     valid: active,
     status: license.status.toUpperCase(),
-    // Se revogada ou suspensa, forçamos o cliente a invalidar localmente
     action: active ? null : "REAUTH_REQUIRED",
     license: {
       status: license.status.toUpperCase(),
@@ -185,7 +198,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       plan_name: license.plans?.name ?? null,
       expires_at: license.expires_at,
       max_devices: license.max_devices,
-      devices_used: 1, 
+      devices_used: 1,
       features: active ? (license.plans?.features ?? LOCKED) : LOCKED,
     },
     timestamp: Date.now(),
@@ -194,8 +207,5 @@ export async function handleValidation(request: Request, bucket: string, limit: 
   const { signData } = await import("./license.server");
   const signature = await signData(JSON.stringify(responseData));
 
-  return jsonResponse({
-    ...responseData,
-    signature,
-  });
+  return jsonResponse({ ...responseData, signature });
 }
