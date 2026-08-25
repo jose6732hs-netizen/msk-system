@@ -1,30 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { toast } from "sonner";
-import { Copy, Eye, Gift, KeyRound, Loader2, Plus, Timer, Clock, Zap } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Link } from "@tanstack/react-router";
+import { toast } from "sonner";
+import { Clock, Copy, Eye, Gift, KeyRound, Loader2, Plus, Timer } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  generateToken,
-  getTokenOverview,
-  revealToken,
-  startFreeTrial,
-} from "@/lib/tokens.functions";
+import { generateToken, getTokenOverview, revealToken, startFreeTrial } from "@/lib/tokens.functions";
+import { getProfileCompletion, saveTrialIdentity } from "@/lib/profile-completion.functions";
+import { isValidCPF, isValidPhoneBR, maskDocument, maskPhone, onlyDigits } from "@/lib/br";
 import { supabase } from "@/integrations/supabase/client";
 
-/** Evita chamar serverFns protegidas antes da sessão existir (erro 401 / tela branca). */
 function useHasSession() {
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   useEffect(() => {
     let active = true;
-    supabase.auth.getSession().then(({ data }) => {
-      if (active) setHasSession(!!data.session);
-    });
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
-      setHasSession(!!session);
-    });
+    supabase.auth.getSession().then(({ data }) => active && setHasSession(!!data.session));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => setHasSession(!!session));
     return () => {
       active = false;
       sub.subscription.unsubscribe();
@@ -44,28 +38,27 @@ const STATUS_LABEL: Record<string, string> = {
 
 function statusStyle(status: string) {
   if (status === "active") return "text-primary border-primary/40 bg-primary/10";
-  if (status === "available") return "text-foreground border-border bg-muted/30";
   if (status === "pending") return "text-amber-400 border-amber-400/40 bg-amber-400/10";
-  if (status === "revoked") return "text-red-500 border-red-500/40 bg-red-500/10";
-  return "text-destructive border-destructive/40 bg-destructive/10";
+  if (status === "revoked" || status === "suspended") return "text-red-500 border-red-500/40 bg-red-500/10";
+  if (status === "expired") return "text-yellow-500 border-yellow-500/40 bg-yellow-500/10";
+  return "text-foreground border-border bg-muted/30";
 }
 
 function fmtDateTime(iso?: string | null) {
-  if (!iso) return "Vitalício";
+  if (!iso) return "—";
   return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-/** Duração legível (ex.: "30 dias", "15 minutos") a partir de milissegundos. */
-function fmtDuration(ms: number) {
-  const minutes = Math.round(ms / 60000);
-  if (minutes < 60) return `${minutes} minuto${minutes === 1 ? "" : "s"} de validade`;
+function fmtDuration(ms?: number | null) {
+  if (!ms) return "Validade do plano";
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `${minutes} minuto${minutes === 1 ? "" : "s"}`;
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours} hora${hours === 1 ? "" : "s"} de validade`;
+  if (hours < 48) return `${hours} hora${hours === 1 ? "" : "s"}`;
   const days = Math.round(hours / 24);
-  return `${days} dia${days === 1 ? "" : "s"} de validade`;
+  return `${days} dia${days === 1 ? "" : "s"}`;
 }
 
-/** Regressiva baseada no relógio do servidor (offset calculado na resposta da API). */
 function useServerNow(serverTime?: string | null) {
   const offset = useRef(0);
   useEffect(() => {
@@ -81,54 +74,41 @@ function useServerNow(serverTime?: string | null) {
 
 function remaining(now: number, expiresAt?: string | null, activatedAt?: string | null) {
   if (!expiresAt) return null;
-  const targetTime = new Date(expiresAt).getTime();
-  const diff = targetTime - now;
+  const target = new Date(expiresAt).getTime();
+  const diff = target - now;
+  if (diff <= 0) return { expired: true, progress: 0, d: 0, h: 0, m: 0, s: 0 };
 
-  if (diff <= 0) return { expired: true, label: "EXPIRADO", progress: 0, time: { d: 0, h: 0, m: 0, s: 0 } };
-
-  // Progresso baseado no tempo total (ativação até expiração)
-  let progress = 0;
+  let progress = 100;
   if (activatedAt) {
-    const startTime = new Date(activatedAt).getTime();
-    const total = targetTime - startTime;
-    const elapsed = now - startTime;
-    progress = Math.max(0, Math.min(100, (1 - elapsed / total) * 100));
+    const start = new Date(activatedAt).getTime();
+    const total = Math.max(1, target - start);
+    progress = Math.max(0, Math.min(100, ((target - now) / total) * 100));
   }
-
-  const sTotal = Math.floor(diff / 1000);
-  const d = Math.floor(sTotal / 86400);
-  const h = Math.floor((sTotal % 86400) / 3600);
-  const m = Math.floor((sTotal % 3600) / 60);
-  const s = sTotal % 60;
-
-  const label = d > 0 
-    ? `${d}d ${h}h ${m}m ${s}s` 
-    : h > 0 
-    ? `${h}h ${m}m ${s}s` 
-    : `${m}m ${s}s`;
-
-  return { expired: false, label, progress, time: { d, h, m, s } };
+  const totalSeconds = Math.floor(diff / 1000);
+  return {
+    expired: false,
+    progress,
+    d: Math.floor(totalSeconds / 86400),
+    h: Math.floor((totalSeconds % 86400) / 3600),
+    m: Math.floor((totalSeconds % 3600) / 60),
+    s: totalSeconds % 60,
+  };
 }
 
 function TimeDisplay({ value, label, danger }: { value: number; label: string; danger?: boolean }) {
   return (
     <div className="flex min-w-[3rem] flex-col items-center rounded-xl border border-white/5 bg-black/40 p-2 shadow-inner">
-      <span
-        className={`font-mono text-xl font-black leading-none ${danger ? "text-destructive" : "text-primary"}`}
-      >
+      <span className={`font-mono text-xl font-black leading-none ${danger ? "text-destructive" : "text-primary"}`}>
         {String(value).padStart(2, "0")}
       </span>
-      <span className="mt-1 text-[0.5rem] font-bold uppercase tracking-widest text-muted-foreground">
-        {label}
-      </span>
+      <span className="mt-1 text-[0.5rem] font-bold uppercase tracking-widest text-muted-foreground">{label}</span>
     </div>
   );
 }
 
-
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border/60 bg-muted/20 p-4 min-w-0">
+    <div className="min-w-0 rounded-xl border border-border/60 bg-muted/20 p-4">
       <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">{label}</p>
       <p className="mt-1 text-2xl font-bold">{value}</p>
     </div>
@@ -138,8 +118,11 @@ function Metric({ label, value }: { label: string; value: string }) {
 export function TokenManager() {
   const sectionRef = useRef<HTMLElement | null>(null);
   const [tab, setTab] = useState("tokens");
+  const [busy, setBusy] = useState(false);
+  const [fresh, setFresh] = useState<{ token: string; expires_at: string | null } | null>(null);
+  const [trialPhone, setTrialPhone] = useState("");
+  const [trialCpf, setTrialCpf] = useState("");
 
-  // Vindo de "gerar licença grátis" na landing: abre direto a aba de teste.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const wantsTrial =
@@ -156,52 +139,34 @@ export function TokenManager() {
   const genFn = useServerFn(generateToken);
   const revealFn = useServerFn(revealToken);
   const trialFn = useServerFn(startFreeTrial);
-
-  const [busy, setBusy] = useState(false);
-  const [fresh, setFresh] = useState<{ token: string; expires_at: string | null } | null>(null);
-
+  const completionFn = useServerFn(getProfileCompletion);
+  const saveIdentityFn = useServerFn(saveTrialIdentity);
   const hasSession = useHasSession();
+
   const { data, isLoading } = useQuery({
     queryKey: ["token-overview"],
     queryFn: () => fetchOverview(),
     enabled: hasSession === true,
     retry: false,
-    refetchInterval: (hasSession === true) ? (query) => {
-      const data = query.state.data as any;
-      const hasExpired = data?.tokens?.some((t: any) => t.status === 'expired');
-      if (hasExpired) return false; // Para o auto-refresh se algo expirou para evitar loops de recarga se implementarmos reload
-      return 30000;
-    } : false,
+    refetchInterval: hasSession === true ? 15_000 : false,
   });
+  const { data: completion } = useQuery({
+    queryKey: ["profile-completion"],
+    queryFn: () => completionFn(),
+    enabled: hasSession === true,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (completion?.phone && !trialPhone) setTrialPhone(maskPhone(completion.phone));
+    if (completion?.document && !trialCpf) setTrialCpf(maskDocument(completion.document));
+  }, [completion?.phone, completion?.document, trialPhone, trialCpf]);
+
   const now = useServerNow(data?.server_time);
   const allowance = data?.allowance;
   const trial = data?.trial;
   const tokens = useMemo(() => data?.tokens ?? [], [data]);
-
-  // Identificação por IP e Atualização Automática ao Expirar
-  useEffect(() => {
-    if (!data?.tokens) return;
-    
-    const hasExpiredNow = data.tokens.some((t: any) => t.status === 'expired');
-    
-    // Se tínhamos algo ativo e agora expirou, recarrega a página para refletir o estado bloqueado se necessário
-    // ou apenas para garantir que a UI está fresca.
-    if (hasExpiredNow && data.tokens.length > 0) {
-      const lastStatus = localStorage.getItem('msk_last_license_status');
-      const currentStatus = JSON.stringify(data.tokens.map((t: any) => ({ id: t.id, status: t.status })));
-      
-      if (lastStatus && lastStatus !== currentStatus) {
-        localStorage.setItem('msk_last_license_status', currentStatus);
-        // Só atualiza se houver mudança real para 'expired'
-        if (data.tokens.some((t: any) => t.status === 'expired')) {
-           toast.error("Sua licença expirou. Atualizando painel...");
-           setTimeout(() => window.location.reload(), 2000);
-        }
-      } else if (!lastStatus) {
-        localStorage.setItem('msk_last_license_status', currentStatus);
-      }
-    }
-  }, [data?.tokens, tokens]);
+  const available = allowance?.available ?? 0;
 
   async function copy(value: string) {
     await navigator.clipboard.writeText(value);
@@ -210,15 +175,14 @@ export function TokenManager() {
 
   async function onGenerate() {
     if (available <= 0) {
-      window.location.href = "https://ini-joy-maker.lovable.app/planos";
+      window.location.href = "/planos";
       return;
     }
     setBusy(true);
     try {
       const res = await genFn();
-      const detail = tokens.find((t: any) => t.id === res.licenseId);
-      setFresh({ token: res.token, expires_at: detail?.expires_at ?? null });
-      toast.success("Token gerado com sucesso.");
+      setFresh({ token: res.token, expires_at: null });
+      toast.success("Token gerado. A validade começa na primeira ativação.");
       await qc.invalidateQueries({ queryKey: ["token-overview"] });
       await qc.invalidateQueries({ queryKey: ["account"] });
     } catch (e) {
@@ -238,12 +202,27 @@ export function TokenManager() {
   }
 
   async function onTrial() {
+    const phone = onlyDigits(trialPhone);
+    const cpf = onlyDigits(trialCpf);
+    if (!isValidPhoneBR(phone)) {
+      toast.error("Informe um telefone válido com DDD.");
+      return;
+    }
+    if (!isValidCPF(cpf)) {
+      toast.error("Informe um CPF válido.");
+      return;
+    }
+
     setBusy(true);
     try {
+      await saveIdentityFn({ data: { phone, cpf } });
       const res = await trialFn({ data: {} });
       setFresh({ token: res.token, expires_at: res.expires_at });
-      toast.success("Teste gratuito iniciado — 15 minutos.");
-      await qc.invalidateQueries({ queryKey: ["token-overview"] });
+      toast.success("Licença FREE iniciada — 15 minutos.");
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["token-overview"] }),
+        qc.invalidateQueries({ queryKey: ["profile-completion"] }),
+      ]);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -251,421 +230,188 @@ export function TokenManager() {
     }
   }
 
-  const available = allowance?.available ?? 0;
-
   return (
-    <section
-      id="tokens"
-      ref={sectionRef}
-      className="glass rounded-[2rem] p-6 md:p-8 md:col-span-2 lg:col-span-3"
-    >
+    <section id="tokens" ref={sectionRef} className="glass rounded-[2rem] p-6 md:col-span-2 md:p-8 lg:col-span-3">
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="tokens">
-            <KeyRound className="mr-2 h-4 w-4" /> Meus Tokens
-          </TabsTrigger>
-          <TabsTrigger value="trial">
-            <Gift className="mr-2 h-4 w-4" /> Token de Teste
-          </TabsTrigger>
+          <TabsTrigger value="tokens"><KeyRound className="mr-2 h-4 w-4" /> Meus Tokens</TabsTrigger>
+          <TabsTrigger value="trial"><Gift className="mr-2 h-4 w-4" /> Licença FREE</TabsTrigger>
         </TabsList>
 
         <TabsContent value="tokens" className="mt-6">
           {isLoading ? (
-            <div className="flex justify-center py-10">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            </div>
+            <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
           ) : (
             <>
-              <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <Metric label="Disponíveis" value={String(available)} />
                 <Metric label="Utilizados" value={String(allowance?.used ?? 0)} />
                 <Metric label="Total" value={String(allowance?.total ?? 0)} />
-                <Metric
-                  label="Renovação"
-                  value={
-                    allowance?.renewal
-                      ? new Date(allowance.renewal).toLocaleDateString("pt-BR")
-                      : "—"
-                  }
-                />
+                <Metric label="Renovação" value={allowance?.renewal ? new Date(allowance.renewal).toLocaleDateString("pt-BR") : "—"} />
               </div>
 
-              <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-4">
-                <Button variant="neon" onClick={onGenerate} disabled={busy} className="w-full sm:w-auto font-black uppercase tracking-widest text-[0.7rem] py-5 rounded-xl">
+              <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Button variant="neon" onClick={onGenerate} disabled={busy} className="w-full rounded-xl py-5 text-[0.7rem] font-black uppercase tracking-widest sm:w-auto">
                   {busy ? <Loader2 className="animate-spin" /> : <Plus />} Gerar token
                 </Button>
-                {available <= 0 && (
-                  <p className="text-[0.7rem] font-bold text-destructive uppercase tracking-tighter sm:max-w-[200px] leading-tight">
-                    Você ainda não possui nenhum token ativo. Escolha um plano e garanta seu acesso premium.
-                  </p>
-                )}
+                {available <= 0 ? <p className="text-[0.7rem] font-bold uppercase text-destructive">Escolha um plano para obter saldo de licenças.</p> : null}
               </div>
 
-              {fresh && (
+              {fresh && tab === "tokens" ? (
                 <div className="mt-5 rounded-xl border border-primary/25 bg-primary/5 p-4">
-                  <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-                    Token
-                  </p>
+                  <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">Token</p>
                   <p className="mt-2 break-all font-mono text-lg text-primary">{fresh.token}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {fresh.expires_at
-                      ? `Expira em: ${fmtDateTime(fresh.expires_at)}`
-                      : "A validade começa a contar quando o token for ativado na extensão."}
-                  </p>
-                  <Button size="sm" variant="neon" className="mt-3" onClick={() => copy(fresh.token)}>
-                    <Copy /> Copiar
-                  </Button>
+                  <p className="mt-2 text-xs text-muted-foreground">A validade do plano começa quando o token for ativado na extensão.</p>
+                  <Button size="sm" variant="neon" className="mt-3" onClick={() => copy(fresh.token)}><Copy /> Copiar</Button>
                 </div>
-              )}
+              ) : null}
 
               <div className="mt-7 grid gap-3 md:grid-cols-2">
                 {tokens.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-muted-foreground md:col-span-2">
-                    Nenhum token gerado ainda.
-                  </p>
-                ) : (
-                  tokens.map((t: any) => {
-                    const left = remaining(now, t.expires_at, t.activated_at || t.created_at);
-                    return (
-                      <div
-                        key={t.id}
-                        className="group relative flex flex-col rounded-[2rem] border border-white/10 bg-[#0F0F0F] p-6 transition-all duration-500 hover:border-primary/50 hover:shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.2)]"
-                      >
-                        <div className="flex items-center justify-between mb-6">
-                          <h4 className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-muted-foreground">Sua licença</h4>
-                          <span
-                            className={`rounded-full border px-3 py-1 text-[0.6rem] font-black uppercase tracking-widest ${statusStyle(t.status)}`}
-                          >
-                            {STATUS_LABEL[t.status] ?? t.status}
-                          </span>
+                  <p className="py-6 text-center text-sm text-muted-foreground md:col-span-2">Nenhum token gerado ainda.</p>
+                ) : tokens.map((t: any) => {
+                  const left = remaining(now, t.expires_at, t.activated_at);
+                  const isLifetime = t.status === "active" && !t.expires_at && !t.pending_duration_ms;
+                  return (
+                    <div key={t.id} className="rounded-[2rem] border border-white/10 bg-[#0F0F0F] p-6 transition hover:border-primary/40">
+                      <div className="mb-5 flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground">{t.plan_name ?? t.plan ?? "Licença MSK"}</p>
+                          <p className="mt-1 font-mono text-sm font-bold text-primary">{t.preview}</p>
                         </div>
-
-                        <div className="relative mb-6 rounded-2xl border border-white/5 bg-black/40 p-5 group-hover:border-primary/20 transition-colors">
-                          <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground mb-3">Token de ativação</p>
-                          {t.status === 'revoked' ? (
-                            <div className="py-4 text-center">
-                              <p className="text-sm font-bold text-red-500 uppercase tracking-tighter">Sua licença foi desativada</p>
-                              <p className="mt-1 text-[0.6rem] text-muted-foreground uppercase">O acesso desta extensão foi desativado pelo administrador.</p>
-                              <Button asChild variant="neon" size="sm" className="mt-4 w-full rounded-xl text-[0.6rem] font-black uppercase">
-                                <Link to="/planos">Comprar nova licença</Link>
-                              </Button>
-                            </div>
-                          ) : (
-                            <>
-                              <p className="break-all font-mono text-base font-bold text-primary tracking-tight leading-none mb-4">
-                                {t.preview}
-                              </p>
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  className="h-9 px-4 rounded-xl border border-white/5 bg-white/5 text-[0.6rem] font-black uppercase tracking-widest hover:bg-white/10"
-                                  onClick={() => onReveal(t.id)}
-                                >
-                                  <Eye className="h-3.5 w-3.5 mr-2" /> Revelar
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="neon" 
-                                  className="h-9 px-4 rounded-xl text-[0.6rem] font-black uppercase tracking-widest shadow-lg shadow-primary/10"
-                                  onClick={() => copy(t.preview)}
-                                >
-                                  <Copy className="h-3.5 w-3.5 mr-2" /> Copiar
-                                </Button>
-                              </div>
-                            </>
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-y-6 gap-x-4 mb-6">
-                          <div>
-                            <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground mb-1">Plano</p>
-                            <p className="text-xs font-bold text-white uppercase tracking-tight">{t.plan_name ?? "Licença MSK"}</p>
-                          </div>
-                          <div>
-                            <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground mb-1">Expira em</p>
-                            <p className="text-xs font-bold text-white uppercase tracking-tight">{t.expires_at ? new Date(t.expires_at).toLocaleString("pt-BR") : "Vitalício"}</p>
-                          </div>
-                          <div>
-                            <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground mb-1">Ativada em</p>
-                            <p className="text-xs font-bold text-white uppercase tracking-tight">{t.activated_at ? new Date(t.activated_at).toLocaleDateString("pt-BR") : "—"}</p>
-                          </div>
-                          <div>
-                            <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground mb-1">Última Validação</p>
-                            <p className="text-xs font-bold text-white uppercase tracking-tight">{t.last_validation ? new Date(t.last_validation).toLocaleTimeString("pt-BR") : "—"}</p>
-                          </div>
-                          <div>
-                            <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground mb-1">Dispositivos Permitidos</p>
-                            <p className="text-xs font-bold text-white">{t.max_devices ?? 1}</p>
-                          </div>
-                          <div>
-                            <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground mb-1">Dispositivos Ativos</p>
-                            <p className="text-xs font-bold text-white">{t.active_devices ?? 0}</p>
-                          </div>
-                        </div>
-
-                        <div className="mt-4">
-                          {left ? (
-                            <div className="space-y-3">
-                              {t.status === 'active' ? (
-                                <>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xl font-black text-primary animate-pulse">∞</span>
-                                    <span className="text-[0.6rem] font-black uppercase tracking-widest text-primary">MODO MSK ATIVADO</span>
-                                  </div>
-                                  <div className="relative h-2.5 w-full overflow-hidden rounded-full border border-primary/20 bg-black/40">
-                                    <div
-                                      className="h-full bg-gradient-to-r from-primary/50 to-primary animate-pulse shadow-[0_0_15px_rgba(var(--primary-rgb),0.6)]"
-                                      style={{ width: '100%' }}
-                                    />
-                                  </div>
-                                  <p className="text-[0.6rem] font-black uppercase tracking-widest text-primary shadow-primary/20">
-                                    Créditos ilimitados ativados
-                                  </p>
-                                </>
-                              ) : t.status === 'expired' ? (
-                                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.1)]">
-                                  <div className="flex items-center gap-3 mb-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-                                      <Clock className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                      <p className="text-[0.65rem] font-black uppercase tracking-widest text-red-500">Atenção</p>
-                                      <h5 className="text-xs font-black text-white uppercase tracking-tighter">Licença Expirada</h5>
-                                    </div>
-                                  </div>
-                                  <p className="mb-4 text-[0.6rem] font-bold leading-relaxed text-muted-foreground uppercase">
-                                    {t.type === 'trial' ? 'Sua licença free de 15 min expirou.' : 'Sua licença premium expirou e o acesso foi bloqueado.'} Adquira uma nova licença para continuar usando o sistema MSK.
-                                  </p>
-                                  <Button asChild variant="neon" className="w-full rounded-xl py-6 text-[0.65rem] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
-                                    <Link to="/planos">Adquirir nova licença</Link>
-                                  </Button>
-                                </div>
-                              ) : t.status === 'pending' ? (
-                                <div className="flex flex-col items-center justify-center py-6 border-2 border-dashed border-primary/20 rounded-2xl bg-primary/5">
-                                  <div className="flex items-center gap-3 text-primary animate-pulse mb-2">
-                                    <div className="h-2 w-2 rounded-full bg-primary" />
-                                    <span className="text-xs font-black uppercase tracking-[0.2em]">Aguardando Ativação</span>
-                                  </div>
-                                  <p className="text-[0.65rem] text-muted-foreground uppercase font-bold italic text-center px-4">
-                                    Insira o token na extensão para iniciar o tempo regressivo
-                                  </p>
-                                </div>
-                              ) : (
-                                <>
-                                  <div className="flex items-center gap-1.5">
-                                    <TimeDisplay value={left.time.d} label="Dias" danger={left.expired} />
-                                    <TimeDisplay value={left.time.h} label="Hrs" danger={left.expired} />
-                                    <TimeDisplay value={left.time.m} label="Min" danger={left.expired} />
-                                    <TimeDisplay value={left.time.s} label="Seg" danger={left.expired} />
-                                  </div>
-                                  <div className="relative h-2.5 w-full overflow-hidden rounded-full border border-white/5 bg-black/40">
-                                    <div
-                                      className={`h-full transition-all duration-1000 ease-linear ${
-                                        left.expired ? "bg-destructive" : "bg-gradient-to-r from-primary/50 to-primary"
-                                      }`}
-                                      style={{ width: `${left.expired ? 100 : left.progress}%` }}
-                                    />
-                                  </div>
-                                  <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">
-                                    {left.expired ? "Licença expirada" : `Restam ${left.label}`}
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          ) : t.status === 'expired' ? (
-                            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-5 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.1)]">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/20 text-red-500 shadow-[0_0_15px_rgba(239,68,68,0.3)]">
-                                  <Clock className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <p className="text-[0.65rem] font-black uppercase tracking-widest text-red-500">Atenção</p>
-                                  <h5 className="text-xs font-black text-white uppercase tracking-tighter">Licença Expirada</h5>
-                                </div>
-                              </div>
-                              <p className="mb-4 text-[0.6rem] font-bold leading-relaxed text-muted-foreground uppercase">
-                                Sua licença expirou. Adquira uma nova licença para continuar usando o sistema MSK.
-                              </p>
-                              <Button asChild variant="neon" className="w-full rounded-xl py-6 text-[0.65rem] font-black uppercase tracking-widest shadow-lg shadow-primary/20">
-                                <Link to="/planos">Adquirir nova licença</Link>
-                              </Button>
-                            </div>
-                          ) : t.status === 'pending' ? (
-                            <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-5">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400/20 text-amber-400">
-                                  <Clock className="h-5 w-5" />
-                                </div>
-                                <div>
-                                  <p className="text-[0.65rem] font-black uppercase tracking-widest text-amber-400">Aguardando ativação</p>
-                                  <h5 className="text-xs font-black text-white uppercase tracking-tighter">
-                                    {t.pending_duration_ms ? fmtDuration(t.pending_duration_ms) : "Validade integral"}
-                                  </h5>
-                                </div>
-                              </div>
-                              <p className="text-[0.6rem] font-bold leading-relaxed text-muted-foreground uppercase">
-                                O tempo começa a contar somente quando você colar este token na extensão. O contador regressivo aparece aqui após a ativação.
-                              </p>
-                            </div>
-                          ) : (
-                            <span className="inline-block rounded-full border border-white/5 bg-white/5 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-                              Vitalício
-                            </span>
-                          )}
-
-                          <Button
-                            variant="neonOutline"
-                            size="sm"
-                            onClick={onGenerate}
-                            disabled={busy}
-                            className="mt-4 w-full rounded-xl py-5 text-[0.6rem] font-black uppercase tracking-widest"
-                          >
-                            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} Gerar nova licença
-                          </Button>
-                        </div>
-
+                        <span className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase ${statusStyle(t.status)}`}>
+                          {STATUS_LABEL[t.status] ?? t.status}
+                        </span>
                       </div>
-                    );
-                  })
-                )}
-              </div>
 
+                      <div className="grid grid-cols-2 gap-3 rounded-2xl border border-white/5 bg-black/30 p-4 text-xs">
+                        <div>
+                          <p className="text-[0.55rem] uppercase text-muted-foreground">Ativação</p>
+                          <p className="mt-1 font-bold">{t.activated_at ? fmtDateTime(t.activated_at) : "Aguardando"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[0.55rem] uppercase text-muted-foreground">Expiração</p>
+                          <p className="mt-1 font-bold">
+                            {t.expires_at ? fmtDateTime(t.expires_at) : t.pending_duration_ms ? `Após ativar: ${fmtDuration(t.pending_duration_ms)}` : "Vitalício"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[0.55rem] uppercase text-muted-foreground">Dispositivos</p>
+                          <p className="mt-1 font-bold">{t.active_devices ?? 0}/{t.max_devices ?? 1}</p>
+                        </div>
+                        <div>
+                          <p className="text-[0.55rem] uppercase text-muted-foreground">Última validação</p>
+                          <p className="mt-1 font-bold">{t.last_validation ? fmtDateTime(t.last_validation) : "—"}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-5">
+                        {t.status === "pending" ? (
+                          <div className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4">
+                            <p className="text-xs font-black uppercase text-amber-400">Aguardando ativação</p>
+                            <p className="mt-1 text-xs text-muted-foreground">Ao colar o token na extensão começa a regressiva de {fmtDuration(t.pending_duration_ms)}.</p>
+                          </div>
+                        ) : t.status === "expired" || left?.expired ? (
+                          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4">
+                            <p className="text-xs font-black uppercase text-red-500">Licença expirada</p>
+                            <Button asChild variant="neon" size="sm" className="mt-3 w-full"><Link to="/planos">Adquirir nova licença</Link></Button>
+                          </div>
+                        ) : t.status === "revoked" || t.status === "suspended" ? (
+                          <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-xs font-black uppercase text-red-400">Acesso bloqueado</div>
+                        ) : left ? (
+                          <div className="space-y-3">
+                            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Tempo restante</p>
+                            <div className="flex flex-wrap gap-2">
+                              <TimeDisplay value={left.d} label="Dias" />
+                              <TimeDisplay value={left.h} label="Hrs" />
+                              <TimeDisplay value={left.m} label="Min" danger={left.d === 0 && left.h === 0 && left.m < 5} />
+                              <TimeDisplay value={left.s} label="Seg" danger={left.d === 0 && left.h === 0 && left.m < 5} />
+                            </div>
+                            <div className="h-2.5 overflow-hidden rounded-full border border-white/5 bg-black/40">
+                              <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${left.progress}%` }} />
+                            </div>
+                          </div>
+                        ) : isLifetime ? (
+                          <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4 text-xs font-black uppercase text-primary">Licença vitalícia ativa</div>
+                        ) : null}
+                      </div>
+
+                      {t.status !== "revoked" ? (
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <Button size="sm" variant="ghost" onClick={() => onReveal(t.id)}><Eye /> Revelar</Button>
+                          <Button size="sm" variant="neonOutline" onClick={() => copy(t.preview)}><Copy /> Copiar</Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
             </>
           )}
         </TabsContent>
 
         <TabsContent value="trial" className="mt-6">
-          <div className="rounded-[2rem] border border-primary/20 bg-[#0F0F0F] p-8 shadow-2xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl -z-10" />
-            
-            <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-muted-foreground mb-4">
-              Licença de Teste
-            </p>
+          <div className="relative overflow-hidden rounded-[2rem] border border-primary/20 bg-[#0F0F0F] p-6 shadow-2xl md:p-8">
+            <p className="mb-4 text-[0.65rem] font-black uppercase tracking-[0.2em] text-muted-foreground">LICENÇA FREE — TESTE</p>
 
             {trial?.state === "running" ? (
-              <div className="space-y-6">
+              <div className="space-y-5">
                 <div className="flex items-center gap-3">
-                   <div className="h-10 w-10 rounded-2xl bg-primary/20 flex items-center justify-center">
-                    <Timer className="h-5 w-5 text-primary animate-pulse" />
-                   </div>
-                   <p className="text-xl font-black uppercase tracking-tight text-white">
-                    Teste em andamento
-                   </p>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/20"><Timer className="h-5 w-5 animate-pulse text-primary" /></div>
+                  <p className="text-xl font-black uppercase text-white">Teste em andamento</p>
                 </div>
-                <div className="mt-4 space-y-4">
-                  {(() => {
-                    const diff = new Date(trial.expires_at).getTime() - now;
-                    const total = 15 * 60 * 1000;
-                    const progress = Math.max(0, Math.min(100, (diff / total) * 100));
-                    const sTotal = Math.max(0, Math.floor(diff / 1000));
-                    const m = Math.floor(sTotal / 60);
-                    const s = sTotal % 60;
-                    
-                    return (
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <TimeDisplay value={m} label="Minutos" danger={m < 5} />
-                          <TimeDisplay value={s} label="Segundos" danger={m < 5} />
-                          <div className="ml-auto text-right">
-                             <p className="text-[0.6rem] text-muted-foreground uppercase font-black tracking-widest mb-1">Término previsto</p>
-                             <p className="text-sm font-bold text-white">{new Date(trial.expires_at).toLocaleTimeString("pt-BR")}</p>
-                          </div>
-                        </div>
-                        <div className="relative h-4 w-full bg-black/40 rounded-full overflow-hidden border border-white/10 shadow-inner">
-                          <div 
-                            className="h-full bg-gradient-to-r from-primary/40 to-primary transition-all duration-1000 ease-linear shadow-[0_0_20px_rgba(var(--primary),0.8)]"
-                            style={{ width: `${progress}%` }}
-                          />
-                          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.05)_50%,transparent_75%)] bg-[length:20px_20px] animate-[shimmer_2s_infinite_linear]" />
-                        </div>
-                        
-                        {fresh?.token ? (
-                          <div className="rounded-2xl border border-white/5 bg-black/40 p-5 mt-4">
-                            <p className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground mb-2">Seu Token Temporário</p>
-                            <div className="space-y-3">
-                              <p className="break-all font-mono text-lg font-bold text-primary">{fresh.token}</p>
-                              <Button size="sm" variant="neon" className="w-full" onClick={() => copy(fresh.token)}>
-                                <Copy className="mr-2 h-4 w-4" /> Copiar Token
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-muted-foreground text-center">Token ativo na sua conta. Use na extensão para testar.</p>
-                        )}
+                {(() => {
+                  const diff = Math.max(0, new Date(trial.expires_at).getTime() - now);
+                  const totalSeconds = Math.floor(diff / 1000);
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex gap-2">
+                        <TimeDisplay value={Math.floor(totalSeconds / 60)} label="Min" danger={totalSeconds < 300} />
+                        <TimeDisplay value={totalSeconds % 60} label="Seg" danger={totalSeconds < 300} />
                       </div>
-                    );
-                  })()}
-                </div>
+                      {fresh?.token ? (
+                        <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                          <p className="break-all font-mono text-lg font-bold text-primary">{fresh.token}</p>
+                          <Button size="sm" variant="neon" className="mt-3 w-full" onClick={() => copy(fresh.token)}><Copy /> Copiar token</Button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
             ) : trial?.state === "used" ? (
-              <div className="space-y-6">
-                <div className="flex items-center gap-3">
-                   <div className="h-10 w-10 rounded-2xl bg-destructive/20 flex items-center justify-center text-destructive">
-                    <Clock className="h-5 w-5" />
-                   </div>
-                   <div>
-                    <p className="text-lg font-black uppercase tracking-tight text-white">
-                      Teste diário esgotado
-                    </p>
-                    <p className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">
-                      Próximo trial free liberado em:
-                    </p>
-                   </div>
-                </div>
-                
-                <div className="rounded-2xl border border-white/5 bg-black/20 p-6 text-center">
-                   {(() => {
-                     const target = new Date(trial.next_available_at!).getTime();
-                     const diff = target - now;
-                     const sTotal = Math.max(0, Math.floor(diff / 1000));
-                     
-                     if (sTotal <= 0) return <p className="text-xl font-black text-primary uppercase">Disponível agora!</p>;
-                     
-                     const h = Math.floor(sTotal / 3600);
-                     const m = Math.floor((sTotal % 3600) / 60);
-                     const s = sTotal % 60;
-                     
-                     return (
-                       <div className="flex justify-center gap-2">
-                         <TimeDisplay value={h} label="Horas" />
-                         <TimeDisplay value={m} label="Minutos" />
-                         <TimeDisplay value={s} label="Segundos" />
-                       </div>
-                     );
-                   })()}
-                   <p className="mt-4 text-[0.6rem] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                     Você pode gerar uma nova licença de 15 min a cada 24h
-                   </p>
-                </div>
-                
-                <Button asChild variant="neon" className="w-full py-6 text-base shadow-xl">
-                  <Link to="/planos">Remover Limites Agora</Link>
-                </Button>
+              <div className="space-y-5">
+                <div className="flex items-center gap-3"><Clock className="h-6 w-6 text-destructive" /><p className="text-lg font-black uppercase">Teste diário esgotado</p></div>
+                <p className="text-sm text-muted-foreground">Uma nova licença FREE pode ser liberada após o período de 24 horas.</p>
+                <Button asChild variant="neon" className="w-full"><Link to="/planos">Ver planos</Link></Button>
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex-1">
-                  <p className="text-lg font-black uppercase tracking-tight text-white mb-2">Status: Disponível</p>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    Experimente a potência total da MSK SISTEMe agora mesmo. Duração de 15 minutos, renovável a cada 24 horas.
+              <div className="grid gap-6 lg:grid-cols-[1fr_0.9fr]">
+                <div>
+                  <p className="text-lg font-black uppercase text-white">15 minutos grátis</p>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Para evitar múltiplos testes, a licença FREE exige telefone e CPF válidos. Os dados ficam vinculados à sua conta.
                   </p>
+                  <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="trial-phone">Telefone / WhatsApp</Label>
+                      <Input id="trial-phone" inputMode="tel" placeholder="(11) 99999-9999" value={trialPhone} onChange={(e) => setTrialPhone(maskPhone(e.target.value))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="trial-cpf">CPF</Label>
+                      <Input id="trial-cpf" inputMode="numeric" placeholder="000.000.000-00" value={trialCpf} onChange={(e) => setTrialCpf(maskDocument(e.target.value))} />
+                    </div>
+                  </div>
                 </div>
-                <Button 
-                  variant="neon" 
-                  className="w-full sm:w-auto h-14 px-10 text-[0.7rem] font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-primary/20" 
-                  onClick={onTrial} 
-                  disabled={busy}
-                >
-                  {busy ? <Loader2 className="animate-spin" /> : <Gift className="mr-2 h-4 w-4" />} Gerar Token de Teste
-                </Button>
+                <div className="flex items-end">
+                  <Button variant="neon" className="h-14 w-full rounded-2xl text-[0.7rem] font-black uppercase tracking-[0.15em]" onClick={onTrial} disabled={busy}>
+                    {busy ? <Loader2 className="animate-spin" /> : <Gift className="mr-2 h-4 w-4" />} Gerar licença FREE
+                  </Button>
+                </div>
               </div>
             )}
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            O teste gratuito é independente do seu saldo de tokens pagos e é controlado pelo
-            servidor — fechar a extensão, trocar de IP ou limpar dados não reinicia o tempo.
-          </p>
+          <p className="mt-3 text-xs text-muted-foreground">O controle do teste é feito no servidor por conta, telefone, CPF e outros sinais antifraude.</p>
         </TabsContent>
       </Tabs>
     </section>
