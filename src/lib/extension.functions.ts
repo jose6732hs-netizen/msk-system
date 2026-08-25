@@ -36,6 +36,7 @@ export const adminRegisterBuild = createServerFn({ method: "POST" })
         fileName: z.string().min(4).max(120),
         storagePath: z.string().min(4).max(300),
         channelSlug: z.string().max(60).optional(),
+        displayName: z.string().trim().min(1).max(100).optional(),
         sizeBytes: z.number().int().min(1).max(200 * 1024 * 1024),
         releaseNotes: z.string().max(2000).optional(),
         publish: z.boolean().default(true),
