@@ -135,7 +135,10 @@ export function generateSalesMessage(data: {
   expirationInfo: string;
   isTrial?: boolean;
 }) {
-  if (data.isTrial) {
+  const planText = String(data.planName ?? "").toLowerCase();
+  const isTrial = data.isTrial === true || /free|teste|trial|gr[aá]tis/.test(planText);
+
+  if (isTrial) {
     return `🎁 ${data.productName} — TESTE GRÁTIS LIBERADO 🎁
 
 Olá! 👋 Seu acesso de teste foi liberado.
