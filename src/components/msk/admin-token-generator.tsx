@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Check, Copy, KeyRound, Loader2, MessageSquare, ShieldCheck, ClipboardCheck, X } from "lucide-react";
+import { Check, ClipboardCheck, Copy, KeyRound, Loader2, MessageSquare, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,95 +13,143 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { adminGenerateToken, adminTokenPlans, adminGetLicenseDetails } from "@/lib/admin.functions";
+import { adminGenerateToken, adminGetLicenseDetails, adminTokenPlans } from "@/lib/admin.functions";
+import { adminTokenUsers } from "@/lib/admin-token-users.functions";
 import { generateDeliveryMessage, generateSalesMessage, copyToClipboard } from "@/lib/delivery-message";
+import { durationLabelFromMs, resolvePlanDuration } from "@/lib/plan-duration";
 
-const DURATIONS = [
-  { id: "trial15", label: "Trial — 15 minutos" },
-  { id: "trial60", label: "Trial — 1 hora" },
-  { id: "day1", label: "1 dia" },
-  { id: "day7", label: "7 dias" },
-  { id: "day30", label: "30 dias" },
-  { id: "day90", label: "90 dias" },
-  { id: "day365", label: "1 ano" },
-  { id: "lifetime", label: "Vitalício" },
-  { id: "custom", label: "Personalizado" },
-] as const;
+type LegacyDuration =
+  | "trial15"
+  | "trial60"
+  | "day1"
+  | "day7"
+  | "day30"
+  | "day90"
+  | "day365"
+  | "lifetime"
+  | "custom";
 
-type Duration = (typeof DURATIONS)[number]["id"];
+function legacyDurationForPlan(plan: any): {
+  duration: LegacyDuration;
+  customDays?: number;
+  customMinutes?: number;
+} {
+  const resolved = resolvePlanDuration(plan);
+  if (resolved.lifetime) return { duration: "lifetime" };
+  if (resolved.unit === "minutes" && resolved.value === 15) return { duration: "trial15" };
+  if (resolved.unit === "minutes" && resolved.value === 60) return { duration: "trial60" };
+  if (resolved.unit === "days" && resolved.value === 1) return { duration: "day1" };
+  if (resolved.unit === "days" && resolved.value === 7) return { duration: "day7" };
+  if (resolved.unit === "days" && resolved.value === 30) return { duration: "day30" };
+  if (resolved.unit === "days" && resolved.value === 90) return { duration: "day90" };
+  if (resolved.unit === "days" && resolved.value === 365) return { duration: "day365" };
+  if (resolved.unit === "days" && resolved.value) return { duration: "custom", customDays: resolved.value };
+  return {
+    duration: "custom",
+    customMinutes: Math.max(1, Math.round((resolved.milliseconds ?? 60_000) / 60_000)),
+  };
+}
 
-export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?: { token: string; email: string; licenseId: string } | null, onReset?: () => void }) {
+function safePlanDuration(plan: any) {
+  try {
+    return resolvePlanDuration(plan).label;
+  } catch {
+    return plan?.duration_label || "Validade não configurada";
+  }
+}
+
+export function AdminTokenGenerator({
+  initialIssued,
+  onReset,
+}: {
+  initialIssued?: { token: string; email: string; licenseId: string } | null;
+  onReset?: () => void;
+}) {
   const plansFn = useServerFn(adminTokenPlans);
+  const usersFn = useServerFn(adminTokenUsers);
   const generateFn = useServerFn(adminGenerateToken);
 
-  const { data, isLoading, refetch } = useQuery({ queryKey: ["admin-token-plans"], queryFn: () => plansFn() });
-  const plans = data?.plans ?? [];
+  const { data: plansData, isLoading: plansLoading } = useQuery({
+    queryKey: ["admin-token-plans"],
+    queryFn: () => plansFn(),
+  });
+  const { data: usersData, isLoading: usersLoading } = useQuery({
+    queryKey: ["admin-token-users"],
+    queryFn: () => usersFn(),
+  });
+
+  const plans = plansData?.plans ?? [];
+  const users = usersData?.users ?? [];
 
   const [email, setEmail] = useState("");
   const [standalone, setStandalone] = useState(false);
   const [planId, setPlanId] = useState("");
-  const [duration, setDuration] = useState<Duration>("day30");
-  const [customDays, setCustomDays] = useState("");
-  const [customMinutes, setCustomMinutes] = useState("");
   const [maxDevices, setMaxDevices] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
-  const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(initialIssued || null);
+  const [copied, setCopied] = useState(false);
+  const [issued, setIssued] = useState<{ token: string; email: string; licenseId: string } | null>(
+    initialIssued || null,
+  );
 
-  useMemo(() => {
-    const firstPlanId = plans?.[0]?.["id"] as string | undefined;
-    if (firstPlanId && !planId) {
-      setPlanId(firstPlanId);
-    }
-  }, [plans, planId]);
+  useEffect(() => {
+    if (!planId && plans[0]?.id) setPlanId(plans[0].id as string);
+  }, [planId, plans]);
 
-  useMemo(() => {
-    if (initialIssued) {
-      setIssued(initialIssued);
-    }
+  useEffect(() => {
+    if (initialIssued) setIssued(initialIssued);
   }, [initialIssued]);
 
-  const resetIssued = () => {
-    setIssued(null);
-    if (onReset) onReset();
-  };
-  const [copied, setCopied] = useState(false);
+  const selectedPlan = useMemo(
+    () => plans.find((p: any) => p.id === planId) ?? plans[0] ?? null,
+    [plans, planId],
+  );
+
+  const selectedDuration = selectedPlan ? safePlanDuration(selectedPlan) : "—";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    const plan = planId || (plans.length > 0 ? (plans[0]?.["id"] as string) : "");
-    
-    if (!plan) {
-      toast.error("Erro: Nenhum plano selecionado ou disponível.");
+    if (!selectedPlan?.id) {
+      toast.error("Selecione um plano válido.");
       return;
     }
+    if (!standalone && !email) {
+      toast.error("Selecione um usuário cadastrado.");
+      return;
+    }
+
+    let legacy: ReturnType<typeof legacyDurationForPlan>;
+    try {
+      legacy = legacyDurationForPlan(selectedPlan);
+    } catch (err) {
+      toast.error((err as Error).message);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await generateFn({
         data: {
-          ...(standalone ? { standalone: true } : { email: email.trim() }),
-          planId: plan,
-          duration,
-          ...(duration === "custom" && customDays ? { customDays: Number(customDays) } : {}),
-          ...(duration === "custom" && customMinutes ? { customMinutes: Number(customMinutes) } : {}),
+          ...(standalone ? { standalone: true } : { email }),
+          planId: selectedPlan.id,
+          ...legacy,
           ...(maxDevices ? { maxDevices: Number(maxDevices) } : {}),
           ...(note ? { note } : {}),
         },
       });
       setIssued({
         token: res.token,
-        email: res.user.email ?? (standalone ? "Licença de teste (sem usuário)" : email.trim()),
+        email: res.user.email ?? (standalone ? "Licença sem usuário" : email),
         licenseId: res.licenseId,
       });
       setCopied(false);
-      toast.success("Token gerado com sucesso.");
+      toast.success(`Licença ${res.durationLabel ?? selectedDuration} gerada corretamente.`);
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
       setLoading(false);
     }
   }
-
 
   async function copy() {
     if (!issued) return;
@@ -110,25 +158,33 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
     toast.success("Token copiado.");
   }
 
+  function resetIssued() {
+    setIssued(null);
+    onReset?.();
+  }
+
   return (
     <div className="space-y-6">
       {issued && (
         <div className="mb-6">
-          <div className="flex justify-end mb-2">
+          <div className="mb-2 flex justify-end">
             <Button variant="ghost" size="sm" onClick={resetIssued} className="text-xs">
-              <X className="h-3 w-3 mr-1" /> Limpar entrega
+              <X className="mr-1 h-3 w-3" /> Limpar entrega
             </Button>
           </div>
-          <TokenDeliveryCard licenseId={issued.licenseId} fullToken={issued.token === "Carregando..." ? null : issued.token} />
+          <TokenDeliveryCard
+            licenseId={issued.licenseId}
+            fullToken={issued.token === "Carregando..." ? null : issued.token}
+          />
         </div>
       )}
+
       <div className="flex items-center gap-3">
         <KeyRound className="h-5 w-5 text-primary" />
         <div>
-          <h2 className="text-lg font-semibold">Gerar token manual</h2>
+          <h2 className="text-lg font-semibold">Gerar licença manual</h2>
           <p className="text-xs text-muted-foreground">
-            Exclusivo do Super Admin. Gere para um cliente ou emita uma licença de teste sem
-            usuário vinculado.
+            A validade agora é definida pelo plano escolhido. Não existe mais combinação diária + 30 dias.
           </p>
         </div>
       </div>
@@ -139,12 +195,15 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
             type="checkbox"
             className="h-4 w-4 accent-primary"
             checked={standalone}
-            onChange={(e) => setStandalone(e.target.checked)}
+            onChange={(e) => {
+              setStandalone(e.target.checked);
+              if (e.target.checked) setEmail("");
+            }}
           />
           <span>
-            Licença de teste (sem usuário)
+            Licença sem usuário vinculado
             <span className="block text-xs text-muted-foreground">
-              Emite um token avulso, sem vincular a nenhuma conta — ideal para QA e homologação.
+              Use somente para QA/homologação. Para clientes, selecione uma conta cadastrada abaixo.
             </span>
           </span>
         </label>
@@ -152,111 +211,72 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
         {!standalone && (
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="tk-email">E-mail do usuário</Label>
-            <Input
-              id="tk-email"
-              type="email"
-              placeholder="cliente@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+            <Select value={email} onValueChange={setEmail}>
+              <SelectTrigger id="tk-email" className="h-11 w-full">
+                {usersLoading ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Carregando todos os usuários...
+                  </span>
+                ) : (
+                  <SelectValue placeholder="Selecione um e-mail cadastrado" />
+                )}
+              </SelectTrigger>
+              <SelectContent className="max-h-80">
+                {users.map((u: any) => (
+                  <SelectItem key={u.id} value={u.email}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{u.email}</span>
+                      {u.name ? <span className="text-[10px] text-muted-foreground">{u.name}</span> : null}
+                    </div>
+                  </SelectItem>
+                ))}
+                {!usersLoading && users.length === 0 ? (
+                  <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                    Nenhum usuário com e-mail foi encontrado.
+                  </div>
+                ) : null}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              {users.length} conta(s) com e-mail encontradas, incluindo cadastros via Google/Apple.
+            </p>
           </div>
         )}
-
 
         <div className="space-y-1.5">
           <Label htmlFor="tk-plan">Plano</Label>
           <Select value={planId} onValueChange={setPlanId}>
-            <SelectTrigger id="tk-plan" className="h-10 w-full">
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Carregando planos...</span>
-                </div>
+            <SelectTrigger id="tk-plan" className="h-11 w-full">
+              {plansLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Carregando planos...
+                </span>
               ) : (
-                <SelectValue placeholder="Escolha o plano da licença" />
+                <SelectValue placeholder="Escolha o plano" />
               )}
             </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {plans && plans.length > 0 ? (
-                plans.map((p: any) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="font-bold">{p.name}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {p.price > 0 ? `R$ ${p.price.toFixed(2)}` : "Grátis"} • {p.duration_label || (p.is_lifetime ? "Vitalício" : `${p.duration_days} dias`)}
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))
-              ) : !isLoading ? (
-                <div className="px-3 py-4 text-center space-y-3">
-                  <p className="text-sm text-muted-foreground italic font-semibold">
-                    Nenhum plano ativo encontrado.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full text-[10px] uppercase font-bold"
-                    onClick={() => {
-                      // Redireciona para aba de assinaturas para criar um plano
-                      window.location.hash = "subs";
-                      toast.info("Crie ou ative um plano na aba Assinaturas.");
-                    }}
-                  >
-                    Configurar Planos
-                  </Button>
-                </div>
-              ) : (
-                <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  Buscando planos...
-                </div>
-              )}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="tk-duration">Validade</Label>
-          <Select value={duration} onValueChange={(v) => setDuration(v as Duration)}>
-            <SelectTrigger id="tk-duration" className="h-10 w-full">
-              <SelectValue placeholder="Escolha a validade" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              {DURATIONS.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.label}
+            <SelectContent className="max-h-80">
+              {plans.map((p: any) => (
+                <SelectItem key={p.id} value={p.id}>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="font-bold">{p.name}</span>
+                    <span className="text-[10px] text-muted-foreground">
+                      {Number(p.price) > 0 ? `R$ ${Number(p.price).toFixed(2)}` : "Grátis"} • {safePlanDuration(p)}
+                    </span>
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {duration === "custom" && (
-          <>
-            <div className="space-y-1.5">
-              <Label htmlFor="tk-days">Dias</Label>
-              <Input
-                id="tk-days"
-                type="number"
-                min={1}
-                value={customDays}
-                onChange={(e) => setCustomDays(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="tk-min">Minutos</Label>
-              <Input
-                id="tk-min"
-                type="number"
-                min={1}
-                value={customMinutes}
-                onChange={(e) => setCustomMinutes(e.target.value)}
-              />
-            </div>
-          </>
-        )}
+        <div className="space-y-1.5">
+          <Label>Validade</Label>
+          <div className="flex h-11 items-center rounded-md border border-primary/25 bg-primary/5 px-3 text-sm font-bold text-primary">
+            {selectedDuration}
+          </div>
+          <p className="text-[11px] text-muted-foreground">Automática e bloqueada conforme o plano selecionado.</p>
+        </div>
 
         <div className="space-y-1.5">
           <Label htmlFor="tk-dev">Máx. dispositivos (opcional)</Label>
@@ -264,7 +284,7 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
             id="tk-dev"
             type="number"
             min={1}
-            placeholder="Padrão do plano"
+            placeholder={selectedPlan?.max_devices ? `Padrão: ${selectedPlan.max_devices}` : "Padrão do plano"}
             value={maxDevices}
             onChange={(e) => setMaxDevices(e.target.value)}
           />
@@ -281,8 +301,8 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
         </div>
 
         <div className="sm:col-span-2">
-          <Button type="submit" variant="neon" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gerar token"}
+          <Button type="submit" variant="neon" disabled={loading || plansLoading || (!standalone && !email)}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gerar licença"}
           </Button>
         </div>
       </form>
@@ -301,16 +321,19 @@ export function AdminTokenGenerator({ initialIssued, onReset }: { initialIssued?
               {copied ? "Copiado" : "Copiar"}
             </Button>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Guarde agora: por segurança, o token completo não é exibido novamente.
-          </p>
         </div>
       )}
     </div>
   );
 }
 
-function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: string; fullToken?: string | null }) {
+function TokenDeliveryCard({
+  licenseId,
+  fullToken: propToken,
+}: {
+  licenseId?: string;
+  fullToken?: string | null;
+}) {
   const getDetailsFn = useServerFn(adminGetLicenseDetails);
   const [copiedType, setCopiedType] = useState<"token" | "message" | "all" | "sales" | null>(null);
 
@@ -318,6 +341,7 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
     queryKey: ["admin-license-details", licenseId],
     queryFn: () => getDetailsFn({ data: { licenseId: licenseId! } }),
     enabled: !!licenseId,
+    refetchInterval: 15_000,
   });
 
   const fullToken = propToken || license?.fullToken || "";
@@ -326,38 +350,78 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
     if (!license || !fullToken) return null;
 
     const plan = license.plans;
+    const metadata = (license.metadata ?? {}) as Record<string, any>;
     const isTrial = license.type === "trial" || license.type === "test";
-    
-    let duration = "30 dias";
-    if (plan?.is_lifetime) duration = "VITALÍCIA";
-    else if (license.expires_at) {
-      const diff = new Date(license.expires_at).getTime() - new Date(license.created_at).getTime();
-      const mins = Math.round(diff / 60000);
-      const days = Math.round(diff / 86400000);
-      if (mins < 1440) duration = `${mins} minutos`;
-      else duration = `${days} dias`;
+    const pendingMs = Number(metadata["pending_duration_ms"] ?? 0);
+    const expired = !!license.expires_at && new Date(license.expires_at).getTime() <= Date.now();
+
+    let duration = durationLabelFromMs(pendingMs);
+    if (!duration && license.expires_at && license.activated_at) {
+      duration = durationLabelFromMs(
+        new Date(license.expires_at).getTime() - new Date(license.activated_at).getTime(),
+      );
+    }
+    if (!duration) {
+      try {
+        duration = resolvePlanDuration(plan ?? metadata).label;
+      } catch {
+        duration = metadata["plan_duration_label_snapshot"] ?? "Validade não identificada";
+      }
     }
 
-    const activationInfo = license.activated_at ? new Date(license.activated_at).toLocaleString("pt-BR") : "Primeira ativação";
-    const expirationInfo = license.expires_at 
-      ? new Date(license.expires_at).toLocaleString("pt-BR") 
-      : (license.status === "active" && !plan?.is_lifetime ? "Será definida após a ativação" : "N/A");
+    const isLifetime = (() => {
+      try {
+        return resolvePlanDuration(plan ?? metadata).lifetime;
+      } catch {
+        return false;
+      }
+    })();
+
+    const activationInfo = license.activated_at
+      ? new Date(license.activated_at).toLocaleString("pt-BR")
+      : "Começa na primeira ativação";
+
+    const expirationInfo = isLifetime
+      ? "VITALÍCIA"
+      : license.expires_at
+        ? new Date(license.expires_at).toLocaleString("pt-BR")
+        : pendingMs > 0
+          ? `Será definida na ativação (${duration})`
+          : "Aguardando ativação";
+
+    const status = expired
+      ? "🟡 Expirada"
+      : license.status === "active"
+        ? "🟢 Ativa"
+        : license.status === "inactive"
+          ? "⏳ Aguardando ativação"
+          : license.status === "revoked"
+            ? "🔴 Revogada"
+            : license.status === "suspended"
+              ? "🚫 Suspensa"
+              : String(license.status ?? "—");
 
     return {
       productName: "MSK Suite - Extensão Premium",
-      planName: plan?.name || (isTrial ? "Teste Gratuito" : "Manual"),
-      planDuration: duration,
+      planName: plan?.name || metadata["plan_name_snapshot"] || (isTrial ? "Teste Gratuito" : "Manual"),
+      planDuration: isLifetime ? "VITALÍCIA" : duration,
       maxDevices: license.max_devices || 1,
       licenseKey: fullToken,
       activationInfo,
-      expirationInfo: plan?.is_lifetime ? "VITALÍCIA" : expirationInfo,
+      expirationInfo,
       isTrial,
-      licenseStatus: license.status === "active" ? "🟢 Ativa / Disponível" : `🔴 ${license.status.toUpperCase()}`,
+      licenseStatus: status,
     };
   }, [license, fullToken]);
 
-  const message = useMemo(() => deliveryData ? generateDeliveryMessage(deliveryData) : "", [deliveryData]);
-  const salesMessage = useMemo(() => deliveryData ? generateSalesMessage(deliveryData) : "", [deliveryData]);
+  const message = useMemo(
+    () => (deliveryData ? generateDeliveryMessage(deliveryData) : ""),
+    [deliveryData],
+  );
+  const salesMessage = useMemo(
+    () => (deliveryData ? generateSalesMessage(deliveryData) : ""),
+    [deliveryData],
+  );
 
   if (!licenseId || isLoading || !deliveryData) return null;
 
@@ -366,7 +430,7 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
     let toastMsg = "";
 
     if (type === "token") {
-      text = fullToken || "";
+      text = fullToken;
       toastMsg = "✅ Licença copiada!";
     } else if (type === "message") {
       text = message;
@@ -375,7 +439,7 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
       text = salesMessage;
       toastMsg = "✅ Texto de vendas copiado!";
     } else {
-      text = `PRODUTO: ${deliveryData.productName}\nPLANO: ${deliveryData.planName}\nLICENÇA: ${fullToken}\nVALIDADE: ${deliveryData.planDuration}\nDISPOSITIVOS: ${deliveryData.maxDevices}\nINSTRUÇÕES: Instale a extensão e informe sua licença.`;
+      text = `PRODUTO: ${deliveryData.productName}\nPLANO: ${deliveryData.planName}\nLICENÇA: ${fullToken}\nVALIDADE: ${deliveryData.planDuration}\nDISPOSITIVOS: ${deliveryData.maxDevices}\nSTATUS: ${deliveryData.licenseStatus}`;
       toastMsg = "✅ Todos os dados copiados!";
     }
 
@@ -393,68 +457,66 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
           </div>
           <div>
             <h3 className="font-bold text-foreground">🎉 LICENÇA GERADA COM SUCESSO!</h3>
-            <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">Gerador de Entrega Profissional</p>
+            <p className="text-[0.65rem] uppercase tracking-widest text-muted-foreground">
+              Dados calculados pela licença real
+            </p>
           </div>
         </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-3 rounded-xl bg-background/40 p-4 border border-white/5">
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Produto:</span>
-            <span className="font-bold">{deliveryData.productName}</span>
-          </div>
-          <div className="flex justify-between text-xs">
+        <div className="space-y-3 rounded-xl border border-white/5 bg-background/40 p-4">
+          <div className="flex justify-between gap-4 text-xs">
             <span className="text-muted-foreground">Plano:</span>
-            <span className="font-bold text-primary">{deliveryData.planName}</span>
+            <span className="text-right font-bold text-primary">{deliveryData.planName}</span>
           </div>
-          <div className="flex justify-between text-xs">
+          <div className="flex justify-between gap-4 text-xs">
             <span className="text-muted-foreground">Validade:</span>
-            <span className="font-bold">{deliveryData.planDuration}</span>
+            <span className="text-right font-bold">{deliveryData.planDuration}</span>
           </div>
-          <div className="flex justify-between text-xs">
+          <div className="flex justify-between gap-4 text-xs">
+            <span className="text-muted-foreground">Expiração:</span>
+            <span className="text-right font-bold">{deliveryData.expirationInfo}</span>
+          </div>
+          <div className="flex justify-between gap-4 text-xs">
             <span className="text-muted-foreground">Dispositivos:</span>
             <span className="font-bold">{deliveryData.maxDevices}</span>
           </div>
-          <div className="flex justify-between text-xs">
+          <div className="flex justify-between gap-4 text-xs">
             <span className="text-muted-foreground">Status:</span>
-            <span className="font-bold text-green-400">{deliveryData.licenseStatus}</span>
+            <span className="text-right font-bold">{deliveryData.licenseStatus}</span>
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button 
-            className="w-full justify-start gap-3 h-12 rounded-xl text-xs font-bold uppercase tracking-wider" 
+          <Button
+            className="h-12 w-full justify-start gap-3 rounded-xl text-xs font-bold uppercase tracking-wider"
             variant="neon"
             onClick={() => handleCopy("message")}
           >
             {copiedType === "message" ? <ClipboardCheck className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
             Copiar Mensagem Completa
           </Button>
-
           <Button
-            className="w-full justify-start gap-3 h-12 rounded-xl text-xs font-bold uppercase tracking-wider"
+            className="h-12 w-full justify-start gap-3 rounded-xl text-xs font-bold uppercase tracking-wider"
             variant="neonOutline"
             onClick={() => handleCopy("sales")}
           >
             {copiedType === "sales" ? <ClipboardCheck className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}
             Copiar Texto de Vendas
           </Button>
-
-
-          
           <div className="grid grid-cols-2 gap-2">
-            <Button 
-              variant="neonOutline" 
-              className="gap-2 rounded-xl text-[0.6rem] h-10 uppercase font-bold"
+            <Button
+              variant="neonOutline"
+              className="h-10 gap-2 rounded-xl text-[0.6rem] font-bold uppercase"
               onClick={() => handleCopy("token")}
             >
               {copiedType === "token" ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               Copiar Licença
             </Button>
-            <Button 
-              variant="ghost" 
-              className="gap-2 rounded-xl text-[0.6rem] h-10 uppercase font-bold border border-white/10"
+            <Button
+              variant="ghost"
+              className="h-10 gap-2 rounded-xl border border-white/10 text-[0.6rem] font-bold uppercase"
               onClick={() => handleCopy("all")}
             >
               {copiedType === "all" ? <Check className="h-3 w-3" /> : <ClipboardCheck className="h-3 w-3" />}
@@ -465,8 +527,8 @@ function TokenDeliveryCard({ licenseId, fullToken: propToken }: { licenseId?: st
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-white/5 bg-black/40 p-3">
-        <p className="text-[0.6rem] font-bold uppercase text-muted-foreground mb-2">Prévia da Mensagem</p>
-        <pre className="max-h-32 overflow-y-auto text-[0.6rem] text-muted-foreground/80 whitespace-pre-wrap no-scrollbar">
+        <p className="mb-2 text-[0.6rem] font-bold uppercase text-muted-foreground">Prévia da mensagem</p>
+        <pre className="max-h-36 overflow-y-auto whitespace-pre-wrap text-[0.6rem] text-muted-foreground/80 no-scrollbar">
           {message}
         </pre>
       </div>
