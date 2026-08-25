@@ -21,44 +21,48 @@ function AuthenticatedLayout() {
         <style>{`
           @media (min-width: 1024px) {
             /*
-             * Super Admin: o menu precisa ficar preso à viewport e nunca
-             * acompanhar o scroll da tabela/dashboard.
-             * O aside é o primeiro filho direto do layout do /admin.
+             * Esta folha só é montada dentro da rota /admin.
+             * O sidebar desktop do Super Admin possui as classes hidden/w-64/lg:flex.
+             * Ele fica preso à viewport; somente o conteúdo principal rola.
              */
-            body.board-layout #root > * {
-              min-width: 0;
-            }
-
-            body.board-layout aside:first-of-type {
+            aside.hidden.w-64.lg\\:flex {
               position: fixed !important;
-              inset: 0 auto 0 0 !important;
               top: 0 !important;
+              bottom: 0 !important;
               left: 0 !important;
               width: 16rem !important;
+              height: 100vh !important;
               height: 100dvh !important;
+              max-height: 100vh !important;
               max-height: 100dvh !important;
-              z-index: 80 !important;
+              z-index: 100 !important;
               display: flex !important;
               overflow: hidden !important;
+              transform: none !important;
             }
 
-            body.board-layout aside:first-of-type > nav {
+            aside.hidden.w-64.lg\\:flex > nav {
               min-height: 0 !important;
               flex: 1 1 auto !important;
+              overflow-x: hidden !important;
               overflow-y: auto !important;
               overscroll-behavior: contain;
               scrollbar-width: none;
             }
 
-            body.board-layout aside:first-of-type > nav::-webkit-scrollbar {
+            aside.hidden.w-64.lg\\:flex > nav::-webkit-scrollbar {
               display: none;
             }
 
-            /* Reserva o espaço do sidebar fixo para o conteúdo principal. */
-            body.board-layout aside:first-of-type + div {
+            /*
+             * O conteúdo é o irmão imediatamente seguinte do sidebar.
+             * Reserva os 256px ocupados pelo menu fixo.
+             */
+            aside.hidden.w-64.lg\\:flex + div {
               margin-left: 16rem !important;
               width: calc(100% - 16rem) !important;
               min-width: 0 !important;
+              flex: 1 1 auto !important;
             }
           }
         `}</style>
