@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as ApiDocsRouteImport } from './routes/api-docs'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as ClonagemRouteImport } from './routes/clonagem'
 import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as DocumentacaoRouteImport } from './routes/documentacao'
 import { Route as McpRouteImport } from './routes/mcp'
@@ -21,6 +22,7 @@ import { Route as PremiacoesRouteImport } from './routes/premiacoes'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedClonagemEntregaRouteImport } from './routes/_authenticated/clonagem-entrega'
 import { Route as AuthenticatedObrigadoRouteImport } from './routes/_authenticated/obrigado'
 import { Route as AuthenticatedPainelRouteImport } from './routes/_authenticated/painel'
 import { Route as AuthenticatedRevendedorRouteImport } from './routes/_authenticated/revendedor'
@@ -30,6 +32,7 @@ import { Route as ParceirosIndexRouteImport } from './routes/parceiros/index'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
@@ -65,6 +68,11 @@ const ApiDocsRoute = ApiDocsRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClonagemRoute = ClonagemRouteImport.update({
+  id: '/clonagem',
+  path: '/clonagem',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComoFuncionaRoute = ComoFuncionaRouteImport.update({
@@ -109,6 +117,12 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClonagemEntregaRoute =
+  AuthenticatedClonagemEntregaRouteImport.update({
+    id: '/clonagem-entrega',
+    path: '/clonagem-entrega',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedObrigadoRoute = AuthenticatedObrigadoRouteImport.update({
   id: '/obrigado',
   path: '/obrigado',
@@ -155,6 +169,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiLicenseValidateRoute = ApiLicenseValidateRouteImport.update({
+  id: '/api/license/validate',
+  path: '/api/license/validate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCmsRoute = ApiPublicCmsRouteImport.update({
   id: '/api/public/cms',
   path: '/api/public/cms',
@@ -257,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
+  '/clonagem': typeof ClonagemRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
@@ -265,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/clonagem-entrega': typeof AuthenticatedClonagemEntregaRoute
   '/obrigado': typeof AuthenticatedObrigadoRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/revendedor': typeof AuthenticatedRevendedorRoute
@@ -274,6 +295,7 @@ export interface FileRoutesByFullPath {
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
@@ -296,6 +318,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
+  '/clonagem': typeof ClonagemRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
@@ -304,6 +327,7 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/clonagem-entrega': typeof AuthenticatedClonagemEntregaRoute
   '/obrigado': typeof AuthenticatedObrigadoRoute
   '/painel': typeof AuthenticatedPainelRoute
   '/revendedor': typeof AuthenticatedRevendedorRoute
@@ -313,6 +337,7 @@ export interface FileRoutesByTo {
   '/parceiros': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
@@ -337,6 +362,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/api-docs': typeof ApiDocsRoute
   '/auth': typeof AuthRoute
+  '/clonagem': typeof ClonagemRoute
   '/como-funciona': typeof ComoFuncionaRoute
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
@@ -345,6 +371,7 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/clonagem-entrega': typeof AuthenticatedClonagemEntregaRoute
   '/_authenticated/obrigado': typeof AuthenticatedObrigadoRoute
   '/_authenticated/painel': typeof AuthenticatedPainelRoute
   '/_authenticated/revendedor': typeof AuthenticatedRevendedorRoute
@@ -354,6 +381,7 @@ export interface FileRoutesById {
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
@@ -378,6 +406,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api-docs'
     | '/auth'
+    | '/clonagem'
     | '/como-funciona'
     | '/documentacao'
     | '/mcp'
@@ -386,6 +415,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
+    | '/clonagem-entrega'
     | '/obrigado'
     | '/painel'
     | '/revendedor'
@@ -395,6 +425,7 @@ export interface FileRouteTypes {
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
@@ -417,6 +448,7 @@ export interface FileRouteTypes {
     | '/'
     | '/api-docs'
     | '/auth'
+    | '/clonagem'
     | '/como-funciona'
     | '/documentacao'
     | '/mcp'
@@ -425,6 +457,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/admin'
+    | '/clonagem-entrega'
     | '/obrigado'
     | '/painel'
     | '/revendedor'
@@ -434,6 +467,7 @@ export interface FileRouteTypes {
     | '/parceiros'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
@@ -457,6 +491,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/api-docs'
     | '/auth'
+    | '/clonagem'
     | '/como-funciona'
     | '/documentacao'
     | '/mcp'
@@ -465,6 +500,7 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/admin'
+    | '/_authenticated/clonagem-entrega'
     | '/_authenticated/obrigado'
     | '/_authenticated/painel'
     | '/_authenticated/revendedor'
@@ -474,6 +510,7 @@ export interface FileRouteTypes {
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
@@ -498,6 +535,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   ApiDocsRoute: typeof ApiDocsRoute
   AuthRoute: typeof AuthRoute
+  ClonagemRoute: typeof ClonagemRoute
   ComoFuncionaRoute: typeof ComoFuncionaRoute
   DocumentacaoRoute: typeof DocumentacaoRoute
   McpRoute: typeof McpRoute
@@ -511,6 +549,7 @@ export interface RootRouteChildren {
   ParceirosIndexRoute: typeof ParceirosIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
   ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
@@ -557,6 +596,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/clonagem': {
+      id: '/clonagem'
+      path: '/clonagem'
+      fullPath: '/clonagem'
+      preLoaderRoute: typeof ClonagemRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/como-funciona': {
@@ -613,6 +659,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clonagem-entrega': {
+      id: '/_authenticated/clonagem-entrega'
+      path: '/clonagem-entrega'
+      fullPath: '/clonagem-entrega'
+      preLoaderRoute: typeof AuthenticatedClonagemEntregaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/obrigado': {
@@ -676,6 +729,13 @@ declare module '@tanstack/react-router' {
       path: '/.mcp/invoke-tool/$tool'
       fullPath: '/.mcp/invoke-tool/$tool'
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/license/validate': {
+      id: '/api/license/validate'
+      path: '/api/license/validate'
+      fullPath: '/api/license/validate'
+      preLoaderRoute: typeof ApiLicenseValidateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/cms': {
@@ -802,6 +862,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedClonagemEntregaRoute: typeof AuthenticatedClonagemEntregaRoute
   AuthenticatedObrigadoRoute: typeof AuthenticatedObrigadoRoute
   AuthenticatedPainelRoute: typeof AuthenticatedPainelRoute
   AuthenticatedRevendedorRoute: typeof AuthenticatedRevendedorRoute
@@ -809,6 +870,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedClonagemEntregaRoute: AuthenticatedClonagemEntregaRoute,
   AuthenticatedObrigadoRoute: AuthenticatedObrigadoRoute,
   AuthenticatedPainelRoute: AuthenticatedPainelRoute,
   AuthenticatedRevendedorRoute: AuthenticatedRevendedorRoute,
@@ -834,6 +896,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   ApiDocsRoute: ApiDocsRoute,
   AuthRoute: AuthRoute,
+  ClonagemRoute: ClonagemRoute,
   ComoFuncionaRoute: ComoFuncionaRoute,
   DocumentacaoRoute: DocumentacaoRoute,
   McpRoute: McpRoute,
@@ -848,6 +911,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParceirosIndexRoute: ParceirosIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
   ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
