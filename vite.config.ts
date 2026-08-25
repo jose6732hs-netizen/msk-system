@@ -6,10 +6,67 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
+import type { Plugin } from "vite";
+
+/**
+ * Compatibilidade do editor CMS.
+ *
+ * O admin-editor antigo só renderiza preview para Hero e Parceiros. Nas demais
+ * etapas o painel fica totalmente preto, apesar de localSettings conter os dados
+ * reais e estar sendo atualizado a cada tecla. Mantemos a tela existente intacta
+ * e substituímos somente o bloco de preview durante a transformação do módulo.
+ *
+ * Isso também permite que o preview use o componente dedicado, que cobre todas
+ * as etapas e lê o estado local (inclusive alterações ainda não salvas).
+ */
+function adminLivePreviewFix(): Plugin {
+  return {
+    name: "msk-admin-live-preview-fix",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.replace(/\\/g, "/").includes("/src/components/msk/admin-editor.tsx")) return null;
+
+      let next = code;
+
+      const tutorialImport = 'import { TutorialsManager } from "@/components/msk/tutorials-manager";';
+      const previewImport = 'import { AdminLivePreview } from "@/components/msk/admin-live-preview";';
+      if (!next.includes(previewImport)) {
+        next = next.replace(tutorialImport, `${tutorialImport}\n${previewImport}`);
+      }
+
+      const previewStart = '          <div className="mt-16 h-full p-8 overflow-y-auto no-scrollbar pb-24">';
+      const previewEnd = '\n          </div>\n        </div>\n      </div>\n      </div>\n    </div>';
+      const start = next.indexOf(previewStart);
+      const end = start >= 0 ? next.indexOf(previewEnd, start) : -1;
+
+      if (start >= 0 && end > start) {
+        const replacement = [
+          '          <div className="absolute inset-x-0 bottom-0 top-14 overflow-y-auto p-6 no-scrollbar">',
+          '            <AdminLivePreview',
+          '              activeSection={activeSection}',
+          '              settings={localSettings}',
+          '              initialSettings={initialSettings}',
+          '            />',
+          '          </div>',
+        ].join("\\n");
+        next = next.slice(0, start) + replacement + next.slice(end + '\n          </div>'.length);
+      }
+
+      // Corrige a edição das mensagens de recuperação. O código anterior criava
+      // recovery_messages.value em vez de atualizar welcome/recovery/urgency.
+      next = next.replace(
+        "updateSetting('recovery_messages', 'value' as any, { ...current, [msg.key]: e.target.value } as any);",
+        "setLocalSettings((prev: any) => ({ ...prev, recovery_messages: { ...(prev?.recovery_messages || {}), [msg.key]: e.target.value } }));",
+      );
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
 
 export default defineConfig({
   vite: {
-    plugins: [mcpPlugin()]
+    plugins: [adminLivePreviewFix(), mcpPlugin()]
   },
 
   tanstackStart: {
