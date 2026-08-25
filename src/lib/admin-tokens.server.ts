@@ -15,9 +15,12 @@ export type DurationKind =
   | "custom";
 
 /**
- * Corrige trials antigos criados quando duration_value/duration_unit estavam
- * inconsistentes com o rótulo visível do plano (ex.: "15 minutos" + 30/days).
- * Nunca altera licenças pagas/manuais, revogadas ou suspensas.
+ * Reconcilia trials legados com a regra correta de ativação.
+ *
+ * Versões antigas marcavam FREE/TESTE como ativo no momento da geração. Para
+ * descobrir se houve uso REAL, não confiamos em activated_at: verificamos
+ * last_validation e dispositivos ativos. Sem esses sinais a licença nunca foi
+ * usada e volta para Aguardando ativação, sem expires_at.
  */
 async function repairLegacyTrialDurations(plans: Record<string, any>[]) {
   const durations = new Map<string, ReturnType<typeof resolvePlanDuration>>();
@@ -35,7 +38,7 @@ async function repairLegacyTrialDurations(plans: Record<string, any>[]) {
 
   const { data: licenses, error } = await supabaseAdmin
     .from("licenses")
-    .select("id,plan_id,type,status,created_at,activated_at,expires_at,metadata")
+    .select("id,plan_id,type,status,created_at,activated_at,expires_at,last_validation,metadata")
     .in("plan_id", planIds)
     .in("type", ["trial", "test"])
     .not("status", "in", '("revoked","suspended")')
@@ -47,29 +50,66 @@ async function repairLegacyTrialDurations(plans: Record<string, any>[]) {
     return;
   }
 
+  const licenseIds = (licenses ?? []).map((l: any) => String(l.id));
+  const usedByDevice = new Set<string>();
+  if (licenseIds.length) {
+    const { data: deviceRows } = await supabaseAdmin
+      .from("license_devices")
+      .select("license_id")
+      .in("license_id", licenseIds)
+      .eq("status", "active");
+    for (const row of deviceRows ?? []) usedByDevice.add(String(row.license_id));
+  }
+
   const now = Date.now();
   for (const license of licenses ?? []) {
     const resolved = durations.get(String(license.plan_id));
     if (!resolved?.milliseconds) continue;
 
-    const baseIso = license.activated_at ?? license.created_at;
-    if (!baseIso) continue;
-
-    const expectedMs = new Date(baseIso).getTime() + resolved.milliseconds;
-    const currentMs = license.expires_at ? new Date(license.expires_at).getTime() : 0;
-    const mismatch = !currentMs || Math.abs(currentMs - expectedMs) > 30_000;
-    const expectedStatus = expectedMs <= now ? "expired" : "active";
-    const statusMismatch = license.status !== expectedStatus;
-
-    if (!mismatch && !statusMismatch) continue;
-
     const metadata = {
       ...((license.metadata ?? {}) as Record<string, any>),
+      pending_duration_ms: resolved.milliseconds,
       plan_duration_value_snapshot: resolved.value,
       plan_duration_unit_snapshot: resolved.unit,
       plan_duration_label_snapshot: resolved.label,
       repaired_duration_at: new Date().toISOString(),
     };
+
+    const hasRealUse = !!license.last_validation || usedByDevice.has(String(license.id));
+
+    if (!hasRealUse) {
+      const alreadyPending =
+        license.status === "inactive" &&
+        !license.activated_at &&
+        !license.expires_at &&
+        Number((license.metadata as any)?.pending_duration_ms ?? 0) === resolved.milliseconds;
+      if (alreadyPending) continue;
+
+      const { error: updateError } = await supabaseAdmin
+        .from("licenses")
+        .update({
+          status: "inactive",
+          activated_at: null,
+          expires_at: null,
+          last_validation: null,
+          metadata,
+        } as never)
+        .eq("id", license.id);
+
+      if (updateError) {
+        console.error(`[licenses] Falha ao devolver trial ${license.id} para aguardando ativação:`, updateError.message);
+      }
+      continue;
+    }
+
+    const baseIso = license.activated_at ?? license.last_validation;
+    if (!baseIso) continue;
+    const expectedMs = new Date(baseIso).getTime() + resolved.milliseconds;
+    const currentMs = license.expires_at ? new Date(license.expires_at).getTime() : 0;
+    const expectedStatus = expectedMs <= now ? "expired" : "active";
+    const mismatch = !currentMs || Math.abs(currentMs - expectedMs) > 30_000;
+
+    if (!mismatch && license.status === expectedStatus) continue;
 
     const { error: updateError } = await supabaseAdmin
       .from("licenses")
@@ -81,7 +121,7 @@ async function repairLegacyTrialDurations(plans: Record<string, any>[]) {
       .eq("id", license.id);
 
     if (updateError) {
-      console.error(`[licenses] Falha ao corrigir trial ${license.id}:`, updateError.message);
+      console.error(`[licenses] Falha ao corrigir duração do trial ${license.id}:`, updateError.message);
     }
   }
 }
@@ -138,8 +178,6 @@ export async function generateManualToken(
     email?: string | undefined;
     standalone?: boolean | undefined;
     planId: string;
-    // Mantido apenas para compatibilidade com builds antigos do painel.
-    // A validade normal é SEMPRE a do plano escolhido.
     duration?: DurationKind | undefined;
     customDays?: number | undefined;
     customMinutes?: number | undefined;
@@ -163,7 +201,6 @@ export async function generateManualToken(
     profile = data as typeof profile;
 
     if (!profile) {
-      // Conta social pode existir no Auth antes do profile.
       const perPage = 1000;
       let authUser: any = null;
       for (let page = 1; !authUser; page += 1) {
@@ -200,14 +237,11 @@ export async function generateManualToken(
   if (planError) throw planError;
   if (!plan) throw new Error("Plano selecionado não foi encontrado.");
 
-  // Fonte de verdade: o PLANO. O dropdown antigo de validade não pode mais
-  // transformar uma diária em 30 dias ou uma mensal em vitalícia.
   const resolved = resolvePlanDuration(plan);
   const duration = durationArgs(resolved);
   const planText = `${plan.name ?? ""} ${plan.slug ?? ""}`.toLowerCase();
   const isTrialPlan =
-    plan.allow_trial === true ||
-    (Number(plan.price ?? 0) === 0 && /free|gr[aá]tis|teste|trial/.test(planText));
+    Number(plan.price ?? 0) === 0 && /free|gr[aá]tis|teste|trial/.test(planText);
 
   const result = await issueStandaloneLicense({
     userId: profile?.id ?? null,
@@ -217,23 +251,35 @@ export async function generateManualToken(
     ...(input.maxDevices ? { maxDevices: input.maxDevices } : {}),
   });
 
-  // Grava também o snapshot resolvido, não os campos legados conflitantes.
-  const { data: createdLicense } = await supabaseAdmin
+  // Regra única para TODA licença manual: gerar != ativar.
+  // Mesmo que uma função legada tenha criado trial como ativo, normalizamos
+  // imediatamente para aguardando a primeira utilização na extensão.
+  const { data: createdLicense, error: createdError } = await supabaseAdmin
     .from("licenses")
     .select("metadata")
     .eq("id", result.licenseId)
     .maybeSingle();
-  await supabaseAdmin
+  if (createdError) throw createdError;
+
+  const metadata = {
+    ...((createdLicense?.metadata ?? {}) as Record<string, any>),
+    ...(resolved.milliseconds ? { pending_duration_ms: resolved.milliseconds } : {}),
+    plan_duration_value_snapshot: resolved.value,
+    plan_duration_unit_snapshot: resolved.unit,
+    plan_duration_label_snapshot: resolved.label,
+  };
+
+  const { error: pendingError } = await supabaseAdmin
     .from("licenses")
     .update({
-      metadata: {
-        ...((createdLicense?.metadata ?? {}) as Record<string, any>),
-        plan_duration_value_snapshot: resolved.value,
-        plan_duration_unit_snapshot: resolved.unit,
-        plan_duration_label_snapshot: resolved.label,
-      },
+      status: "inactive",
+      activated_at: null,
+      expires_at: null,
+      last_validation: null,
+      metadata,
     } as never)
     .eq("id", result.licenseId);
+  if (pendingError) throw pendingError;
 
   await logAudit({
     userId: adminId,
@@ -247,6 +293,7 @@ export async function generateManualToken(
       duration_label: resolved.label,
       duration_ms: resolved.milliseconds,
       lifetime: resolved.lifetime,
+      starts_on_first_activation: true,
       note: input.note ?? null,
     },
   });
