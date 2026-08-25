@@ -8,11 +8,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { adminSavePlan } from "@/lib/admin.functions";
-import { uploadCmsAsset } from "@/lib/cms.functions";
 import { Upload, RefreshCw, Image as ImageIcon } from "lucide-react";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function normalizeDurationUnit(value?: string | null) {
+  const unit = String(value ?? "days").toLowerCase();
+  const aliases: Record<string, string> = {
+    minute: "minutes",
+    min: "minutes",
+    hour: "hours",
+    day: "days",
+    week: "weeks",
+    month: "months",
+  };
+  return aliases[unit] ?? unit;
+}
+
+function durationText(value: number, unit: string) {
+  const normalized = normalizeDurationUnit(unit);
+  const singular = value === 1;
+  const labels: Record<string, [string, string]> = {
+    minutes: ["minuto", "minutos"],
+    hours: ["hora", "horas"],
+    days: ["dia", "dias"],
+    weeks: ["semana", "semanas"],
+    months: ["mês", "meses"],
+  };
+  const pair = labels[normalized] ?? [normalized, normalized];
+  return `${value} ${singular ? pair[0] : pair[1]}`;
+}
 
 type PlanForm = {
   id?: string;
@@ -41,7 +67,7 @@ const EMPTY: PlanForm = {
   price: "0,00",
   currency: "BRL",
   duration_label: "30 dias",
-  duration_unit: "day",
+  duration_unit: "days",
   duration_value: 30,
   duration_days: 30,
   is_lifetime: false,
@@ -63,8 +89,6 @@ export function AdminSubscriptionsTab({
 }) {
   const qc = useQueryClient();
   const saveFn = useServerFn(adminSavePlan);
-  // O uploadAsset via server function foi substituído pela rota /api/public/cms/upload
-  // const uploadAsset = useServerFn(uploadCmsAsset);
   const [editing, setEditing] = useState<PlanForm | null>(null);
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
@@ -76,25 +100,22 @@ export function AdminSubscriptionsTab({
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      
+
       const uploadKey = planId || "new-plan";
       setUploading(uploadKey);
       try {
         const fd = new FormData();
         fd.append("file", file);
         fd.append("key", `plan-offer-${uploadKey}`);
-        
-        // Use standard fetch to call the server function as it handles multipart/form-data correctly
+
         const res = await fetch("/api/public/cms/upload", {
           method: "POST",
           body: fd,
-        }).then(r => r.json());
-        
+        }).then((r) => r.json());
+
         if (!res.url) throw new Error(res.error || "Upload falhou");
-        
-        if (editing) {
-          setEditing({ ...editing, image_url: res.url });
-        }
+
+        if (editing) setEditing({ ...editing, image_url: res.url });
         toast.success("Imagem carregada!");
       } catch (err) {
         toast.error("Erro no upload: " + (err as Error).message);
@@ -106,6 +127,8 @@ export function AdminSubscriptionsTab({
   }
 
   function edit(plan: Record<string, any>) {
+    const unit = normalizeDurationUnit(plan["duration_unit"] ?? "days");
+    const value = Number(plan["duration_value"] ?? plan["duration_days"] ?? 30);
     setEditing({
       id: plan["id"],
       slug: plan["slug"] ?? "",
@@ -113,10 +136,10 @@ export function AdminSubscriptionsTab({
       description: plan["description"] ?? "",
       price: Number(plan["price"] ?? 0).toFixed(2).replace(".", ","),
       currency: plan["currency"] ?? "BRL",
-      duration_label: plan["duration_label"] ?? "",
-      duration_unit: plan["duration_unit"] ?? "day",
-      duration_value: Number(plan["duration_value"] ?? 30),
-      duration_days: plan["duration_days"] ?? null,
+      duration_label: plan["duration_label"] ?? durationText(value, unit),
+      duration_unit: unit,
+      duration_value: value,
+      duration_days: unit === "days" ? Number(plan["duration_days"] ?? value) : null,
       is_lifetime: !!plan["is_lifetime"],
       max_devices: Number(plan["max_devices"] ?? 1),
       active: plan["active"] !== false,
@@ -131,17 +154,26 @@ export function AdminSubscriptionsTab({
     setBusy(true);
     try {
       const rawPrice = String(form.price).trim();
-      const normalizedPrice = Number(rawPrice.includes(",") ? rawPrice.replace(/\./g, "").replace(",", ".") : rawPrice);
+      const normalizedPrice = Number(
+        rawPrice.includes(",") ? rawPrice.replace(/\./g, "").replace(",", ".") : rawPrice,
+      );
       if (!Number.isFinite(normalizedPrice)) throw new Error("Informe um preço válido, como 5,90.");
+
+      const unit = form.is_lifetime ? "lifetime" : normalizeDurationUnit(form.duration_unit);
+      const value = form.is_lifetime ? 1 : Math.max(1, Number(form.duration_value || 1));
+
       await saveFn({
         data: {
           ...form,
           price: normalizedPrice,
-          duration_unit: form.is_lifetime ? "lifetime" : "days",
-          duration_value: form.is_lifetime ? 1 : (form.duration_days ?? 1),
+          duration_unit: unit,
+          duration_value: value,
+          duration_days: unit === "days" ? value : null,
+          duration_label: form.is_lifetime ? "Vitalício" : durationText(value, unit),
         } as never,
       });
       await qc.invalidateQueries({ queryKey: ["admin-overview"] });
+      await qc.invalidateQueries({ queryKey: ["admin-token-plans"] });
       toast.success(form.id ? "Plano atualizado" : "Plano criado e publicado no site");
       setEditing(null);
     } catch (e) {
@@ -193,14 +225,14 @@ export function AdminSubscriptionsTab({
               </div>
               <p className="mt-3 text-xl font-black text-primary">{brl(p["price"])}</p>
               <p className="text-xs text-muted-foreground">
-                {p["is_lifetime"] ? "Vitalício" : p["duration_label"]} ·{" "}
-                {p["max_devices"]} dispositivo(s)
+                {p["is_lifetime"]
+                  ? "Vitalício"
+                  : p["duration_label"] || durationText(Number(p["duration_value"] ?? 1), p["duration_unit"])}{" "}
+                · {p["max_devices"]} dispositivo(s)
               </p>
             </button>
           ))}
-          {!plans.length && (
-            <p className="text-sm text-muted-foreground">Nenhum plano cadastrado ainda.</p>
-          )}
+          {!plans.length && <p className="text-sm text-muted-foreground">Nenhum plano cadastrado ainda.</p>}
         </div>
       </section>
 
@@ -211,12 +243,9 @@ export function AdminSubscriptionsTab({
           </h4>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Field label="Nome">
-              <Input
-                value={editing.name}
-                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-              />
+              <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
             </Field>
-            {/* Slug gerado automaticamente a partir do nome */}
+
             <Field label="Preço (R$)">
               <Input
                 inputMode="decimal"
@@ -225,37 +254,36 @@ export function AdminSubscriptionsTab({
                 onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^\d,.]/g, "") })}
               />
             </Field>
+
             <Field label="Comissão Afiliado (%)">
               <Input
                 inputMode="decimal"
                 value={String(editing.affiliate_commission_rate ?? 0)}
-                onChange={(e) => setEditing({ ...editing, affiliate_commission_rate: Number(e.target.value || 0) })}
+                onChange={(e) =>
+                  setEditing({ ...editing, affiliate_commission_rate: Number(e.target.value || 0) })
+                }
               />
             </Field>
+
             <Field label="Moeda">
               <Input
                 value={editing.currency || "BRL"}
                 onChange={(e) => setEditing({ ...editing, currency: e.target.value.toUpperCase() })}
               />
             </Field>
+
             <Field label="Descrição">
               <Input
                 value={editing.description}
                 onChange={(e) => setEditing({ ...editing, description: e.target.value })}
               />
             </Field>
-            <Field label="Rótulo de validade">
-              <Input
-                placeholder="30 dias"
-                value={editing.duration_label}
-                onChange={(e) => setEditing({ ...editing, duration_label: e.target.value })}
-              />
-            </Field>
-            <Field label="Validade (dias)">
+
+            <Field label="Validade">
               <div className="mb-2 flex flex-wrap gap-2">
                 {([
-                  { key: "days", label: "Dias" },
-                  { key: "free", label: "Grátis / Trial" },
+                  { key: "days", label: "Paga / dias" },
+                  { key: "free", label: "FREE · 15 min" },
                   { key: "lifetime", label: "Vitalício" },
                 ] as const).map((opt) => {
                   const current = editing.is_lifetime
@@ -263,6 +291,7 @@ export function AdminSubscriptionsTab({
                     : Number(String(editing.price).replace(",", ".")) === 0
                       ? "free"
                       : "days";
+
                   return (
                     <Button
                       key={opt.key}
@@ -275,28 +304,35 @@ export function AdminSubscriptionsTab({
                             ...editing,
                             is_lifetime: true,
                             duration_days: null,
+                            duration_value: 1,
+                            duration_unit: "lifetime",
                             duration_label: "Vitalício",
                           });
-                        } else if (opt.key === "free") {
+                          return;
+                        }
+
+                        if (opt.key === "free") {
                           setEditing({
                             ...editing,
                             is_lifetime: false,
                             price: 0,
-                            duration_days: editing.duration_days ?? 7,
-                            duration_value: editing.duration_days ?? 7,
-                            duration_unit: "day",
-                            duration_label: `Grátis · ${editing.duration_days ?? 7} dias`,
+                            duration_days: null,
+                            duration_value: 15,
+                            duration_unit: "minutes",
+                            duration_label: "15 minutos",
                           });
-                        } else {
-                          setEditing({
-                            ...editing,
-                            is_lifetime: false,
-                            duration_days: editing.duration_days ?? 30,
-                            duration_value: editing.duration_days ?? 30,
-                            duration_unit: "day",
-                            duration_label: `${editing.duration_days ?? 30} dias`,
-                          });
+                          return;
                         }
+
+                        const value = editing.duration_unit === "days" ? editing.duration_value || 30 : 30;
+                        setEditing({
+                          ...editing,
+                          is_lifetime: false,
+                          duration_days: value,
+                          duration_value: value,
+                          duration_unit: "days",
+                          duration_label: durationText(value, "days"),
+                        });
                       }}
                     >
                       {opt.label}
@@ -304,24 +340,54 @@ export function AdminSubscriptionsTab({
                   );
                 })}
               </div>
-              <Input
-                inputMode="numeric"
-                disabled={editing.is_lifetime}
-                placeholder={editing.is_lifetime ? "Vitalício" : "30"}
-                value={editing.is_lifetime ? "" : String(editing.duration_days ?? "")}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    duration_days: e.target.value ? Number(e.target.value) : null,
-                    duration_value: Number(e.target.value || editing.duration_value),
-                  })
-                }
-              />
-              {!editing.is_lifetime && Number(String(editing.price).replace(",", ".")) === 0 && (
-                <p className="mt-1 text-xs text-emerald-400">
-                  Oferta gratuita: licença de teste por {editing.duration_days ?? 7} dias.
-                </p>
-              )}
+
+              <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-2">
+                <Input
+                  inputMode="numeric"
+                  type="number"
+                  min={1}
+                  disabled={editing.is_lifetime}
+                  placeholder={editing.is_lifetime ? "Vitalício" : "15"}
+                  value={editing.is_lifetime ? "" : String(editing.duration_value ?? "")}
+                  onChange={(e) => {
+                    const value = Math.max(1, Number(e.target.value || 1));
+                    const unit = normalizeDurationUnit(editing.duration_unit);
+                    setEditing({
+                      ...editing,
+                      duration_value: value,
+                      duration_days: unit === "days" ? value : null,
+                      duration_label: durationText(value, unit),
+                    });
+                  }}
+                />
+                <select
+                  disabled={editing.is_lifetime}
+                  value={normalizeDurationUnit(editing.duration_unit)}
+                  onChange={(e) => {
+                    const unit = normalizeDurationUnit(e.target.value);
+                    const value = Math.max(1, Number(editing.duration_value || 1));
+                    setEditing({
+                      ...editing,
+                      duration_unit: unit,
+                      duration_days: unit === "days" ? value : null,
+                      duration_label: durationText(value, unit),
+                    });
+                  }}
+                  className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none disabled:opacity-50"
+                >
+                  <option value="minutes">Minutos</option>
+                  <option value="hours">Horas</option>
+                  <option value="days">Dias</option>
+                  <option value="weeks">Semanas</option>
+                  <option value="months">Meses</option>
+                </select>
+              </div>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                {editing.is_lifetime
+                  ? "Licença sem expiração."
+                  : `A licença será gerada com ${durationText(editing.duration_value || 1, editing.duration_unit)}.`}
+              </p>
             </Field>
 
             <Field label="Máx. dispositivos">
@@ -331,6 +397,7 @@ export function AdminSubscriptionsTab({
                 onChange={(e) => setEditing({ ...editing, max_devices: Number(e.target.value || 1) })}
               />
             </Field>
+
             <Field label="Ordem">
               <Input
                 inputMode="numeric"
@@ -338,16 +405,13 @@ export function AdminSubscriptionsTab({
                 onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value || 0) })}
               />
             </Field>
+
             <div className="sm:col-span-2 lg:col-span-3">
               <Field label="Imagem da Oferta (Upload)">
                 <div className="mt-2 flex items-center gap-4">
                   <div className="relative h-32 w-48 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
                     {editing.image_url ? (
-                      <img
-                        src={editing.image_url}
-                        alt="Preview"
-                        className="h-full w-full object-contain"
-                      />
+                      <img src={editing.image_url} alt="Preview" className="h-full w-full object-contain" />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center">
                         <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
@@ -371,27 +435,44 @@ export function AdminSubscriptionsTab({
                         {editing.image_url ? "Substituir imagem" : "Enviar imagem"}
                       </Button>
                       {editing.image_url ? (
-                        <Button
-                          variant="ghost"
-                          className="text-xs"
-                          onClick={() => setEditing({ ...editing, image_url: "" })}
-                        >
+                        <Button variant="ghost" className="text-xs" onClick={() => setEditing({ ...editing, image_url: "" })}>
                           Remover
                         </Button>
                       ) : null}
                     </div>
-                    <p className="text-[0.65rem] font-medium text-muted-foreground uppercase leading-relaxed">
+                    <p className="text-[0.65rem] font-medium uppercase leading-relaxed text-muted-foreground">
                       Recomendado: 1200x800px. A imagem aparecerá no carrossel de planos e no checkout.
                     </p>
                   </div>
                 </div>
               </Field>
             </div>
+
             <div className="flex items-end gap-6">
               <label className="flex items-center gap-2 text-xs font-bold uppercase">
                 <Switch
                   checked={editing.is_lifetime}
-                  onCheckedChange={(v) => setEditing({ ...editing, is_lifetime: v })}
+                  onCheckedChange={(v) =>
+                    setEditing(
+                      v
+                        ? {
+                            ...editing,
+                            is_lifetime: true,
+                            duration_unit: "lifetime",
+                            duration_value: 1,
+                            duration_days: null,
+                            duration_label: "Vitalício",
+                          }
+                        : {
+                            ...editing,
+                            is_lifetime: false,
+                            duration_unit: "days",
+                            duration_value: 30,
+                            duration_days: 30,
+                            duration_label: "30 dias",
+                          },
+                    )
+                  }
                 />
                 Vitalício
               </label>
@@ -404,6 +485,7 @@ export function AdminSubscriptionsTab({
               </label>
             </div>
           </div>
+
           <div className="mt-4 flex flex-wrap gap-2">
             <Button variant="neon" disabled={busy || !editing.name} onClick={() => void save(editing)}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
