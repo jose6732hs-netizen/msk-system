@@ -15,6 +15,78 @@ export type DurationKind =
   | "custom";
 
 /**
+ * Corrige trials antigos criados quando duration_value/duration_unit estavam
+ * inconsistentes com o rótulo visível do plano (ex.: "15 minutos" + 30/days).
+ * Nunca altera licenças pagas/manuais, revogadas ou suspensas.
+ */
+async function repairLegacyTrialDurations(plans: Record<string, any>[]) {
+  const durations = new Map<string, ReturnType<typeof resolvePlanDuration>>();
+  for (const plan of plans) {
+    try {
+      const resolved = resolvePlanDuration(plan);
+      if (!resolved.lifetime && resolved.milliseconds) durations.set(String(plan.id), resolved);
+    } catch {
+      // Plano inválido continua visível para o admin corrigir manualmente.
+    }
+  }
+
+  const planIds = [...durations.keys()];
+  if (!planIds.length) return;
+
+  const { data: licenses, error } = await supabaseAdmin
+    .from("licenses")
+    .select("id,plan_id,type,status,created_at,activated_at,expires_at,metadata")
+    .in("plan_id", planIds)
+    .in("type", ["trial", "test"])
+    .not("status", "in", '("revoked","suspended")')
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  if (error) {
+    console.error("[licenses] Falha ao reconciliar trials legados:", error.message);
+    return;
+  }
+
+  const now = Date.now();
+  for (const license of licenses ?? []) {
+    const resolved = durations.get(String(license.plan_id));
+    if (!resolved?.milliseconds) continue;
+
+    const baseIso = license.activated_at ?? license.created_at;
+    if (!baseIso) continue;
+
+    const expectedMs = new Date(baseIso).getTime() + resolved.milliseconds;
+    const currentMs = license.expires_at ? new Date(license.expires_at).getTime() : 0;
+    const mismatch = !currentMs || Math.abs(currentMs - expectedMs) > 30_000;
+    const expectedStatus = expectedMs <= now ? "expired" : "active";
+    const statusMismatch = license.status !== expectedStatus;
+
+    if (!mismatch && !statusMismatch) continue;
+
+    const metadata = {
+      ...((license.metadata ?? {}) as Record<string, any>),
+      plan_duration_value_snapshot: resolved.value,
+      plan_duration_unit_snapshot: resolved.unit,
+      plan_duration_label_snapshot: resolved.label,
+      repaired_duration_at: new Date().toISOString(),
+    };
+
+    const { error: updateError } = await supabaseAdmin
+      .from("licenses")
+      .update({
+        expires_at: new Date(expectedMs).toISOString(),
+        status: expectedStatus,
+        metadata,
+      } as never)
+      .eq("id", license.id);
+
+    if (updateError) {
+      console.error(`[licenses] Falha ao corrigir trial ${license.id}:`, updateError.message);
+    }
+  }
+}
+
+/**
  * Lista todos os usuários que podem receber uma licença manual.
  * Combina profiles + Supabase Auth para não esconder contas criadas via Google/Apple
  * antes de o perfil ter sido totalmente preenchido.
@@ -145,6 +217,24 @@ export async function generateManualToken(
     ...(input.maxDevices ? { maxDevices: input.maxDevices } : {}),
   });
 
+  // Grava também o snapshot resolvido, não os campos legados conflitantes.
+  const { data: createdLicense } = await supabaseAdmin
+    .from("licenses")
+    .select("metadata")
+    .eq("id", result.licenseId)
+    .maybeSingle();
+  await supabaseAdmin
+    .from("licenses")
+    .update({
+      metadata: {
+        ...((createdLicense?.metadata ?? {}) as Record<string, any>),
+        plan_duration_value_snapshot: resolved.value,
+        plan_duration_unit_snapshot: resolved.unit,
+        plan_duration_label_snapshot: resolved.label,
+      },
+    } as never)
+    .eq("id", result.licenseId);
+
   await logAudit({
     userId: adminId,
     action: standalone ? "license.standalone_generated" : "license.manual_generated",
@@ -180,7 +270,10 @@ export async function loadTokenPlans() {
     .eq("active", true)
     .order("sort_order", { ascending: true });
 
-  if (!activeError && activePlans?.length) return activePlans;
+  if (!activeError && activePlans?.length) {
+    await repairLegacyTrialDurations(activePlans as Record<string, any>[]);
+    return activePlans;
+  }
 
   const { data: all, error: allError } = await supabaseAdmin
     .from("plans")
@@ -192,5 +285,7 @@ export async function loadTokenPlans() {
     return [];
   }
 
-  return (all ?? []) as Record<string, any>[];
+  const plans = (all ?? []) as Record<string, any>[];
+  await repairLegacyTrialDurations(plans);
+  return plans;
 }
