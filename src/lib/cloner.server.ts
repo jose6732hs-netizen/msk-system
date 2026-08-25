@@ -473,7 +473,7 @@ async function clonerTransactions(ids: string[]) {
   const bundleIds = [...new Set((bundleEvents ?? []).map((row: any) => row.transaction_id).filter(Boolean))] as string[];
   const bundles = bundleIds.length ? await fetchByIds(bundleIds) : [];
   const unique = new Map<string, any>();
-  for (const row of [...direct, ...bundles]) unique.set(String(row.id), row);
+  for (const row of [...direct, ...bundles]) unique.set(String((row as any).id), row);
   return [...unique.values()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }
 
