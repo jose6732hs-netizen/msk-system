@@ -67,22 +67,32 @@ function parsedFromLabel(label?: string | null): { value: number; unit: Exclude<
 /**
  * Resolve a validade do plano sem assumir "30 dias" silenciosamente.
  *
- * Planos antigos podem ter ficado com duration_value/duration_unit em 30 dias
- * mesmo quando o Super Admin salvou um rótulo como "15 minutos". Como o rótulo
- * é exatamente o que o painel e o cliente enxergam, um rótulo temporal válido
- * tem prioridade sobre campos estruturados conflitantes. Ao salvar novamente o
- * plano, os campos estruturados também são normalizados.
+ * O plano FREE/TESTE é uma regra de produto: sempre dura 15 minutos. Essa regra
+ * vem antes dos campos legados do banco para impedir que um registro antigo com
+ * duration_value=30/days transforme novamente o teste em 30 dias.
  */
 export function resolvePlanDuration(plan: PlanDurationLike): ResolvedPlanDuration {
-  const text = `${plan.name ?? ""} ${plan.slug ?? ""} ${plan.duration_label ?? ""}`.toLowerCase();
+  const identity = `${plan.name ?? ""} ${plan.slug ?? ""}`.toLowerCase();
+  const text = `${identity} ${plan.duration_label ?? ""}`.toLowerCase();
   const labelSaysLifetime = /vital[ií]c|lifetime/.test(text);
 
   if (plan.is_lifetime === true || normalizeUnit(plan.duration_unit) === "lifetime" || labelSaysLifetime) {
     return { lifetime: true, milliseconds: null, value: null, unit: "lifetime", label: "Vitalício" };
   }
 
-  // Primeiro respeita a validade visível configurada no painel. Isso corrige
-  // registros legados como "15 minutos" + duration_value=30/days.
+  const isFreeTrial =
+    /free|gr[aá]tis|teste|trial/.test(identity) ||
+    (plan.allow_trial === true && Number(plan.price ?? 0) === 0);
+  if (isFreeTrial) {
+    return {
+      lifetime: false,
+      milliseconds: 15 * UNIT_MS.minutes,
+      value: 15,
+      unit: "minutes",
+      label: "15 minutos",
+    };
+  }
+
   const parsed = parsedFromLabel(plan.duration_label);
   if (parsed) {
     return {
@@ -117,11 +127,6 @@ export function resolvePlanDuration(plan: PlanDurationLike): ResolvedPlanDuratio
     };
   }
 
-  // Recuperação de planos legados com nome conhecido, sem transformar um plano
-  // desconhecido em 30 dias por engano.
-  if (/free|gr[aá]tis|teste|trial/.test(text)) {
-    return { lifetime: false, milliseconds: 15 * UNIT_MS.minutes, value: 15, unit: "minutes", label: "15 minutos" };
-  }
   if (/di[aá]ri/.test(text)) {
     return { lifetime: false, milliseconds: UNIT_MS.days, value: 1, unit: "days", label: "1 dia" };
   }
