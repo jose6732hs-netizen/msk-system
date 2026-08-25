@@ -3,6 +3,7 @@
  * Roda SOMENTE no servidor. Nunca importar em componentes.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { resolvePlanDuration } from "./plan-duration";
 
 const TOKEN_PREFIX = "MSK";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem I,O,0,1
@@ -58,8 +59,6 @@ export async function verifySignature(data: string, signature: string): Promise<
     return false;
   }
 }
-
-
 
 /** Hash com pepper do servidor — só o hash é usado para lookup/validação. */
 export async function hashToken(token: string): Promise<string> {
@@ -167,9 +166,9 @@ export type ResolvedLicense = {
 };
 
 const LICENSE_SELECT =
-  "id,user_id,plan_id,subscription_id,status,expires_at,max_devices,activated_at,type,metadata,plans(slug,name,features)";
+  "id,user_id,plan_id,subscription_id,status,expires_at,max_devices,activated_at,type,metadata,plans(slug,name,features,price,allow_trial,is_lifetime,duration_label,duration_days,duration_value,duration_unit)";
 
-/** Busca licença pelo hash e aplica expiração automática. */
+/** Busca licença pelo hash e aplica reconciliação/expiração automática. */
 export async function findLicenseByToken(token: string) {
   const token_hash = await hashToken(token);
   const { data } = await supabaseAdmin
@@ -181,7 +180,65 @@ export async function findLicenseByToken(token: string) {
   return applyExpiry(data as never);
 }
 
+/**
+ * Corrige automaticamente trials antigos cuja expiração ficou diferente da
+ * validade visível do plano. Isso impede um FREE de 15 minutos de continuar
+ * válido por 30 dias por causa de campos legados inconsistentes.
+ */
+async function reconcileTrialDuration(license: Record<string, unknown>) {
+  const type = String(license["type"] ?? "").toLowerCase();
+  if (type !== "trial" && type !== "test") return license;
+
+  const plan = license["plans"] as Record<string, any> | null | undefined;
+  const activatedAt = license["activated_at"] as string | null | undefined;
+  if (!plan || !activatedAt) return license;
+
+  try {
+    const resolved = resolvePlanDuration(plan);
+    if (resolved.lifetime || !resolved.milliseconds) return license;
+
+    const expectedMs = new Date(activatedAt).getTime() + resolved.milliseconds;
+    const currentIso = license["expires_at"] as string | null;
+    const currentMs = currentIso ? new Date(currentIso).getTime() : 0;
+    const mismatch = !currentMs || Math.abs(currentMs - expectedMs) > 30_000;
+    if (!mismatch) return license;
+
+    const nextStatus = expectedMs <= Date.now() ? "expired" : "active";
+    const metadata = {
+      ...((license["metadata"] ?? {}) as Record<string, any>),
+      plan_duration_value_snapshot: resolved.value,
+      plan_duration_unit_snapshot: resolved.unit,
+      plan_duration_label_snapshot: resolved.label,
+      repaired_duration_at: new Date().toISOString(),
+    };
+
+    const expiresAt = new Date(expectedMs).toISOString();
+    const { error } = await supabaseAdmin
+      .from("licenses")
+      .update({ expires_at: expiresAt, status: nextStatus, metadata } as never)
+      .eq("id", license["id"] as string);
+
+    if (!error) {
+      license["expires_at"] = expiresAt;
+      license["status"] = nextStatus;
+      license["metadata"] = metadata;
+      await logEvent({
+        license_id: license["id"] as string,
+        user_id: license["user_id"] as string,
+        event_type: "duration_reconciled",
+        metadata: { duration: resolved.label },
+      });
+    }
+  } catch (error) {
+    console.error("[license] Falha ao reconciliar duração do trial:", error);
+  }
+
+  return license;
+}
+
 export async function applyExpiry(license: Record<string, unknown>) {
+  await reconcileTrialDuration(license);
+
   const expires = license["expires_at"] as string | null;
   const status = license["status"] as string;
   if (
@@ -280,10 +337,11 @@ export async function issueOrRenewLicense(params: {
   if (!plan) throw new Error("Plano não encontrado");
 
   const now = new Date();
-  const addDays = (from: Date) =>
-    plan.is_lifetime || !plan.duration_days
+  const resolved = resolvePlanDuration(plan);
+  const addDuration = (from: Date) =>
+    resolved.lifetime || !resolved.milliseconds
       ? null
-      : new Date(from.getTime() + plan.duration_days * 86400000).toISOString();
+      : new Date(from.getTime() + resolved.milliseconds).toISOString();
 
   const { data: existing } = await supabaseAdmin
     .from("licenses")
@@ -302,7 +360,7 @@ export async function issueOrRenewLicense(params: {
       .from("licenses")
       .update({
         status: "active",
-        expires_at: addDays(base),
+        expires_at: addDuration(base),
         plan_id: plan.id,
         max_devices: plan.max_devices,
         revoked_at: null,
@@ -313,7 +371,7 @@ export async function issueOrRenewLicense(params: {
       license_id: existing.id,
       user_id: params.userId,
       event_type: "renewed",
-      metadata: { plan: plan.slug },
+      metadata: { plan: plan.slug, duration: resolved.label },
     });
     return { licenseId: existing.id, created: false };
   }
@@ -331,8 +389,13 @@ export async function issueOrRenewLicense(params: {
       token_preview: maskToken(token),
       status: "inactive",
       activated_at: null,
-      expires_at: addDays(now),
+      expires_at: addDuration(now),
       max_devices: plan.max_devices,
+      metadata: {
+        plan_duration_value_snapshot: resolved.value,
+        plan_duration_unit_snapshot: resolved.unit,
+        plan_duration_label_snapshot: resolved.label,
+      },
     })
     .select("id")
     .single();
@@ -342,7 +405,7 @@ export async function issueOrRenewLicense(params: {
     license_id: created.id,
     user_id: params.userId,
     event_type: "license_created",
-    metadata: { plan: plan.slug },
+    metadata: { plan: plan.slug, duration: resolved.label },
   });
   return { licenseId: created.id, created: true };
 }
