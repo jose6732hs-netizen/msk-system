@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { RequiredPhoneGate } from "@/components/msk/required-phone-gate";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -16,15 +17,10 @@ function AuthenticatedLayout() {
   const isAdmin = pathname.startsWith("/admin");
 
   return (
-    <>
+    <RequiredPhoneGate>
       {isAdmin && (
         <style>{`
           @media (min-width: 1024px) {
-            /*
-             * Esta folha só é montada dentro da rota /admin.
-             * O sidebar desktop do Super Admin possui as classes hidden/w-64/lg:flex.
-             * Ele fica preso à viewport; somente o conteúdo principal rola.
-             */
             aside.hidden.w-64.lg\\:flex {
               position: fixed !important;
               top: 0 !important;
@@ -54,10 +50,6 @@ function AuthenticatedLayout() {
               display: none;
             }
 
-            /*
-             * O conteúdo é o irmão imediatamente seguinte do sidebar.
-             * Reserva os 256px ocupados pelo menu fixo.
-             */
             aside.hidden.w-64.lg\\:flex + div {
               margin-left: 16rem !important;
               width: calc(100% - 16rem) !important;
@@ -68,6 +60,6 @@ function AuthenticatedLayout() {
         `}</style>
       )}
       <Outlet />
-    </>
+    </RequiredPhoneGate>
   );
 }
