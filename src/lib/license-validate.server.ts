@@ -13,7 +13,10 @@ export const validateSchema = z.object({
   token: z.string().min(8).max(64),
   device_fingerprint: z.string().min(8).max(256).optional(),
   installation_id: z.string().min(8).max(128).optional(),
+  // Compatibilidade com builds antigos da MSK COPY.
+  deviceId: z.string().min(8).max(256).optional(),
   extension_version: z.string().max(32).optional(),
+  product: z.string().max(40).optional(),
 });
 
 type LicenseRow = {
@@ -25,7 +28,7 @@ type LicenseRow = {
   expires_at: string | null;
   max_devices: number;
   metadata: Record<string, unknown> | null;
-  plans: { slug: string; name: string; features: Record<string, boolean> } | null;
+  plans: { slug: string; name: string; features: Record<string, boolean> | null } | null;
 };
 
 const LOCKED = {
@@ -45,16 +48,28 @@ async function recoverDurationFromPlan(planId: string) {
   return plan ? resolvePlanDuration(plan) : null;
 }
 
+function productAllowed(license: LicenseRow, product?: string) {
+  if (!product) return true;
+  if (product !== "msk-copy") return false;
+  const slug = String(license.plans?.slug ?? "").toLowerCase();
+  const features = license.plans?.features ?? {};
+  return slug.startsWith("page-cloner-") || features["page_cloner"] === true;
+}
+
 /** Lógica compartilhada por /validate e /heartbeat. */
 export async function handleValidation(request: Request, bucket: string, limit: number) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const ip = clientIp(request);
+  const respond = (body: unknown, status = 200) => jsonResponse(body, status, request);
+
   if (!(await rateLimit(bucket, ip, limit))) {
-    return jsonResponse({ success: false, error: "RATE_LIMITED" }, 429);
+    return respond({ success: false, valid: false, error: "RATE_LIMITED", code: "RATE_LIMITED" }, 429);
   }
 
   const parsed = validateSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
+  if (!parsed.success) {
+    return respond({ success: false, valid: false, error: "INVALID_REQUEST", code: "INVALID_REQUEST" }, 400);
+  }
 
   const license = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
   if (!license) {
@@ -69,18 +84,41 @@ export async function handleValidation(request: Request, bucket: string, limit: 
         error: "Token not found in database",
       },
     });
-    return jsonResponse(
+    return respond(
       {
         success: false,
+        valid: false,
         error: "LICENSE_INVALID",
+        code: "LICENSE_INVALID",
         message: "Token inválido. Confira os caracteres e tente novamente.",
       },
       404,
     );
   }
 
-  const identity = parsed.data.installation_id ?? parsed.data.device_fingerprint;
-  if (!identity) return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
+  if (!productAllowed(license, parsed.data.product)) {
+    await logEvent({
+      license_id: license.id,
+      user_id: license.user_id,
+      event_type: "product_mismatch",
+      metadata: { requested_product: parsed.data.product ?? null, plan: license.plans?.slug ?? null },
+    });
+    return respond(
+      {
+        success: false,
+        valid: false,
+        error: "LICENSE_PRODUCT_MISMATCH",
+        code: "LICENSE_PRODUCT_MISMATCH",
+        message: "Este token não pertence ao MSK COPY. Use uma licença do Clonador.",
+      },
+      403,
+    );
+  }
+
+  const identity = parsed.data.installation_id ?? parsed.data.device_fingerprint ?? parsed.data.deviceId;
+  if (!identity) {
+    return respond({ success: false, valid: false, error: "INVALID_REQUEST", code: "INVALID_REQUEST" }, 400);
+  }
   const deviceHash = await hashValue(identity);
 
   if (license.status === "inactive") {
@@ -96,15 +134,13 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       patch["expires_at"] = expiresAt;
       license.expires_at = expiresAt;
     } else if (!license.expires_at) {
-      // Compatibilidade com licenças antigas: primeiro snapshots; depois o plano real.
       const snapVal = Number((license.metadata as any)?.["plan_duration_value_snapshot"] ?? 0);
       const snapUnit = String((license.metadata as any)?.["plan_duration_unit_snapshot"] || "");
       let recoveredMs = 0;
 
       if (snapVal > 0 && snapUnit) {
         try {
-          recoveredMs =
-            resolvePlanDuration({ duration_value: snapVal, duration_unit: snapUnit }).milliseconds ?? 0;
+          recoveredMs = resolvePlanDuration({ duration_value: snapVal, duration_unit: snapUnit }).milliseconds ?? 0;
         } catch {
           recoveredMs = 0;
         }
@@ -121,7 +157,6 @@ export async function handleValidation(request: Request, bucket: string, limit: 
         patch["expires_at"] = expiresAt;
         license.expires_at = expiresAt;
       }
-      // Sem duração recuperável, não inventa 30 dias. O plano precisa ser corrigido no admin.
     }
 
     await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
@@ -155,7 +190,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       .insert({
         license_id: license.id,
         device_hash: deviceHash,
-        installation_id: parsed.data.installation_id ?? null,
+        installation_id: parsed.data.installation_id ?? parsed.data.deviceId ?? null,
         status: "active",
         last_seen: new Date().toISOString(),
         last_ip_hash: await hashValue(ip),
@@ -166,8 +201,14 @@ export async function handleValidation(request: Request, bucket: string, limit: 
   }
 
   if (!device || device.status !== "active") {
-    return jsonResponse(
-      { success: false, error: "DEVICE_NOT_REGISTERED", status: license.status.toUpperCase() },
+    return respond(
+      {
+        success: false,
+        valid: false,
+        error: "DEVICE_NOT_REGISTERED",
+        code: "DEVICE_NOT_REGISTERED",
+        status: license.status.toUpperCase(),
+      },
       403,
     );
   }
@@ -185,6 +226,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     user_id: license.user_id,
     event_type: bucket === "heartbeat" ? "heartbeat" : "validated",
     device_hash: deviceHash,
+    metadata: parsed.data.product ? { product: parsed.data.product, extension_version: parsed.data.extension_version ?? null } : {},
   });
 
   const responseData = {
@@ -201,11 +243,15 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       devices_used: 1,
       features: active ? (license.plans?.features ?? LOCKED) : LOCKED,
     },
+    // Aliases para builds antigos da extensão.
+    expiresAt: license.expires_at,
+    planName: license.plans?.name ?? null,
+    planSlug: license.plans?.slug ?? null,
     timestamp: Date.now(),
   };
 
   const { signData } = await import("./license.server");
   const signature = await signData(JSON.stringify(responseData));
 
-  return jsonResponse({ ...responseData, signature });
+  return respond({ ...responseData, signature });
 }
