@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { isValidCPF, isValidPhoneBR, onlyDigits } from "./br";
 
 /** Visão consolidada da aba "Gerar token" (saldo, tokens e teste). */
 export const getTokenOverview = createServerFn({ method: "GET" })
@@ -46,6 +47,25 @@ export const startFreeTrial = createServerFn({ method: "POST" })
     z.object({ installationId: z.string().max(128).optional() }).parse(d ?? {}),
   )
   .handler(async ({ context, data }) => {
+    // Segurança server-side: não basta esconder o botão na tela.
+    // Toda licença FREE exige telefone + CPF válidos vinculados ao perfil.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("phone,document")
+      .eq("id", context.userId)
+      .maybeSingle();
+    if (profileError) throw profileError;
+
+    const phone = onlyDigits(profile?.phone ?? "");
+    const cpf = onlyDigits(profile?.document ?? "");
+    if (!isValidPhoneBR(phone)) {
+      throw new Error("Informe e confirme um telefone válido antes de gerar a licença grátis.");
+    }
+    if (!isValidCPF(cpf)) {
+      throw new Error("Informe um CPF válido antes de gerar a licença grátis.");
+    }
+
     const { getRequest } = await import("@tanstack/react-start/server");
     const { startTrial } = await import("./tokens.server");
     const headers = getRequest().headers;
