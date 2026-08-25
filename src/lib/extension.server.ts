@@ -40,12 +40,14 @@ async function syncChannelFromBuild(input: {
   channelSlug: string;
   version: string;
   fileName: string;
+  displayName?: string | undefined;
 }) {
+  const displayName = input.displayName?.trim() || extensionNameFromFile(input.fileName, input.version);
   const { error } = await supabaseAdmin
     .from("extension_channels")
     .update({
       version: input.version.trim(),
-      display_name: extensionNameFromFile(input.fileName, input.version),
+      display_name: displayName,
       updated_at: new Date().toISOString(),
     } as never)
     .eq("slug", input.channelSlug);
@@ -87,6 +89,7 @@ export async function registerBuild(
     sizeBytes: number;
     releaseNotes?: string | undefined;
     channelSlug?: string | undefined;
+    displayName?: string | undefined;
     publish: boolean;
   },
   adminId: string,
@@ -125,6 +128,7 @@ export async function registerBuild(
       channelSlug,
       version: input.version,
       fileName: input.fileName,
+      displayName: input.displayName,
     });
   }
 
@@ -137,7 +141,7 @@ export async function registerBuild(
       version: input.version,
       published: input.publish,
       channelSlug,
-      displayName: extensionNameFromFile(input.fileName, input.version),
+      displayName: input.displayName?.trim() || extensionNameFromFile(input.fileName, input.version),
     },
   });
   return { ok: true, id: (data as { id: string }).id };
