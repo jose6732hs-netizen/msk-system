@@ -404,7 +404,7 @@ function TokenDeliveryCard({
     return {
       productName: "MSK Suite - Extensão Premium",
       planName: plan?.name || metadata["plan_name_snapshot"] || (isTrial ? "Teste Gratuito" : "Manual"),
-      planDuration: isLifetime ? "VITALÍCIA" : duration,
+      planDuration: isLifetime ? "VITALÍCIA" : duration ?? "—",
       maxDevices: license.max_devices || 1,
       licenseKey: fullToken,
       activationInfo,

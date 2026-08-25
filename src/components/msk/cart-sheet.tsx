@@ -235,7 +235,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
       : null);
 
     if (!bill) {
-      setPendingPay({ planId, planName });
+      setPendingPay({ planId: planId ?? "", planName: planName ?? "" });
       setPayingPlanId(planId ?? "");
       setAskPayer(true);
       setOpen(true);

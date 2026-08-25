@@ -149,7 +149,7 @@ function ClonagemEntrega() {
             </section>
 
             <section className={`grid min-w-0 gap-4 ${data.licenses?.length > 1 ? "lg:grid-cols-2" : "max-w-2xl mx-auto"}`}>
-              {(data.licenses ?? [data.license]).filter(Boolean).map((license: any) => (
+              {(data.licenses ?? [(data as any).license]).filter(Boolean).map((license: any) => (
                 <LicenseCard key={license.id} license={license} onCopy={() => void copyToken(license.token)} />
               ))}
             </section>
