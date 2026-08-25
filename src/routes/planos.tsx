@@ -8,6 +8,7 @@ import {
   Minus,
   Plus,
   RefreshCw,
+  Share2,
   ShoppingCart,
   Trash2,
   X,
@@ -192,6 +193,24 @@ function PlanosPage() {
     window.setTimeout(() => {
       document.getElementById("checkout-cart")?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 120);
+  }
+
+  async function sharePlan(plan: any) {
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("offer", String(plan.slug ?? plan.id));
+    const url = shareUrl.toString();
+    const duration = !plan.is_lifetime && plan.duration_label ? ` · ${plan.duration_label}` : "";
+    const text = `${plan.name}${duration} · ${formatPrice(Number(plan.price ?? 0), plan.currency)}. Confira esta oferta da MSK SISTEM.`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: plan.name, text, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success(`Link de ${plan.name} copiado.`);
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== "AbortError") toast.error("Não foi possível compartilhar esta oferta agora.");
+    }
   }
 
   async function addToCart(plan: any) {
@@ -497,7 +516,10 @@ function PlanosPage() {
                       <p className="break-words text-[10px] font-black uppercase tracking-[.18em] text-primary">{plan.name}</p>
                       <div className="mt-3 flex flex-wrap items-baseline gap-2"><span className="text-3xl font-black text-white">{formatPrice(Number(plan.price), plan.currency)}</span>{!plan.is_lifetime ? <span className="text-[10px] font-bold uppercase text-muted-foreground">/{plan.duration_label}</span> : null}</div>
                       <ul className="mt-5 flex-1 space-y-2.5">{(plan.highlights ?? []).map((h: string) => <li key={h} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground"><span className="mt-0.5 rounded-full bg-primary p-0.5 text-black"><Check className="h-2.5 w-2.5" /></span><span className="min-w-0 break-words">{h}</span></li>)}</ul>
-                      <Button className="mt-5 min-h-14 w-full whitespace-normal rounded-2xl bg-[#22C55E] px-4 text-center text-xs font-black uppercase leading-tight text-white hover:bg-[#28D56A]" disabled={loadingPlan === plan.id} onClick={() => void addToCart(plan)}>{loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isFree ? "Testar grátis" : "Adicionar ao carrinho"}</Button>
+                      <div className="mt-5 grid grid-cols-2 gap-2">
+                        <Button className="min-h-14 w-full whitespace-normal rounded-2xl bg-[#22C55E] px-3 text-center text-[10px] font-black uppercase leading-tight text-white hover:bg-[#28D56A] sm:text-xs" disabled={loadingPlan === plan.id} onClick={() => void addToCart(plan)}>{loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isFree ? "Testar grátis" : "Adicionar"}</Button>
+                        <Button type="button" variant="ghost" className="min-h-14 w-full whitespace-normal rounded-2xl border border-white/10 px-3 text-center text-[10px] font-black uppercase text-white/70 hover:border-primary/30 hover:text-primary sm:text-xs" onClick={() => void sharePlan(plan)}><Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar</Button>
+                      </div>
                     </div>
                   </article>
                 );
