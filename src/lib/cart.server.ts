@@ -13,6 +13,7 @@ export type CartLine = {
   lineTotal: number;
   highlights: string[];
   isLifetime: boolean;
+  imageUrl: string | null;
 };
 
 export async function loadCart(userId: string) {
@@ -24,12 +25,19 @@ export async function loadCart(userId: string) {
 
   const rows = (items ?? []) as Record<string, any>[];
   if (!rows.length) {
-    return { lines: [] as CartLine[], subtotal: 0, discount: 0, total: 0, resellerCode: null as string | null, affiliateCode: null as string | null };
+    return {
+      lines: [] as CartLine[],
+      subtotal: 0,
+      discount: 0,
+      total: 0,
+      resellerCode: null as string | null,
+      affiliateCode: null as string | null,
+    };
   }
 
   const { data: plans } = await supabaseAdmin
     .from("plans")
-    .select("id,name,slug,description,price,duration_label,highlights,is_lifetime,active")
+    .select("id,name,slug,description,price,duration_label,highlights,is_lifetime,active,image_url")
     .in("id", rows.map((r) => r["plan_id"]));
   const byId = new Map((plans ?? []).map((p: any) => [p.id, p]));
 
@@ -64,6 +72,7 @@ export async function loadCart(userId: string) {
         lineTotal: price * quantity,
         highlights: (plan["highlights"] ?? []) as string[],
         isLifetime: !!plan["is_lifetime"],
+        imageUrl: plan["image_url"] ?? null,
       };
     });
 
