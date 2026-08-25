@@ -12,6 +12,7 @@ import { MskLogo } from "./logo";
 
 const NAV = [
   { to: "/planos", label: "Planos" },
+  { to: "/clonagem", label: "Clonador" },
   { to: "/documentacao", label: "Documentação" },
   { to: "/como-funciona", label: "Como Funciona" },
   { to: "/parceiro", label: "Afiliados" },
