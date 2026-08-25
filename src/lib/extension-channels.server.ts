@@ -94,7 +94,7 @@ export async function listExtensionChannels(): Promise<ExtensionChannel[]> {
     if (!latestBuildByChannel.has(slug)) latestBuildByChannel.set(slug, raw);
   }
 
-  const rows = ((data ?? []) as Record<string, any>[]).map((row) => {
+  const rows = ((data ?? []) as any[]).map((row) => {
     const latest = latestBuildByChannel.get(String(row.slug));
     if (!latest) return normalizeChannel(row);
 
@@ -111,7 +111,7 @@ export async function listExtensionChannels(): Promise<ExtensionChannel[]> {
   // persistidos no banco depois do primeiro carregamento do Admin.
   await Promise.all(
     rows.map(async (channel) => {
-      const original = (data ?? []).find((r: any) => r.id === channel.id) as Record<string, any> | undefined;
+      const original = (data ?? []).find((r: any) => r.id === channel.id) as any;
       if (!original) return;
       if (String(original.display_name) === channel.display_name && String(original.version) === channel.version) return;
 
