@@ -16,8 +16,8 @@ import type { Plugin } from "vite";
  * reais e estar sendo atualizado a cada tecla. Mantemos a tela existente intacta
  * e substituímos somente o bloco de preview durante a transformação do módulo.
  *
- * Isso também permite que o preview use o componente dedicado, que cobre todas
- * as etapas e lê o estado local (inclusive alterações ainda não salvas).
+ * O editor também passa a usar getCmsEditorContent: conteúdo publicado + último
+ * rascunho salvo, sem expor os rascunhos nas páginas públicas.
  */
 function adminLivePreviewFix(): Plugin {
   return {
@@ -33,6 +33,15 @@ function adminLivePreviewFix(): Plugin {
       if (!next.includes(previewImport)) {
         next = next.replace(tutorialImport, `${tutorialImport}\n${previewImport}`);
       }
+
+      next = next.replace(
+        'import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";',
+        'import { getCmsContent, getCmsEditorContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";',
+      );
+      next = next.replace(
+        "const getCms = useServerFn(getCmsContent);",
+        "const getCms = useServerFn(getCmsEditorContent);",
+      );
 
       const previewStart = '          <div className="mt-16 h-full p-8 overflow-y-auto no-scrollbar pb-24">';
       const previewEnd = '\n          </div>\n        </div>\n      </div>\n      </div>\n    </div>';
