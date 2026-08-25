@@ -18,9 +18,9 @@ export const isAdmin = createServerFn({ method: "GET" })
 export const adminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({ 
+    z.object({
       search: z.string().max(120).optional(),
-      userSearch: z.string().max(120).optional()
+      userSearch: z.string().max(120).optional(),
     }).parse(d ?? {}),
   )
   .handler(async ({ context, data }) => {
@@ -28,7 +28,6 @@ export const adminOverview = createServerFn({ method: "GET" })
     const { loadAdminOverview } = await import("./admin.server");
     return loadAdminOverview(data.search ?? "", data.userSearch ?? "");
   });
-
 
 export const adminLicenseAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -52,6 +51,12 @@ export const adminGetLicenseDetails = createServerFn({ method: "GET" })
       .single();
     if (error) throw error;
 
+    // Antes de montar/copyar a mensagem, aplica a mesma reconciliação usada pela
+    // API da extensão. Isso corrige imediatamente trials antigos (ex.: FREE de
+    // 15 minutos que havia sido salvo incorretamente como 30 dias).
+    const { decryptToken, applyExpiry } = await import("./license.server");
+    await applyExpiry(license as unknown as Record<string, unknown>);
+
     let profiles: any = null;
     if (license.user_id) {
       const { data: p } = await supabaseAdmin
@@ -62,8 +67,6 @@ export const adminGetLicenseDetails = createServerFn({ method: "GET" })
       profiles = p ?? null;
     }
 
-    // Decrypt the token for the admin to copy the full message
-    const { decryptToken } = await import("./license.server");
     const fullToken = license.token_encrypted ? await decryptToken(license.token_encrypted) : null;
 
     return { ...license, profiles, fullToken };
@@ -82,7 +85,6 @@ export const adminRemoveDevice = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const adminSavePlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => planSchema.parse(d))
@@ -93,7 +95,6 @@ export const adminSavePlan = createServerFn({ method: "POST" })
   });
 
 /* ============ Gateways de pagamento (Amplo Pay + SigiloPay) ============ */
-
 
 export const adminGatewaySettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -164,7 +165,6 @@ export const adminTestGateway = createServerFn({ method: "POST" })
     }
   });
 
-
 export const adminFinanceOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -218,9 +218,8 @@ export const adminWithdrawalAction = createServerFn({ method: "POST" })
 export const adminTokenPlans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    // Restoring strict Super Admin check for manual token generation
     await assertSuperAdmin(context.supabase, context.userId);
-    
+
     const { loadTokenPlans } = await import("./admin-tokens.server");
     return { plans: await loadTokenPlans() };
   });
@@ -252,7 +251,6 @@ export const adminGenerateToken = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ context, data }) => {
-    // Restoring strict Super Admin check for manual token generation
     await assertSuperAdmin(context.supabase, context.userId);
 
     const { generateManualToken } = await import("./admin-tokens.server");
@@ -273,14 +271,19 @@ export const adminUserAction = createServerFn({ method: "POST" })
     const { logAudit } = await import("./audit.server");
 
     if (data.action === "reset_password") {
-      // In Supabase, admin can send a reset email or update the password directly
-      // Here we'll generate a recovery link via Supabase Auth Admin
       const { data: recovery, error } = await supabaseAdmin.auth.admin.generateLink({
-        type: 'recovery',
-        email: (await supabaseAdmin.from("profiles").select("email").eq("id", data.userId).single()).data?.email || "",
+        type: "recovery",
+        email:
+          (await supabaseAdmin.from("profiles").select("email").eq("id", data.userId).single()).data?.email ||
+          "",
       });
       if (error) throw error;
-      await logAudit({ userId: context.userId, action: "user.password_reset_requested", resource: "profiles", resourceId: data.userId });
+      await logAudit({
+        userId: context.userId,
+        action: "user.password_reset_requested",
+        resource: "profiles",
+        resourceId: data.userId,
+      });
       return { ok: true, link: recovery.properties.action_link };
     }
 
@@ -290,23 +293,35 @@ export const adminUserAction = createServerFn({ method: "POST" })
         .update({ withdrawal_password_hash: null, withdrawal_attempts: 0, withdrawal_blocked_at: null } as never)
         .eq("user_id", data.userId);
       if (error) throw error;
-      await logAudit({ userId: context.userId, action: "user.withdrawal_password_reset", resource: "profiles", resourceId: data.userId });
+      await logAudit({
+        userId: context.userId,
+        action: "user.withdrawal_password_reset",
+        resource: "profiles",
+        resourceId: data.userId,
+      });
       return { ok: true };
     }
 
     if (data.action === "block_user") {
-      // Logic to block user access globally
-      // In this system, blocking might involve adding a 'blocked' role or status
-      const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, { ban_duration: 'none' }); // 'none' means permanent ban in some providers, but Supabase uses ban_duration
-      // Let's use a custom status in profiles for better app-level control
-      await supabaseAdmin.from("profiles").update({ status: 'blocked' } as any).eq("id", data.userId);
-      await logAudit({ userId: context.userId, action: "user.blocked", resource: "profiles", resourceId: data.userId });
+      await supabaseAdmin.auth.admin.updateUserById(data.userId, { ban_duration: "none" });
+      await supabaseAdmin.from("profiles").update({ status: "blocked" } as any).eq("id", data.userId);
+      await logAudit({
+        userId: context.userId,
+        action: "user.blocked",
+        resource: "profiles",
+        resourceId: data.userId,
+      });
       return { ok: true };
     }
 
     if (data.action === "unblock_user") {
-      await supabaseAdmin.from("profiles").update({ status: 'active' } as any).eq("id", data.userId);
-      await logAudit({ userId: context.userId, action: "user.unblocked", resource: "profiles", resourceId: data.userId });
+      await supabaseAdmin.from("profiles").update({ status: "active" } as any).eq("id", data.userId);
+      await logAudit({
+        userId: context.userId,
+        action: "user.unblocked",
+        resource: "profiles",
+        resourceId: data.userId,
+      });
       return { ok: true };
     }
 
