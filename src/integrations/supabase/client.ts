@@ -7,6 +7,12 @@ function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
 
+function envConfig() {
+  const url = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
+  const key = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
+  return { url, key };
+}
+
 function createSupabaseFetch(supabaseKey: string): typeof fetch {
   return (input, init) => {
     const headers = new Headers(
@@ -27,11 +33,36 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+async function assertSupabaseOAuthProvider(provider: 'github' | 'discord') {
+  const { url, key } = envConfig();
+  if (!url || !key) return;
+
+  try {
+    const response = await fetch(`${url}/auth/v1/settings`, {
+      headers: { apikey: key },
+    });
+    if (!response.ok) return;
+
+    const settings = (await response.json()) as {
+      external?: Record<string, boolean | undefined>;
+    };
+
+    if (settings.external?.[provider] !== true) {
+      const label = provider === 'github' ? 'GitHub' : 'Discord';
+      throw new Error(
+        `${label} OAuth não está configurado no Supabase. Ative o provider e use o callback ${url}/auth/v1/callback.`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && /OAuth não está configurado/.test(error.message)) throw error;
+    // Falha temporária na consulta de settings não deve impedir um provider que esteja ativo.
+  }
+}
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env['VITE_SUPABASE_URL'] || process.env['SUPABASE_URL'];
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env['VITE_SUPABASE_PUBLISHABLE_KEY'] || process.env['SUPABASE_PUBLISHABLE_KEY'];
+  const { url: SUPABASE_URL, key: SUPABASE_PUBLISHABLE_KEY } = envConfig();
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
@@ -59,13 +90,8 @@ let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
 let _authProxy: ReturnType<typeof createSupabaseClient>['auth'] | undefined;
 
 /**
- * O Lovable Cloud possui OAuth próprio para Apple. A tela de autenticação antiga
- * chamava Apple pelo Supabase, enquanto Google já usava Lovable Auth. Isso fazia
- * Apple depender de um provider duplicado/configurado separadamente no Supabase.
- *
- * Interceptamos apenas Apple e mantemos GitHub/Discord e demais providers no
- * fluxo nativo do Supabase. O import dinâmico evita ciclo durante a inicialização,
- * já que a integração Lovable também usa este cliente para persistir a sessão.
+ * Apple usa Lovable Auth, igual ao Google. GitHub e Discord permanecem no
+ * Supabase OAuth, mas com verificação de provider e redirecionamento explícito.
  */
 function getAuthProxy(client: ReturnType<typeof createSupabaseClient>) {
   if (_authProxy) return _authProxy;
@@ -87,6 +113,24 @@ function getAuthProxy(client: ReturnType<typeof createSupabaseClient>) {
               data: { provider: 'apple', url: null },
               error: result.error ?? null,
             } as any;
+          }
+
+          if (credentials?.provider === 'github' || credentials?.provider === 'discord') {
+            const provider = credentials.provider as 'github' | 'discord';
+            await assertSupabaseOAuthProvider(provider);
+
+            const result = await target.signInWithOAuth({
+              ...credentials,
+              options: {
+                ...(credentials.options ?? {}),
+                skipBrowserRedirect: true,
+              },
+            });
+
+            if (!result.error && result.data?.url && typeof window !== 'undefined') {
+              window.location.assign(result.data.url);
+            }
+            return result;
           }
 
           return target.signInWithOAuth(credentials);
