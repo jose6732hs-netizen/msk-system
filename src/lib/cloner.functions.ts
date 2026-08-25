@@ -47,7 +47,8 @@ export const getSmartOffer = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => z.object({ planId: z.string().uuid() }).parse(d))
   .handler(async ({ context, data }) => {
     const { getSmartOfferForPlan } = await import("./cloner.server");
-    return getSmartOfferForPlan(context.userId, data.planId);
+    const { enrichSmartOffer } = await import("./cloner-plan-overrides.server");
+    return enrichSmartOffer(await getSmartOfferForPlan(context.userId, data.planId));
   });
 
 export const startSmartBundleCheckout = createServerFn({ method: "POST" })
