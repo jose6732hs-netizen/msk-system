@@ -66,8 +66,12 @@ function parsedFromLabel(label?: string | null): { value: number; unit: Exclude<
 
 /**
  * Resolve a validade do plano sem assumir "30 dias" silenciosamente.
- * A ordem prioriza os campos estruturados do banco e usa rótulo/nome apenas
- * como recuperação para planos antigos.
+ *
+ * Planos antigos podem ter ficado com duration_value/duration_unit em 30 dias
+ * mesmo quando o Super Admin salvou um rótulo como "15 minutos". Como o rótulo
+ * é exatamente o que o painel e o cliente enxergam, um rótulo temporal válido
+ * tem prioridade sobre campos estruturados conflitantes. Ao salvar novamente o
+ * plano, os campos estruturados também são normalizados.
  */
 export function resolvePlanDuration(plan: PlanDurationLike): ResolvedPlanDuration {
   const text = `${plan.name ?? ""} ${plan.slug ?? ""} ${plan.duration_label ?? ""}`.toLowerCase();
@@ -75,6 +79,19 @@ export function resolvePlanDuration(plan: PlanDurationLike): ResolvedPlanDuratio
 
   if (plan.is_lifetime === true || normalizeUnit(plan.duration_unit) === "lifetime" || labelSaysLifetime) {
     return { lifetime: true, milliseconds: null, value: null, unit: "lifetime", label: "Vitalício" };
+  }
+
+  // Primeiro respeita a validade visível configurada no painel. Isso corrige
+  // registros legados como "15 minutos" + duration_value=30/days.
+  const parsed = parsedFromLabel(plan.duration_label);
+  if (parsed) {
+    return {
+      lifetime: false,
+      milliseconds: parsed.value * UNIT_MS[parsed.unit],
+      value: parsed.value,
+      unit: parsed.unit,
+      label: labelFor(parsed.value, parsed.unit),
+    };
   }
 
   const explicitValue = Number(plan.duration_value ?? 0);
@@ -85,7 +102,7 @@ export function resolvePlanDuration(plan: PlanDurationLike): ResolvedPlanDuratio
       milliseconds: explicitValue * UNIT_MS[explicitUnit],
       value: explicitValue,
       unit: explicitUnit,
-      label: plan.duration_label?.trim() || labelFor(explicitValue, explicitUnit),
+      label: labelFor(explicitValue, explicitUnit),
     };
   }
 
@@ -96,18 +113,7 @@ export function resolvePlanDuration(plan: PlanDurationLike): ResolvedPlanDuratio
       milliseconds: days * UNIT_MS.days,
       value: days,
       unit: "days",
-      label: plan.duration_label?.trim() || labelFor(days, "days"),
-    };
-  }
-
-  const parsed = parsedFromLabel(plan.duration_label);
-  if (parsed) {
-    return {
-      lifetime: false,
-      milliseconds: parsed.value * UNIT_MS[parsed.unit],
-      value: parsed.value,
-      unit: parsed.unit,
-      label: plan.duration_label?.trim() || labelFor(parsed.value, parsed.unit),
+      label: labelFor(days, "days"),
     };
   }
 
