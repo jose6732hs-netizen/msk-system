@@ -42,10 +42,13 @@ function extensionNameFromFile(fileName: string, version?: string | null) {
 }
 
 function normalizeChannel(data: Record<string, any>): ExtensionChannel {
+  const slug = String(data.slug ?? "");
   return {
     ...data,
+    slug,
     channel_number: Number(data.channel_number),
-    channel_type: String(data.channel_type),
+    // Corrige registros antigos em que a principal foi cadastrada como reserva.
+    channel_type: slug === "m3k-principal" ? "primary" : String(data.channel_type),
     enabled: Boolean(data.enabled),
     version: String(data.version ?? ""),
     message: String(data.message ?? ""),
