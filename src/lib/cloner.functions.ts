@@ -143,6 +143,7 @@ export const adminSaveCloner = createServerFn({ method: "POST" })
               id: z.string().uuid(),
               price: z.number().positive().max(100000),
               active: z.boolean(),
+              imageUrl: z.string().max(4000).nullable().optional(),
             }),
           )
           .length(3),
