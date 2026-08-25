@@ -7,6 +7,17 @@ const email = (claims: Record<string, unknown>) => (claims["email"] as string) ?
 const name = (claims: Record<string, unknown>) =>
   ((claims["user_metadata"] as Record<string, unknown> | undefined)?.["name"] as string) ?? "";
 
+const billingSchema = {
+  document: z
+    .string()
+    .transform((v) => v.replace(/\D/g, ""))
+    .refine((v) => v.length === 11 || v.length === 14, "CPF/CNPJ inválido"),
+  phone: z
+    .string()
+    .transform((v) => v.replace(/\D/g, ""))
+    .refine((v) => v.length >= 10 && v.length <= 13, "Telefone inválido"),
+};
+
 export const getClonerProduct = createServerFn({ method: "GET" }).handler(async () => {
   const { getPublicClonerProduct } = await import("./cloner.server");
   return getPublicClonerProduct();
@@ -14,11 +25,13 @@ export const getClonerProduct = createServerFn({ method: "GET" }).handler(async 
 
 export const trackClonerPublic = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) =>
-    z.object({
-      event: z.enum(["cloner.view", "cloner.share"]),
-      visitorId: z.string().max(120).optional(),
-      source: z.string().max(120).optional(),
-    }).parse(d),
+    z
+      .object({
+        event: z.enum(["cloner.view", "cloner.share"]),
+        visitorId: z.string().max(120).optional(),
+        source: z.string().max(120).optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data }) => {
     const { trackPublicClonerEvent } = await import("./cloner.server");
@@ -28,14 +41,52 @@ export const trackClonerPublic = createServerFn({ method: "POST" })
     });
   });
 
+export const getSmartOffer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ planId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { getSmartOfferForPlan } = await import("./cloner.server");
+    return getSmartOfferForPlan(context.userId, data.planId);
+  });
+
+export const startSmartBundleCheckout = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        mainPlanId: z.string().uuid(),
+        companionPlanId: z.string().uuid(),
+        affiliateCode: z.string().max(24).optional(),
+        resellerCode: z.string().max(24).optional(),
+        ...billingSchema,
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    const { createSmartBundleCheckout } = await import("./cloner.server");
+    return createSmartBundleCheckout({
+      userId: context.userId,
+      email: email(context.claims),
+      name: name(context.claims),
+      mainPlanId: data.mainPlanId,
+      companionPlanId: data.companionPlanId,
+      document: data.document,
+      phone: data.phone,
+      affiliateCode: data.affiliateCode ?? null,
+      resellerCode: data.resellerCode ?? null,
+    });
+  });
+
 export const startClonerCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) =>
-    z.object({
-      affiliateCode: z.string().max(24).optional(),
-      document: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => v.length === 11 || v.length === 14, "CPF/CNPJ inválido"),
-      phone: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => v.length >= 10 && v.length <= 13, "Telefone inválido"),
-    }).parse(d),
+    z
+      .object({
+        planId: z.string().uuid(),
+        affiliateCode: z.string().max(24).optional(),
+        ...billingSchema,
+      })
+      .parse(d),
   )
   .handler(async ({ context, data }) => {
     const { createClonerCheckout } = await import("./cloner.server");
@@ -43,6 +94,7 @@ export const startClonerCheckout = createServerFn({ method: "POST" })
       userId: context.userId,
       email: email(context.claims),
       name: name(context.claims),
+      planId: data.planId,
       document: data.document,
       phone: data.phone,
       affiliateCode: data.affiliateCode ?? null,
@@ -75,14 +127,28 @@ export const adminGetCloner = createServerFn({ method: "GET" })
 
 export const adminSaveCloner = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    enabled: z.boolean(),
-    title: z.string().trim().min(3).max(100),
-    subtitle: z.string().trim().min(3).max(220),
-    description: z.string().trim().min(3).max(1200),
-    shareText: z.string().trim().min(3).max(500),
-    price: z.number().min(0).max(100000),
-  }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        enabled: z.boolean(),
+        smartOffersEnabled: z.boolean(),
+        smartDiscountPercent: z.number().min(1).max(50),
+        title: z.string().trim().min(3).max(100),
+        subtitle: z.string().trim().min(3).max(220),
+        description: z.string().trim().min(3).max(1200),
+        shareText: z.string().trim().min(3).max(500),
+        plans: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              price: z.number().positive().max(100000),
+              active: z.boolean(),
+            }),
+          )
+          .length(3),
+      })
+      .parse(d),
+  )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { saveAdminCloner } = await import("./cloner.server");
@@ -91,9 +157,13 @@ export const adminSaveCloner = createServerFn({ method: "POST" })
 
 export const adminCreateClonerUpload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    fileName: z.string().min(5).max(160).regex(/\.zip$/i, "O arquivo precisa ser .zip"),
-  }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        fileName: z.string().min(5).max(160).regex(/\.zip$/i, "O arquivo precisa ser .zip"),
+      })
+      .parse(d),
+  )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { createClonerUploadUrl } = await import("./cloner.server");
@@ -102,11 +172,15 @@ export const adminCreateClonerUpload = createServerFn({ method: "POST" })
 
 export const adminRegisterClonerZip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({
-    storagePath: z.string().min(8).max(320),
-    fileName: z.string().min(5).max(160).regex(/\.zip$/i),
-    sizeBytes: z.number().int().min(1).max(300 * 1024 * 1024),
-  }).parse(d))
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        storagePath: z.string().min(8).max(320),
+        fileName: z.string().min(5).max(160).regex(/\.zip$/i),
+        sizeBytes: z.number().int().min(1).max(300 * 1024 * 1024),
+      })
+      .parse(d),
+  )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { registerClonerZip } = await import("./cloner.server");

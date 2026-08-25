@@ -1,6 +1,19 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Loader2, X, ShoppingCart, Trash2, Plus, Minus, CreditCard, RefreshCw, Timer, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Gift,
+  Loader2,
+  Minus,
+  Plus,
+  RefreshCw,
+  ShoppingCart,
+  Trash2,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -10,7 +23,14 @@ import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { PayerForm, useBilling } from "@/components/msk/payer-form";
 import { PixDialog, type PixState } from "@/components/msk/pix-dialog";
+import { SmartOfferModal } from "@/components/msk/smart-offer-modal";
+import { SmartPixModal, type SmartPixState } from "@/components/msk/smart-pix-modal";
 import { startPixCheckout } from "@/lib/commerce.functions";
+import {
+  getClonerProduct,
+  getSmartOffer,
+  startSmartBundleCheckout,
+} from "@/lib/cloner.functions";
 import { track, saveCartSnapshot } from "@/lib/tracking";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
 import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
@@ -18,6 +38,12 @@ import cardFreeImg from "@/assets/card-free.jpg";
 import cardSemanalImg from "@/assets/card-semanal.jpg";
 import cardMensalImg from "@/assets/card-mensal.jpg";
 import cardTrimestralImg from "@/assets/card-trimestral.jpg";
+import {
+  readAffiliateRef,
+  readResellerRef,
+  storeAffiliateRef,
+  storeResellerRef,
+} from "@/lib/urls";
 
 const PLAN_IMAGES: Record<string, string> = {
   "free-test": cardFreeImg,
@@ -29,16 +55,8 @@ const PLAN_IMAGES: Record<string, string> = {
 
 function planImage(plan?: any) {
   if (plan?.image_url) return plan.image_url;
-  const slug = plan?.slug;
-  return (slug && PLAN_IMAGES[slug]) || bannerOfferAsset.url;
+  return PLAN_IMAGES[String(plan?.slug ?? "")] || bannerOfferAsset.url;
 }
-import {
-  readAffiliateRef,
-  readResellerRef,
-  storeAffiliateRef,
-  storeResellerRef,
-} from "@/lib/urls";
-
 
 type CartItem = {
   planId: string;
@@ -49,53 +67,62 @@ type CartItem = {
   imageUrl?: string | null;
 };
 
+type BillingValue = { document: string; phone: string };
+
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
       { title: "Planos e preços — MSK SISTEM" },
       {
         name: "description",
-        content:
-          "Planos diário, mensal, anual e vitalício da extensão MSK SISTEM, com licença liberada automaticamente após o pagamento.",
+        content: "Planos da extensão principal MSK com licença automática após o pagamento.",
       },
       { property: "og:title", content: "Planos MSK SISTEM" },
-      {
-        property: "og:description",
-        content: "Escolha entre acesso diário, mensal, anual ou vitalício.",
-      },
+      { property: "og:description", content: "Escolha seu período e aproveite ofertas inteligentes com o Clonador de Páginas." },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: PlanosPage,
 });
 
-function formatPrice(price: number, currency: string) {
+function formatPrice(price: number, currency = "BRL") {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(price);
 }
 
 function PlanosPage() {
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [payer, setPayer] = useState<{ planId: string; planName: string } | null>(null);
+  const [payer, setPayer] = useState<{ planId: string; planName: string; imageUrl?: string | null } | null>(null);
   const [pix, setPix] = useState<PixState | null>(null);
+  const [smartPix, setSmartPix] = useState<SmartPixState | null>(null);
+  const [smartContext, setSmartContext] = useState<null | {
+    offer: any;
+    planId: string;
+    planName: string;
+    imageUrl?: string | null;
+    billing: BillingValue;
+  }>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [pixByPlan, setPixByPlan] = useState<
-    Record<string, { createdAt: string; expiresAt: string; transactionId: string }>
-  >({});
+  const [pixByPlan, setPixByPlan] = useState<Record<string, { createdAt: string; expiresAt: string; transactionId: string }>>({});
   const { billing, complete } = useBilling();
+
+  const { data: clonerProduct } = useQuery({
+    queryKey: ["cloner-product"],
+    queryFn: () => getClonerProduct(),
+    staleTime: 60_000,
+  });
 
   useEffect(() => {
     saveCartSnapshot(
       cart.length
         ? {
             updatedAt: new Date().toISOString(),
-            total: cart.reduce((acc, i) => acc + i.price * i.quantity, 0),
-            items: cart.map((i) => ({
-              name: i.planName,
-              quantity: i.quantity,
-              price: i.price,
-              imageUrl: i.imageUrl ?? null,
+            total: cart.reduce((acc, item) => acc + item.price * item.quantity, 0),
+            items: cart.map((item) => ({
+              name: item.planName,
+              quantity: item.quantity,
+              price: item.price,
+              imageUrl: item.imageUrl ?? null,
             })),
           }
         : null,
@@ -112,67 +139,64 @@ function PlanosPage() {
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ["plans"],
-    staleTime: 1000 * 60 * 5,
-    gcTime: 1000 * 60 * 30,
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("plans")
         .select("*")
         .eq("active", true)
-        .neq("slug", "page-cloner")
         .order("sort_order");
       if (error) throw error;
-      return data;
+      return (data ?? []).filter((plan: any) => !String(plan.slug ?? "").startsWith("page-cloner"));
     },
   });
 
   function addToCart(plan: any) {
     const isFree = Number(plan.price) === 0;
     if (loadingPlan === plan.id) return;
-
     track("offer_view", { label: plan.name, value: Number(plan.price) });
+
     if (isFree) {
-      void subscribe(plan.id, plan.name, true);
+      void subscribe(plan.id, plan.name, true, planImage(plan));
       return;
     }
 
-    setCart(current => {
-      const existing = current.find(item => item.planId === plan.id);
-      if (existing) return current;
-      let imageUrl: string | null = planImage(plan);
-      return [...current, {
-        planId: plan.id,
-        planName: plan.name,
-        price: Number(plan.price),
-        quantity: 1,
-        slug: plan.slug,
-        imageUrl,
-      }];
+    setCart((current) => {
+      if (current.some((item) => item.planId === plan.id)) return current;
+      return [
+        ...current,
+        {
+          planId: plan.id,
+          planName: plan.name,
+          price: Number(plan.price),
+          quantity: 1,
+          slug: plan.slug,
+          imageUrl: planImage(plan),
+        },
+      ];
     });
     track("add_to_cart", { label: plan.name, value: Number(plan.price) });
     toast.success(`${plan.name} adicionado ao carrinho`);
   }
 
   function removeFromCart(planId: string) {
-    const item = cart.find((i) => i.planId === planId);
-    setCart(current => current.filter(item => item.planId !== planId));
-    setPixByPlan((c) => {
-      const next = { ...c };
+    const item = cart.find((row) => row.planId === planId);
+    setCart((current) => current.filter((row) => row.planId !== planId));
+    setPixByPlan((current) => {
+      const next = { ...current };
       delete next[planId];
       return next;
     });
     if (item) track("remove_from_cart", { label: item.planName, value: item.price });
-    toast.info("Item removido do carrinho");
   }
 
   function updateQuantity(planId: string, delta: number) {
-    setCart(current => current.map(item => {
-      if (item.planId === planId) {
-        const newQty = Math.max(1, item.quantity + delta);
-        return { ...item, quantity: newQty };
-      }
-      return item;
-    }));
+    setCart((current) =>
+      current.map((item) =>
+        item.planId === planId ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item,
+      ),
+    );
   }
 
   async function payItem(item: CartItem) {
@@ -180,29 +204,32 @@ function PlanosPage() {
     await subscribe(item.planId, item.planName, false, item.imageUrl);
   }
 
-  async function checkout() {
+  async function checkoutCart() {
     if (!cart.length) return;
-    await subscribe("", "Checkout Carrinho", false);
+    if (cart.length === 1) {
+      await payItem(cart[0]!);
+      return;
+    }
+    await subscribe("", "Checkout Carrinho", false, null, undefined, true);
   }
 
   async function subscribe(
     planId: string,
     planName: string,
-    isFree: boolean = false,
+    isFree = false,
     imageUrl?: string | null,
-    billingOverride?: { document: string; phone: string },
+    billingOverride?: BillingValue,
+    skipSmartOffer = false,
   ) {
-    const { data: session } = await supabase.auth.getSession();
-
-    if (isFree && !session.session) {
-      localStorage.setItem("selected_free_plan", planId);
-      localStorage.setItem("msk_open_trial", "1");
-      navigate({ to: "/auth", search: { next: "/painel" } });
-      return;
-    }
-
-    if (!session.session) {
-      navigate({ to: "/auth", search: { next: "/planos" } });
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      if (isFree) {
+        localStorage.setItem("selected_free_plan", planId);
+        localStorage.setItem("msk_open_trial", "1");
+        navigate({ to: "/auth", search: { next: "/painel" } });
+      } else {
+        navigate({ to: "/auth", search: { next: "/planos" } });
+      }
       return;
     }
 
@@ -211,38 +238,60 @@ function PlanosPage() {
       try {
         const { requestTrial } = await import("@/lib/commerce.functions");
         await requestTrial({ data: { planId } });
-        toast.success("Teste gratuito ativado com sucesso!");
+        toast.success("Teste gratuito liberado.");
         localStorage.setItem("msk_open_trial", "1");
         navigate({ to: "/painel" });
-        return;
       } catch (e) {
         toast.error((e as Error).message);
-        return;
+      } finally {
+        setLoadingPlan(null);
+      }
+      return;
+    }
+
+    const payerData = billingOverride ?? (complete && billing ? { document: billing.document, phone: billing.phone } : null);
+    if (!payerData) {
+      setPayer({ planId, planName, imageUrl });
+      return;
+    }
+
+    if (planId && !skipSmartOffer && clonerProduct?.smartOffersEnabled !== false) {
+      setLoadingPlan(planId);
+      try {
+        const offer = await getSmartOffer({ data: { planId } });
+        if (offer.available) {
+          setSmartContext({ offer, planId, planName, imageUrl, billing: payerData });
+          return;
+        }
+      } catch {
+        // Se a oferta complementar falhar, o checkout principal continua funcionando.
       } finally {
         setLoadingPlan(null);
       }
     }
 
-    const bill = billingOverride ?? (complete ? billing : undefined);
-    if (!bill) {
-      setPayer({ planId, planName });
-      return;
-    }
+    await startRegularPix(planId, planName, imageUrl, payerData);
+  }
+
+  async function startRegularPix(
+    planId: string,
+    planName: string,
+    imageUrl: string | null | undefined,
+    payerData: BillingValue,
+  ) {
     setLoadingPlan(planId || "checkout-bulk");
     try {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
-      const bulkItems = planId
-        ? undefined
-        : cart.map((i) => ({ planId: i.planId, quantity: i.quantity }));
+      const bulkItems = planId ? undefined : cart.map((item) => ({ planId: item.planId, quantity: item.quantity }));
       const result = await startPixCheckout({
         data: {
           planId: planId || undefined,
           ...(bulkItems?.length ? { items: bulkItems } : {}),
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
-          document: bill.document,
-          phone: bill.phone,
+          document: payerData.document,
+          phone: payerData.phone,
         },
       });
       setPayer(null);
@@ -251,9 +300,9 @@ function PlanosPage() {
         return;
       }
       const createdAt = new Date().toISOString();
-      const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
-      const planKey = planId || "checkout-bulk";
-      setPixByPlan((c) => ({ ...c, [planKey]: { createdAt, expiresAt, transactionId: result.transactionId } }));
+      const expiresAt = new Date(Date.now() + 2 * 60_000).toISOString();
+      const key = planId || "checkout-bulk";
+      setPixByPlan((current) => ({ ...current, [key]: { createdAt, expiresAt, transactionId: result.transactionId } }));
       track("pix_generated", { label: planName, value: result.amount });
       setPix({
         transactionId: result.transactionId,
@@ -273,189 +322,168 @@ function PlanosPage() {
     }
   }
 
+  async function acceptSmartOffer() {
+    if (!smartContext) return;
+    const context = smartContext;
+    setLoadingPlan(context.planId);
+    try {
+      const ref = readAffiliateRef() ?? undefined;
+      const rv = readResellerRef() ?? undefined;
+      const result = await startSmartBundleCheckout({
+        data: {
+          mainPlanId: context.offer.main.id,
+          companionPlanId: context.offer.companion.id,
+          document: context.billing.document,
+          phone: context.billing.phone,
+          ...(ref ? { affiliateCode: ref } : {}),
+          ...(rv ? { resellerCode: rv } : {}),
+        },
+      });
+      setSmartContext(null);
+      if (result.checkoutUrl && !result.pixCode) {
+        window.location.href = result.checkoutUrl;
+        return;
+      }
+      setSmartPix({
+        transactionId: result.transactionId,
+        pixCode: result.pixCode,
+        qrCode: result.qrCode,
+        amount: result.amount,
+        expiresAt: new Date(Date.now() + 2 * 60_000).toISOString(),
+        title: "Combo inteligente MSK",
+        subtitle: `${context.offer.main.name} + ${context.offer.companion.name} com ${context.offer.discountPercent}% OFF no adicional`,
+      });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoadingPlan(null);
+    }
+  }
+
+  async function skipSmartOffer() {
+    if (!smartContext) return;
+    const context = smartContext;
+    setSmartContext(null);
+    await startRegularPix(context.planId, context.planName, context.imageUrl, context.billing);
+  }
+
   useEffect(() => {
     const freePlanId = localStorage.getItem("selected_free_plan");
     if (freePlanId && plans && !isLoading) {
       localStorage.removeItem("selected_free_plan");
-      const plan = plans.find(p => p.id === freePlanId);
-      if (plan) subscribe(plan.id, plan.name, plan.price === 0);
+      const plan = plans.find((row: any) => row.id === freePlanId);
+      if (plan) void subscribe(plan.id, plan.name, Number(plan.price) === 0, planImage(plan));
     }
   }, [plans, isLoading]);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <SiteHeader />
-      <main className="mx-auto max-w-7xl px-5 py-12 sm:py-16">
-        <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-12">
-          <div className="max-w-3xl">
-            <h1 className="text-4xl font-black tracking-tighter uppercase sm:text-7xl">
-              Nossos <span className="neon-text">Planos</span>
-            </h1>
-            <p className="mt-4 text-xs sm:text-sm font-bold uppercase tracking-[0.3em] text-muted-foreground">
-              Liberação instantânea via PIX • Sem espera
-            </p>
+      <main className="mx-auto w-full max-w-7xl min-w-0 px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
+        <header className="flex min-w-0 flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0 max-w-3xl">
+            <h1 className="break-words text-4xl font-black uppercase tracking-tighter sm:text-7xl">Nossos <span className="neon-text">Planos</span></h1>
+            <p className="mt-4 break-words text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground sm:text-sm sm:tracking-[.3em]">Extensão principal · PIX · licença automática</p>
+            {clonerProduct?.smartOffersEnabled ? (
+              <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-primary"><Gift className="h-3.5 w-3.5 shrink-0" /> Combine com o Clonador e ganhe {clonerProduct.smartDiscountPercent}% OFF no adicional</div>
+            ) : null}
           </div>
 
-          {cart.length > 0 && (
-            <div className="glass p-0 rounded-[1.5rem] sm:rounded-[2.5rem] border border-white/10 w-full lg:min-w-[420px] lg:w-auto animate-in fade-in slide-in-from-top-4 lg:slide-in-from-right-4 shadow-2xl overflow-hidden bg-[#0F0F0F] ring-2 ring-primary/20">
-              <div className="bg-primary/10 px-4 py-2 flex items-center gap-2 border-b border-primary/20 animate-pulse">
-                <ShoppingCart className="h-3 w-3 text-primary" />
-                <span className="text-[10px] font-black text-primary uppercase tracking-tighter">Material Adicionado com Sucesso</span>
+          {cart.length > 0 ? (
+            <div className="w-full min-w-0 overflow-hidden rounded-[1.5rem] border border-primary/20 bg-[#0F0F0F] shadow-2xl lg:max-w-[440px]">
+              <div className="flex items-center gap-2 border-b border-primary/20 bg-primary/10 px-4 py-2"><ShoppingCart className="h-3.5 w-3.5 text-primary" /><span className="text-[9px] font-black uppercase tracking-widest text-primary">Seu carrinho</span></div>
+              <div className="max-h-[55vh] space-y-3 overflow-y-auto p-4 sm:p-5">
+                {cart.map((item) => (
+                  <CartRow key={item.planId} item={item} pix={pixByPlan[item.planId] ?? null} busy={loadingPlan === item.planId} onQty={(d) => updateQuantity(item.planId, d)} onRemove={() => removeFromCart(item.planId)} onPay={() => void payItem(item)} />
+                ))}
               </div>
-              <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/5">
-                <div>
-                  <h3 className="text-lg font-black tracking-tight text-foreground">Seu Carrinho</h3>
-                  <p className="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">Itens salvos na sua conta</p>
-                </div>
-                <button onClick={() => setCart([])} className="p-2 rounded-xl border border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all" aria-label="Limpar carrinho"><X className="h-4 w-4" /></button>
-              </div>
-
-              <div className="p-6">
-                <div className="space-y-4 mb-6 max-h-[60vh] overflow-y-auto overscroll-contain pr-1 custom-scrollbar">
-                  {cart.map((item) => (
-                    <CartRow
-                      key={item.planId}
-                      item={item}
-                      pix={pixByPlan[item.planId] ?? null}
-                      busy={loadingPlan === item.planId}
-                      onQty={(d) => updateQuantity(item.planId, d)}
-                      onRemove={() => removeFromCart(item.planId)}
-                      onPay={() => void payItem(item)}
-                      onResume={() => {
-                        const state = pixByPlan[item.planId];
-                        if (!state) return;
-                        void payItem(item);
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="space-y-3 pt-6 border-t border-white/5">
-                  <div className="flex items-center justify-between"><span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">Subtotal</span><span className="text-sm font-bold text-muted-foreground">{formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0), "BRL")}</span></div>
-                  <div className="flex items-center justify-between"><span className="text-[0.7rem] font-black uppercase tracking-widest text-white">Total Final</span><span className="text-2xl font-black text-primary drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)]">{formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0), "BRL")}</span></div>
-                  <Button variant="neon" className="w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.75rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] mt-6 shadow-xl shadow-primary/20 rounded-2xl flex items-center justify-center whitespace-normal leading-tight px-4 break-words overflow-hidden" onClick={() => checkout()} disabled={loadingPlan !== null}>
-                    {loadingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : null}
-                    <span className="flex-1 text-center">{loadingPlan ? "Processando..." : "Finalizar Pedido"}</span>
-                  </Button>
-                </div>
+              <div className="border-t border-white/5 p-4 sm:p-5">
+                <div className="flex flex-wrap items-end justify-between gap-2"><span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total</span><span className="text-2xl font-black text-primary">{formatPrice(cart.reduce((sum, item) => sum + item.price * item.quantity, 0))}</span></div>
+                <Button variant="neon" className="mt-4 min-h-14 w-full whitespace-normal rounded-2xl text-xs font-black uppercase" onClick={() => void checkoutCart()} disabled={loadingPlan !== null}>{loadingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Finalizar pedido</Button>
               </div>
             </div>
-          )}
+          ) : null}
         </header>
 
         {isLoading ? (
           <div className="mt-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
-          <div className="relative mt-8 sm:mt-12 group w-full overflow-hidden">
-            <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex justify-between px-1 sm:px-4 z-20 pointer-events-none opacity-100 transition-opacity">
-              <button aria-label="Ofertas anteriores" className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const container = document.getElementById('plans-carousel'); if (container) { const scrollAmount = container.clientWidth * 0.8; container.scrollBy({ left: -scrollAmount, behavior: 'smooth' }); } }}><ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /></button>
-              <button aria-label="Próximas ofertas" className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const container = document.getElementById('plans-carousel'); if (container) { const scrollAmount = container.clientWidth * 0.8; container.scrollBy({ left: scrollAmount, behavior: 'smooth' }); } }}><ChevronRight className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /></button>
+          <div className="relative mt-10 min-w-0 overflow-hidden sm:mt-12">
+            <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 hidden items-center justify-between lg:flex">
+              <button aria-label="Ofertas anteriores" className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/80 text-primary" onClick={() => document.getElementById("plans-carousel")?.scrollBy({ left: -360, behavior: "smooth" })}><ChevronLeft className="h-6 w-6" /></button>
+              <button aria-label="Próximas ofertas" className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/80 text-primary" onClick={() => document.getElementById("plans-carousel")?.scrollBy({ left: 360, behavior: "smooth" })}><ChevronRight className="h-6 w-6" /></button>
             </div>
 
-            <div id="plans-carousel" className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth px-4 sm:px-10 touch-pan-x pointer-events-auto">
-              <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10 pointer-events-auto">
-                {[...(plans || []), ...(plans || [])].map((plan, idx) => {
-                  const highlighted = plan.slug === "monthly";
-                  const isFree = Number(plan.price) === 0;
-                  const isDaily = plan.slug === "daily";
-                  return (
-                    <article key={`${plan.id}-${idx}`} onClick={() => addToCart(plan)} className={`relative flex flex-col min-w-[260px] w-[260px] sm:min-w-[320px] sm:w-[320px] shrink-0 rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden transition-all duration-500 cursor-pointer hover:shadow-[0_40px_80px_-20px_rgba(var(--primary-rgb),0.4)] sm:hover:translate-y-[-12px] ${highlighted ? "bg-[#0A0A0A] border-2 border-primary shadow-[0_0_80px_-15px_rgba(var(--primary-rgb),0.5)] sm:scale-105 z-10" : "bg-[#0A0A0A] border border-white/10 hover:border-primary/50"}`}>
-                      <div className="relative h-48 sm:h-64 w-full overflow-hidden">
-                        <img src={planImage(plan)} alt={plan.name} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent pointer-events-none" />
-                        <div className="absolute top-3 right-3 sm:top-6 sm:right-6 max-w-[85%] truncate bg-primary text-black font-black text-[0.5rem] sm:text-[0.6rem] uppercase tracking-widest px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-lg">{isDaily ? "Oferta Flash" : highlighted ? "Mais Popular" : "Oferta Premium"}</div>
-                      </div>
-                      <div className="p-5 sm:p-8 flex flex-col flex-1">
-                        <div className="mb-4 sm:mb-6"><h2 className={`text-[0.6rem] sm:text-xs font-black uppercase tracking-[0.2em] break-words ${highlighted ? "text-primary" : "text-muted-foreground"}`}>{plan.name}</h2><div className="mt-2 sm:mt-4 flex flex-wrap items-baseline gap-1"><span className="text-2xl sm:text-4xl font-black tracking-tighter text-white">{formatPrice(Number(plan.price), plan.currency)}</span>{!plan.is_lifetime && <span className="text-[0.6rem] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest">/{plan.duration_label}</span>}</div></div>
-                        <div className="flex-1 space-y-4 mb-5 sm:mb-8"><ul className="space-y-2 sm:space-y-3 text-[0.65rem] sm:text-[0.75rem]">{(plan.highlights ?? []).map((h: string) => <li key={h} className="flex items-start gap-2 sm:gap-3 group"><div className={`mt-0.5 shrink-0 rounded-full p-0.5 ${highlighted ? "bg-primary text-black" : "bg-white/5 text-muted-foreground"}`}><Check className="h-2.5 w-2.5" /></div><span className="min-w-0 break-words text-muted-foreground group-hover:text-white transition-colors">{h}</span></li>)}</ul></div>
-                        <Button className={`w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.85rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] rounded-full transition-all duration-300 whitespace-normal break-words leading-tight px-4 sm:px-6 relative group/btn overflow-hidden bg-[#22C55E] text-white hover:text-white border-b-[6px] border-[#166534] active:border-b-0 active:translate-y-[4px] hover:bg-[#28D56A] hover:border-[#1A7D3D] hover:-translate-y-[2px] hover:shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)] flex items-center justify-center ${loadingPlan === plan.id ? "opacity-70 pointer-events-none" : ""}`} disabled={loadingPlan === plan.id} onClick={(e) => { e.stopPropagation(); addToCart(plan); }}>{loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isFree ? "Testar Grátis" : "Adicionar ao Carrinho"}</Button>
-                      </div>
-                    </article>
-                  );
-                })}
-              </div>
+            <div id="plans-carousel" className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-8">
+              {(plans ?? []).map((plan: any) => {
+                const highlighted = plan.slug === "monthly";
+                const isFree = Number(plan.price) === 0;
+                const cadenceSmart = ["daily", "weekly", "monthly"].includes(String(plan.slug));
+                return (
+                  <article key={plan.id} className={`relative flex w-[82vw] max-w-[330px] shrink-0 snap-center flex-col overflow-hidden rounded-[2rem] border bg-[#0A0A0A] sm:w-[45vw] lg:w-[310px] ${highlighted ? "border-primary/60 shadow-[0_0_60px_rgba(57,255,20,.12)]" : "border-white/10"}`}>
+                    <div className="relative h-48 w-full overflow-hidden sm:h-56"><img src={planImage(plan)} alt={plan.name} className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" /><span className="absolute right-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[8px] font-black uppercase text-black">{highlighted ? "Mais popular" : isFree ? "Teste" : "Oferta"}</span></div>
+                    <div className="flex flex-1 flex-col p-5 sm:p-6">
+                      <p className="break-words text-[10px] font-black uppercase tracking-[.18em] text-primary">{plan.name}</p>
+                      <div className="mt-3 flex flex-wrap items-baseline gap-2"><span className="text-3xl font-black text-white">{formatPrice(Number(plan.price), plan.currency)}</span>{!plan.is_lifetime ? <span className="text-[10px] font-bold uppercase text-muted-foreground">/{plan.duration_label}</span> : null}</div>
+                      <ul className="mt-5 flex-1 space-y-2.5">{(plan.highlights ?? []).map((h: string) => <li key={h} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground"><span className="mt-0.5 rounded-full bg-primary p-0.5 text-black"><Check className="h-2.5 w-2.5" /></span><span className="min-w-0 break-words">{h}</span></li>)}</ul>
+                      {cadenceSmart && clonerProduct?.smartOffersEnabled ? <div className="mt-4 flex min-w-0 items-start gap-2 rounded-xl border border-amber-300/20 bg-amber-300/[.06] p-3 text-[9px] leading-relaxed text-white/55"><Gift className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" /><span className="min-w-0 break-words">Clonador do mesmo período com <b className="text-amber-300">{clonerProduct.smartDiscountPercent}% OFF</b> quando disponível.</span></div> : null}
+                      <Button className="mt-5 min-h-14 w-full whitespace-normal rounded-2xl bg-[#22C55E] px-4 text-center text-xs font-black uppercase leading-tight text-white hover:bg-[#28D56A]" disabled={loadingPlan === plan.id} onClick={() => addToCart(plan)}>{loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isFree ? "Testar grátis" : "Adicionar ao carrinho"}</Button>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         )}
-
-        <p className="mt-12 text-xs text-muted-foreground">Os valores são definidos pelo administrador no painel e podem ser alterados a qualquer momento. Preços existem somente aqui no site — nunca dentro da extensão.</p>
       </main>
       <SiteFooter />
 
-      {payer && typeof document !== "undefined" && createPortal(
-        <div className="fixed inset-0 z-[100001] flex items-start sm:items-center justify-center overflow-y-auto overscroll-contain bg-background/90 p-5 backdrop-blur-md">
-          <div className="glass my-auto w-full max-w-md rounded-[2.5rem] border border-primary/20 p-6 sm:p-8 animate-in fade-in zoom-in duration-300">
-            <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-              <div className="flex min-w-0 items-center gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-primary/30 bg-primary/20 text-primary"><CreditCard className="h-5 w-5" /></div><div className="min-w-0"><h2 className="truncate text-lg font-black uppercase tracking-widest text-foreground sm:text-xl">Dados de Faturamento</h2><p className="mt-1 text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">Exigidos pelo provedor para emitir o PIX.</p></div></div>
-              <button aria-label="Fechar" className="shrink-0 rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground" onClick={() => setPayer(null)}><X className="h-5 w-5" /></button>
-            </div>
-            <div className="rounded-3xl border border-white/5 bg-white/5 p-5 sm:p-6"><PayerForm compact onSaved={(b) => { const p = payer; setPayer(null); if (p) void subscribe(p.planId, p.planName, false, null, b); }} /></div>
+      {payer && typeof document !== "undefined" ? createPortal(
+        <div className="fixed inset-0 z-[100010] flex items-end justify-center overflow-y-auto bg-black/85 p-0 backdrop-blur-xl sm:items-center sm:p-4">
+          <div className="w-full max-w-md rounded-t-[2rem] border border-white/10 bg-[#0B0B0B] p-5 shadow-2xl sm:rounded-[2rem] sm:p-7">
+            <div className="mb-5 flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-widest text-primary">Dados para o PIX</p><h2 className="mt-1 break-words text-xl font-black uppercase">{payer.planName}</h2></div><button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10" onClick={() => setPayer(null)}><X className="h-4 w-4" /></button></div>
+            <PayerForm compact onSaved={(b) => { const current = payer; setPayer(null); if (current) void subscribe(current.planId, current.planName, false, current.imageUrl, b); }} />
           </div>
         </div>,
         document.body,
-      )}
+      ) : null}
 
-      {pix && (
-        <PixDialog
-          pix={pix}
-          regenerating={loadingPlan !== null}
-          onClose={() => setPix(null)}
-          onPaid={() => {
-            track("purchase", { label: pix.planName ?? "Plano", value: pix.amount });
-            setCart([]);
-            setPixByPlan({});
-            setPix(null);
-            navigate({ to: "/painel" });
-          }}
-          onRegenerate={() => {
-            const plan = plans?.find((p) => p.name === pix.planName);
-            if (plan) void subscribe(plan.id, plan.name);
-          }}
-        />
-      )}
+      {smartContext ? <SmartOfferModal offer={smartContext.offer} busy={loadingPlan === smartContext.planId} onAccept={() => void acceptSmartOffer()} onSkip={() => void skipSmartOffer()} onClose={() => setSmartContext(null)} /> : null}
+
+      {pix ? <PixDialog pix={pix} regenerating={loadingPlan !== null} onClose={() => setPix(null)} onPaid={() => { track("purchase", { label: pix.planName ?? "Plano", value: pix.amount }); setCart([]); setPixByPlan({}); setPix(null); navigate({ to: "/painel" }); }} onRegenerate={() => { const plan = plans?.find((row: any) => row.name === pix.planName); if (plan) void subscribe(plan.id, plan.name, false, planImage(plan), undefined, true); }} /> : null}
+
+      {smartPix ? <SmartPixModal pix={smartPix} onClose={() => setSmartPix(null)} onPaid={() => navigate({ to: "/clonagem-entrega", search: { transactionId: smartPix.transactionId } })} onRegenerate={() => setSmartPix(null)} /> : null}
     </div>
   );
 }
 
-function CartRow({ item, pix, busy, onQty, onRemove, onPay, onResume }: {
+function CartRow({ item, pix, busy, onQty, onRemove, onPay }: {
   item: CartItem;
   pix: { createdAt: string; expiresAt: string; transactionId: string } | null;
   busy: boolean;
   onQty: (delta: number) => void;
   onRemove: () => void;
   onPay: () => void;
-  onResume: () => void;
 }) {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!pix) return;
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
   }, [pix]);
-
-  const total = new Date(pix?.expiresAt ?? 0).getTime() - new Date(pix?.createdAt ?? 0).getTime();
   const left = pix ? Math.max(0, new Date(pix.expiresAt).getTime() - now) : 0;
-  const filled = pix && total > 0 ? Math.min(100, ((total - left) / total) * 100) : 0;
   const expired = !!pix && left <= 0;
-  const mm = String(Math.floor(left / 60000)).padStart(2, "0");
-  const ss = String(Math.floor((left % 60000) / 1000)).padStart(2, "0");
-  const countdownLabel = `${mm}:${ss}`;
+  const label = `${String(Math.floor(left / 60000)).padStart(2, "0")}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}`;
 
   return (
-    <div className="group relative overflow-hidden rounded-[1.5rem] border border-white/5 bg-[#1A1A1A] p-4 transition-all hover:border-white/20 hover:shadow-2xl shadow-lg">
-      <div className="flex gap-4">
-        {item.imageUrl ? <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl"><img src={item.imageUrl} alt={item.planName} className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-110" /></div> : <div className="grid h-20 w-20 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5"><ShoppingCart className="h-6 w-6 text-muted-foreground" /></div>}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h4 className="truncate text-sm font-black text-white uppercase tracking-tight">{item.planName}</h4><p className="mt-1 font-black text-primary text-base">{formatPrice(item.price * item.quantity, "BRL")}</p></div><button onClick={onRemove} className="shrink-0 p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button></div>
-          <div className="mt-4 flex items-center justify-between gap-4">
-            <div className="flex items-center rounded-xl border border-white/10 bg-black/40 p-1"><button onClick={() => onQty(-1)} disabled={item.quantity <= 1} className="p-1.5 transition-colors hover:text-primary disabled:opacity-30"><Minus className="h-3 w-3" /></button><span className="w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => onQty(1)} className="p-1.5 transition-colors hover:text-primary"><Plus className="h-3 w-3" /></button></div>
-            {pix ? <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${expired ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-amber-500/10 border-amber-500/20 text-amber-500"}`}><div className={`h-1.5 w-1.5 rounded-full ${expired ? "bg-destructive" : "bg-amber-500 animate-pulse"}`} /><span className="text-[0.6rem] font-black uppercase tracking-widest">{expired ? "PIX Expirado" : "Aguardando"}</span></div> : <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-muted-foreground"><div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" /><span className="text-[0.6rem] font-black uppercase tracking-widest">Pendente</span></div>}
-          </div>
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-black/25 p-3.5">
+      <div className="flex min-w-0 gap-3">
+        {item.imageUrl ? <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10"><img src={item.imageUrl} alt={item.planName} className="h-full w-full object-cover" /></div> : null}
+        <div className="min-w-0 flex-1"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-xs font-black uppercase">{item.planName}</p><p className="mt-1 text-sm font-black text-primary">{formatPrice(item.price * item.quantity)}</p></div><button type="button" className="shrink-0 p-1.5 text-muted-foreground hover:text-red-400" onClick={onRemove}><Trash2 className="h-4 w-4" /></button></div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center rounded-lg border border-white/10 bg-black/30 p-1"><button onClick={() => onQty(-1)} disabled={item.quantity <= 1} className="p-1 disabled:opacity-30"><Minus className="h-3 w-3" /></button><span className="w-7 text-center text-[10px] font-black">{item.quantity}</span><button onClick={() => onQty(1)} className="p-1"><Plus className="h-3 w-3" /></button></div>{pix ? <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${expired ? "bg-red-500/15 text-red-400" : "bg-amber-400/15 text-amber-300"}`}>{expired ? "Expirado" : label}</span> : null}</div>
         </div>
       </div>
-
-      {pix && <div className="mt-4 pt-4 border-t border-white/5 space-y-3"><div className="flex items-center justify-between"><div className="flex flex-col"><span className="text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">{expired ? "Expirado em" : "Expira em"}</span><span className={`font-mono text-[0.65rem] font-black ${expired ? "text-destructive" : "text-white"}`}>{expired ? new Date(pix.expiresAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : countdownLabel}</span></div><div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ease-linear ${expired ? "bg-destructive" : "bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"}`} style={{ width: `${expired ? 100 : filled}%` }} /></div></div><Button size="sm" variant={expired ? "neon" : "neonOutline"} className="w-full h-10 text-[0.65rem] font-black uppercase tracking-widest rounded-xl" disabled={busy} onClick={expired ? onPay : onResume}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : expired ? <><RefreshCw className="mr-2 h-3.5 w-3.5" /> Gerar novo PIX</> : "Continuar pagamento"}</Button></div>}
-      {!pix && <Button size="sm" variant="neonOutline" className="mt-4 w-full h-10 text-[0.65rem] font-black uppercase tracking-widest rounded-xl border-white/10 bg-white/5 hover:bg-white/10" disabled={busy} onClick={onPay}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Gerar PIX deste item"}</Button>}
+      <Button size="sm" variant="neonOutline" className="mt-3 w-full whitespace-normal" disabled={busy} onClick={onPay}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : pix && expired ? <><RefreshCw className="mr-2 h-3.5 w-3.5" /> Novo PIX</> : pix ? "Continuar pagamento" : "Gerar PIX deste item"}</Button>
     </div>
   );
 }
