@@ -2,86 +2,108 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logAudit } from "./audit.server";
 import { AmploPayService } from "./payments/amplo-pay.server";
 
+const PAGE_SIZE = 1000;
+
+async function fetchAll(makeQuery: () => any) {
+  const rows: Record<string, any>[] = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await makeQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as Record<string, any>[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+  return rows;
+}
+
+async function loadProfiles(ids: string[]) {
+  const unique = [...new Set(ids.filter(Boolean))];
+  const rows: Record<string, any>[] = [];
+  for (let index = 0; index < unique.length; index += 200) {
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id,name,email")
+      .in("id", unique.slice(index, index + 200));
+    if (error) throw error;
+    rows.push(...((data ?? []) as Record<string, any>[]));
+  }
+  return rows;
+}
+
 export async function loadFinanceOverview() {
-  const [
-    { data: transactions },
-    { data: withdrawals },
-    { data: affiliates },
-    { data: resellers },
-    { data: commissions },
-    { data: audit },
-  ] = await Promise.all([
-    supabaseAdmin
-      .from("transactions")
-      .select("id,user_id,identifier,amount,status,method,purpose,created_at,paid_at")
-      .order("created_at", { ascending: false })
-      .limit(80),
-    supabaseAdmin
-      .from("withdrawals")
-      .select("id,user_id,identifier,amount,status,pix_key_type,created_at")
-      .order("created_at", { ascending: false })
-      .limit(50),
-    supabaseAdmin
-      .from("affiliates")
-      .select("id,user_id,code,status,total_sales,total_commission,available_balance")
-      .order("total_commission", { ascending: false })
-      .limit(50),
-    supabaseAdmin
-      .from("resellers")
-      .select("id,user_id,code,tier,status,available_balance,total_deposited,trials_available,trials_used")
-      .order("total_deposited", { ascending: false })
-      .limit(50),
-    supabaseAdmin
-      .from("affiliate_commissions")
-      .select("id,amount,status,created_at")
-      .order("created_at", { ascending: false })
-      .limit(50),
+  const [transactions, withdrawals, affiliates, resellers, commissions, { data: audit }] = await Promise.all([
+    fetchAll(() =>
+      supabaseAdmin
+        .from("transactions")
+        .select("id,user_id,identifier,amount,status,method,purpose,created_at,paid_at")
+        .order("created_at", { ascending: false }),
+    ),
+    fetchAll(() =>
+      supabaseAdmin
+        .from("withdrawals")
+        .select("id,user_id,identifier,amount,status,pix_key_type,created_at")
+        .order("created_at", { ascending: false }),
+    ),
+    fetchAll(() =>
+      supabaseAdmin
+        .from("affiliates")
+        .select("id,user_id,code,status,total_sales,total_commission,available_balance")
+        .order("total_commission", { ascending: false }),
+    ),
+    fetchAll(() =>
+      supabaseAdmin
+        .from("resellers")
+        .select("id,user_id,code,tier,status,available_balance,total_deposited,trials_available,trials_used")
+        .order("total_deposited", { ascending: false }),
+    ),
+    fetchAll(() =>
+      supabaseAdmin
+        .from("affiliate_commissions")
+        .select("id,amount,status,created_at")
+        .order("created_at", { ascending: false }),
+    ),
     supabaseAdmin
       .from("audit_logs")
       .select("id,action,resource,result,created_at,user_id,metadata")
       .order("created_at", { ascending: false })
-      .limit(80),
+      .limit(200),
   ]);
 
-  // profiles não possui FK direta com estas tabelas: junção manual por user_id
   const ids = [
     ...new Set(
-      [...(transactions ?? []), ...(withdrawals ?? []), ...(affiliates ?? []), ...(resellers ?? [])]
+      [...transactions, ...withdrawals, ...affiliates, ...resellers]
         .map((r: any) => r.user_id)
         .filter(Boolean),
     ),
-  ];
-  const { data: profileRows } = ids.length
-    ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", ids)
-    : { data: [] as any[] };
-  const pMap = new Map((profileRows ?? []).map((p: any) => [p.id, p]));
-  const attach = (rows: any[] | null) =>
-    (rows ?? []).map((r: any) => ({ ...r, profiles: r.user_id ? pMap.get(r.user_id) ?? null : null }));
-  const transactionsFull = attach(transactions as any[]);
-  const withdrawalsFull = attach(withdrawals as any[]);
-  const affiliatesFull = attach(affiliates as any[]);
-  const resellersFull = attach(resellers as any[]);
-
+  ] as string[];
+  const profileRows = await loadProfiles(ids);
+  const pMap = new Map(profileRows.map((p: any) => [p.id, p]));
+  const attach = (rows: Record<string, any>[]) =>
+    rows.map((r: any) => ({ ...r, profiles: r.user_id ? pMap.get(r.user_id) ?? null : null }));
+  const transactionsFull = attach(transactions);
+  const withdrawalsFull = attach(withdrawals);
+  const affiliatesFull = attach(affiliates);
+  const resellersFull = attach(resellers);
 
   const st = (t: any) => String(t?.status ?? "").toUpperCase();
   const PAID_STATUSES = ["PAID", "APPROVED", "COMPLETED"];
-  const OPEN_STATUSES = ["PENDING", "WAITING_PAYMENT", "AWAITING_PAYMENT", "PROCESSING"];
-  const paid = (transactions ?? []).filter((t: any) => PAID_STATUSES.includes(st(t)) || t.paid_at);
-  const revenue = paid.reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const generatedRevenue = (transactions ?? []).reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const pendingTransactions = (transactions ?? []).filter(
+  const OPEN_STATUSES = ["PENDING", "WAITING", "WAITING_PAYMENT", "AWAITING_PAYMENT", "PROCESSING"];
+  const paid = transactions.filter((t: any) => PAID_STATUSES.includes(st(t)) || t.paid_at);
+  const revenue = paid.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+  const generatedRevenue = transactions.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+  const pendingTransactions = transactions.filter(
     (t: any) => OPEN_STATUSES.includes(st(t)) && !t.paid_at,
   );
-  const pendingRevenue = pendingTransactions.reduce((s: number, t: any) => s + Number(t.amount), 0);
-  const approvedCommissions = (commissions ?? [])
+  const pendingRevenue = pendingTransactions.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+  const approvedCommissions = commissions
     .filter((c: any) => ["AVAILABLE", "APPROVED", "PAID"].includes(String(c.status).toUpperCase()))
-    .reduce((s: number, c: any) => s + Number(c.amount), 0);
-  const pendingCommissions = (commissions ?? [])
+    .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
+  const pendingCommissions = commissions
     .filter((c: any) => String(c.status).toUpperCase() === "PENDING")
-    .reduce((s: number, c: any) => s + Number(c.amount), 0);
-  const pendingWithdrawalValue = (withdrawals ?? [])
+    .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
+  const pendingWithdrawalValue = withdrawals
     .filter((w: any) => String(w.status).toUpperCase() === "PENDING")
-    .reduce((s: number, w: any) => s + Number(w.amount), 0);
+    .reduce((s: number, w: any) => s + Number(w.amount ?? 0), 0);
 
   let gatewayBalance: Record<string, any> | null = null;
   try {
@@ -91,12 +113,11 @@ export async function loadFinanceOverview() {
   }
 
   return {
-    transactions: transactionsFull as Record<string, any>[],
-    withdrawals: withdrawalsFull as Record<string, any>[],
-    affiliates: affiliatesFull as Record<string, any>[],
-    resellers: resellersFull as Record<string, any>[],
-
-    commissions: (commissions ?? []) as Record<string, any>[],
+    transactions: transactionsFull,
+    withdrawals: withdrawalsFull,
+    affiliates: affiliatesFull,
+    resellers: resellersFull,
+    commissions,
     audit: (audit ?? []) as Record<string, any>[],
     gatewayBalance,
     stats: {
@@ -107,13 +128,13 @@ export async function loadFinanceOverview() {
       pendingCommissions,
       netRevenue: revenue - approvedCommissions,
       averageTicket: paid.length ? revenue / paid.length : 0,
-      conversionRate: transactions?.length ? (paid.length / transactions.length) * 100 : 0,
+      conversionRate: transactions.length ? (paid.length / transactions.length) * 100 : 0,
       pendingWithdrawalValue,
-      activeAffiliates: (affiliates ?? []).filter((a: any) => a.status === "active").length,
-      totalAffiliateSales: (affiliates ?? []).reduce((sum: number, a: any) => sum + Number(a.total_sales), 0),
+      activeAffiliates: affiliates.filter((a: any) => a.status === "active").length,
+      totalAffiliateSales: affiliates.reduce((sum: number, a: any) => sum + Number(a.total_sales ?? 0), 0),
       paidCount: paid.length,
       pending: pendingTransactions.length,
-      pendingWithdrawals: (withdrawals ?? []).filter(
+      pendingWithdrawals: withdrawals.filter(
         (w: any) => String(w.status).toUpperCase() === "PENDING",
       ).length,
     },

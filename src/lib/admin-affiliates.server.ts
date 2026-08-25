@@ -6,99 +6,162 @@ import { DEFAULT_GOALS, type Goals } from "./affiliate.server";
 import { getAppUrl, clearAppUrlCache } from "./app-url.server";
 import { affiliateLink } from "./urls";
 
+const PAGE_SIZE = 1000;
+
+async function fetchAll(makeQuery: () => any) {
+  const rows: Record<string, any>[] = [];
+
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await makeQuery().range(from, from + PAGE_SIZE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as Record<string, any>[];
+    rows.push(...page);
+    if (page.length < PAGE_SIZE) break;
+  }
+
+  return rows;
+}
+
+async function loadProfiles(userIds: string[]) {
+  const uniqueIds = [...new Set(userIds.filter(Boolean))];
+  const rows: Record<string, any>[] = [];
+  const chunkSize = 200;
+
+  for (let index = 0; index < uniqueIds.length; index += chunkSize) {
+    const chunk = uniqueIds.slice(index, index + chunkSize);
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id,name,email,last_seen")
+      .in("id", chunk);
+    if (error) throw error;
+    rows.push(...((data ?? []) as Record<string, any>[]));
+  }
+
+  return rows;
+}
+
 export async function loadAdminAffiliates(search = "") {
-  const [{ data: affiliates }, { data: plans }, { data: overrides }, goals, base] = await Promise.all([
-    supabaseAdmin
-      .from("affiliates")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(200),
+  const [affiliates, { data: plans }, { data: overrides }, goals, base] = await Promise.all([
+    fetchAll(() =>
+      supabaseAdmin
+        .from("affiliates")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ),
     supabaseAdmin.from("plans").select("id,name,price,affiliate_commission_fixed").order("price"),
     supabaseAdmin.from("affiliate_commission_overrides").select("*").limit(500),
     getSetting<Goals>("affiliate_goals", DEFAULT_GOALS),
     getAppUrl(),
   ]);
 
-  const list = (affiliates ?? []) as Record<string, any>[];
-  const userIds = list.map((a) => a["user_id"]);
-  const affiliateIds = list.map((a) => a["id"]);
+  const list = affiliates as Record<string, any>[];
+  const ownerUserIds = list.map((a) => String(a["user_id"] ?? "")).filter(Boolean);
+  const affiliateIds = list.map((a) => String(a["id"] ?? "")).filter(Boolean);
 
-  const [{ data: profiles }, { data: referrals }, { data: conversions }, { data: commissions }, { data: documents }, { data: sessions }] = await Promise.all([
-    userIds.length
-      ? supabaseAdmin.from("profiles").select("id,name,email,last_seen").in("id", userIds)
-      : { data: [] as Record<string, any>[] },
-    affiliateIds.length
-      ? supabaseAdmin.from("affiliate_referrals").select("id, affiliate_id, status, user_id").in("affiliate_id", affiliateIds)
-      : { data: [] as Record<string, any>[] },
-    affiliateIds.length
-      ? supabaseAdmin.from("affiliate_conversions").select("affiliate_id, amount, commission_amount, status").in("affiliate_id", affiliateIds)
-      : { data: [] as Record<string, any>[] },
-    affiliateIds.length
-      ? supabaseAdmin.from("affiliate_commissions").select("affiliate_id, amount, status").in("affiliate_id", affiliateIds)
-      : { data: [] as Record<string, any>[] },
-    affiliateIds.length
-      ? supabaseAdmin.from("affiliate_documents").select("*").in("affiliate_id", affiliateIds)
-      : { data: [] as Record<string, any>[] },
-    userIds.length
-      ? supabaseAdmin.from("profiles").select("id, last_seen").in("id", userIds)
-      : { data: [] as Record<string, any>[] },
-  ]);
+  const [referrals, conversions, commissions, documents] = affiliateIds.length
+    ? await Promise.all([
+        fetchAll(() =>
+          supabaseAdmin
+            .from("affiliate_referrals")
+            .select("id,affiliate_id,status,user_id,signed_up_at,converted_at")
+            .in("affiliate_id", affiliateIds)
+            .order("signed_up_at", { ascending: false }),
+        ),
+        fetchAll(() =>
+          supabaseAdmin
+            .from("affiliate_conversions")
+            .select("affiliate_id,amount,commission_amount,status")
+            .in("affiliate_id", affiliateIds),
+        ),
+        fetchAll(() =>
+          supabaseAdmin
+            .from("affiliate_commissions")
+            .select("affiliate_id,amount,status")
+            .in("affiliate_id", affiliateIds),
+        ),
+        fetchAll(() =>
+          supabaseAdmin
+            .from("affiliate_documents")
+            .select("*")
+            .in("affiliate_id", affiliateIds),
+        ),
+      ])
+    : [[], [], [], []];
 
-  const byUser = new Map((profiles ?? []).map((p: any) => [p.id, p]));
+  // Perfis dos donos dos links + perfis de quem foi indicado.
+  // Antes, o painel procurava o indicado apenas no mapa dos próprios afiliados,
+  // fazendo nome/e-mail aparecerem como "Usuário / —" mesmo quando existiam.
+  const referralUserIds = referrals.map((r) => String(r["user_id"] ?? "")).filter(Boolean);
+  const profiles = await loadProfiles([...ownerUserIds, ...referralUserIds]);
+  const byUser = new Map(profiles.map((p: any) => [p.id, p]));
+
   const docsByAffiliate = new Map<string, any[]>();
-  (documents ?? []).forEach(d => {
-    const list = docsByAffiliate.get(d["affiliate_id"]) || [];
-    list.push(d);
-    docsByAffiliate.set(d["affiliate_id"], list);
+  documents.forEach((d) => {
+    const current = docsByAffiliate.get(d["affiliate_id"]) || [];
+    current.push(d);
+    docsByAffiliate.set(d["affiliate_id"], current);
   });
-  
-  const statsMap = new Map<string, { signups: number; customers: number; revenue: number; commission: number; pending: number; paid: number }>();
-  
-  affiliateIds.forEach(id => statsMap.set(id, { signups: 0, customers: 0, revenue: 0, commission: 0, pending: 0, paid: 0 }));
 
-  (referrals ?? []).forEach(r => {
-    const stats = statsMap.get(r['affiliate_id']);
-    if (stats) {
-      if (r['status'] === 'signup' || r['status'] === 'customer') stats.signups++;
-      if (r['status'] === 'customer') stats.customers++;
+  const referralsByAffiliate = new Map<string, Record<string, any>[]>();
+  referrals.forEach((referral) => {
+    const id = String(referral["affiliate_id"] ?? "");
+    const current = referralsByAffiliate.get(id) || [];
+    current.push(referral);
+    referralsByAffiliate.set(id, current);
+  });
+
+  const statsMap = new Map<
+    string,
+    { signups: number; customers: number; revenue: number; commission: number; pending: number; paid: number }
+  >();
+
+  affiliateIds.forEach((id) =>
+    statsMap.set(id, { signups: 0, customers: 0, revenue: 0, commission: 0, pending: 0, paid: 0 }),
+  );
+
+  referrals.forEach((r) => {
+    const stats = statsMap.get(String(r["affiliate_id"]));
+    if (!stats) return;
+    const status = String(r["status"] ?? "").toLowerCase();
+    if (status === "signup" || status === "customer") stats.signups++;
+    if (status === "customer") stats.customers++;
+  });
+
+  conversions.forEach((c) => {
+    const stats = statsMap.get(String(c["affiliate_id"]));
+    const status = String(c["status"] ?? "").toUpperCase();
+    if (stats && ["APPROVED", "PAID", "COMPLETED"].includes(status)) {
+      stats.revenue += Number(c["amount"] ?? 0);
     }
   });
 
-  (conversions ?? []).forEach(c => {
-    const stats = statsMap.get(c['affiliate_id']);
-    if (stats && c['status'] === 'APPROVED') {
-      stats.revenue += Number(c['amount']);
-    }
+  commissions.forEach((c) => {
+    const stats = statsMap.get(String(c["affiliate_id"]));
+    if (!stats) return;
+    const status = String(c["status"] ?? "").toUpperCase();
+    const amount = Number(c["amount"] ?? 0);
+    if (status === "PENDING") stats.pending += amount;
+    if (status === "PAID") stats.paid += amount;
+    if (["PENDING", "APPROVED", "PAID", "AVAILABLE"].includes(status)) stats.commission += amount;
   });
 
-  (commissions ?? []).forEach(c => {
-    const stats = statsMap.get(c['affiliate_id']);
-    if (stats) {
-      if (c['status'] === 'PENDING') stats.pending += Number(c['amount']);
-      if (c['status'] === 'PAID') stats.paid += Number(c['amount']);
-      if (['PENDING', 'APPROVED', 'PAID', 'AVAILABLE'].includes(c['status'] as string)) {
-        stats.commission += Number(c['amount']);
-      }
-    }
-  });
-  
   const term = search.trim().toLowerCase();
   const rows = list
     .map((a) => {
       const profile = byUser.get(a["user_id"]);
       const stats = statsMap.get(a["id"]);
-      
-      // Get referrals with profile info for this affiliate
-      const affReferrals = (referrals ?? [])
-        .filter(r => r["affiliate_id"] === a["id"])
+
+      const affReferrals = (referralsByAffiliate.get(String(a["id"])) ?? [])
         .slice(0, 5)
-        .map(r => {
+        .map((r) => {
           const p = byUser.get(r["user_id"]);
           return {
             id: r["id"],
             name: p?.name ?? "Usuário",
             email: p?.email ?? "—",
-            status: r["status"]
+            status: r["status"],
+            signed_up_at: r["signed_up_at"] ?? null,
+            converted_at: r["converted_at"] ?? null,
           };
         });
 
@@ -263,10 +326,10 @@ export async function approveAffiliateDocs(affiliateId: string, approve: boolean
   const status = approve ? "APPROVED" : "REJECTED";
   const { error } = await supabaseAdmin
     .from("affiliates")
-    .update({ 
+    .update({
       verification_status: status,
       verification_notes: reason || null,
-      verification_processed_at: new Date().toISOString()
+      verification_processed_at: new Date().toISOString(),
     } as any)
     .eq("id", affiliateId);
 

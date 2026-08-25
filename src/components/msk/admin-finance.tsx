@@ -14,7 +14,7 @@ const fmt = (d?: string | null) => (d ? new Date(d).toLocaleString("pt-BR") : "â
 const txGroup = (t: any) => {
   const s = String(t?.status ?? "").toUpperCase();
   if (["PAID", "APPROVED", "COMPLETED"].includes(s) || t?.paid_at) return "paid";
-  if (["PENDING", "WAITING", "PROCESSING"].includes(s)) return "pending";
+  if (["PENDING", "WAITING", "WAITING_PAYMENT", "AWAITING_PAYMENT", "PROCESSING"].includes(s)) return "pending";
   return "failed";
 };
 
