@@ -10,6 +10,7 @@ import {
   preflight,
   rateLimit,
 } from "@/lib/license.server";
+import { resolvePlanDuration } from "@/lib/plan-duration";
 
 const schema = z.object({
   token: z.string().min(8).max(64),
@@ -37,31 +38,29 @@ export const Route = createFileRoute("/api/public/license/activate")({
           return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
         }
         const body = parsed.data;
-        // Identidade do dispositivo = installationId persistente (IP nunca é usado como identidade).
         const identity = body.installation_id ?? body.device_fingerprint;
-        if (!identity) {
-          return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
-        }
+        if (!identity) return jsonResponse({ success: false, error: "INVALID_REQUEST" }, 400);
 
         const license = (await findLicenseByToken(body.token)) as any;
-
         if (!license) {
           const { hashToken } = await import("@/lib/license.server");
           const tokenHash = await hashToken(body.token);
-
           await logEvent({
             event_type: "invalid_attempt",
-            metadata: { 
+            metadata: {
               ip_hash: await hashValue(ip),
               token_hash_sent: tokenHash,
-              error: "Token not found during activation"
+              error: "Token not found during activation",
             },
           });
-          return jsonResponse({ 
-            success: false, 
-            error: "INVALID_LICENSE",
-            message: "Token inválido. Confira os caracteres e tente novamente."
-          }, 404);
+          return jsonResponse(
+            {
+              success: false,
+              error: "INVALID_LICENSE",
+              message: "Token inválido. Confira os caracteres e tente novamente.",
+            },
+            404,
+          );
         }
 
         if (license.status === "revoked")
@@ -74,9 +73,8 @@ export const Route = createFileRoute("/api/public/license/activate")({
         const deviceHash = await hashValue(identity);
         const installationId = body.installation_id ?? null;
 
-        // Procura primeiro pelo installationId (estável), depois pelo hash legado.
         type DeviceRow = { id: string; status: string };
-  let existing: DeviceRow | null = null;
+        let existing: DeviceRow | null = null;
         if (installationId) {
           const { data } = await supabaseAdmin
             .from("license_devices")
@@ -113,8 +111,7 @@ export const Route = createFileRoute("/api/public/license/activate")({
               {
                 success: false,
                 error: "DEVICE_LIMIT_REACHED",
-                message:
-                  "Esta licença já está vinculada ao limite de dispositivos permitido.",
+                message: "Esta licença já está vinculada ao limite de dispositivos permitido.",
               },
               403,
             );
@@ -149,32 +146,50 @@ export const Route = createFileRoute("/api/public/license/activate")({
             .eq("id", existing.id);
         }
 
-        // Se for o primeiro uso (activated_at nulo), define a expiração a partir de agora
-        const updates: any = {
+        const now = new Date();
+        const updates: Record<string, any> = {
           status: "active",
-          last_validation: new Date().toISOString(),
+          last_validation: now.toISOString(),
         };
-        
+        let effectiveExpiresAt: string | null = license.expires_at ?? null;
+
+        // Licenças pagas/manuais são emitidas como "inactive" com expires_at=null.
+        // A duração real fica em metadata.pending_duration_ms e só começa no primeiro uso.
         if (!license.activated_at) {
-          updates.activated_at = new Date().toISOString();
-          // Se a licença tiver uma duração definida (ex: teste/trial), calcula a expiração baseada no agora
-          if (license.expires_at && license.starts_at) {
-            const duration = new Date(license.expires_at).getTime() - new Date(license.starts_at).getTime();
-            updates.expires_at = new Date(Date.now() + duration).toISOString();
+          updates["activated_at"] = now.toISOString();
+          const pendingMs = Number(license.metadata?.["pending_duration_ms"] ?? 0);
+
+          if (pendingMs > 0) {
+            effectiveExpiresAt = new Date(now.getTime() + pendingMs).toISOString();
+            updates["expires_at"] = effectiveExpiresAt;
+          } else if (!effectiveExpiresAt && license.plan_id) {
+            // Recuperação de licenças antigas: derive do plano real, nunca assuma 30 dias.
+            const { data: plan } = await supabaseAdmin
+              .from("plans")
+              .select("name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit")
+              .eq("id", license.plan_id)
+              .maybeSingle();
+            if (plan) {
+              const resolved = resolvePlanDuration(plan);
+              if (!resolved.lifetime && resolved.milliseconds) {
+                effectiveExpiresAt = new Date(now.getTime() + resolved.milliseconds).toISOString();
+                updates["expires_at"] = effectiveExpiresAt;
+              }
+            }
           }
         }
 
-        await supabaseAdmin
-          .from("licenses")
-          .update(updates)
-          .eq("id", license.id);
-
+        await supabaseAdmin.from("licenses").update(updates as never).eq("id", license.id);
 
         await logEvent({
           license_id: license.id,
           user_id: license.user_id,
           event_type: "activated",
           device_hash: deviceHash,
+          metadata: {
+            expires_at: effectiveExpiresAt,
+            pending_duration_ms: Number(license.metadata?.["pending_duration_ms"] ?? 0) || null,
+          },
         });
 
         const { count: devices } = await supabaseAdmin
@@ -189,7 +204,7 @@ export const Route = createFileRoute("/api/public/license/activate")({
             status: "active",
             plan: license.plans?.slug ?? null,
             plan_name: license.plans?.name ?? null,
-            expires_at: license.expires_at,
+            expires_at: effectiveExpiresAt,
             max_devices: license.max_devices,
             devices_used: devices ?? 0,
             features: license.plans?.features ?? lockedFeatures(),
