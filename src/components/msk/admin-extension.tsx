@@ -27,6 +27,14 @@ function human(bytes?: number | null) {
   return mb >= 1 ? `${mb.toFixed(2)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
 }
 
+function fileDisplayName(fileName: string) {
+  return fileName
+    .replace(/\.zip$/i, "")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function ExtensionChannels() {
   const qc = useQueryClient();
   const list = useServerFn(adminListExtensionChannels);
@@ -132,24 +140,34 @@ function ExtensionChannels() {
 export function AdminExtensionTab() {
   const qc = useQueryClient();
   const list = useServerFn(adminListBuilds);
+  const listChannels = useServerFn(adminListExtensionChannels);
   const createUrl = useServerFn(adminCreateUploadUrl);
   const register = useServerFn(adminRegisterBuild);
   const setPublished = useServerFn(adminSetBuildPublished);
   const removeBuild = useServerFn(adminDeleteBuild);
 
   const { data, isLoading } = useQuery({ queryKey: ["admin-builds"], queryFn: () => list() });
+  const { data: channelData } = useQuery({
+    queryKey: ["extension-channels"],
+    queryFn: () => listChannels(),
+  });
+  const channels = channelData?.channels ?? [];
 
+  const [displayName, setDisplayName] = useState("");
+  const [channelSlug, setChannelSlug] = useState("");
   const [version, setVersion] = useState("");
   const [notes, setNotes] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectedChannelSlug = channelSlug || channels[0]?.slug || "m3k-principal";
 
   const toggle = useMutation({
     mutationFn: (v: { buildId: string; publish: boolean }) => setPublished({ data: v }),
     onSuccess: () => {
       toast.success("Versão atualizada.");
       qc.invalidateQueries({ queryKey: ["admin-builds"] });
+      qc.invalidateQueries({ queryKey: ["extension-channels"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -159,6 +177,7 @@ export function AdminExtensionTab() {
     onSuccess: () => {
       toast.success("Versão removida.");
       qc.invalidateQueries({ queryKey: ["admin-builds"] });
+      qc.invalidateQueries({ queryKey: ["extension-channels"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -170,6 +189,10 @@ export function AdminExtensionTab() {
     }
     if (!/\.zip$/i.test(file.name)) {
       toast.error("O arquivo precisa ser .zip.");
+      return;
+    }
+    if (!displayName.trim()) {
+      toast.error("Informe o nome da extensão.");
       return;
     }
     if (!version.trim()) {
@@ -189,6 +212,8 @@ export function AdminExtensionTab() {
       await register({
         data: {
           version: version.trim(),
+          displayName: displayName.trim(),
+          channelSlug: selectedChannelSlug,
           fileName: file.name,
           storagePath: path,
           sizeBytes: file.size,
@@ -196,12 +221,14 @@ export function AdminExtensionTab() {
           publish: true,
         },
       });
-      toast.success("ZIP enviado e publicado para os assinantes.");
+      toast.success(`${displayName.trim()} v${version.trim()} enviada e publicada.`);
       setFile(null);
+      setDisplayName("");
       setVersion("");
       setNotes("");
       if (inputRef.current) inputRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["admin-builds"] });
+      qc.invalidateQueries({ queryKey: ["extension-channels"] });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -212,52 +239,98 @@ export function AdminExtensionTab() {
   return (
     <div className="space-y-8">
       <ExtensionChannels />
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="ext-version">Versão</Label>
-            <Input
-              id="ext-version"
-              placeholder="1.4.2"
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="ext-file">Arquivo .zip da extensão</Label>
-            <div className="flex flex-col gap-2">
+
+      <div className="rounded-3xl border border-border/60 bg-card/30 p-5 md:p-6">
+        <div className="mb-5">
+          <h3 className="text-sm font-semibold">Publicar nova versão</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            O nome, o canal e a versão informados aqui passam a ser a fonte do card acima.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-name">Nome da extensão</Label>
               <Input
-                id="ext-file"
-                ref={inputRef}
-                type="file"
-                accept=".zip,application/zip"
-                className="cursor-pointer file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:text-primary-foreground file:px-3 file:py-1 file:mr-2"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                id="ext-name"
+                placeholder="Ex.: MSK Principal"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
               />
-              {file && (
-                <p className="text-xs font-bold text-primary animate-pulse">
-                  Selecionado: {file.name} — {human(file.size)}
-                </p>
-              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-channel">Canal de destino</Label>
+              <select
+                id="ext-channel"
+                value={selectedChannelSlug}
+                onChange={(e) => setChannelSlug(e.target.value)}
+                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/40"
+              >
+                {channels.length === 0 ? (
+                  <option value="m3k-principal">Canal principal</option>
+                ) : (
+                  channels.map((channel) => (
+                    <option key={channel.id} value={channel.slug}>
+                      {String(channel.channel_number).padStart(2, "0")} · {channel.display_name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-version">Versão</Label>
+              <Input
+                id="ext-version"
+                placeholder="1.4.2"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-file">Arquivo .zip da extensão</Label>
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="ext-file"
+                  ref={inputRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  className="cursor-pointer file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:text-primary-foreground file:px-3 file:py-1 file:mr-2"
+                  onChange={(e) => {
+                    const next = e.target.files?.[0] ?? null;
+                    setFile(next);
+                    if (next && !displayName.trim()) setDisplayName(fileDisplayName(next.name));
+                  }}
+                />
+                {file && (
+                  <p className="text-xs font-bold text-primary animate-pulse">
+                    Selecionado: {file.name} — {human(file.size)}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="ext-notes">Notas da versão (changelog)</Label>
-          <Textarea
-            id="ext-notes"
-            rows={6}
-            placeholder="O que mudou nesta versão..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
-        </div>
-      </div>
 
-      <Button variant="neon" onClick={upload} disabled={busy}>
-        {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-        Enviar e publicar ZIP
-      </Button>
+          <div className="space-y-1.5">
+            <Label htmlFor="ext-notes">Notas da versão (changelog)</Label>
+            <Textarea
+              id="ext-notes"
+              rows={10}
+              placeholder="O que mudou nesta versão..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Button variant="neon" className="mt-5" onClick={upload} disabled={busy}>
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+          Enviar e publicar ZIP
+        </Button>
+      </div>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -288,7 +361,6 @@ export function AdminExtensionTab() {
                     : "border-border/60 bg-card/40 opacity-75 grayscale-[0.5]"
                 } p-6 overflow-hidden`}
               >
-                {/* Background Glow for Active */}
                 {b.is_published && (
                   <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 blur-[40px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
                 )}
