@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -32,6 +32,7 @@ import {
 } from "@/lib/cart.functions";
 import { startPixCheckout } from "@/lib/commerce.functions";
 import { readAffiliateRef, readResellerRef } from "@/lib/urls";
+import { readCartSnapshot, type AbandonedCart, type AbandonedCartItem } from "@/lib/tracking";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
 import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
 import cardFreeImg from "@/assets/card-free.jpg";
@@ -55,6 +56,10 @@ function imageForLine(line: { imageUrl?: string | null; slug: string }) {
   return PLAN_IMAGES[line.slug] ?? bannerOfferAsset.url;
 }
 
+function localCount(cart: AbandonedCart | null) {
+  return (cart?.items ?? []).reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 0)), 0);
+}
+
 type PendingPay = {
   planId?: string;
   planName?: string;
@@ -63,12 +68,17 @@ type PendingPay = {
 export function CartSheet({ signedIn }: { signedIn: boolean }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixState | null>(null);
   const [payingPlanId, setPayingPlanId] = useState("");
   const [askPayer, setAskPayer] = useState(false);
   const [pendingPay, setPendingPay] = useState<PendingPay | null>(null);
+  const [localCart, setLocalCart] = useState<AbandonedCart | null>(() =>
+    typeof window !== "undefined" ? readCartSnapshot() : null,
+  );
+  const [cartBump, setCartBump] = useState(false);
   const { billing, complete } = useBilling();
 
   const { data, isLoading } = useQuery({
@@ -93,7 +103,100 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
   });
 
   const lines = data?.lines ?? [];
-  const count = lines.reduce((acc, line) => acc + line.quantity, 0);
+  const persistedCount = lines.reduce((acc, line) => acc + line.quantity, 0);
+  const snapshotCount = localCount(localCart);
+  const count = Math.max(persistedCount, snapshotCount);
+  const localOnly = lines.length === 0 && !!localCart?.items?.length;
+  const displayTotal = localOnly ? Number(localCart?.total ?? 0) : Number(data?.total ?? 0);
+
+  function animateIntoCart(item?: AbandonedCartItem | null) {
+    if (typeof window === "undefined" || typeof document === "undefined") return;
+    const target = triggerRef.current?.getBoundingClientRect();
+    if (!target) return;
+
+    const size = 62;
+    const startX = Math.max(18, window.innerWidth / 2 - size / 2);
+    const startY = Math.min(window.innerHeight - size - 40, window.innerHeight * 0.66);
+    const endX = target.left + target.width / 2 - size / 2;
+    const endY = target.top + target.height / 2 - size / 2;
+
+    const flyer = document.createElement("div");
+    flyer.setAttribute("aria-hidden", "true");
+    Object.assign(flyer.style, {
+      position: "fixed",
+      left: `${startX}px`,
+      top: `${startY}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+      zIndex: "1000000",
+      pointerEvents: "none",
+      overflow: "hidden",
+      borderRadius: "16px",
+      border: "1px solid rgba(57,255,20,.65)",
+      background: "#090909",
+      boxShadow: "0 0 35px rgba(57,255,20,.28)",
+    });
+
+    if (item?.imageUrl) {
+      const img = document.createElement("img");
+      img.src = item.imageUrl;
+      img.alt = "";
+      Object.assign(img.style, { width: "100%", height: "100%", objectFit: "cover" });
+      flyer.appendChild(img);
+    } else {
+      const glyph = document.createElement("div");
+      glyph.textContent = "+1";
+      Object.assign(glyph.style, {
+        display: "grid",
+        placeItems: "center",
+        width: "100%",
+        height: "100%",
+        color: "#39ff14",
+        fontWeight: "900",
+        fontSize: "18px",
+      });
+      flyer.appendChild(glyph);
+    }
+
+    document.body.appendChild(flyer);
+    const animation = flyer.animate(
+      [
+        { transform: "translate3d(0,0,0) scale(1)", opacity: 1 },
+        { transform: `translate3d(${(endX - startX) * 0.55}px, ${(endY - startY) * 0.35}px, 0) scale(.8)`, opacity: 0.95, offset: 0.55 },
+        { transform: `translate3d(${endX - startX}px, ${endY - startY}px, 0) scale(.18)`, opacity: 0.15 },
+      ],
+      { duration: 720, easing: "cubic-bezier(.22,.9,.3,1)", fill: "forwards" },
+    );
+    animation.onfinish = () => flyer.remove();
+  }
+
+  useEffect(() => {
+    const syncLocal = (event?: Event) => {
+      const custom = event as CustomEvent<{
+        cart?: AbandonedCart | null;
+        added?: boolean;
+        addedItem?: AbandonedCartItem | null;
+      }>;
+      const next = custom?.detail?.cart !== undefined ? custom.detail.cart : readCartSnapshot();
+      setLocalCart(next ?? null);
+      if (custom?.detail?.added) {
+        setCartBump(true);
+        animateIntoCart(custom.detail.addedItem ?? null);
+        window.setTimeout(() => setCartBump(false), 650);
+      }
+    };
+
+    const storage = (event: StorageEvent) => {
+      if (event.key === "msk_tracking_cart") syncLocal();
+    };
+
+    window.addEventListener("msk:cart-change", syncLocal as EventListener);
+    window.addEventListener("storage", storage);
+    return () => {
+      window.removeEventListener("msk:cart-change", syncLocal as EventListener);
+      window.removeEventListener("storage", storage);
+    };
+  }, []);
 
   async function mutate(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -155,8 +258,6 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
         },
       });
 
-      // O carrinho representa somente itens que AINDA NÃO foram enviados ao PIX.
-      // Assim que o gateway aceita a criação do PIX, removemos o item ou o carrinho inteiro.
       await removeSubmittedItems(planId);
       setPendingPay(null);
       setAskPayer(false);
@@ -194,11 +295,18 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     <>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="sm" className="relative" aria-label="Carrinho">
-            <ShoppingCart className="h-5 w-5 text-neon" />
+          <Button
+            ref={triggerRef}
+            data-cart-trigger
+            variant="ghost"
+            size="sm"
+            className={`relative transition-transform duration-300 ${cartBump ? "scale-125" : "scale-100"}`}
+            aria-label={`Carrinho${count ? ` com ${count} item(ns)` : ""}`}
+          >
+            <ShoppingCart className={`h-5 w-5 text-neon transition-transform ${cartBump ? "-rotate-12 scale-110" : ""}`} />
             {count > 0 ? (
-              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] font-black text-primary-foreground">
-                {count}
+              <span className={`absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] font-black text-primary-foreground shadow-[0_0_16px_rgba(57,255,20,.55)] ${cartBump ? "animate-pulse" : ""}`}>
+                {count > 99 ? "99+" : count}
               </span>
             ) : null}
           </Button>
@@ -216,7 +324,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     Seu carrinho
                   </SheetTitle>
                   <SheetDescription className="mt-1 text-xs leading-relaxed">
-                    Só aparecem aqui itens que ainda não foram enviados ao PIX.
+                    Itens adicionados aparecem aqui imediatamente com a quantidade atualizada.
                   </SheetDescription>
                 </div>
               </div>
@@ -229,31 +337,57 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     Resumo
                   </p>
                   <p className="mt-1 text-sm font-bold">
-                    {count} {count === 1 ? "licença selecionada" : "licenças selecionadas"}
+                    {count} {count === 1 ? "produto adicionado" : "produtos adicionados"}
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-black text-primary">
-                  {brl(data?.total)}
+                  {brl(displayTotal)}
                 </span>
               </div>
             ) : null}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
-            {!signedIn ? (
+            {!signedIn && !localOnly ? (
               <div className="rounded-2xl border border-white/10 bg-white/[.025] p-5 text-center">
                 <ShoppingCart className="mx-auto h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 text-sm text-muted-foreground">Entre na sua conta para usar o carrinho.</p>
+                <p className="mt-3 text-sm text-muted-foreground">Entre na sua conta para usar o carrinho persistente.</p>
               </div>
             ) : null}
 
-            {signedIn && isLoading ? (
+            {signedIn && isLoading && !localOnly ? (
               <div className="grid min-h-40 place-items-center">
                 <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : null}
 
-            {signedIn && (!complete || askPayer) ? (
+            {localOnly ? (
+              <section className="mb-4 space-y-3">
+                <div className="rounded-2xl border border-primary/20 bg-primary/[.05] p-3 text-[10px] leading-relaxed text-muted-foreground">
+                  Estes produtos foram adicionados na página de planos e estão no seu carrinho atual.
+                </div>
+                {(localCart?.items ?? []).map((item, index) => (
+                  <article key={`${item.name}-${index}`} className="flex min-w-0 gap-3 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3">
+                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black">
+                      <img src={item.imageUrl || bannerOfferAsset.url} alt={item.name} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="break-words text-sm font-black uppercase leading-tight text-white">{item.name}</h3>
+                      <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quantidade</p>
+                      <div className="mt-1 flex items-end justify-between gap-3">
+                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary">{item.quantity}x</span>
+                        <span className="text-lg font-black text-primary">{brl(Number(item.price) * Number(item.quantity))}</span>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+                <Button variant="neon" className="w-full" onClick={goToPlans}>
+                  Abrir carrinho completo
+                </Button>
+              </section>
+            ) : null}
+
+            {signedIn && !localOnly && (!complete || askPayer) ? (
               <section className="mb-4 overflow-hidden rounded-2xl border border-primary/20 bg-primary/[.04] p-4">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -276,20 +410,20 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
               </section>
             ) : null}
 
-            {signedIn && complete && !askPayer ? (
+            {signedIn && !localOnly && complete && !askPayer ? (
               <div className="mb-4">
                 <PayerForm onSaved={() => setAskPayer(false)} />
               </div>
             ) : null}
 
-            {signedIn && !isLoading && !lines.length ? (
+            {!localOnly && !isLoading && !lines.length ? (
               <div className="rounded-[1.75rem] border border-dashed border-white/15 bg-white/[.02] px-6 py-10 text-center">
                 <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[.035]">
                   <PackageCheck className="h-6 w-6 text-muted-foreground" />
                 </div>
                 <p className="mt-4 text-sm font-black uppercase tracking-wide">Carrinho vazio</p>
                 <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-muted-foreground">
-                  PIX gerados, pagos ou expirados não ficam misturados aqui.
+                  Quando você adicionar um plano, ele aparece aqui na hora.
                 </p>
                 <Button variant="neonOutline" size="sm" className="mt-5" onClick={goToPlans}>
                   Ver planos
@@ -297,106 +431,108 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
               </div>
             ) : null}
 
-            <div className="space-y-3">
-              {lines.map((line) => (
-                <article
-                  key={line.id}
-                  className="min-w-0 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3 shadow-[0_18px_50px_-35px_rgba(0,0,0,.9)] sm:p-4"
-                >
-                  <div className="flex min-w-0 gap-3">
-                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black sm:h-24 sm:w-24">
-                      <img
-                        src={imageForLine(line)}
-                        alt={line.name}
-                        className="h-full w-full object-cover"
-                      />
+            {!localOnly ? (
+              <div className="space-y-3">
+                {lines.map((line) => (
+                  <article
+                    key={line.id}
+                    className="min-w-0 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3 shadow-[0_18px_50px_-35px_rgba(0,0,0,.9)] sm:p-4"
+                  >
+                    <div className="flex min-w-0 gap-3">
+                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black sm:h-24 sm:w-24">
+                        <img
+                          src={imageForLine(line)}
+                          alt={line.name}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+
+                      <div className="min-w-0 flex-1 py-0.5">
+                        <div className="flex min-w-0 items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <span className="inline-flex max-w-full rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-primary">
+                              {line.durationLabel || "Licença MSK"}
+                            </span>
+                            <h3 className="mt-2 break-words text-sm font-black uppercase leading-tight text-white">
+                              {line.name}
+                            </h3>
+                          </div>
+                          <button
+                            type="button"
+                            aria-label={`Remover ${line.name}`}
+                            disabled={busy}
+                            onClick={() => mutate(() => removeCartItem({ data: { itemId: line.id } }))}
+                            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+
+                        <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+                          <div>
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Unitário</p>
+                            <p className="mt-0.5 text-xs font-bold text-white/70">{brl(line.price)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Total</p>
+                            <p className="mt-0.5 text-lg font-black text-primary">{brl(line.lineTotal)}</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="min-w-0 flex-1 py-0.5">
-                      <div className="flex min-w-0 items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <span className="inline-flex max-w-full rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-primary">
-                            {line.durationLabel || "Licença MSK"}
-                          </span>
-                          <h3 className="mt-2 break-words text-sm font-black uppercase leading-tight text-white">
-                            {line.name}
-                          </h3>
-                        </div>
+                    <div className="mt-3 grid gap-2 border-t border-white/5 pt-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+                      <div className="flex h-11 items-center justify-between rounded-xl border border-white/10 bg-black/40 p-1 sm:w-[126px]">
                         <button
                           type="button"
-                          aria-label={`Remover ${line.name}`}
+                          aria-label="Diminuir quantidade"
                           disabled={busy}
-                          onClick={() => mutate(() => removeCartItem({ data: { itemId: line.id } }))}
-                          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                          onClick={() =>
+                            mutate(() =>
+                              updateCartItem({ data: { itemId: line.id, quantity: line.quantity - 1 } }),
+                            )
+                          }
+                          className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-white/5 hover:text-primary disabled:opacity-40"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="min-w-8 text-center text-sm font-black">{line.quantity}</span>
+                        <button
+                          type="button"
+                          aria-label="Aumentar quantidade"
+                          disabled={busy || line.quantity >= 20}
+                          onClick={() =>
+                            mutate(() =>
+                              updateCartItem({ data: { itemId: line.id, quantity: line.quantity + 1 } }),
+                            )
+                          }
+                          className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-white/5 hover:text-primary disabled:opacity-40"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
                         </button>
                       </div>
 
-                      <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
-                        <div>
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Unitário</p>
-                          <p className="mt-0.5 text-xs font-bold text-white/70">{brl(line.price)}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Total</p>
-                          <p className="mt-0.5 text-lg font-black text-primary">{brl(line.lineTotal)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid gap-2 border-t border-white/5 pt-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
-                    <div className="flex h-11 items-center justify-between rounded-xl border border-white/10 bg-black/40 p-1 sm:w-[126px]">
-                      <button
-                        type="button"
-                        aria-label="Diminuir quantidade"
+                      <Button
+                        variant="neonOutline"
+                        className="h-11 min-w-0 whitespace-normal rounded-xl px-3 text-[10px] font-black uppercase leading-tight tracking-wider"
                         disabled={busy}
-                        onClick={() =>
-                          mutate(() =>
-                            updateCartItem({ data: { itemId: line.id, quantity: line.quantity - 1 } }),
-                          )
-                        }
-                        className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-white/5 hover:text-primary disabled:opacity-40"
+                        onClick={() => void pay(line.planId, line.name)}
                       >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <span className="min-w-8 text-center text-sm font-black">{line.quantity}</span>
-                      <button
-                        type="button"
-                        aria-label="Aumentar quantidade"
-                        disabled={busy || line.quantity >= 20}
-                        onClick={() =>
-                          mutate(() =>
-                            updateCartItem({ data: { itemId: line.id, quantity: line.quantity + 1 } }),
-                          )
-                        }
-                        className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-white/5 hover:text-primary disabled:opacity-40"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
+                        {busy && payingPlanId === line.planId ? (
+                          <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
+                        ) : (
+                          <Sparkles className="mr-2 h-4 w-4 shrink-0" />
+                        )}
+                        Gerar PIX desta licença
+                      </Button>
                     </div>
-
-                    <Button
-                      variant="neonOutline"
-                      className="h-11 min-w-0 whitespace-normal rounded-xl px-3 text-[10px] font-black uppercase leading-tight tracking-wider"
-                      disabled={busy}
-                      onClick={() => void pay(line.planId, line.name)}
-                    >
-                      {busy && payingPlanId === line.planId ? (
-                        <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
-                      ) : (
-                        <Sparkles className="mr-2 h-4 w-4 shrink-0" />
-                      )}
-                      Gerar PIX desta licença
-                    </Button>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            ) : null}
           </div>
 
-          {lines.length ? (
+          {!localOnly && lines.length ? (
             <div className="shrink-0 border-t border-white/10 bg-[#090909]/95 px-4 py-4 backdrop-blur-xl sm:px-5">
               <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
