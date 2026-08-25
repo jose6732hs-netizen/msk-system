@@ -61,8 +61,8 @@ function localCount(cart: AbandonedCart | null) {
 }
 
 type PendingPay = {
-  planId?: string;
-  planName?: string;
+  planId?: string | undefined;
+  planName?: string | undefined;
 };
 
 export function CartSheet({ signedIn }: { signedIn: boolean }) {
@@ -235,7 +235,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
       : null);
 
     if (!bill) {
-      setPendingPay({ planId, planName });
+      setPendingPay({ planId: planId ?? "", planName: planName ?? "" });
       setPayingPlanId(planId ?? "");
       setAskPayer(true);
       setOpen(true);

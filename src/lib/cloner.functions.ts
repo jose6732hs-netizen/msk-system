@@ -158,7 +158,7 @@ export const adminSaveCloner = createServerFn({ method: "POST" })
     const { saveAdminCloner } = await import("./cloner.server");
     const { saveClonerPlanOverrides } = await import("./cloner-plan-overrides.server");
     const result = await saveAdminCloner(data, context.userId);
-    await saveClonerPlanOverrides(data.plans);
+    await saveClonerPlanOverrides(data.plans.map((p) => ({ id: p.id, price: p.price, active: p.active, imageUrl: p.imageUrl ?? null })));
     return result;
   });
 

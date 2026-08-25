@@ -330,7 +330,7 @@ function PlanosPage() {
 
     const payerData = billingOverride ?? (complete && billing ? { document: billing.document, phone: billing.phone } : null);
     if (!payerData) {
-      setPayer({ planId, planName, imageUrl });
+      setPayer({ planId, planName, imageUrl: imageUrl ?? null });
       return;
     }
 
