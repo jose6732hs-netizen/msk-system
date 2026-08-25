@@ -19,7 +19,6 @@ type Allowance = {
   source: string;
 };
 
-/** Saldo agregado do tenant (isolado por user_id). */
 export async function loadAllowances(userId: string) {
   const { data } = await supabaseAdmin
     .from("token_allowances")
@@ -32,82 +31,87 @@ export async function loadAllowances(userId: string) {
   );
   const total = rows.reduce((s, a) => s + Number(a.total), 0);
   const used = rows.reduce((s, a) => s + Number(a.used), 0);
-  const renewal =
-    rows
-      .map((a) => a.period_end)
-      .filter(Boolean)
-      .sort()[0] ?? null;
+  const renewal = rows.map((a) => a.period_end).filter(Boolean).sort()[0] ?? null;
   return { rows, total, used, available: Math.max(0, total - used), renewal };
 }
 
-/** Tokens (licenças) do tenant, sem expor o token em claro. Mantém histórico limpo. */
+/** Tokens do usuário com todos os campos usados pelo contador da interface. */
 export async function loadTenantTokens(userId: string) {
-  const nowIso = new Date().toISOString();
-  const fewHoursAgo = new Date(Date.now() - 6 * 3600000).toISOString();
-
+  const fewHoursAgo = new Date(Date.now() - 6 * 3_600_000).toISOString();
   const { data } = await supabaseAdmin
     .from("licenses")
     .select(
-      "id,status,type,token_preview,token_last4,created_at,activated_at,expires_at,max_devices,metadata,plans(name,slug)",
+      "id,status,type,token_preview,token_last4,created_at,activated_at,expires_at,last_validation,max_devices,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
     )
     .eq("user_id", userId)
     .or(`expires_at.is.null,expires_at.gt.${fewHoursAgo}`)
     .order("created_at", { ascending: false })
-    .limit(3);
+    .limit(10);
 
   const list = (data ?? []) as Record<string, any>[];
   if (list.length === 0) return [];
 
+  const ids = list.map((l) => l["id"] as string);
   const { data: devices } = await supabaseAdmin
     .from("license_devices")
-    .select("license_id,installation_id,device_name,status")
-    .in(
-      "license_id",
-      list.map((l) => l["id"] as string),
-    )
+    .select("license_id,device_name,status")
+    .in("license_id", ids)
     .eq("status", "active");
 
-  const bound = new Map<string, string>();
-  for (const d of devices ?? [])
-    bound.set(d.license_id as string, (d.device_name as string) ?? "Dispositivo");
+  const firstDevice = new Map<string, string>();
+  const deviceCounts = new Map<string, number>();
+  for (const d of devices ?? []) {
+    const id = d.license_id as string;
+    if (!firstDevice.has(id)) firstDevice.set(id, (d.device_name as string) ?? "Dispositivo");
+    deviceCounts.set(id, (deviceCounts.get(id) ?? 0) + 1);
+  }
 
   const now = Date.now();
   return list.map((l) => {
-    const expired = l["expires_at"] && new Date(l["expires_at"]).getTime() <= now;
-    const device = bound.get(l["id"]);
+    const expired = !!l["expires_at"] && new Date(l["expires_at"]).getTime() <= now;
     const pendingMs = Number((l["metadata"] as any)?.["pending_duration_ms"] ?? 0);
-    const awaiting = l["status"] === "inactive" && !l["expires_at"];
+    const awaiting = l["status"] === "inactive" && !l["activated_at"];
+    const rawStatus = String(l["status"] ?? "inactive");
     const status =
-      l["status"] === "revoked" || l["status"] === "suspended"
-        ? l["status"]
+      rawStatus === "revoked" || rawStatus === "suspended"
+        ? rawStatus
         : expired
           ? "expired"
           : awaiting
             ? "pending"
-            : device
+            : rawStatus === "active"
               ? "active"
               : "available";
+
+    const planName = l["plans"]?.name ?? null;
     return {
       id: l["id"],
       preview: l["token_preview"],
       type: l["type"],
-      plan: l["plans"]?.name ?? null,
+      plan: planName,
+      plan_name: planName,
+      plan_slug: l["plans"]?.slug ?? null,
       status,
-      device: device ?? null,
+      device: firstDevice.get(l["id"]) ?? null,
       created_at: l["created_at"],
       activated_at: l["activated_at"],
       expires_at: l["expires_at"],
+      last_validation: l["last_validation"],
       max_devices: l["max_devices"],
+      active_devices: deviceCounts.get(l["id"]) ?? 0,
       pending_duration_ms: pendingMs || null,
+      is_lifetime: !!l["plans"]?.is_lifetime,
+      duration_label: l["plans"]?.duration_label ?? null,
     };
   });
 }
 
-/** Gera um token pago consumindo 1 unidade do saldo contratado. */
 export async function generateTenantToken(userId: string) {
   const { rows, available } = await loadAllowances(userId);
   const slot = rows.find((a) => Number(a.used) < Number(a.total));
-  if (available <= 0 || !slot) throw new Error("Você não possui saldo de tokens disponível. Garanta seu acesso premium na aba Planos.");
+  if (available <= 0 || !slot) {
+    throw new Error("Você não possui saldo de tokens disponível. Garanta seu acesso premium na aba Planos.");
+  }
 
   let planId = slot.plan_id;
   if (!planId) {
@@ -136,12 +140,7 @@ export async function generateTenantToken(userId: string) {
     .eq("used", slot.used);
   if (error) throw new Error("Não foi possível reservar o token. Tente novamente.");
 
-  await logAudit({
-    userId,
-    action: "token.generated",
-    resource: "licenses",
-    resourceId: issued.licenseId,
-  });
+  await logAudit({ userId, action: "token.generated", resource: "licenses", resourceId: issued.licenseId });
   return issued;
 }
 
@@ -156,8 +155,6 @@ export async function revealTenantToken(userId: string, licenseId: string) {
   await logEvent({ license_id: licenseId, user_id: userId, event_type: "token_revealed" });
   return decryptToken(data.token_encrypted);
 }
-
-/* --------------------------------- TESTE --------------------------------- */
 
 async function identityHashes(userId: string, ip?: string | null, installationId?: string | null) {
   const { data: profile } = await supabaseAdmin
@@ -176,7 +173,6 @@ async function identityHashes(userId: string, ip?: string | null, installationId
   };
 }
 
-/** Estado do teste gratuito do tenant (fonte de verdade: banco). */
 export async function loadTrialStatus(userId: string) {
   const { data } = await supabaseAdmin
     .from("trials")
@@ -200,9 +196,7 @@ export async function loadTrialStatus(userId: string) {
 
   const expiresAt = new Date(data.expires_at).getTime();
   const running = expiresAt > now;
-  const next = new Date(
-    new Date(data.started_at).getTime() + TRIAL_COOLDOWN_HOURS * 3600000,
-  ).toISOString();
+  const next = new Date(new Date(data.started_at).getTime() + TRIAL_COOLDOWN_HOURS * 3_600_000).toISOString();
 
   if (!running && data.status !== "expired") {
     await supabaseAdmin
@@ -224,14 +218,13 @@ export async function loadTrialStatus(userId: string) {
   };
 }
 
-/** Elegibilidade + criação do teste de 15 minutos. */
 export async function startTrial(input: {
   userId: string;
   ip?: string | null;
   installationId?: string | null;
 }) {
   const hashes = await identityHashes(input.userId, input.ip, input.installationId);
-  const since = new Date(Date.now() - TRIAL_COOLDOWN_HOURS * 3600000).toISOString();
+  const since = new Date(Date.now() - TRIAL_COOLDOWN_HOURS * 3_600_000).toISOString();
 
   const checks: [string, string | null][] = [
     ["user_id", input.userId],
@@ -241,7 +234,6 @@ export async function startTrial(input: {
     ["installation_id", hashes.installation_id],
     ["ip_hash", hashes.ip_hash],
   ];
-
   for (const [column, value] of checks) {
     if (!value) continue;
     const { count } = await supabaseAdmin
@@ -250,9 +242,7 @@ export async function startTrial(input: {
       .eq(column, value)
       .gte("created_at", since);
     if ((count ?? 0) > 0) {
-      throw new Error(
-        "Você já utilizou o teste gratuito nas últimas 24 horas. Tente novamente amanhã.",
-      );
+      throw new Error("Você já utilizou o teste gratuito nas últimas 24 horas. Tente novamente amanhã.");
     }
   }
 
@@ -277,7 +267,7 @@ export async function startTrial(input: {
     ).data?.id;
   if (!planId) throw new Error("Nenhum plano disponível para o teste.");
 
-  const expiresAt = new Date(Date.now() + TRIAL_MINUTES * 60000).toISOString();
+  const expiresAt = new Date(Date.now() + TRIAL_MINUTES * 60_000).toISOString();
   const issued = await issueStandaloneLicense({
     userId: input.userId,
     planId,
@@ -286,7 +276,7 @@ export async function startTrial(input: {
     maxDevices: 1,
   });
 
-  await supabaseAdmin.from("trials").insert({
+  const { error: trialError } = await supabaseAdmin.from("trials").insert({
     user_id: input.userId,
     license_id: issued.licenseId,
     expires_at: expiresAt,
@@ -298,13 +288,8 @@ export async function startTrial(input: {
     document_hash: hashes.document_hash,
     ip_hash: hashes.ip_hash,
   } as never);
+  if (trialError) throw trialError;
 
-  await logAudit({
-    userId: input.userId,
-    action: "trial.granted",
-    resource: "licenses",
-    resourceId: issued.licenseId,
-  });
-
+  await logAudit({ userId: input.userId, action: "trial.granted", resource: "licenses", resourceId: issued.licenseId });
   return { token: issued.token, licenseId: issued.licenseId, expires_at: expiresAt };
 }
