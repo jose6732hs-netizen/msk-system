@@ -2,6 +2,7 @@ export type TutorialVideo = {
   title?: string;
   description?: string;
   url: string;
+  cover_url?: string;
   is_redirect?: boolean;
 };
 
@@ -18,11 +19,25 @@ export function normalizeTutorials(tutorials: any): TutorialSection[] {
     return tutorials.sections.map((s: any) => ({
       title: s?.title ?? "",
       description: s?.description ?? "",
-      videos: Array.isArray(s?.videos) ? s.videos.filter((v: any) => v) : [],
+      videos: Array.isArray(s?.videos)
+        ? s.videos.filter((v: any) => v).map((v: any) => ({
+            ...v,
+            cover_url: v?.cover_url ?? v?.thumbnail_url ?? v?.poster ?? "",
+          }))
+        : [],
     }));
   }
   if (Array.isArray(tutorials.videos) && tutorials.videos.length > 0) {
-    return [{ title: "Vídeos de uso", description: "", videos: tutorials.videos }];
+    return [
+      {
+        title: "Vídeos de uso",
+        description: "",
+        videos: tutorials.videos.map((v: any) => ({
+          ...v,
+          cover_url: v?.cover_url ?? v?.thumbnail_url ?? v?.poster ?? "",
+        })),
+      },
+    ];
   }
   return [];
 }
