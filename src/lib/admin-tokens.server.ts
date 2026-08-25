@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { issueStandaloneLicense } from "./commerce.server";
 import { logAudit } from "./audit.server";
+import { durationArgs, resolvePlanDuration } from "./plan-duration";
 
 export type DurationKind =
   | "trial15"
@@ -13,18 +14,51 @@ export type DurationKind =
   | "lifetime"
   | "custom";
 
-const DAYS: Partial<Record<DurationKind, number>> = {
-  day1: 1,
-  day7: 7,
-  day30: 30,
-  day90: 90,
-  day365: 365,
-};
+/**
+ * Lista todos os usuários que podem receber uma licença manual.
+ * Combina profiles + Supabase Auth para não esconder contas criadas via Google/Apple
+ * antes de o perfil ter sido totalmente preenchido.
+ */
+export async function loadTokenUsers() {
+  const byId = new Map<string, { id: string; email: string; name: string | null }>();
 
-const MINUTES: Partial<Record<DurationKind, number>> = {
-  trial15: 15,
-  trial60: 60,
-};
+  const { data: profiles, error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .select("id,email,name")
+    .order("created_at", { ascending: false });
+  if (profileError) throw profileError;
+
+  for (const p of profiles ?? []) {
+    const email = String(p.email ?? "").trim().toLowerCase();
+    if (email) byId.set(p.id, { id: p.id, email, name: p.name ?? null });
+  }
+
+  const perPage = 1000;
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) throw error;
+    const users = data?.users ?? [];
+
+    for (const u of users) {
+      const email = String(u.email ?? "").trim().toLowerCase();
+      if (!email) continue;
+      const current = byId.get(u.id);
+      const metaName =
+        (u.user_metadata?.["name"] as string | undefined) ??
+        (u.user_metadata?.["full_name"] as string | undefined) ??
+        null;
+      byId.set(u.id, {
+        id: u.id,
+        email,
+        name: current?.name ?? metaName,
+      });
+    }
+
+    if (users.length < perPage) break;
+  }
+
+  return [...byId.values()].sort((a, b) => a.email.localeCompare(b.email, "pt-BR"));
+}
 
 /** Gera uma licença manualmente (exclusivo do Super Admin). */
 export async function generateManualToken(
@@ -32,7 +66,9 @@ export async function generateManualToken(
     email?: string | undefined;
     standalone?: boolean | undefined;
     planId: string;
-    duration: DurationKind;
+    // Mantido apenas para compatibilidade com builds antigos do painel.
+    // A validade normal é SEMPRE a do plano escolhido.
+    duration?: DurationKind | undefined;
     customDays?: number | undefined;
     customMinutes?: number | undefined;
     maxDevices?: number | undefined;
@@ -41,10 +77,12 @@ export async function generateManualToken(
   adminId: string,
 ) {
   const email = (input.email ?? "").trim().toLowerCase();
-  let standalone = input.standalone === true || email === "";
+  const standalone = input.standalone === true;
   let profile: { id: string; email: string | null; name: string | null } | null = null;
 
   if (!standalone) {
+    if (!email) throw new Error("Selecione o e-mail do usuário que receberá a licença.");
+
     const { data } = await supabaseAdmin
       .from("profiles")
       .select("id,email,name")
@@ -53,60 +91,72 @@ export async function generateManualToken(
     profile = data as typeof profile;
 
     if (!profile) {
-      // Fallback: o perfil pode não existir/estar sem e-mail — buscar na base de autenticação.
-      const { data: list } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const authUser = list?.users?.find((u) => (u.email ?? "").toLowerCase() === email);
-      if (authUser) {
-        const name =
-          (authUser.user_metadata?.["name"] as string | undefined) ??
-          (authUser.user_metadata?.["full_name"] as string | undefined) ??
-          null;
-        await supabaseAdmin
-          .from("profiles")
-          .upsert({ id: authUser.id, email: authUser.email ?? email, name }, { onConflict: "id" });
-        profile = { id: authUser.id, email: authUser.email ?? email, name };
-      } else {
-        // Nenhuma conta com esse e-mail: emite licença avulsa (uso em testes/pré-venda).
-        standalone = true;
+      // Conta social pode existir no Auth antes do profile.
+      const perPage = 1000;
+      let authUser: any = null;
+      for (let page = 1; !authUser; page += 1) {
+        const { data: list, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+        if (error) throw error;
+        const users = list?.users ?? [];
+        authUser = users.find((u) => (u.email ?? "").toLowerCase() === email) ?? null;
+        if (users.length < perPage) break;
       }
+
+      if (!authUser) {
+        throw new Error("Usuário não encontrado. Escolha um e-mail cadastrado ou marque licença sem usuário.");
+      }
+
+      const name =
+        (authUser.user_metadata?.["name"] as string | undefined) ??
+        (authUser.user_metadata?.["full_name"] as string | undefined) ??
+        null;
+      const { error: upsertError } = await supabaseAdmin
+        .from("profiles")
+        .upsert({ id: authUser.id, email: authUser.email ?? email, name }, { onConflict: "id" });
+      if (upsertError) throw upsertError;
+      profile = { id: authUser.id, email: authUser.email ?? email, name };
     }
   }
 
+  const { data: plan, error: planError } = await supabaseAdmin
+    .from("plans")
+    .select(
+      "id,name,slug,price,is_lifetime,allow_trial,max_devices,duration_label,duration_days,duration_value,duration_unit",
+    )
+    .eq("id", input.planId)
+    .maybeSingle();
+  if (planError) throw planError;
+  if (!plan) throw new Error("Plano selecionado não foi encontrado.");
 
-
-  const durationDays =
-    input.duration === "custom" ? (input.customDays ?? null) : (DAYS[input.duration] ?? null);
-  const durationMinutes =
-    input.duration === "custom" ? (input.customMinutes ?? null) : (MINUTES[input.duration] ?? null);
-
-  if (input.duration === "custom" && !durationDays && !durationMinutes) {
-    throw new Error("Informe a duração personalizada em dias ou minutos.");
-  }
+  // Fonte de verdade: o PLANO. O dropdown antigo de validade não pode mais
+  // transformar uma diária em 30 dias ou uma mensal em vitalícia.
+  const resolved = resolvePlanDuration(plan);
+  const duration = durationArgs(resolved);
+  const planText = `${plan.name ?? ""} ${plan.slug ?? ""}`.toLowerCase();
+  const isTrialPlan =
+    plan.allow_trial === true ||
+    (Number(plan.price ?? 0) === 0 && /free|gr[aá]tis|teste|trial/.test(planText));
 
   const result = await issueStandaloneLicense({
     userId: profile?.id ?? null,
     planId: input.planId,
-    type: standalone
-      ? "test"
-      : input.duration === "trial15" || input.duration === "trial60"
-        ? "trial"
-        : "manual",
-    ...(input.duration === "lifetime" ? {} : { durationDays, durationMinutes }),
+    type: isTrialPlan ? "trial" : "manual",
+    ...duration,
     ...(input.maxDevices ? { maxDevices: input.maxDevices } : {}),
   });
 
-  if (input.duration === "lifetime") {
-    await supabaseAdmin.from("licenses").update({ expires_at: null }).eq("id", result.licenseId);
-  }
-
   await logAudit({
     userId: adminId,
-    action: standalone ? "license.test_generated" : "license.manual_generated",
+    action: standalone ? "license.standalone_generated" : "license.manual_generated",
     resource: "licenses",
     resourceId: result.licenseId,
     metadata: {
       target: profile?.email ?? "sem-usuario",
-      duration: input.duration,
+      plan_id: plan.id,
+      plan_name: plan.name,
+      duration_label: resolved.label,
+      duration_ms: resolved.milliseconds,
+      lifetime: resolved.lifetime,
       note: input.note ?? null,
     },
   });
@@ -115,32 +165,32 @@ export async function generateManualToken(
     token: result.token,
     licenseId: result.licenseId,
     standalone,
+    durationLabel: resolved.label,
     user: { email: profile?.email ?? null, name: profile?.name ?? null },
   };
 }
 
-
 export async function loadTokenPlans() {
+  const select =
+    "id,name,slug,is_lifetime,allow_trial,max_devices,active,price,currency,duration_label,duration_days,duration_value,duration_unit";
+
   const { data: activePlans, error: activeError } = await supabaseAdmin
     .from("plans")
-    .select("id,name,slug,is_lifetime,max_devices,active,price,currency,duration_label,duration_days")
+    .select(select)
     .eq("active", true)
     .order("sort_order", { ascending: true });
-  
-  if (!activeError && activePlans?.length) {
-    return activePlans;
-  }
 
-  // Fallback anti-travamento: admin sempre consegue gerar licença.
+  if (!activeError && activePlans?.length) return activePlans;
+
   const { data: all, error: allError } = await supabaseAdmin
     .from("plans")
-    .select("id,name,slug,is_lifetime,max_devices,active,price,currency,duration_label,duration_days")
+    .select(select)
     .order("sort_order", { ascending: true });
-  
+
   if (allError) {
     console.error("Error loading plans for manual token generation:", allError);
     return [];
   }
-  
+
   return (all ?? []) as Record<string, any>[];
 }
