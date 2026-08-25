@@ -10,7 +10,6 @@ const PAGE_SIZE = 1000;
 
 async function fetchAll(makeQuery: () => any) {
   const rows: Record<string, any>[] = [];
-
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await makeQuery().range(from, from + PAGE_SIZE - 1);
     if (error) throw error;
@@ -18,7 +17,6 @@ async function fetchAll(makeQuery: () => any) {
     rows.push(...page);
     if (page.length < PAGE_SIZE) break;
   }
-
   return rows;
 }
 
@@ -29,24 +27,22 @@ async function loadProfiles(userIds: string[]) {
 
   for (let index = 0; index < uniqueIds.length; index += chunkSize) {
     const chunk = uniqueIds.slice(index, index + chunkSize);
+    // profiles NÃO possui last_seen. Consultar essa coluna fazia o Supabase
+    // rejeitar a query inteira e o painel parecia não ter afiliados ativos.
     const { data, error } = await supabaseAdmin
       .from("profiles")
-      .select("id,name,email,last_seen")
+      .select("id,name,email")
       .in("id", chunk);
     if (error) throw error;
     rows.push(...((data ?? []) as Record<string, any>[]));
   }
-
   return rows;
 }
 
 export async function loadAdminAffiliates(search = "") {
   const [affiliates, { data: plans }, { data: overrides }, goals, base] = await Promise.all([
     fetchAll(() =>
-      supabaseAdmin
-        .from("affiliates")
-        .select("*")
-        .order("created_at", { ascending: false }),
+      supabaseAdmin.from("affiliates").select("*").order("created_at", { ascending: false }),
     ),
     supabaseAdmin.from("plans").select("id,name,price,affiliate_commission_fixed").order("price"),
     supabaseAdmin.from("affiliate_commission_overrides").select("*").limit(500),
@@ -88,9 +84,6 @@ export async function loadAdminAffiliates(search = "") {
       ])
     : [[], [], [], []];
 
-  // Perfis dos donos dos links + perfis de quem foi indicado.
-  // Antes, o painel procurava o indicado apenas no mapa dos próprios afiliados,
-  // fazendo nome/e-mail aparecerem como "Usuário / —" mesmo quando existiam.
   const referralUserIds = referrals.map((r) => String(r["user_id"] ?? "")).filter(Boolean);
   const profiles = await loadProfiles([...ownerUserIds, ...referralUserIds]);
   const byUser = new Map(profiles.map((p: any) => [p.id, p]));
@@ -114,7 +107,6 @@ export async function loadAdminAffiliates(search = "") {
     string,
     { signups: number; customers: number; revenue: number; commission: number; pending: number; paid: number }
   >();
-
   affiliateIds.forEach((id) =>
     statsMap.set(id, { signups: 0, customers: 0, revenue: 0, commission: 0, pending: 0, paid: 0 }),
   );
@@ -150,7 +142,6 @@ export async function loadAdminAffiliates(search = "") {
     .map((a) => {
       const profile = byUser.get(a["user_id"]);
       const stats = statsMap.get(a["id"]);
-
       const affReferrals = (referralsByAffiliate.get(String(a["id"])) ?? [])
         .slice(0, 5)
         .map((r) => {
@@ -165,14 +156,13 @@ export async function loadAdminAffiliates(search = "") {
           };
         });
 
-      const isOnline = profile?.last_seen && new Date(profile.last_seen).getTime() > Date.now() - 5 * 60000;
-
-      const row: Record<string, any> = {
+      return {
         ...(a as Record<string, any>),
         name: profile?.name ?? "—",
         email: profile?.email ?? "—",
-        last_seen: profile?.last_seen ?? null,
-        is_online: !!isOnline,
+        // Sem uma coluna/tabela de presença real, não inventamos online/offline.
+        last_seen: null,
+        is_online: false,
         link: affiliateLink(base, a["code"]),
         signups_count: stats?.signups ?? 0,
         customers_count: stats?.customers ?? 0,
@@ -182,8 +172,7 @@ export async function loadAdminAffiliates(search = "") {
         commission_paid: stats?.paid ?? a["total_paid"] ?? 0,
         documents: docsByAffiliate.get(a["id"]) || [],
         referrals: affReferrals,
-      };
-      return row;
+      } as Record<string, any>;
     })
     .filter(
       (a) =>
@@ -194,7 +183,6 @@ export async function loadAdminAffiliates(search = "") {
     );
 
   const globalCommissions = await getSetting<{ affiliate: number }>("commissions", { affiliate: 30 });
-
   return {
     affiliates: rows,
     plans: (plans ?? []) as Record<string, any>[],
@@ -322,7 +310,12 @@ export async function saveAppUrl(url: string, actorId: string) {
   return { ok: true };
 }
 
-export async function approveAffiliateDocs(affiliateId: string, approve: boolean, reason: string | undefined, actorId: string) {
+export async function approveAffiliateDocs(
+  affiliateId: string,
+  approve: boolean,
+  reason: string | undefined,
+  actorId: string,
+) {
   const status = approve ? "APPROVED" : "REJECTED";
   const { error } = await supabaseAdmin
     .from("affiliates")
@@ -332,15 +325,9 @@ export async function approveAffiliateDocs(affiliateId: string, approve: boolean
       verification_processed_at: new Date().toISOString(),
     } as any)
     .eq("id", affiliateId);
-
   if (error) throw error;
 
-  // Also update status for all documents of this affiliate
-  await supabaseAdmin
-    .from("affiliate_documents")
-    .update({ status } as any)
-    .eq("affiliate_id", affiliateId);
-
+  await supabaseAdmin.from("affiliate_documents").update({ status } as any).eq("affiliate_id", affiliateId);
   await logAudit({
     userId: actorId,
     action: approve ? "affiliate.docs_approved" : "affiliate.docs_rejected",
@@ -348,6 +335,5 @@ export async function approveAffiliateDocs(affiliateId: string, approve: boolean
     resourceId: affiliateId,
     metadata: { reason },
   });
-
   return { ok: true };
 }
