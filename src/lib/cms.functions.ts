@@ -2,15 +2,49 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { uploadPublicFile } from "./storage.server";
 
-async function loadPublishedCmsSettings() {
-  const { data, error } = await (supabaseAdmin as any)
-    .from("app_settings")
-    .select("*");
+async function readPublishedWith(client: any) {
+  return client.from("app_settings").select("*");
+}
 
-  if (error) throw new Error(error.message);
+/**
+ * Conteúdo publicado do CMS.
+ *
+ * A página pública NÃO deve depender da service-role. Primeiro tentamos o
+ * cliente server com publishable key (RLS). Se a política exigir privilégio,
+ * tentamos o cliente admin. No carregamento público, uma configuração ausente
+ * nunca deve transformar o site inteiro em tela branca.
+ */
+async function loadPublishedCmsSettings(options: { publicSafe?: boolean } = {}) {
+  let data: any[] | null = null;
+  let lastError: unknown = null;
+
+  try {
+    const { supabaseServer } = await import("@/integrations/supabase/client.server");
+    const result = await readPublishedWith(supabaseServer as any);
+    data = (result.data ?? null) as any[] | null;
+    lastError = result.error ?? null;
+  } catch (error) {
+    lastError = error;
+  }
+
+  if (lastError) {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const result = await readPublishedWith(supabaseAdmin as any);
+      data = (result.data ?? null) as any[] | null;
+      lastError = result.error ?? null;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError) {
+    const message = lastError instanceof Error ? lastError.message : String(lastError);
+    console.error(`[CMS] Falha ao carregar conteúdo publicado: ${message}`);
+    if (options.publicSafe) return {};
+    throw new Error(`Erro ao carregar conteúdo do CMS: ${message}`);
+  }
 
   const settings: Record<string, any> = {};
   data?.forEach((item: any) => {
@@ -21,7 +55,7 @@ async function loadPublishedCmsSettings() {
 
 /** Conteúdo publicado. Pode continuar sendo usado pelas telas públicas. */
 export const getCmsContent = createServerFn({ method: "GET" })
-  .handler(async () => loadPublishedCmsSettings());
+  .handler(async () => loadPublishedCmsSettings({ publicSafe: true }));
 
 /**
  * Conteúdo específico do editor administrativo.
@@ -35,6 +69,7 @@ export const getCmsEditorContent = createServerFn({ method: "GET" })
     await assertAdmin(context.supabase, context.userId);
 
     const settings = await loadPublishedCmsSettings();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: drafts, error } = await (supabaseAdmin as any)
       .from("cms_drafts")
       .select("key,data,updated_at")
@@ -62,6 +97,7 @@ export const saveCmsDraft = createServerFn({ method: "POST" })
   }).parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: existing } = await (supabaseAdmin as any)
       .from("cms_drafts")
@@ -102,6 +138,7 @@ export const publishCmsDraft = createServerFn({ method: "POST" })
   }).parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: draft, error: draftErr } = await (supabaseAdmin as any)
       .from("cms_drafts")
@@ -140,6 +177,7 @@ export const getCmsHistory = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await (supabaseAdmin as any)
       .from("cms_history")
       .select("*")
@@ -153,6 +191,7 @@ export const getCmsHistory = createServerFn({ method: "GET" })
 export const uploadCmsAsset = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    // Esta função foi substituída pela rota /api/public/cms/upload para lidar melhor com FormData
+    await assertAdmin(context.supabase, context.userId);
+    // Esta função foi substituída pela rota /api/public/cms/upload para lidar melhor com FormData.
     throw new Error("Use a rota /api/public/cms/upload para uploads de arquivos.");
   });
