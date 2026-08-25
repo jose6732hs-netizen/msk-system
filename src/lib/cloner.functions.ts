@@ -20,7 +20,8 @@ const billingSchema = {
 
 export const getClonerProduct = createServerFn({ method: "GET" }).handler(async () => {
   const { getPublicClonerProduct } = await import("./cloner.server");
-  return getPublicClonerProduct();
+  const { enrichClonerPlans } = await import("./cloner-plan-overrides.server");
+  return enrichClonerPlans(await getPublicClonerProduct());
 });
 
 export const trackClonerPublic = createServerFn({ method: "POST" })
@@ -122,7 +123,8 @@ export const adminGetCloner = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { getAdminCloner } = await import("./cloner.server");
-    return getAdminCloner();
+    const { enrichClonerPlans } = await import("./cloner-plan-overrides.server");
+    return enrichClonerPlans(await getAdminCloner());
   });
 
 export const adminSaveCloner = createServerFn({ method: "POST" })
@@ -153,7 +155,10 @@ export const adminSaveCloner = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { saveAdminCloner } = await import("./cloner.server");
-    return saveAdminCloner(data, context.userId);
+    const { saveClonerPlanOverrides } = await import("./cloner-plan-overrides.server");
+    const result = await saveAdminCloner(data, context.userId);
+    await saveClonerPlanOverrides(data.plans);
+    return result;
   });
 
 export const adminCreateClonerUpload = createServerFn({ method: "POST" })
