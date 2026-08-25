@@ -217,8 +217,8 @@ export function TokenManager() {
     try {
       await saveIdentityFn({ data: { phone, cpf } });
       const res = await trialFn({ data: {} });
-      setFresh({ token: res.token, expires_at: res.expires_at });
-      toast.success("Licença FREE iniciada — 15 minutos.");
+      setFresh({ token: res.token, expires_at: null });
+      toast.success("Licença FREE gerada. Os 15 minutos começam na primeira ativação.");
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["token-overview"] }),
         qc.invalidateQueries({ queryKey: ["profile-completion"] }),
@@ -354,14 +354,33 @@ export function TokenManager() {
           <div className="relative overflow-hidden rounded-[2rem] border border-primary/20 bg-[#0F0F0F] p-6 shadow-2xl md:p-8">
             <p className="mb-4 text-[0.65rem] font-black uppercase tracking-[0.2em] text-muted-foreground">LICENÇA FREE — TESTE</p>
 
-            {trial?.state === "running" ? (
+            {trial?.state === "pending" ? (
+              <div className="space-y-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-400/15"><Clock className="h-5 w-5 text-amber-400" /></div>
+                  <div>
+                    <p className="text-xl font-black uppercase text-white">Aguardando ativação</p>
+                    <p className="mt-1 text-sm text-muted-foreground">O contador de 15 minutos ainda não começou.</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-muted-foreground">
+                  Cole a licença na extensão e ative. Somente nesse primeiro uso o sistema gravará a ativação e iniciará os 15 minutos.
+                </div>
+                {fresh?.token ? (
+                  <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                    <p className="break-all font-mono text-lg font-bold text-primary">{fresh.token}</p>
+                    <Button size="sm" variant="neon" className="mt-3 w-full" onClick={() => copy(fresh.token)}><Copy /> Copiar token</Button>
+                  </div>
+                ) : null}
+              </div>
+            ) : trial?.state === "running" ? (
               <div className="space-y-5">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/20"><Timer className="h-5 w-5 animate-pulse text-primary" /></div>
                   <p className="text-xl font-black uppercase text-white">Teste em andamento</p>
                 </div>
                 {(() => {
-                  const diff = Math.max(0, new Date(trial.expires_at).getTime() - now);
+                  const diff = trial.expires_at ? Math.max(0, new Date(trial.expires_at).getTime() - now) : 0;
                   const totalSeconds = Math.floor(diff / 1000);
                   return (
                     <div className="space-y-4">
