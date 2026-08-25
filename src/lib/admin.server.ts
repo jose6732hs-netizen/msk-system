@@ -8,12 +8,13 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   let licenseQuery = supabaseAdmin
     .from("licenses")
     .select(
-      "id,user_id,status,expires_at,created_at,max_devices,token_preview,token_last4,last_validation,plans(name,slug)",
+      "id,user_id,status,type,expires_at,activated_at,created_at,max_devices,token_preview,token_last4,last_validation,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
     )
     .order("created_at", { ascending: false })
     .limit(100);
   if (term) licenseQuery = licenseQuery.ilike("token_last4", `%${term.slice(-4)}%`);
-  const { data: licensesRaw } = await licenseQuery;
+  const { data: licensesRaw, error: licenseError } = await licenseQuery;
+  if (licenseError) throw licenseError;
 
   let profileQuery = supabaseAdmin
     .from("profiles")
@@ -23,17 +24,31 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   if (uTerm) profileQuery = profileQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
   const { data: users } = await profileQuery;
 
-  // profiles não tem FK direta com licenses: junção manual
   const ownerIds = [...new Set((licensesRaw ?? []).map((l: any) => l.user_id).filter(Boolean))];
   const { data: owners } = ownerIds.length
     ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", ownerIds)
     : { data: [] as any[] };
   const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o]));
-  const licenses = (licensesRaw ?? []).map((l: any) => ({
-    ...l,
-    profiles: l.user_id ? ownerMap.get(l.user_id) ?? null : null,
-  }));
 
+  const now = Date.now();
+  const licenses = (licensesRaw ?? []).map((l: any) => {
+    const expired = !!l.expires_at && new Date(l.expires_at).getTime() <= now;
+    const pendingMs = Number(l.metadata?.pending_duration_ms ?? 0);
+    const effectiveStatus =
+      ["revoked", "suspended"].includes(String(l.status))
+        ? l.status
+        : expired
+          ? "expired"
+          : l.status === "inactive" && !l.activated_at
+            ? "pending"
+            : l.status;
+    return {
+      ...l,
+      status: effectiveStatus,
+      pending_duration_ms: pendingMs || null,
+      profiles: l.user_id ? ownerMap.get(l.user_id) ?? null : null,
+    };
+  });
 
   const [
     { data: plans },
@@ -44,47 +59,42 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     { data: devices },
     { data: affiliates },
   ] = await Promise.all([
+    supabaseAdmin.from("plans").select("*").order("sort_order"),
+    supabaseAdmin
+      .from("subscriptions")
+      .select("id,user_id,status,current_period_end,cancel_at_period_end,plans(name)")
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabaseAdmin
+      .from("transactions")
+      .select("id,user_id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at")
+      .order("created_at", { ascending: false })
+      .limit(80),
+    supabaseAdmin
+      .from("webhook_events")
+      .select("id,provider,event_type,event_id,processed,created_at,error")
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabaseAdmin
+      .from("license_events")
+      .select("id,event_type,created_at,license_id,metadata")
+      .order("created_at", { ascending: false })
+      .limit(80),
+    supabaseAdmin
+      .from("license_devices")
+      .select("id,license_id,device_name,browser,os,last_seen,status")
+      .eq("status", "active")
+      .order("last_seen", { ascending: false })
+      .limit(60),
+    supabaseAdmin
+      .from("affiliates")
+      .select("id,verification_status")
+      .eq("verification_status", "PENDING")
+      .limit(50),
+  ]);
 
-      supabaseAdmin.from("plans").select("*").order("sort_order"),
-      supabaseAdmin
-        .from("subscriptions")
-        .select("id,user_id,status,current_period_end,cancel_at_period_end,plans(name)")
-        .order("created_at", { ascending: false })
-        .limit(50),
-      supabaseAdmin
-        .from("transactions")
-        .select("id,user_id,identifier,amount,currency,status,provider,method,purpose,created_at,paid_at")
-        .order("created_at", { ascending: false })
-        .limit(80),
-
-      supabaseAdmin
-        .from("webhook_events")
-        .select("id,provider,event_type,event_id,processed,created_at,error")
-        .order("created_at", { ascending: false })
-        .limit(50),
-      supabaseAdmin
-        .from("license_events")
-        .select("id,event_type,created_at,license_id,metadata")
-        .order("created_at", { ascending: false })
-        .limit(80),
-      supabaseAdmin
-        .from("license_devices")
-        .select("id,license_id,device_name,browser,os,last_seen,status")
-        .eq("status", "active")
-        .order("last_seen", { ascending: false })
-        .limit(60),
-      supabaseAdmin
-        .from("affiliates")
-        .select("id,verification_status")
-        .eq("verification_status", "PENDING")
-        .limit(50),
-    ]);
-
-  // e-mails de assinaturas/vendas (sem FK direta com profiles)
   const relatedIds = [
-    ...new Set(
-      [...(subs ?? []), ...(payments ?? [])].map((r: any) => r.user_id).filter(Boolean),
-    ),
+    ...new Set([...(subs ?? []), ...(payments ?? [])].map((r: any) => r.user_id).filter(Boolean)),
   ];
   const { data: relatedProfiles } = relatedIds.length
     ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", relatedIds)
@@ -100,7 +110,6 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     .select("id,amount,status,created_at")
     .order("created_at", { ascending: false })
     .limit(200);
-
 
   const isPaid = (t: any) =>
     ["PAID", "APPROVED", "COMPLETED"].includes(String(t.status ?? "").toUpperCase()) || !!t.paid_at;
@@ -121,23 +130,21 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
 
   return {
     cms_settings: cms,
-    licenses: (licenses ?? []) as Record<string, any>[],
+    licenses: licenses as Record<string, any>[],
     users: (users ?? []) as Record<string, any>[],
     plans: (plans ?? []) as Record<string, any>[],
     subscriptions: subsFull as Record<string, any>[],
     payments: paymentsFull as Record<string, any>[],
-
     webhooks: (webhooks ?? []) as Record<string, any>[],
     events: (events ?? []) as Record<string, any>[],
     devices: (devices ?? []) as Record<string, any>[],
     affiliates: (affiliates ?? []) as Record<string, any>[],
-
     commissions: (commissions ?? []) as Record<string, any>[],
-
+    server_time: new Date().toISOString(),
     stats: {
       users: users?.length ?? 0,
-      licenses: licenses?.length ?? 0,
-      activeLicenses: (licenses ?? []).filter((l: any) => l.status === "active").length,
+      licenses: licenses.length,
+      activeLicenses: licenses.filter((l: any) => l.status === "active").length,
       devices: devices?.length ?? 0,
       revenue,
       monthCommissions,
@@ -164,7 +171,6 @@ export async function runLicenseAction(
       patch["status"] = "revoked";
       patch["revoked_at"] = new Date().toISOString();
       patch["revocation_reason"] = input.reason ?? "Desligado pelo administrador";
-      // Invalidate existing device sessions for this license
       await supabaseAdmin
         .from("license_devices")
         .update({ status: "removed" } as never)
@@ -183,9 +189,7 @@ export async function runLicenseAction(
         license.expires_at && new Date(license.expires_at) > new Date()
           ? new Date(license.expires_at)
           : new Date();
-      patch["expires_at"] = new Date(
-        base.getTime() + (input.days ?? 30) * 86400000,
-      ).toISOString();
+      patch["expires_at"] = new Date(base.getTime() + (input.days ?? 30) * 86_400_000).toISOString();
       patch["status"] = "active";
       break;
     }
@@ -193,10 +197,6 @@ export async function runLicenseAction(
 
   const { error } = await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
   if (error) throw error;
-
-  // Real-time notification logic could be added here to force client refresh
-  // but status updates are already reflected on next validation.
-
   await logEvent({
     license_id: license.id,
     user_id: license.user_id,
@@ -206,29 +206,31 @@ export async function runLicenseAction(
   return { ok: true };
 }
 
+/** Salva plano sem converter minutos/horas em dias por engano. */
 export async function savePlan(plan: Record<string, any>) {
   const payload = { ...plan };
   if (payload["is_lifetime"]) {
     payload["duration_days"] = null;
     payload["duration_unit"] = "lifetime";
     payload["duration_value"] = 1;
+    payload["duration_label"] = payload["duration_label"] || "Vitalício";
   } else {
-    const days = Number(payload["duration_days"] ?? payload["duration_value"] ?? 1);
-    payload["duration_days"] = days;
-    payload["duration_unit"] = "days";
-    payload["duration_value"] = days;
+    const unit = String(payload["duration_unit"] ?? "days").toLowerCase();
+    const validUnit = ["minutes", "hours", "days", "weeks", "months"].includes(unit) ? unit : "days";
+    const value = Number(payload["duration_value"] ?? payload["duration_days"] ?? 1);
+    if (!Number.isFinite(value) || value <= 0) throw new Error("A validade do plano deve ser maior que zero.");
+    payload["duration_unit"] = validUnit;
+    payload["duration_value"] = Math.round(value);
+    payload["duration_days"] = validUnit === "days" ? Math.round(value) : null;
   }
+
   if (payload["id"]) {
     const { id, ...rest } = payload;
     const { error } = await supabaseAdmin.from("plans").update(rest as never).eq("id", id);
     if (error) throw error;
     return { ok: true, id };
   }
-  const { data, error } = await supabaseAdmin
-    .from("plans")
-    .insert(payload as never)
-    .select("id")
-    .single();
+  const { data, error } = await supabaseAdmin.from("plans").insert(payload as never).select("id").single();
   if (error) throw error;
   return { ok: true, id: data.id };
 }
