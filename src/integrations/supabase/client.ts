@@ -27,7 +27,6 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
-
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
@@ -57,13 +56,59 @@ function createSupabaseClient() {
 }
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
+let _authProxy: ReturnType<typeof createSupabaseClient>['auth'] | undefined;
+
+/**
+ * O Lovable Cloud possui OAuth próprio para Apple. A tela de autenticação antiga
+ * chamava Apple pelo Supabase, enquanto Google já usava Lovable Auth. Isso fazia
+ * Apple depender de um provider duplicado/configurado separadamente no Supabase.
+ *
+ * Interceptamos apenas Apple e mantemos GitHub/Discord e demais providers no
+ * fluxo nativo do Supabase. O import dinâmico evita ciclo durante a inicialização,
+ * já que a integração Lovable também usa este cliente para persistir a sessão.
+ */
+function getAuthProxy(client: ReturnType<typeof createSupabaseClient>) {
+  if (_authProxy) return _authProxy;
+  const auth = client.auth;
+
+  _authProxy = new Proxy(auth, {
+    get(target, prop) {
+      if (prop === 'signInWithOAuth') {
+        return async (credentials: any) => {
+          if (credentials?.provider === 'apple') {
+            const redirectUri = credentials?.options?.redirectTo as string | undefined;
+            const { lovable } = await import('../lovable');
+            const result = await lovable.auth.signInWithOAuth(
+              'apple',
+              redirectUri ? { redirect_uri: redirectUri } : undefined,
+            );
+
+            return {
+              data: { provider: 'apple', url: null },
+              error: result.error ?? null,
+            } as any;
+          }
+
+          return target.signInWithOAuth(credentials);
+        };
+      }
+
+      const value = Reflect.get(target, prop, target);
+      return typeof value === 'function' ? value.bind(target) : value;
+    },
+  }) as ReturnType<typeof createSupabaseClient>['auth'];
+
+  return _authProxy;
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>, {
-  get(_, prop, receiver) {
+  get(_, prop) {
     if (!_supabase) _supabase = createSupabaseClient();
-    return Reflect.get(_supabase, prop, receiver);
+    if (prop === 'auth') return getAuthProxy(_supabase);
+
+    const value = Reflect.get(_supabase, prop, _supabase);
+    return typeof value === 'function' ? value.bind(_supabase) : value;
   },
 });
-
