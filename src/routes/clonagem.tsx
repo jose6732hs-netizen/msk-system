@@ -150,19 +150,22 @@ function ClonagemPage() {
     if (container && target) container.scrollTo({ left: target.offsetLeft - container.offsetLeft, behavior: "smooth" });
   }
 
-  async function share() {
-    const url = window.location.href;
-    const text = product?.shareText || "Conheça o MSK Clonador de Páginas.";
+  async function sharePlan(plan: any) {
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("offer", String(plan.slug ?? plan.id));
+    const url = shareUrl.toString();
+    const duration = plan.durationLabel ? ` · ${plan.durationLabel}` : "";
+    const text = `${plan.name}${duration} · ${brl(Number(plan.price ?? 0), plan.currency)}. ${product?.shareText || "Conheça o MSK Clonador de Páginas."}`;
     try {
-      await trackClonerPublic({ data: { event: "cloner.share", visitorId: getVisitorId() } });
+      await trackClonerPublic({ data: { event: "cloner.share", visitorId: getVisitorId(), source: String(plan.slug ?? plan.id) } });
       if (navigator.share) {
-        await navigator.share({ title: product?.title || "MSK Clonador de Páginas", text, url });
+        await navigator.share({ title: plan.name, text, url });
       } else {
         await navigator.clipboard.writeText(url);
-        toast.success("Link do checkout copiado.");
+        toast.success(`Link de ${plan.name} copiado.`);
       }
     } catch (e) {
-      if ((e as Error)?.name !== "AbortError") toast.error("Não foi possível compartilhar agora.");
+      if ((e as Error)?.name !== "AbortError") toast.error("Não foi possível compartilhar esta oferta agora.");
     }
   }
 
@@ -305,10 +308,7 @@ function ClonagemPage() {
                 {product?.subtitle ?? "Escolha seu período e libere a ferramenta após o PIX."}
               </p>
             </div>
-            <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-auto">
-              <Button variant="ghost" className="w-full whitespace-normal border border-white/10 lg:w-auto" onClick={share}><Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar</Button>
-              <div className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground"><FileArchive className="h-4 w-4 shrink-0 text-primary" /> {human(product?.zipSizeBytes)}</div>
-            </div>
+            <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:w-auto"><FileArchive className="h-4 w-4 shrink-0 text-primary" /> {human(product?.zipSizeBytes)}</div>
           </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -357,6 +357,7 @@ function ClonagemPage() {
                   selected={checkoutPlan?.id === plan.id}
                   busy={busyPlan === plan.id}
                   onBuy={() => void selectPlan(plan)}
+                  onShare={() => void sharePlan(plan)}
                 />
               ))}
             </div>
@@ -449,13 +450,14 @@ function Feature({ icon, title, text }: { icon: React.ReactNode; title: string; 
   );
 }
 
-function ClonerPlanCard({ plan, index, disabled, selected, busy, onBuy }: {
+function ClonerPlanCard({ plan, index, disabled, selected, busy, onBuy, onShare }: {
   plan: any;
   index: number;
   disabled: boolean;
   selected: boolean;
   busy: boolean;
   onBuy: () => void;
+  onShare: () => void;
 }) {
   const emphasis = index === 1;
   return (
@@ -464,7 +466,10 @@ function ClonerPlanCard({ plan, index, disabled, selected, busy, onBuy }: {
         <div className="aspect-square w-full overflow-hidden bg-black"><img src={clonerImage(plan)} alt={plan.name} className="h-full w-full object-cover" /></div>
         <div className="flex flex-1 flex-col p-4 sm:p-5">
           <div className="flex min-w-0 items-center justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.18em] text-primary">{plan.badge}</p><h2 className="mt-1 break-words text-base font-black uppercase">{plan.name}</h2></div><span className="shrink-0 text-lg font-black text-primary">{brl(Number(plan.price), plan.currency)}</span></div>
-          <Button variant="neon" className="mt-4 min-h-12 w-full whitespace-normal rounded-xl px-4 text-center text-xs font-black uppercase" disabled={disabled || busy} onClick={onBuy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}{selected ? "No pedido" : disabled ? "Indisponível" : "Adicionar ao pedido"}</Button>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button variant="neon" className="min-h-12 w-full whitespace-normal rounded-xl px-3 text-center text-[10px] font-black uppercase sm:text-xs" disabled={disabled || busy} onClick={onBuy}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShoppingCart className="mr-2 h-4 w-4" />}{selected ? "No pedido" : disabled ? "Indisponível" : "Adicionar"}</Button>
+            <Button type="button" variant="ghost" className="min-h-12 w-full rounded-xl border border-white/10 px-3 text-[10px] font-black uppercase text-white/70 hover:border-primary/30 hover:text-primary sm:text-xs" onClick={onShare}><Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar</Button>
+          </div>
         </div>
       </div>
     </article>
