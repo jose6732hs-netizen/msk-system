@@ -3,7 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Loader2, Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import {
+  CreditCard,
+  Loader2,
+  Minus,
+  PackageCheck,
+  Plus,
+  ShoppingCart,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { PayerForm, useBilling } from "@/components/msk/payer-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,9 +32,33 @@ import {
 } from "@/lib/cart.functions";
 import { startPixCheckout } from "@/lib/commerce.functions";
 import { readAffiliateRef, readResellerRef } from "@/lib/urls";
+import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
+import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
+import cardFreeImg from "@/assets/card-free.jpg";
+import cardSemanalImg from "@/assets/card-semanal.jpg";
+import cardMensalImg from "@/assets/card-mensal.jpg";
+import cardTrimestralImg from "@/assets/card-trimestral.jpg";
+
+const PLAN_IMAGES: Record<string, string> = {
+  "free-test": cardFreeImg,
+  daily: dailyLicenseAsset.url,
+  weekly: cardSemanalImg,
+  monthly: cardMensalImg,
+  quarterly: cardTrimestralImg,
+};
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function imageForLine(line: { imageUrl?: string | null; slug: string }) {
+  if (line.imageUrl) return line.imageUrl;
+  return PLAN_IMAGES[line.slug] ?? bannerOfferAsset.url;
+}
+
+type PendingPay = {
+  planId?: string;
+  planName?: string;
+};
 
 export function CartSheet({ signedIn }: { signedIn: boolean }) {
   const qc = useQueryClient();
@@ -33,16 +66,16 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [pix, setPix] = useState<PixState | null>(null);
-  const [payingPlanId, setPayingPlanId] = useState<string>("");
-  const { billing, complete } = useBilling();
+  const [payingPlanId, setPayingPlanId] = useState("");
   const [askPayer, setAskPayer] = useState(false);
+  const [pendingPay, setPendingPay] = useState<PendingPay | null>(null);
+  const { billing, complete } = useBilling();
 
   const { data, isLoading } = useQuery({
     queryKey: ["cart"],
     queryFn: async () => {
-      // Sem sessão hidratada ainda? Evita chamar o serverFn sem Authorization.
-      const { data: s } = await supabase.auth.getSession();
-      if (!s.session?.access_token) {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session?.access_token) {
         return {
           lines: [],
           subtotal: 0,
@@ -50,18 +83,17 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
           total: 0,
           resellerCode: null,
           affiliateCode: null,
-          pending: [],
         } as Awaited<ReturnType<typeof getCart>>;
       }
       return getCart();
     },
     enabled: signedIn && typeof window !== "undefined",
     retry: false,
+    refetchOnWindowFocus: true,
   });
 
-  const count = (data?.lines ?? []).reduce((acc, l) => acc + l.quantity, 0);
-  const pending = (data?.pending ?? []) as Record<string, any>[];
-  const pendingCount = pending.length;
+  const lines = data?.lines ?? [];
+  const count = lines.reduce((acc, line) => acc + line.quantity, 0);
 
   async function mutate(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -75,46 +107,75 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     }
   }
 
-  async function pay(planId?: string, planName?: string) {
-    // Se planId for undefined, estamos finalizando o carrinho inteiro
-    const isCart = !planId;
-    
-    // Os dados do pagador ficam salvos na conta: só pedimos de novo se faltarem.
-    if (!complete || !billing) {
-      if (planId) setPayingPlanId(planId);
+  async function removeSubmittedItems(planId?: string) {
+    try {
+      if (!planId) {
+        await clearCartItems();
+      } else {
+        const line = lines.find((item) => item.planId === planId);
+        if (line) await removeCartItem({ data: { itemId: line.id } });
+      }
+    } catch (e) {
+      console.error("[cart] não foi possível remover item enviado ao PIX:", e);
+    } finally {
+      await qc.invalidateQueries({ queryKey: ["cart"] });
+    }
+  }
+
+  async function pay(
+    planId?: string,
+    planName?: string,
+    billingOverride?: { document: string; phone: string },
+  ) {
+    const bill = billingOverride ?? (complete && billing
+      ? { document: billing.document, phone: billing.phone }
+      : null);
+
+    if (!bill) {
+      setPendingPay({ planId, planName });
+      setPayingPlanId(planId ?? "");
       setAskPayer(true);
       setOpen(true);
-      toast.info("Complete seus dados de pagamento uma única vez.");
+      toast.info("Complete seus dados para gerar o PIX.");
       return;
     }
-    const cleanDocument = billing.document;
-    const cleanPhone = billing.phone;
-    if (planId) setPayingPlanId(planId);
+
+    setPayingPlanId(planId ?? "");
     setBusy(true);
     try {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
-      const res = await startPixCheckout({
+      const result = await startPixCheckout({
         data: {
-          planId, // Se undefined, o backend assume o carrinho total
+          planId,
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
-          document: cleanDocument,
-          phone: cleanPhone,
+          document: bill.document,
+          phone: bill.phone,
         },
       });
-      if (res.checkoutUrl && !res.pixCode) {
-        window.location.href = res.checkoutUrl;
+
+      // O carrinho representa somente itens que AINDA NÃO foram enviados ao PIX.
+      // Assim que o gateway aceita a criação do PIX, removemos o item ou o carrinho inteiro.
+      await removeSubmittedItems(planId);
+      setPendingPay(null);
+      setAskPayer(false);
+
+      if (result.checkoutUrl && !result.pixCode) {
+        window.location.href = result.checkoutUrl;
         return;
       }
+
       setPix({
-        transactionId: res.transactionId,
-        pixCode: res.pixCode,
-        qrCode: res.qrCode,
-        amount: res.amount,
+        transactionId: result.transactionId,
+        pixCode: result.pixCode,
+        qrCode: result.qrCode,
+        amount: result.amount,
         status: "PENDING",
         expiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
-        planName: planName ?? (data?.lines && data.lines.length > 0 ? (data.lines.length === 1 ? (data.lines[0]?.name ?? "Pedido") : "Carrinho MSK") : "Pedido"),
+        planName:
+          planName ??
+          (lines.length === 1 ? (lines[0]?.name ?? "Pedido") : "Carrinho MSK"),
       });
       setOpen(false);
     } catch (e) {
@@ -124,229 +185,271 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     }
   }
 
+  function goToPlans() {
+    setOpen(false);
+    navigate({ to: "/planos" });
+  }
+
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
           <Button variant="ghost" size="sm" className="relative" aria-label="Carrinho">
             <ShoppingCart className="h-5 w-5 text-neon" />
-            {pendingCount > 0 ? (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400/70" />
-                <span className="relative grid h-4 min-w-4 place-items-center rounded-full bg-amber-400 px-1 text-[0.6rem] font-bold text-black">
-                  {pendingCount}
-                </span>
+            {count > 0 ? (
+              <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] font-black text-primary-foreground">
+                {count}
               </span>
-            ) : (
-              count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] font-bold text-primary-foreground">
-                  {count}
-                </span>
-              )
-            )}
+            ) : null}
           </Button>
         </SheetTrigger>
-        <SheetContent className="flex w-full flex-col sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle className="font-display">Seu carrinho</SheetTitle>
-            <SheetDescription>
-              Itens e pagamentos ficam salvos na sua conta — volte quando quiser.
-            </SheetDescription>
-          </SheetHeader>
 
-          <div className="mt-4 flex-1 space-y-3 overflow-y-auto pr-1">
-            {!signedIn && (
-              <p className="text-sm text-muted-foreground">
-                Entre na sua conta para usar o carrinho.
-              </p>
-            )}
-            {signedIn && isLoading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
+        <SheetContent className="flex h-[100dvh] w-full max-w-full flex-col overflow-hidden border-l border-white/10 bg-[#070707] p-0 sm:max-w-[440px] md:max-w-[500px]">
+          <div className="shrink-0 border-b border-white/10 bg-black/40 px-5 pb-4 pt-6 sm:px-6">
+            <SheetHeader className="pr-9 text-left">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+                  <ShoppingCart className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <SheetTitle className="font-display text-xl font-black uppercase tracking-tight">
+                    Seu carrinho
+                  </SheetTitle>
+                  <SheetDescription className="mt-1 text-xs leading-relaxed">
+                    Só aparecem aqui itens que ainda não foram enviados ao PIX.
+                  </SheetDescription>
+                </div>
+              </div>
+            </SheetHeader>
 
-            {signedIn && (!complete || askPayer) && (
-              <div className="rounded-xl border border-border/60 p-4">
+            {count > 0 ? (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[.035] px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-[.18em] text-muted-foreground">
+                    Resumo
+                  </p>
+                  <p className="mt-1 text-sm font-bold">
+                    {count} {count === 1 ? "licença selecionada" : "licenças selecionadas"}
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-xs font-black text-primary">
+                  {brl(data?.total)}
+                </span>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+            {!signedIn ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[.025] p-5 text-center">
+                <ShoppingCart className="mx-auto h-8 w-8 text-muted-foreground" />
+                <p className="mt-3 text-sm text-muted-foreground">Entre na sua conta para usar o carrinho.</p>
+              </div>
+            ) : null}
+
+            {signedIn && isLoading ? (
+              <div className="grid min-h-40 place-items-center">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : null}
+
+            {signedIn && (!complete || askPayer) ? (
+              <section className="mb-4 overflow-hidden rounded-2xl border border-primary/20 bg-primary/[.04] p-4">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
+                    <CreditCard className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black uppercase tracking-widest">Dados para o PIX</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Salvos uma vez na sua conta.</p>
+                  </div>
+                </div>
                 <PayerForm
                   compact
-                  onSaved={() => {
+                  onSaved={(saved) => {
                     setAskPayer(false);
-                    toast.success("Pronto! Agora é só gerar o PIX.");
+                    const next = pendingPay;
+                    setPendingPay(null);
+                    if (next) void pay(next.planId, next.planName, saved);
                   }}
                 />
-              </div>
-            )}
-            {signedIn && complete && !askPayer && (
-              <PayerForm onSaved={() => setAskPayer(false)} />
-            )}
+              </section>
+            ) : null}
 
-            {pending.length > 0 && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
-                <p className="text-xs uppercase tracking-widest text-amber-400">
-                  Pagamento pendente
+            {signedIn && complete && !askPayer ? (
+              <div className="mb-4">
+                <PayerForm onSaved={() => setAskPayer(false)} />
+              </div>
+            ) : null}
+
+            {signedIn && !isLoading && !lines.length ? (
+              <div className="rounded-[1.75rem] border border-dashed border-white/15 bg-white/[.02] px-6 py-10 text-center">
+                <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-white/10 bg-white/[.035]">
+                  <PackageCheck className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="mt-4 text-sm font-black uppercase tracking-wide">Carrinho vazio</p>
+                <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-muted-foreground">
+                  PIX gerados, pagos ou expirados não ficam misturados aqui.
                 </p>
-                {pending.map((p) => (
-                  <div key={p["id"]} className="mt-3 flex items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm">{p["plans"]?.name ?? "Pedido"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {brl(p["amount"])} ·{" "}
-                        {p["status"] === "EXPIRED" ? "PIX EXPIRADO" : "aguardando pagamento"}
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant={p["status"] === "EXPIRED" ? "neonOutline" : "neon"}
-                      disabled={busy}
-                      onClick={() => {
-                        if (p["status"] === "EXPIRED" || !p["pix_code"]) {
-                          void pay(p["plan_id"], p["plans"]?.name ?? "Pedido");
-                          return;
-                        }
-                        setPayingPlanId(p["plan_id"]);
-                        setPix({
-                          transactionId: p["id"],
-                          pixCode: p["pix_code"],
-                          qrCode: p["pix_qrcode"],
-                          amount: Number(p["amount"]),
-                          status: p["status"],
-                          expiresAt: p["expires_at"],
-                          planName: p["plans"]?.name ?? "Pedido",
-                        });
-                        setOpen(false);
-                      }}
-                    >
-                      {p["status"] === "EXPIRED" ? "Gerar novo PIX" : "Continuar pagamento"}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {signedIn && !isLoading && !(data?.lines ?? []).length && (
-              <div className="rounded-xl border border-dashed border-border p-8 text-center">
-                <ShoppingCart className="mx-auto h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 text-sm text-muted-foreground">Seu carrinho está vazio.</p>
-                <Button
-                  variant="neonOutline"
-                  size="sm"
-                  className="mt-4"
-                  onClick={() => {
-                    setOpen(false);
-                    navigate({ to: "/planos" });
-                  }}
-                >
+                <Button variant="neonOutline" size="sm" className="mt-5" onClick={goToPlans}>
                   Ver planos
                 </Button>
               </div>
-            )}
+            ) : null}
 
-            {(data?.lines ?? []).map((line) => (
-              <div key={line.id} className="rounded-xl border border-border/60 p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium">{line.name}</p>
-                    <p className="text-xs text-muted-foreground">{line.durationLabel}</p>
+            <div className="space-y-3">
+              {lines.map((line) => (
+                <article
+                  key={line.id}
+                  className="min-w-0 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3 shadow-[0_18px_50px_-35px_rgba(0,0,0,.9)] sm:p-4"
+                >
+                  <div className="flex min-w-0 gap-3">
+                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black sm:h-24 sm:w-24">
+                      <img
+                        src={imageForLine(line)}
+                        alt={line.name}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+
+                    <div className="min-w-0 flex-1 py-0.5">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <span className="inline-flex max-w-full rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-primary">
+                            {line.durationLabel || "Licença MSK"}
+                          </span>
+                          <h3 className="mt-2 break-words text-sm font-black uppercase leading-tight text-white">
+                            {line.name}
+                          </h3>
+                        </div>
+                        <button
+                          type="button"
+                          aria-label={`Remover ${line.name}`}
+                          disabled={busy}
+                          onClick={() => mutate(() => removeCartItem({ data: { itemId: line.id } }))}
+                          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-400 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="mt-3 flex flex-wrap items-end justify-between gap-2">
+                        <div>
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Unitário</p>
+                          <p className="mt-0.5 text-xs font-bold text-white/70">{brl(line.price)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Total</p>
+                          <p className="mt-0.5 text-lg font-black text-primary">{brl(line.lineTotal)}</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p className="text-sm text-primary">{brl(line.lineTotal)}</p>
-                </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <div className="flex items-center gap-1">
+
+                  <div className="mt-3 grid gap-2 border-t border-white/5 pt-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+                    <div className="flex h-11 items-center justify-between rounded-xl border border-white/10 bg-black/40 p-1 sm:w-[126px]">
+                      <button
+                        type="button"
+                        aria-label="Diminuir quantidade"
+                        disabled={busy}
+                        onClick={() =>
+                          mutate(() =>
+                            updateCartItem({ data: { itemId: line.id, quantity: line.quantity - 1 } }),
+                          )
+                        }
+                        className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-white/5 hover:text-primary disabled:opacity-40"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <span className="min-w-8 text-center text-sm font-black">{line.quantity}</span>
+                      <button
+                        type="button"
+                        aria-label="Aumentar quantidade"
+                        disabled={busy || line.quantity >= 20}
+                        onClick={() =>
+                          mutate(() =>
+                            updateCartItem({ data: { itemId: line.id, quantity: line.quantity + 1 } }),
+                          )
+                        }
+                        className="grid h-9 w-9 place-items-center rounded-lg text-muted-foreground transition hover:bg-white/5 hover:text-primary disabled:opacity-40"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
                     <Button
-                      size="icon"
-                      variant="glass"
-                      className="h-7 w-7"
-                      aria-label="Diminuir quantidade"
+                      variant="neonOutline"
+                      className="h-11 min-w-0 whitespace-normal rounded-xl px-3 text-[10px] font-black uppercase leading-tight tracking-wider"
                       disabled={busy}
-                      onClick={() =>
-                        mutate(() =>
-                          updateCartItem({ data: { itemId: line.id, quantity: line.quantity - 1 } }),
-                        )
-                      }
+                      onClick={() => void pay(line.planId, line.name)}
                     >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="w-8 text-center text-sm">{line.quantity}</span>
-                    <Button
-                      size="icon"
-                      variant="glass"
-                      className="h-7 w-7"
-                      aria-label="Aumentar quantidade"
-                      disabled={busy}
-                      onClick={() =>
-                        mutate(() =>
-                          updateCartItem({ data: { itemId: line.id, quantity: line.quantity + 1 } }),
-                        )
-                      }
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="neon"
-                      disabled={busy}
-                      onClick={() => pay(line.planId, line.name)}
-                    >
-                      Finalizar compra
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground"
-                      aria-label="Remover item"
-                      disabled={busy}
-                      onClick={() => mutate(() => removeCartItem({ data: { itemId: line.id } }))}
-                    >
-                      <Trash2 className="h-4 w-4" />
+                      {busy && payingPlanId === line.planId ? (
+                        <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />
+                      ) : (
+                        <Sparkles className="mr-2 h-4 w-4 shrink-0" />
+                      )}
+                      Gerar PIX desta licença
                     </Button>
                   </div>
-                </div>
-              </div>
-            ))}
+                </article>
+              ))}
+            </div>
           </div>
 
-          {!!(data?.lines ?? []).length && (
-            <div className="border-t border-border/60 pt-4 text-sm">
-              <div className="flex justify-between text-muted-foreground">
-                <span>Subtotal</span>
-                <span>{brl(data?.subtotal)}</span>
-              </div>
-              {!!data?.discount && (
-                <div className="mt-1 flex justify-between text-primary">
-                  <span>Desconto</span>
-                  <span>-{brl(data.discount)}</span>
+          {lines.length ? (
+            <div className="shrink-0 border-t border-white/10 bg-[#090909]/95 px-4 py-4 backdrop-blur-xl sm:px-5">
+              <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
+                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span>Subtotal</span>
+                  <span>{brl(data?.subtotal)}</span>
                 </div>
-              )}
-              <div className="mt-2 flex justify-between font-display text-lg">
-                <span>Total</span>
-                <span className="neon-text">{brl(data?.total)}</span>
+                {!!data?.discount ? (
+                  <div className="mt-1.5 flex items-center justify-between gap-3 text-xs text-primary">
+                    <span>Desconto</span>
+                    <span>-{brl(data?.discount)}</span>
+                  </div>
+                ) : null}
+                <div className="mt-3 flex items-end justify-between gap-3 border-t border-white/5 pt-3">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[.18em] text-muted-foreground">Total do carrinho</p>
+                    <p className="mt-1 text-2xl font-black text-white">{brl(data?.total)}</p>
+                  </div>
+                  <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-primary">
+                    PIX
+                  </span>
+                </div>
+
+                <Button
+                  variant="neon"
+                  className="mt-4 h-12 w-full rounded-xl text-[11px] font-black uppercase tracking-wider"
+                  disabled={busy}
+                  onClick={() => void pay()}
+                >
+                  {busy && !payingPlanId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Gerar PIX do carrinho
+                </Button>
+
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <Button variant="ghost" size="sm" className="min-w-0 text-xs" onClick={goToPlans} disabled={busy}>
+                    Adicionar mais
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="min-w-0 text-xs text-muted-foreground hover:text-red-400"
+                    disabled={busy}
+                    onClick={() => mutate(() => clearCartItems())}
+                  >
+                    Esvaziar
+                  </Button>
+                </div>
               </div>
-              <Button
-                variant="neon"
-                className="mt-4 w-full"
-                disabled={busy}
-                onClick={() => void pay()}
-              >
-                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Finalizar compra
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="mt-3 w-full text-muted-foreground"
-                disabled={busy}
-                onClick={() => mutate(() => clearCartItems())}
-              >
-                Esvaziar carrinho
-              </Button>
-              <p className="mt-2 text-center text-[0.7rem] text-muted-foreground">
-                O pagamento é feito por item — cada plano gera sua própria licença.
-              </p>
             </div>
-          )}
+          ) : null}
         </SheetContent>
       </Sheet>
 
-      {pix && (
+      {pix ? (
         <PixDialog
           pix={pix}
           regenerating={busy}
@@ -356,9 +459,17 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
             void qc.invalidateQueries({ queryKey: ["cart"] });
             navigate({ to: "/painel" });
           }}
-          onRegenerate={() => pay(payingPlanId, pix.planName ?? "Pedido")}
+          onRegenerate={() => {
+            if (payingPlanId) {
+              void pay(payingPlanId, pix.planName ?? "Pedido");
+              return;
+            }
+            setPix(null);
+            toast.info("Adicione novamente os itens para gerar um novo PIX do carrinho.");
+            navigate({ to: "/planos" });
+          }}
         />
-      )}
+      ) : null}
     </>
   );
 }
