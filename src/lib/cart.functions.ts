@@ -6,12 +6,7 @@ export const getCart = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { loadCart } = await import("./cart.server");
-    const { listPendingPayments } = await import("./orders.server");
-    const [cart, pending] = await Promise.all([
-      loadCart(context.userId),
-      listPendingPayments(context.userId),
-    ]);
-    return { ...cart, pending };
+    return loadCart(context.userId);
   });
 
 export const addCartItem = createServerFn({ method: "POST" })
