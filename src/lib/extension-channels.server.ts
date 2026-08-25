@@ -41,6 +41,18 @@ function extensionNameFromFile(fileName: string, version?: string | null) {
   );
 }
 
+function isLegacyDisplayName(value: unknown) {
+  const name = String(value ?? "").trim().toLowerCase();
+  if (!name) return true;
+  return [
+    "m3k principal",
+    "m3k principal novo",
+    "canal de reserva",
+    "extensão msk",
+    "extensao msk",
+  ].includes(name);
+}
+
 function normalizeChannel(data: Record<string, any>): ExtensionChannel {
   const slug = String(data.slug ?? "");
   return {
@@ -73,9 +85,9 @@ export async function listExtensionChannels(): Promise<ExtensionChannel[]> {
   if (error) throw error;
   if (buildsError) throw buildsError;
 
-  // O build publicado é a fonte de verdade para nome/versão exibidos no card.
-  // Antes o card lia somente extension_channels e ficava preso aos valores seed
-  // (ex.: M3K Principal / v35.1.0), mesmo depois de um novo ZIP ser publicado.
+  // O build publicado é a fonte de verdade para a versão do card.
+  // Para o nome, preservamos qualquer nome personalizado salvo pelo admin e
+  // só substituímos nomes antigos/padrão que ficaram presos nos seeds iniciais.
   const latestBuildByChannel = new Map<string, PublishedBuild>();
   for (const raw of (builds ?? []) as unknown as PublishedBuild[]) {
     const slug = raw.channel_slug || "m3k-principal";
@@ -89,12 +101,14 @@ export async function listExtensionChannels(): Promise<ExtensionChannel[]> {
     return normalizeChannel({
       ...row,
       version: latest.version,
-      display_name: extensionNameFromFile(latest.file_name, latest.version),
+      display_name: isLegacyDisplayName(row.display_name)
+        ? extensionNameFromFile(latest.file_name, latest.version)
+        : row.display_name,
     });
   });
 
-  // Repara metadados antigos de forma idempotente para que, depois do primeiro
-  // carregamento do Admin, nome e versão também fiquem persistidos no banco.
+  // Repara metadados antigos de forma idempotente para que nome/versão fiquem
+  // persistidos no banco depois do primeiro carregamento do Admin.
   await Promise.all(
     rows.map(async (channel) => {
       const original = (data ?? []).find((r: any) => r.id === channel.id) as Record<string, any> | undefined;
