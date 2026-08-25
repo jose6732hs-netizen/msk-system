@@ -5,19 +5,52 @@ import { assertAdmin } from "./admin-guard";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { uploadPublicFile } from "./storage.server";
 
+async function loadPublishedCmsSettings() {
+  const { data, error } = await (supabaseAdmin as any)
+    .from("app_settings")
+    .select("*");
+
+  if (error) throw new Error(error.message);
+
+  const settings: Record<string, any> = {};
+  data?.forEach((item: any) => {
+    settings[item.key] = item.value;
+  });
+  return settings;
+}
+
+/** Conteúdo publicado. Pode continuar sendo usado pelas telas públicas. */
 export const getCmsContent = createServerFn({ method: "GET" })
-  .handler(async () => {
-    // We use a dynamic table name to bypass static type checking for a table that might not be in the types yet
-    const { data, error } = await (supabaseAdmin as any)
-      .from("app_settings")
-      .select("*");
-    
-    if (error) throw new Error(error.message);
-    
-    const settings: Record<string, any> = {};
-    data?.forEach((item: any) => {
-      settings[item.key] = item.value;
-    });
+  .handler(async () => loadPublishedCmsSettings());
+
+/**
+ * Conteúdo específico do editor administrativo.
+ * Carrega o que está publicado e aplica por cima o rascunho mais recente de
+ * cada chave. Assim um rascunho já salvo volta a aparecer ao reabrir o admin e
+ * no Live Preview sem vazar conteúdo não publicado para o site público.
+ */
+export const getCmsEditorContent = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+
+    const settings = await loadPublishedCmsSettings();
+    const { data: drafts, error } = await (supabaseAdmin as any)
+      .from("cms_drafts")
+      .select("key,data,updated_at")
+      .eq("status", "draft")
+      .order("updated_at", { ascending: false });
+
+    if (error) throw new Error(`Erro ao carregar rascunhos do CMS: ${error.message}`);
+
+    const seen = new Set<string>();
+    for (const draft of drafts ?? []) {
+      const key = String(draft.key ?? "");
+      if (!key || seen.has(key)) continue;
+      settings[key] = draft.data;
+      seen.add(key);
+    }
+
     return settings;
   });
 
@@ -29,12 +62,14 @@ export const saveCmsDraft = createServerFn({ method: "POST" })
   }).parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
-    
+
     const { data: existing } = await (supabaseAdmin as any)
       .from("cms_drafts")
       .select("id")
       .eq("key", data.key)
       .eq("status", "draft")
+      .order("updated_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (existing) {
@@ -87,7 +122,7 @@ export const publishCmsDraft = createServerFn({ method: "POST" })
         value: draft.data,
         updated_at: new Date().toISOString()
       }, { onConflict: 'key' });
-    
+
     if (setErr) throw new Error(`Database error publishing to app_settings: ${setErr.message}`);
 
     await (supabaseAdmin as any)
@@ -110,7 +145,7 @@ export const getCmsHistory = createServerFn({ method: "GET" })
       .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
-    
+
     if (error) throw new Error(error.message);
     return (data || []) as any[];
   });
