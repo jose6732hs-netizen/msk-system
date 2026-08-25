@@ -58,9 +58,12 @@ const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
 >(({ side = "right", className, children, ...props }, ref) => {
-  // Algumas telas (como o menu mobile) já possuem um botão X próprio.
-  // Quando elas usam este marcador, não renderizamos o X padrão do Sheet.
-  const hideDefaultClose = className?.includes("[&>button]:hidden") ?? false;
+  // Menus com botão de fechar próprio não devem receber outro X automático.
+  // O primeiro marcador cobre o menu mobile do root e o segundo cobre o drawer lateral do SiteHeader.
+  const hideDefaultClose =
+    className?.includes("[&>button]:hidden") ||
+    className?.includes("sm:w-64 z-[200]") ||
+    false;
 
   return (
     <SheetPortal>
