@@ -11,6 +11,7 @@ import {
   ExternalLink,
   FileArchive,
   Gift,
+  Image as ImageIcon,
   Loader2,
   MousePointerClick,
   Save,
@@ -75,6 +76,7 @@ type EditablePlan = {
   badge: string;
   price: string;
   active: boolean;
+  imageUrl: string;
 };
 
 export function AdminClonerTab() {
@@ -100,6 +102,7 @@ export function AdminClonerTab() {
   const [saving, setSaving] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [imageUploading, setImageUploading] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -121,6 +124,7 @@ export function AdminClonerTab() {
         badge: plan.badge,
         price: Number(plan.price ?? 0).toFixed(2),
         active: !!plan.active,
+        imageUrl: String(plan.imageUrl ?? ""),
       })),
     );
   }, [data]);
@@ -136,6 +140,7 @@ export function AdminClonerTab() {
       id: plan.id,
       active: plan.active,
       price: Number(String(plan.price).replace(",", ".")),
+      imageUrl: plan.imageUrl || null,
     }));
     if (normalizedPlans.length !== 3 || normalizedPlans.some((plan) => !Number.isFinite(plan.price) || plan.price <= 0)) {
       toast.error("Preencha corretamente os preços dos três planos.");
@@ -156,7 +161,7 @@ export function AdminClonerTab() {
           plans: normalizedPlans,
         },
       });
-      toast.success(result.enabled ? "Clonador e ofertas inteligentes atualizados." : "Configurações do Clonador salvas.");
+      toast.success(result.enabled ? "Clonador e ofertas atualizados." : "Planos e configurações do Clonador salvos.");
       await qc.invalidateQueries({ queryKey: ["admin-cloner"] });
       await qc.invalidateQueries({ queryKey: ["plans"] });
       await qc.invalidateQueries({ queryKey: ["cloner-product"] });
@@ -165,6 +170,36 @@ export function AdminClonerTab() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function uploadPlanImage(plan: EditablePlan) {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/png,image/jpeg,image/webp";
+    input.onchange = async (event) => {
+      const selected = (event.target as HTMLInputElement).files?.[0];
+      if (!selected) return;
+      if (selected.size > 8 * 1024 * 1024) {
+        toast.error("A imagem deve ter no máximo 8 MB.");
+        return;
+      }
+      setImageUploading(plan.id);
+      try {
+        const formData = new FormData();
+        formData.append("file", selected);
+        formData.append("key", `cloner-offer-${plan.cadence}-${plan.id}`);
+        const response = await fetch("/api/public/cms/upload", { method: "POST", body: formData });
+        const result = await response.json();
+        if (!response.ok || !result?.url) throw new Error(result?.error || "Falha ao enviar a imagem.");
+        patchPlan(plan.id, { imageUrl: String(result.url) });
+        toast.success(`Imagem de ${plan.name} enviada. Clique em Salvar ofertas para publicar.`);
+      } catch (e) {
+        toast.error((e as Error).message);
+      } finally {
+        setImageUploading(null);
+      }
+    };
+    input.click();
   }
 
   async function uploadZip() {
@@ -229,7 +264,7 @@ export function AdminClonerTab() {
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[.18em] text-primary">Clonador + cross-sell inteligente</p>
           <h3 className="mt-1 break-words text-xl font-black uppercase tracking-tight sm:text-2xl">Checkout · Clonador de Páginas</h3>
-          <p className="mt-1 max-w-3xl break-words text-xs leading-relaxed text-muted-foreground">Três planos separados, ZIP privado, PIX, licenças e ofertas cruzadas com a extensão principal.</p>
+          <p className="mt-1 max-w-3xl break-words text-xs leading-relaxed text-muted-foreground">Três planos separados, imagens próprias, ZIP privado, PIX, licenças e ofertas cruzadas com a extensão principal.</p>
         </div>
         <div className="grid w-full gap-2 sm:grid-cols-3 xl:w-auto">
           <Button variant="ghost" className="min-w-0 whitespace-normal" onClick={copyCheckout}><Copy className="mr-2 h-4 w-4 shrink-0" /> Copiar link</Button>
@@ -266,7 +301,7 @@ export function AdminClonerTab() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="min-w-0">
               <h4 className="text-sm font-black uppercase tracking-widest">3 ofertas do Clonador</h4>
-              <p className="mt-1 break-words text-xs text-muted-foreground">Diário, Semanal e Mensal. O preço exibido no checkout vem destes campos.</p>
+              <p className="mt-1 break-words text-xs text-muted-foreground">Cada oferta tem ativação, preço e imagem próprios. O switch do plano fica salvo mesmo com o checkout geral desligado.</p>
             </div>
             <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 py-2 lg:justify-start">
               <span className={`text-[10px] font-black uppercase ${enabled ? "text-primary" : "text-muted-foreground"}`}>{enabled ? "Checkout ativo" : "Checkout inativo"}</span>
@@ -276,18 +311,41 @@ export function AdminClonerTab() {
 
           <div className="mt-5 grid gap-3 lg:grid-cols-3">
             {plans.map((plan) => (
-              <div key={plan.id} className="min-w-0 rounded-2xl border border-white/10 bg-[#090909] p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <span className="inline-block rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-primary">{plan.badge}</span>
-                    <h5 className="mt-3 break-words text-sm font-black uppercase">{plan.name}</h5>
-                    <p className="mt-1 text-[10px] text-muted-foreground">{plan.durationLabel}</p>
-                  </div>
-                  <Switch checked={plan.active} onCheckedChange={(active) => patchPlan(plan.id, { active })} />
+              <div key={plan.id} className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-[#090909]">
+                <div className="relative aspect-square w-full overflow-hidden border-b border-white/10 bg-black/40">
+                  {plan.imageUrl ? (
+                    <img src={plan.imageUrl} alt={`Oferta ${plan.name}`} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="grid h-full place-items-center text-muted-foreground"><ImageIcon className="h-10 w-10" /></div>
+                  )}
+                  {imageUploading === plan.id ? (
+                    <div className="absolute inset-0 grid place-items-center bg-black/70 backdrop-blur-sm"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
+                  ) : null}
                 </div>
-                <div className="mt-4 space-y-1.5">
-                  <Label>Preço (R$)</Label>
-                  <Input inputMode="decimal" value={plan.price} onChange={(e) => patchPlan(plan.id, { price: e.target.value })} />
+                <div className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <span className="inline-block rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-primary">{plan.badge}</span>
+                      <h5 className="mt-3 break-words text-sm font-black uppercase">{plan.name}</h5>
+                      <p className="mt-1 text-[10px] text-muted-foreground">{plan.durationLabel}</p>
+                    </div>
+                    <Switch checked={plan.active} onCheckedChange={(active) => patchPlan(plan.id, { active })} aria-label={`Ativar ${plan.name}`} />
+                  </div>
+                  <div className="mt-4 space-y-1.5">
+                    <Label>Preço (R$)</Label>
+                    <Input inputMode="decimal" value={plan.price} onChange={(e) => patchPlan(plan.id, { price: e.target.value })} />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="neonOutline"
+                    className="mt-3 w-full whitespace-normal"
+                    disabled={imageUploading === plan.id}
+                    onClick={() => uploadPlanImage(plan)}
+                  >
+                    {imageUploading === plan.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    {plan.imageUrl ? "Substituir imagem" : "Enviar imagem"}
+                  </Button>
+                  <p className="mt-2 text-center text-[9px] leading-relaxed text-muted-foreground">PNG, JPG ou WEBP · até 8 MB</p>
                 </div>
               </div>
             ))}
@@ -333,7 +391,7 @@ export function AdminClonerTab() {
               <div className="mt-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5 shrink-0" /> Protegido</div>
             </div>
           ) : (
-            <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-300">Envie o ZIP antes de ativar as ofertas.</div>
+            <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-xs text-amber-300">Envie o ZIP antes de ativar o checkout geral. Os switches dos planos podem ser salvos antes disso.</div>
           )}
 
           <div className="mt-5 min-w-0 space-y-3">
