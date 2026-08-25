@@ -50,7 +50,7 @@ const PRIMARY_SLUG: Record<Cadence, string> = { daily: "daily", weekly: "weekly"
 const planColumns = "id,name,slug,description,price,currency,active,is_lifetime,duration_label,duration_days,duration_value,duration_unit,max_devices,updated_at,features,highlights";
 
 const money = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
-const meta = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, any> : {};
+const meta = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? value as any : {};
 
 async function config() {
   const saved = await getSetting<Partial<ClonerConfig>>(SETTING_KEY, {});
@@ -472,7 +472,7 @@ async function clonerTransactions(ids: string[]) {
   const { data: bundleEvents } = await supabaseAdmin.from("payment_events").select("transaction_id").eq("event", "smart.bundle_pix").not("transaction_id", "is", null);
   const bundleIds = [...new Set((bundleEvents ?? []).map((row: any) => row.transaction_id).filter(Boolean))] as string[];
   const bundles = bundleIds.length ? await fetchByIds(bundleIds) : [];
-  const unique = new Map<string, Record<string, any>>();
+  const unique = new Map<string, any>();
   for (const row of [...direct, ...bundles]) unique.set(String(row.id), row);
   return [...unique.values()].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 }

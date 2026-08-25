@@ -61,8 +61,8 @@ function localCount(cart: AbandonedCart | null) {
 }
 
 type PendingPay = {
-  planId?: string;
-  planName?: string;
+  planId?: string | undefined;
+  planName?: string | undefined;
 };
 
 export function CartSheet({ signedIn }: { signedIn: boolean }) {

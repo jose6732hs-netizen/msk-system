@@ -27,7 +27,7 @@ async function repairLegacyTrialDurations(plans: Record<string, any>[]) {
   for (const plan of plans) {
     try {
       const resolved = resolvePlanDuration(plan);
-      if (!resolved.lifetime && resolved.milliseconds) durations.set(String(plan.id), resolved);
+      if (!resolved.lifetime && resolved.milliseconds) durations.set(String(plan["id"]), resolved);
     } catch {
       // Plano inválido continua visível para o admin corrigir manualmente.
     }

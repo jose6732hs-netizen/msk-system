@@ -53,7 +53,7 @@ function isLegacyDisplayName(value: unknown) {
   ].includes(name);
 }
 
-function normalizeChannel(data: Record<string, any>): ExtensionChannel {
+function normalizeChannel(data: any): ExtensionChannel {
   const slug = String(data.slug ?? "");
   return {
     ...data,
