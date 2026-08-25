@@ -57,7 +57,7 @@ function adminLivePreviewFix(): Plugin {
           '              initialSettings={initialSettings}',
           '            />',
           '          </div>',
-        ].join("\\n");
+        ].join("\n");
         next = next.slice(0, start) + replacement + next.slice(end + '\n          </div>'.length);
       }
 
