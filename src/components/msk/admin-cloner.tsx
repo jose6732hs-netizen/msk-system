@@ -203,8 +203,14 @@ export function AdminClonerTab() {
   }
 
   async function uploadZip() {
-    if (!file) return toast.error("Selecione o arquivo .zip da ferramenta.");
-    if (!/\.zip$/i.test(file.name)) return toast.error("O arquivo precisa ser .zip.");
+    if (!file) {
+      toast.error("Selecione o arquivo .zip da ferramenta.");
+      return;
+    }
+    if (!/\.zip$/i.test(file.name)) {
+      toast.error("O arquivo precisa ser .zip.");
+      return;
+    }
     setUploading(true);
     try {
       const signed = await createUpload({ data: { fileName: file.name } });
