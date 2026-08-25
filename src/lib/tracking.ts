@@ -75,21 +75,56 @@ export function clearEvents() {
   window.dispatchEvent(new CustomEvent("msk:track"));
 }
 
-/** Snapshot do carrinho para detectar abandono. */
+/** Snapshot do carrinho para detectar abandono e manter o indicador global sincronizado. */
+export type AbandonedCartItem = {
+  name: string;
+  quantity: number;
+  price: number;
+  imageUrl?: string | null;
+};
+
 export type AbandonedCart = {
   updatedAt: string;
   total: number;
-  items: { name: string; quantity: number; price: number; imageUrl?: string | null }[];
+  items: AbandonedCartItem[];
 };
+
+function cartCount(cart: AbandonedCart | null) {
+  return (cart?.items ?? []).reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 0)), 0);
+}
 
 export function saveCartSnapshot(cart: AbandonedCart | null) {
   if (!isBrowser()) return;
+  const previous = readCartSnapshot();
+  const previousCount = cartCount(previous);
+  const nextCount = cartCount(cart);
+
   if (!cart || cart.items.length === 0) {
     localStorage.removeItem(CART_KEY);
   } else {
     localStorage.setItem(CART_KEY, JSON.stringify(cart));
   }
+
+  const addedItem =
+    nextCount > previousCount
+      ? cart?.items.find((item) => {
+          const before = previous?.items.find((old) => old.name === item.name)?.quantity ?? 0;
+          return Number(item.quantity ?? 0) > Number(before);
+        }) ?? cart?.items.at(-1) ?? null
+      : null;
+
   window.dispatchEvent(new CustomEvent("msk:track"));
+  window.dispatchEvent(
+    new CustomEvent("msk:cart-change", {
+      detail: {
+        cart,
+        count: nextCount,
+        previousCount,
+        added: nextCount > previousCount,
+        addedItem,
+      },
+    }),
+  );
 }
 
 export function readCartSnapshot(): AbandonedCart | null {
