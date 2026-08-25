@@ -85,7 +85,6 @@ function PlanosPage() {
   >({});
   const { billing, complete } = useBilling();
 
-  // Snapshot do carrinho para o relatório de carrinhos abandonados no admin.
   useEffect(() => {
     saveCartSnapshot(
       cart.length
@@ -103,8 +102,6 @@ function PlanosPage() {
     );
   }, [cart]);
 
-
-  // Códigos de indicação (?ref=AFxxxx / ?rv=RVxxxx) persistem durante a sessão.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const ref = params.get("ref");
@@ -115,13 +112,14 @@ function PlanosPage() {
 
   const { data: plans, isLoading } = useQuery({
     queryKey: ["plans"],
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    gcTime: 1000 * 60 * 30, // 30 minutes
+    staleTime: 1000 * 60 * 5,
+    gcTime: 1000 * 60 * 30,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("plans")
         .select("*")
         .eq("active", true)
+        .neq("slug", "page-cloner")
         .order("sort_order");
       if (error) throw error;
       return data;
@@ -130,8 +128,6 @@ function PlanosPage() {
 
   function addToCart(plan: any) {
     const isFree = Number(plan.price) === 0;
-    
-    // Proteção contra cliques múltiplos rápidos
     if (loadingPlan === plan.id) return;
 
     track("offer_view", { label: plan.name, value: Number(plan.price) });
@@ -142,21 +138,15 @@ function PlanosPage() {
 
     setCart(current => {
       const existing = current.find(item => item.planId === plan.id);
-      if (existing) {
-        // Impedir duplicação acidental: se já está no carrinho, não fazemos nada
-        // O usuário reclamou que cai duplicado sempre.
-        return current;
-      }
-      
+      if (existing) return current;
       let imageUrl: string | null = planImage(plan);
-
-      return [...current, { 
-        planId: plan.id, 
-        planName: plan.name, 
-        price: Number(plan.price), 
+      return [...current, {
+        planId: plan.id,
+        planName: plan.name,
+        price: Number(plan.price),
         quantity: 1,
         slug: plan.slug,
-        imageUrl
+        imageUrl,
       }];
     });
     track("add_to_cart", { label: plan.name, value: Number(plan.price) });
@@ -192,14 +182,8 @@ function PlanosPage() {
 
   async function checkout() {
     if (!cart.length) return;
-    
-    // Se o checkout for via carrinho, o backend já processa o total
-    // mas precisamos garantir que o payer dialog e o fluxo de subscribe
-    // usem o contexto de checkout em lote.
     await subscribe("", "Checkout Carrinho", false);
   }
-
-
 
   async function subscribe(
     planId: string,
@@ -209,10 +193,9 @@ function PlanosPage() {
     billingOverride?: { document: string; phone: string },
   ) {
     const { data: session } = await supabase.auth.getSession();
-    
+
     if (isFree && !session.session) {
       localStorage.setItem("selected_free_plan", planId);
-      // Após logar, o painel abre direto na aba de token de teste.
       localStorage.setItem("msk_open_trial", "1");
       navigate({ to: "/auth", search: { next: "/painel" } });
       return;
@@ -249,8 +232,6 @@ function PlanosPage() {
     try {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
-      // Checkout em lote: enviamos os itens do carrinho local para que o
-      // servidor não dependa de um carrinho persistido (causa do "Plano indisponível").
       const bulkItems = planId
         ? undefined
         : cart.map((i) => ({ planId: i.planId, quantity: i.quantity }));
@@ -285,7 +266,6 @@ function PlanosPage() {
         imageUrl: imageUrl ?? null,
         createdAt,
       });
-
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -325,19 +305,11 @@ function PlanosPage() {
               <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-white/5">
                 <div>
                   <h3 className="text-lg font-black tracking-tight text-foreground">Seu Carrinho</h3>
-                  <p className="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">
-                    Itens salvos na sua conta
-                  </p>
+                  <p className="text-[0.65rem] font-medium text-muted-foreground uppercase tracking-widest mt-0.5">Itens salvos na sua conta</p>
                 </div>
-                <button
-                  onClick={() => setCart([])}
-                  className="p-2 rounded-xl border border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all"
-                  aria-label="Limpar carrinho"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <button onClick={() => setCart([])} className="p-2 rounded-xl border border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground transition-all" aria-label="Limpar carrinho"><X className="h-4 w-4" /></button>
               </div>
-              
+
               <div className="p-6">
                 <div className="space-y-4 mb-6 max-h-[60vh] overflow-y-auto overscroll-contain pr-1 custom-scrollbar">
                   {cart.map((item) => (
@@ -359,227 +331,69 @@ function PlanosPage() {
                 </div>
 
                 <div className="space-y-3 pt-6 border-t border-white/5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">Subtotal</span>
-                    <span className="text-sm font-bold text-muted-foreground">
-                      {formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0), "BRL")}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-[0.7rem] font-black uppercase tracking-widest text-white">Total Final</span>
-                    <span className="text-2xl font-black text-primary drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)]">
-                      {formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0), "BRL")}
-                    </span>
-                  </div>
-                  
-                  <Button 
-                    variant="neon" 
-                    className="w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.75rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] mt-6 shadow-xl shadow-primary/20 rounded-2xl flex items-center justify-center whitespace-normal leading-tight px-4 break-words overflow-hidden"
-                    onClick={() => checkout()}
-                    disabled={loadingPlan !== null}
-                  >
+                  <div className="flex items-center justify-between"><span className="text-[0.65rem] font-bold uppercase tracking-widest text-muted-foreground">Subtotal</span><span className="text-sm font-bold text-muted-foreground">{formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0), "BRL")}</span></div>
+                  <div className="flex items-center justify-between"><span className="text-[0.7rem] font-black uppercase tracking-widest text-white">Total Final</span><span className="text-2xl font-black text-primary drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.4)]">{formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0), "BRL")}</span></div>
+                  <Button variant="neon" className="w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.75rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.25em] mt-6 shadow-xl shadow-primary/20 rounded-2xl flex items-center justify-center whitespace-normal leading-tight px-4 break-words overflow-hidden" onClick={() => checkout()} disabled={loadingPlan !== null}>
                     {loadingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2 shrink-0" /> : null}
-                    <span className="flex-1 text-center">
-                      {loadingPlan ? "Processando..." : "Finalizar Pedido"}
-                    </span>
+                    <span className="flex-1 text-center">{loadingPlan ? "Processando..." : "Finalizar Pedido"}</span>
                   </Button>
-
                 </div>
               </div>
             </div>
           )}
         </header>
 
-
         {isLoading ? (
-          <div className="mt-16 flex justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <div className="mt-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : (
           <div className="relative mt-8 sm:mt-12 group w-full overflow-hidden">
-            {/* Carousel Controls */}
             <div className="absolute top-1/2 left-0 right-0 -translate-y-1/2 flex justify-between px-1 sm:px-4 z-20 pointer-events-none opacity-100 transition-opacity">
-              <button
-                aria-label="Ofertas anteriores"
-                className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const container = document.getElementById('plans-carousel');
-                  if (container) {
-                    const scrollAmount = container.clientWidth * 0.8;
-                    container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
-                  }
-                }}
-              >
-                <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              </button>
-              <button
-                aria-label="Próximas ofertas"
-                className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const container = document.getElementById('plans-carousel');
-                  if (container) {
-                    const scrollAmount = container.clientWidth * 0.8;
-                    container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
-                  }
-                }}
-              >
-                <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-              </button>
+              <button aria-label="Ofertas anteriores" className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const container = document.getElementById('plans-carousel'); if (container) { const scrollAmount = container.clientWidth * 0.8; container.scrollBy({ left: -scrollAmount, behavior: 'smooth' }); } }}><ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /></button>
+              <button aria-label="Próximas ofertas" className="p-3 sm:p-4 rounded-full bg-black/80 border border-primary/30 text-white backdrop-blur-xl pointer-events-auto hover:bg-primary/20 hover:border-primary/50 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.2)] active:scale-90" onClick={(e) => { e.preventDefault(); e.stopPropagation(); const container = document.getElementById('plans-carousel'); if (container) { const scrollAmount = container.clientWidth * 0.8; container.scrollBy({ left: scrollAmount, behavior: 'smooth' }); } }}><ChevronRight className="h-6 w-6 sm:h-8 sm:w-8 text-primary" /></button>
             </div>
 
-            <div 
-              id="plans-carousel"
-              className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth px-4 sm:px-10 touch-pan-x pointer-events-auto"
-            >
-              {/* Loop Infinito: Usamos a classe animate-carousel-loop do global CSS */}
+            <div id="plans-carousel" className="flex pb-10 sm:pb-16 overflow-x-auto custom-scrollbar-hidden scroll-smooth px-4 sm:px-10 touch-pan-x pointer-events-auto">
               <div className="animate-carousel-loop pause-animation flex gap-5 sm:gap-10 pointer-events-auto">
-
-
-
-
-              {[...(plans || []), ...(plans || [])].map((plan, idx) => {
-                const highlighted = plan.slug === "monthly";
-                const isFree = Number(plan.price) === 0;
-                const isDaily = plan.slug === "daily";
-                
-                return (
-                  <article
-                    key={`${plan.id}-${idx}`}
-                    onClick={() => addToCart(plan)}
-                    className={`relative flex flex-col min-w-[260px] w-[260px] sm:min-w-[320px] sm:w-[320px] shrink-0 rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden transition-all duration-500 cursor-pointer hover:shadow-[0_40px_80px_-20px_rgba(var(--primary-rgb),0.4)] sm:hover:translate-y-[-12px] ${
-
-                      highlighted 
-                        ? "bg-[#0A0A0A] border-2 border-primary shadow-[0_0_80px_-15px_rgba(var(--primary-rgb),0.5)] sm:scale-105 z-10" 
-                        : "bg-[#0A0A0A] border border-white/10 hover:border-primary/50"
-                    }`}
-                  >
-
-                    <div className="relative h-48 sm:h-64 w-full overflow-hidden">
-                      <img 
-                        src={planImage(plan)} 
-                        alt={plan.name} 
-                        className="w-full h-full object-cover transition-transform duration-700 hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent pointer-events-none" />
-
-                      <div className="absolute top-3 right-3 sm:top-6 sm:right-6 max-w-[85%] truncate bg-primary text-black font-black text-[0.5rem] sm:text-[0.6rem] uppercase tracking-widest px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-lg">
-                        {isDaily ? "Oferta Flash" : highlighted ? "Mais Popular" : "Oferta Premium"}
+                {[...(plans || []), ...(plans || [])].map((plan, idx) => {
+                  const highlighted = plan.slug === "monthly";
+                  const isFree = Number(plan.price) === 0;
+                  const isDaily = plan.slug === "daily";
+                  return (
+                    <article key={`${plan.id}-${idx}`} onClick={() => addToCart(plan)} className={`relative flex flex-col min-w-[260px] w-[260px] sm:min-w-[320px] sm:w-[320px] shrink-0 rounded-[1.5rem] sm:rounded-[3rem] overflow-hidden transition-all duration-500 cursor-pointer hover:shadow-[0_40px_80px_-20px_rgba(var(--primary-rgb),0.4)] sm:hover:translate-y-[-12px] ${highlighted ? "bg-[#0A0A0A] border-2 border-primary shadow-[0_0_80px_-15px_rgba(var(--primary-rgb),0.5)] sm:scale-105 z-10" : "bg-[#0A0A0A] border border-white/10 hover:border-primary/50"}`}>
+                      <div className="relative h-48 sm:h-64 w-full overflow-hidden">
+                        <img src={planImage(plan)} alt={plan.name} className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent pointer-events-none" />
+                        <div className="absolute top-3 right-3 sm:top-6 sm:right-6 max-w-[85%] truncate bg-primary text-black font-black text-[0.5rem] sm:text-[0.6rem] uppercase tracking-widest px-2 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-lg">{isDaily ? "Oferta Flash" : highlighted ? "Mais Popular" : "Oferta Premium"}</div>
                       </div>
-                    </div>
-
-                    <div className="p-5 sm:p-8 flex flex-col flex-1">
-                      <div className="mb-4 sm:mb-6">
-                        <h2 className={`text-[0.6rem] sm:text-xs font-black uppercase tracking-[0.2em] break-words ${highlighted ? "text-primary" : "text-muted-foreground"}`}>
-                          {plan.name}
-                        </h2>
-                        <div className="mt-2 sm:mt-4 flex flex-wrap items-baseline gap-1">
-                          <span className="text-2xl sm:text-4xl font-black tracking-tighter text-white">
-                            {formatPrice(Number(plan.price), plan.currency)}
-                          </span>
-                          {!plan.is_lifetime && (
-                            <span className="text-[0.6rem] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest">
-                              /{plan.duration_label}
-                            </span>
-                          )}
-                        </div>
+                      <div className="p-5 sm:p-8 flex flex-col flex-1">
+                        <div className="mb-4 sm:mb-6"><h2 className={`text-[0.6rem] sm:text-xs font-black uppercase tracking-[0.2em] break-words ${highlighted ? "text-primary" : "text-muted-foreground"}`}>{plan.name}</h2><div className="mt-2 sm:mt-4 flex flex-wrap items-baseline gap-1"><span className="text-2xl sm:text-4xl font-black tracking-tighter text-white">{formatPrice(Number(plan.price), plan.currency)}</span>{!plan.is_lifetime && <span className="text-[0.6rem] sm:text-xs text-muted-foreground font-bold uppercase tracking-widest">/{plan.duration_label}</span>}</div></div>
+                        <div className="flex-1 space-y-4 mb-5 sm:mb-8"><ul className="space-y-2 sm:space-y-3 text-[0.65rem] sm:text-[0.75rem]">{(plan.highlights ?? []).map((h: string) => <li key={h} className="flex items-start gap-2 sm:gap-3 group"><div className={`mt-0.5 shrink-0 rounded-full p-0.5 ${highlighted ? "bg-primary text-black" : "bg-white/5 text-muted-foreground"}`}><Check className="h-2.5 w-2.5" /></div><span className="min-w-0 break-words text-muted-foreground group-hover:text-white transition-colors">{h}</span></li>)}</ul></div>
+                        <Button className={`w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.85rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] rounded-full transition-all duration-300 whitespace-normal break-words leading-tight px-4 sm:px-6 relative group/btn overflow-hidden bg-[#22C55E] text-white hover:text-white border-b-[6px] border-[#166534] active:border-b-0 active:translate-y-[4px] hover:bg-[#28D56A] hover:border-[#1A7D3D] hover:-translate-y-[2px] hover:shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)] flex items-center justify-center ${loadingPlan === plan.id ? "opacity-70 pointer-events-none" : ""}`} disabled={loadingPlan === plan.id} onClick={(e) => { e.stopPropagation(); addToCart(plan); }}>{loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isFree ? "Testar Grátis" : "Adicionar ao Carrinho"}</Button>
                       </div>
-
-                      <div className="flex-1 space-y-4 mb-5 sm:mb-8">
-                        <ul className="space-y-2 sm:space-y-3 text-[0.65rem] sm:text-[0.75rem]">
-                          {(plan.highlights ?? []).map((h: string) => (
-                            <li key={h} className="flex items-start gap-2 sm:gap-3 group">
-                              <div className={`mt-0.5 shrink-0 rounded-full p-0.5 ${highlighted ? "bg-primary text-black" : "bg-white/5 text-muted-foreground"}`}>
-                                <Check className="h-2.5 w-2.5" />
-                              </div>
-                              <span className="min-w-0 break-words text-muted-foreground group-hover:text-white transition-colors">{h}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <Button
-                        className={`w-full h-auto min-h-[3.5rem] py-3 text-[0.7rem] sm:text-[0.85rem] font-black uppercase tracking-[0.1em] sm:tracking-[0.2em] rounded-full transition-all duration-300 whitespace-normal break-words leading-tight px-4 sm:px-6 relative group/btn overflow-hidden
-                          bg-[#22C55E] text-white hover:text-white
-                          border-b-[6px] border-[#166534] active:border-b-0 active:translate-y-[4px]
-                          hover:bg-[#28D56A] hover:border-[#1A7D3D] hover:-translate-y-[2px] hover:shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)]
-                          flex items-center justify-center
-                          ${loadingPlan === plan.id ? "opacity-70 pointer-events-none" : ""}`}
-                        disabled={loadingPlan === plan.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToCart(plan);
-                        }}
-                      >
-                        {loadingPlan === plan.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          isFree ? "Testar Grátis" : "Adicionar ao Carrinho"
-                        )}
-                      </Button>
-
-
-                    </div>
-                  </article>
-                );
-              })}
+                    </article>
+                  );
+                })}
               </div>
             </div>
           </div>
-
         )}
 
-        <p className="mt-12 text-xs text-muted-foreground">
-          Os valores são definidos pelo administrador no painel e podem ser alterados a
-          qualquer momento. Preços existem somente aqui no site — nunca dentro da extensão.
-        </p>
+        <p className="mt-12 text-xs text-muted-foreground">Os valores são definidos pelo administrador no painel e podem ser alterados a qualquer momento. Preços existem somente aqui no site — nunca dentro da extensão.</p>
       </main>
       <SiteFooter />
-      {payer && typeof document !== "undefined" &&
-        createPortal(
-          <div className="fixed inset-0 z-[100001] flex items-start sm:items-center justify-center overflow-y-auto overscroll-contain bg-background/90 p-5 backdrop-blur-md">
-            <div className="glass my-auto w-full max-w-md rounded-[2.5rem] border border-primary/20 p-6 sm:p-8 animate-in fade-in zoom-in duration-300">
-              <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-                <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-primary/30 bg-primary/20 text-primary">
-                    <CreditCard className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="truncate text-lg font-black uppercase tracking-widest text-foreground sm:text-xl">
-                      Dados de Faturamento
-                    </h2>
-                    <p className="mt-1 text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">
-                      Exigidos pelo provedor para emitir o PIX.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  aria-label="Fechar"
-                  className="shrink-0 rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
-                  onClick={() => setPayer(null)}
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
 
-              <div className="rounded-3xl border border-white/5 bg-white/5 p-5 sm:p-6">
-                <PayerForm
-                  compact
-                  onSaved={(b) => {
-                    const p = payer;
-                    setPayer(null);
-                    // Gera o PIX automaticamente logo após confirmar CPF/telefone.
-                    if (p) void subscribe(p.planId, p.planName, false, null, b);
-                  }}
-                />
-              </div>
+      {payer && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[100001] flex items-start sm:items-center justify-center overflow-y-auto overscroll-contain bg-background/90 p-5 backdrop-blur-md">
+          <div className="glass my-auto w-full max-w-md rounded-[2.5rem] border border-primary/20 p-6 sm:p-8 animate-in fade-in zoom-in duration-300">
+            <div className="mb-8 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+              <div className="flex min-w-0 items-center gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl border border-primary/30 bg-primary/20 text-primary"><CreditCard className="h-5 w-5" /></div><div className="min-w-0"><h2 className="truncate text-lg font-black uppercase tracking-widest text-foreground sm:text-xl">Dados de Faturamento</h2><p className="mt-1 text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">Exigidos pelo provedor para emitir o PIX.</p></div></div>
+              <button aria-label="Fechar" className="shrink-0 rounded-xl border border-white/10 p-2 text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground" onClick={() => setPayer(null)}><X className="h-5 w-5" /></button>
             </div>
-          </div>,
-          document.body,
-        )}
+            <div className="rounded-3xl border border-white/5 bg-white/5 p-5 sm:p-6"><PayerForm compact onSaved={(b) => { const p = payer; setPayer(null); if (p) void subscribe(p.planId, p.planName, false, null, b); }} /></div>
+          </div>
+        </div>,
+        document.body,
+      )}
 
       {pix && (
         <PixDialog
@@ -593,7 +407,6 @@ function PlanosPage() {
             setPix(null);
             navigate({ to: "/painel" });
           }}
-
           onRegenerate={() => {
             const plan = plans?.find((p) => p.name === pix.planName);
             if (plan) void subscribe(plan.id, plan.name);
@@ -604,16 +417,7 @@ function PlanosPage() {
   );
 }
 
-/** Item do carrinho no padrão e-commerce: foto, quantidade, timer e barra de expiração do PIX. */
-function CartRow({
-  item,
-  pix,
-  busy,
-  onQty,
-  onRemove,
-  onPay,
-  onResume,
-}: {
+function CartRow({ item, pix, busy, onQty, onRemove, onPay, onResume }: {
   item: CartItem;
   pix: { createdAt: string; expiresAt: string; transactionId: string } | null;
   busy: boolean;
@@ -640,128 +444,18 @@ function CartRow({
   return (
     <div className="group relative overflow-hidden rounded-[1.5rem] border border-white/5 bg-[#1A1A1A] p-4 transition-all hover:border-white/20 hover:shadow-2xl shadow-lg">
       <div className="flex gap-4">
-        {item.imageUrl ? (
-          <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl">
-            <img
-              src={item.imageUrl}
-              alt={item.planName}
-              className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-110"
-            />
-          </div>
-        ) : (
-          <div className="grid h-20 w-20 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5">
-            <ShoppingCart className="h-6 w-6 text-muted-foreground" />
-          </div>
-        )}
-
+        {item.imageUrl ? <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5 shadow-2xl"><img src={item.imageUrl} alt={item.planName} className="h-full w-full object-contain transition-transform duration-700 group-hover:scale-110" /></div> : <div className="grid h-20 w-20 shrink-0 place-items-center rounded-xl border border-white/10 bg-white/5"><ShoppingCart className="h-6 w-6 text-muted-foreground" /></div>}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <h4 className="truncate text-sm font-black text-white uppercase tracking-tight">
-                {item.planName}
-              </h4>
-              <p className="mt-1 font-black text-primary text-base">
-                {formatPrice(item.price * item.quantity, "BRL")}
-              </p>
-            </div>
-            <button
-              onClick={onRemove}
-              className="shrink-0 p-2 text-muted-foreground hover:text-destructive transition-colors"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          </div>
-
+          <div className="flex items-start justify-between gap-2"><div className="min-w-0"><h4 className="truncate text-sm font-black text-white uppercase tracking-tight">{item.planName}</h4><p className="mt-1 font-black text-primary text-base">{formatPrice(item.price * item.quantity, "BRL")}</p></div><button onClick={onRemove} className="shrink-0 p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button></div>
           <div className="mt-4 flex items-center justify-between gap-4">
-            <div className="flex items-center rounded-xl border border-white/10 bg-black/40 p-1">
-              <button
-                onClick={() => onQty(-1)}
-                disabled={item.quantity <= 1}
-                className="p-1.5 transition-colors hover:text-primary disabled:opacity-30"
-              >
-                <Minus className="h-3 w-3" />
-              </button>
-              <span className="w-8 text-center text-xs font-black">{item.quantity}</span>
-              <button 
-                onClick={() => onQty(1)} 
-                className="p-1.5 transition-colors hover:text-primary"
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-            </div>
-
-            {pix ? (
-              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${
-                expired ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-amber-500/10 border-amber-500/20 text-amber-500"
-              }`}>
-                <div className={`h-1.5 w-1.5 rounded-full ${expired ? "bg-destructive" : "bg-amber-500 animate-pulse"}`} />
-                <span className="text-[0.6rem] font-black uppercase tracking-widest">
-                  {expired ? "PIX Expirado" : "Aguardando"}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-muted-foreground">
-                <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-                <span className="text-[0.6rem] font-black uppercase tracking-widest">Pendente</span>
-              </div>
-            )}
+            <div className="flex items-center rounded-xl border border-white/10 bg-black/40 p-1"><button onClick={() => onQty(-1)} disabled={item.quantity <= 1} className="p-1.5 transition-colors hover:text-primary disabled:opacity-30"><Minus className="h-3 w-3" /></button><span className="w-8 text-center text-xs font-black">{item.quantity}</span><button onClick={() => onQty(1)} className="p-1.5 transition-colors hover:text-primary"><Plus className="h-3 w-3" /></button></div>
+            {pix ? <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${expired ? "bg-destructive/10 border-destructive/20 text-destructive" : "bg-amber-500/10 border-amber-500/20 text-amber-500"}`}><div className={`h-1.5 w-1.5 rounded-full ${expired ? "bg-destructive" : "bg-amber-500 animate-pulse"}`} /><span className="text-[0.6rem] font-black uppercase tracking-widest">{expired ? "PIX Expirado" : "Aguardando"}</span></div> : <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-muted-foreground"><div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" /><span className="text-[0.6rem] font-black uppercase tracking-widest">Pendente</span></div>}
           </div>
         </div>
       </div>
 
-      {pix && (
-        <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">
-                {expired ? "Expirado em" : "Expira em"}
-              </span>
-              <span className={`font-mono text-[0.65rem] font-black ${expired ? "text-destructive" : "text-white"}`}>
-                {expired 
-                  ? new Date(pix.expiresAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) 
-                  : countdownLabel}
-              </span>
-            </div>
-            
-            <div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden">
-              <div
-                className={`h-full transition-all duration-1000 ease-linear ${expired ? "bg-destructive" : "bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"}`}
-                style={{ width: `${expired ? 100 : filled}%` }}
-              />
-            </div>
-          </div>
-
-          <Button
-            size="sm"
-            variant={expired ? "neon" : "neonOutline"}
-            className="w-full h-10 text-[0.65rem] font-black uppercase tracking-widest rounded-xl"
-            disabled={busy}
-            onClick={expired ? onPay : onResume}
-          >
-            {busy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : expired ? (
-              <>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Gerar novo PIX
-              </>
-            ) : (
-              "Continuar pagamento"
-            )}
-          </Button>
-        </div>
-      )}
-
-      {!pix && (
-        <Button
-          size="sm"
-          variant="neonOutline"
-          className="mt-4 w-full h-10 text-[0.65rem] font-black uppercase tracking-widest rounded-xl border-white/10 bg-white/5 hover:bg-white/10"
-          disabled={busy}
-          onClick={onPay}
-        >
-          {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Gerar PIX deste item"}
-        </Button>
-      )}
+      {pix && <div className="mt-4 pt-4 border-t border-white/5 space-y-3"><div className="flex items-center justify-between"><div className="flex flex-col"><span className="text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">{expired ? "Expirado em" : "Expira em"}</span><span className={`font-mono text-[0.65rem] font-black ${expired ? "text-destructive" : "text-white"}`}>{expired ? new Date(pix.expiresAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : countdownLabel}</span></div><div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ease-linear ${expired ? "bg-destructive" : "bg-primary shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]"}`} style={{ width: `${expired ? 100 : filled}%` }} /></div></div><Button size="sm" variant={expired ? "neon" : "neonOutline"} className="w-full h-10 text-[0.65rem] font-black uppercase tracking-widest rounded-xl" disabled={busy} onClick={expired ? onPay : onResume}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : expired ? <><RefreshCw className="mr-2 h-3.5 w-3.5" /> Gerar novo PIX</> : "Continuar pagamento"}</Button></div>}
+      {!pix && <Button size="sm" variant="neonOutline" className="mt-4 w-full h-10 text-[0.65rem] font-black uppercase tracking-widest rounded-xl border-white/10 bg-white/5 hover:bg-white/10" disabled={busy} onClick={onPay}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Gerar PIX deste item"}</Button>}
     </div>
   );
 }
