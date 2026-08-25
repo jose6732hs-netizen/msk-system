@@ -265,7 +265,7 @@ function Admin() {
   }
 
   const handleWhatsApp = (phone: string, name: string, type: "welcome" | "recovery" | "urgency") => {
-    if (!phone) return toast.error("Usuário sem telefone cadastrado");
+    if (!phone) { toast.error("Usuário sem telefone cadastrado"); return; }
     const cms = (data as any)?.cms_settings || {};
     const messages = cms.recovery_messages || {};
     let msg = messages[type] || "";
