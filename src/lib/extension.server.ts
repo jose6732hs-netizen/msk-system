@@ -14,8 +14,44 @@ export type BuildRow = {
   is_published: boolean;
   release_notes: string | null;
   reseller_id: string | null;
+  channel_slug?: string | null;
   created_at: string;
 };
+
+function extensionNameFromFile(fileName: string, version?: string | null) {
+  let name = String(fileName || "")
+    .replace(/\.zip$/i, "")
+    .trim();
+
+  if (version) {
+    const escapedVersion = String(version).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    name = name.replace(new RegExp(`[\\s._-]*v?${escapedVersion}$`, "i"), "");
+  }
+
+  name = name
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return name || "Extensão MSK";
+}
+
+async function syncChannelFromBuild(input: {
+  channelSlug: string;
+  version: string;
+  fileName: string;
+}) {
+  const { error } = await supabaseAdmin
+    .from("extension_channels")
+    .update({
+      version: input.version.trim(),
+      display_name: extensionNameFromFile(input.fileName, input.version),
+      updated_at: new Date().toISOString(),
+    } as never)
+    .eq("slug", input.channelSlug);
+
+  if (error) throw new Error(error.message);
+}
 
 export async function listBuilds() {
   const { data, error } = await supabaseAdmin
@@ -56,7 +92,10 @@ export async function registerBuild(
   adminId: string,
 ) {
   const channelSlug = input.channelSlug ?? "m3k-principal";
+
   if (input.publish) {
+    // Cada canal mantém sua própria versão publicada. Publicar a principal
+    // não deve desligar os canais de reserva e vice-versa.
     await supabaseAdmin
       .from("extension_builds")
       .update({ is_published: false } as never)
@@ -81,33 +120,74 @@ export async function registerBuild(
     .single();
   if (error) throw new Error(error.message);
 
+  if (input.publish) {
+    await syncChannelFromBuild({
+      channelSlug,
+      version: input.version,
+      fileName: input.fileName,
+    });
+  }
+
   await logAudit({
     userId: adminId,
     action: "extension.build.upload",
     resource: "extension_builds",
     resourceId: (data as { id: string }).id,
-    metadata: { version: input.version, published: input.publish },
+    metadata: {
+      version: input.version,
+      published: input.publish,
+      channelSlug,
+      displayName: extensionNameFromFile(input.fileName, input.version),
+    },
   });
   return { ok: true, id: (data as { id: string }).id };
 }
 
 export async function setPublished(buildId: string, publish: boolean, adminId: string) {
+  const { data: build, error: buildError } = await supabaseAdmin
+    .from("extension_builds")
+    .select("id,version,file_name,channel_slug")
+    .eq("id", buildId)
+    .maybeSingle();
+
+  if (buildError) throw new Error(buildError.message);
+  if (!build) throw new Error("Versão da extensão não encontrada.");
+
+  const row = build as unknown as {
+    id: string;
+    version: string;
+    file_name: string;
+    channel_slug: string | null;
+  };
+  const channelSlug = row.channel_slug || "m3k-principal";
+
   if (publish) {
     await supabaseAdmin
       .from("extension_builds")
       .update({ is_published: false } as never)
-      .eq("is_official", true as never);
+      .eq("channel_slug", channelSlug as never);
   }
+
   const { error } = await supabaseAdmin
     .from("extension_builds")
     .update({ is_published: publish, updated_at: new Date().toISOString() } as never)
     .eq("id", buildId);
   if (error) throw new Error(error.message);
+
+  if (publish) {
+    await syncChannelFromBuild({
+      channelSlug,
+      version: row.version,
+      fileName: row.file_name,
+    });
+  }
+
   await logAudit({
     userId: adminId,
     action: publish ? "extension.build.publish" : "extension.build.unpublish",
     resource: "extension_builds",
     resourceId: buildId,
+    metadata: { channelSlug, version: row.version },
   });
   return { ok: true };
 }
@@ -190,8 +270,8 @@ async function buildForChannel(slug: string) {
 /** Download livre (sem exigir licença) — apenas do canal ativado no admin. */
 export async function issueDownloadLink(userId: string, channelSlug?: string | null) {
   const channels = await listActiveChannels();
-  const channel = channelSlug 
-    ? channels.find((c) => c.slug === channelSlug) 
+  const channel = channelSlug
+    ? channels.find((c) => c.slug === channelSlug)
     : channels.find((c) => c.enabled !== false) || channels[0];
 
   const build = await buildForChannel(channel?.slug ?? channelSlug ?? "");
@@ -208,7 +288,7 @@ export async function issueDownloadLink(userId: string, channelSlug?: string | n
       fileName: build.file_name,
       releaseNotes: build.release_notes,
       channel: channel?.slug ?? "default",
-      channelName: channel?.display_name ?? "Extensão",
+      channelName: channel?.display_name ?? extensionNameFromFile(build.file_name, build.version),
     };
   }
 
@@ -229,7 +309,6 @@ export async function issueDownloadLink(userId: string, channelSlug?: string | n
     channelName: channel.display_name,
   };
 }
-
 
 export async function latestPublishedBuild() {
   const { data } = await supabaseAdmin
