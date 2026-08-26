@@ -51,9 +51,7 @@ export const adminRegisterBuild = createServerFn({ method: "POST" })
 
 export const adminSetBuildPublished = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) =>
-    z.object({ buildId: z.string().uuid(), publish: z.boolean() }).parse(d),
-  )
+  .inputValidator((d: unknown) => z.object({ buildId: z.string().uuid(), publish: z.boolean() }).parse(d))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { setPublished } = await import("./extension.server");
@@ -75,16 +73,24 @@ export const getExtensionDownload = createServerFn({ method: "POST" })
     z.object({ channelSlug: z.string().max(60).optional() }).optional().parse(d) ?? {},
   )
   .handler(async ({ context, data }) => {
+    const { hasUsableLicenseRole } = await import("./license-entitlements.server");
+    const allowed = await hasUsableLicenseRole(context.userId, "extension", { allowPrivileged: true });
+    if (!allowed) {
+      throw new Error("Seu plano atual não inclui acesso à extensão principal.");
+    }
     const { issueDownloadLink } = await import("./extension.server");
     return issueDownloadLink(context.userId, data?.channelSlug ?? null);
   });
 
-/** Canais liberados pelo admin — o cliente só vê/baixa o que estiver ativo. */
+/** Canais só são expostos ao cliente que possui licença da extensão. */
 export const getActiveExtensionChannels = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    const { hasUsableLicenseRole } = await import("./license-entitlements.server");
+    const allowed = await hasUsableLicenseRole(context.userId, "extension", { allowPrivileged: true });
+    if (!allowed) return { access: false, channels: [] };
     const { listActiveChannels } = await import("./extension.server");
-    return { channels: await listActiveChannels() };
+    return { access: true, channels: await listActiveChannels() };
   });
 
 export const getLatestBuildInfo = createServerFn({ method: "GET" })
