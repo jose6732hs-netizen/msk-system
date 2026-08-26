@@ -24,7 +24,9 @@ type AgentRun = {
   summary?: string;
   created_at?: string;
   files?: unknown;
+  files_changed?: unknown;
   pr_url?: string | null;
+  pull_request_url?: string | null;
 };
 
 type AgentStatus = {
@@ -33,6 +35,7 @@ type AgentStatus = {
   license?: { status?: string | null; expires_at?: string | null; plan?: string | null } | null;
   github?: { connected?: boolean; login?: string | null } | null;
   project?: { name?: string | null; repo?: string | null } | null;
+  agent?: { capabilities?: { editCode?: boolean } | null } | null;
   role?: string | null;
   recentRuns?: AgentRun[];
 };
