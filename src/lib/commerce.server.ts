@@ -406,19 +406,21 @@ export async function settlePaidTransaction(transactionId: string) {
     }
   }
 
-  // Fatura de toda transação confirmada.
+  // Aviso ao comprador — nunca pode derrubar a liquidação/entrega da licença.
   if (tx.user_id) {
-    const { sendNotification } = await import("./notifications.functions");
-    await (sendNotification as any)({
-      data: {
+    try {
+      const { sendProfessionalNotification } = await import("./notification-service.server");
+      await sendProfessionalNotification({
+        userId: tx.user_id,
+        eventType: "payment_confirmed",
         title: "Pagamento Confirmado",
         body: `Seu pagamento de R$ ${amount.toFixed(2)} foi processado com sucesso. Aproveite seu acesso!`,
         emoji: "✅",
-        userIds: [tx.user_id],
-        link: "/painel"
-      },
-      context: { supabase: supabaseAdmin, userId: "system" }
-    });
+        link: "/painel",
+      } as never);
+    } catch (e) {
+      console.error("[settle] notificação de pagamento falhou:", (e as Error).message);
+    }
   }
   
   await createInvoice({
