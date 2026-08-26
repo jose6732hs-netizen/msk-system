@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "MSK Agente — Guardião Lovable",
-  "version": "2.4.5",
-  "description": "Agente MSK multiusuário com conta, licença, GitHub persistente, projetos, chat, skills e histórico.",
+  "version": "2.4.6",
+  "description": "Agente MSK multiusuário com conta, licença exclusiva do produto Agente, GitHub persistente, projetos, chat, skills e histórico.",
   "permissions": [
     "storage",
     "activeTab",
@@ -16,7 +16,7 @@
     "https://iybjfmhqbblrppqoodyf.supabase.co/*"
   ],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "background-entry.js",
     "type": "module"
   },
   "content_scripts": [
