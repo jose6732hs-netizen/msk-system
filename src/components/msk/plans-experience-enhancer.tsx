@@ -239,11 +239,6 @@ export function PlansExperienceEnhancer() {
 
       window.setTimeout(() => {
         target.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-        window.history.replaceState(
-          window.history.state,
-          "",
-          `${window.location.pathname}${window.location.search}#${target.id}`,
-        );
       }, 180);
     };
 
