@@ -21,6 +21,8 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CardPaymentPanel } from "@/components/msk/card-payment-panel";
+
 import { checkTransaction } from "@/lib/commerce.functions";
 import { useNavigate } from "@tanstack/react-router";
 
