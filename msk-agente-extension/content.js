@@ -485,7 +485,7 @@
       title: "Autorizar MSK neste projeto?",
       description: "O MSK usará somente os acessos necessários para executar e publicar as alterações solicitadas.",
       permissions: ["Identificar o projeto Lovable aberto", "Ler e editar o repositório autorizado no GitHub", "Detectar Lovable Cloud ou solicitar acesso ao Supabase", "Criar alterações e pedir sua confirmação antes de aplicar"],
-      onConfirm: connectProjectV2
+      onConfirm: connectProject
     });
   };
   const activateVisibleProject = async () => {
