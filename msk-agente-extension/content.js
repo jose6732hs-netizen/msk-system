@@ -178,6 +178,20 @@
     stage.className = `msk-stage ${state}`;
     stage.querySelector("strong").textContent = label;
   };
+  const runtimeMessage = (message, timeout = 7000) => new Promise(resolve => {
+    let finished = false;
+    const timer = window.setTimeout(() => {
+      if (finished) return;
+      finished = true;
+      resolve({ ok: false, error: "A verificação demorou demais. Tente conectar o projeto novamente." });
+    }, timeout);
+    chrome.runtime.sendMessage(message, response => {
+      if (finished) return;
+      finished = true;
+      window.clearTimeout(timer);
+      resolve(response || { ok: false, error: chrome.runtime.lastError?.message || "Sem resposta da extensão." });
+    });
+  });
   const setNativeStatus = (form, text, state = "running") => {
     const top = form?.previousElementSibling?.classList.contains("msk-native-top") ? form.previousElementSibling : null;
     const bottom = form?.nextElementSibling?.classList.contains("msk-native-bottom") ? form.nextElementSibling : null;
@@ -309,14 +323,14 @@
   const readMessageContext = async () => {
     const id = refreshProjectId();
     if (!id) return { ok: false, error: "Conecte-se a um projeto primeiro. Abra um projeto no editor do Lovable e tente novamente." };
-    const cached = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_GET_LINKS", projectId: id }, resolve));
+    const cached = await runtimeMessage({ type: "MSK_GET_LINKS", projectId: id });
     const visibleRepo = repoUrl();
     const repo = visibleRepo || (cached?.links?.repo ? `https://github.com/${String(cached.links.repo).replace("https://github.com/", "")}` : "");
     const db = supabaseRef() || cached?.links?.db || "";
     if (!repo) return { ok: false, error: "Você ainda não está conectado ao GitHub. Clique em “Conectar este projeto” antes de enviar uma mensagem." };
     if (!db) return { ok: false, error: "O banco de dados deste projeto ainda não foi conectado ou identificado. Conecte o Lovable Cloud ou seu banco antes de enviar uma mensagem." };
     if (!agentActive || connectedContext.projectId !== id) {
-      const status = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_AGENT_STATUS", payload: { lovable_project_id: id, project_name: projectName() } }, resolve));
+      const status = await runtimeMessage({ type: "MSK_AGENT_STATUS", payload: { lovable_project_id: id, project_name: projectName() } });
       if (!status?.connected) return { ok: false, error: "O GitHub foi identificado, mas este projeto ainda não está conectado ao MSK Agente. Clique em “Conectar este projeto”." };
       agentActive = true;
     }
