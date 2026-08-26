@@ -437,7 +437,7 @@
       return;
     }
     setStage("Conectando projeto", "running");
-    const nativeRepo = repoUrl();
+    const nativeRepo = (typeof knownRepo === "string" && knownRepo) || repoUrl();
     if (!nativeRepo) {
       const recovered = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_GPT_CONNECT", payload: { lovable_project_id: id, project_name: projectName(), page_url: location.href, check_only: true } }, resolve));
       if (recovered?.connected) {
