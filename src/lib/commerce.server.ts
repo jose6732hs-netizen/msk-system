@@ -8,6 +8,54 @@ import { encryptToken, generateLicenseToken, hashToken, logEvent, maskToken } fr
 import { logAudit } from "./audit.server";
 import { computeExpiry, createInvoice } from "./financial.server";
 
+function objectMeta(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : {};
+}
+
+function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function lineForPlan(metadata: Record<string, any>, planId: string) {
+  const lines = Array.isArray(metadata["line_items"])
+    ? metadata["line_items"]
+    : Array.isArray(metadata["lines"])
+      ? metadata["lines"]
+      : [];
+  return lines.find((line: any) => String(line?.planId ?? line?.plan_id ?? "") === planId) ?? null;
+}
+
+async function purchaseSnapshot(transactionId: string | null | undefined, planId: string) {
+  if (!transactionId) return null;
+  const { data } = await supabaseAdmin
+    .from("transactions")
+    .select("metadata")
+    .eq("id", transactionId)
+    .maybeSingle();
+  const metadata = objectMeta(data?.metadata);
+  const line = lineForPlan(metadata, planId);
+  if (!line) return null;
+  const frozen = objectMeta(line?.snapshot);
+  return {
+    ...frozen,
+    name: frozen["name"] ?? line?.name ?? null,
+    slug: frozen["slug"] ?? line?.slug ?? null,
+    soldPrice: frozen["soldPrice"] ?? line?.finalPrice ?? line?.unitPrice ?? null,
+    role: frozen["role"] ?? line?.role ?? null,
+    origin: line?.origin ?? null,
+  } as Record<string, any>;
+}
+
+function exactChargedAmount(tx: { amount: unknown; metadata?: unknown }) {
+  const metadata = objectMeta(tx.metadata);
+  const cardTotal = nullableNumber(metadata["card_charged_total"]);
+  return cardTotal !== null && cardTotal > 0 ? cardTotal : Number(tx.amount);
+}
+
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   const { data } = await supabaseAdmin
     .from("app_settings")
@@ -109,7 +157,7 @@ export async function findResellerByCode(code?: string | null) {
   return data;
 }
 
-/** Emite licença avulsa (trial, revenda ou teste sem usuário). */
+/** Emite licença usando o snapshot imutável da compra quando houver transação. */
 export async function issueStandaloneLicense(input: {
   userId: string | null;
   planId: string;
@@ -120,7 +168,6 @@ export async function issueStandaloneLicense(input: {
   transactionId?: string | null;
   maxDevices?: number | null;
   expiresAtOverride?: string | null;
-  /** Identifica a função da licença (extensão, clonador, agente) e o item comprado. */
   extraMetadata?: Record<string, unknown> | null;
 }) {
   const { data: plan } = await supabaseAdmin
@@ -130,27 +177,53 @@ export async function issueStandaloneLicense(input: {
     .maybeSingle();
   if (!plan) throw new Error("Plano não encontrado");
 
+  const frozen = await purchaseSnapshot(input.transactionId, input.planId);
+  const frozenFeatures = objectMeta(frozen?.["features"]);
+  const frozenLifetime = frozen?.["isLifetime"];
+  const isLifetime = typeof frozenLifetime === "boolean" ? frozenLifetime : Boolean(plan.is_lifetime);
+  const frozenDurationValue = nullableNumber(frozen?.["durationValue"]);
+  const frozenDurationDays = nullableNumber(frozen?.["durationDays"]);
+  const frozenDurationUnit = frozen?.["durationUnit"] ? String(frozen.durationUnit) : null;
+  const frozenMaxDevices = nullableNumber(frozen?.["maxDevices"]);
+
   const now = new Date();
   let expires: string | null = null;
-  
+
   if (input.expiresAtOverride !== undefined && input.expiresAtOverride !== null) {
     expires = input.expiresAtOverride;
   } else if (input.durationMinutes) {
     expires = new Date(now.getTime() + input.durationMinutes * 60000).toISOString();
   } else if (input.durationDays) {
     expires = new Date(now.getTime() + input.durationDays * 86400000).toISOString();
-  } else if (!plan.is_lifetime) {
-    // Herda do plano: duration_unit + duration_value ou fallback duration_days
-    const rawUnit = String((plan as any).duration_unit || "days").toLowerCase();
+  } else if (!isLifetime) {
+    const rawUnit = String(
+      frozenDurationUnit ?? (frozenDurationDays !== null ? "days" : (plan as any).duration_unit || "days"),
+    ).toLowerCase();
     const unit = ({ minute: "minutes", hour: "hours", day: "days", week: "weeks", month: "months" } as Record<string, string>)[rawUnit] ?? rawUnit;
-    const val = Number((plan as any).duration_value || plan.duration_days || 30);
-    expires = computeExpiry(unit, val, now);
+    const value =
+      frozenDurationValue ??
+      frozenDurationDays ??
+      nullableNumber((plan as any).duration_value) ??
+      nullableNumber(plan.duration_days) ??
+      30;
+    expires = computeExpiry(unit, value, now);
   }
 
   const isInstant = input.type === "trial" || input.type === "test";
-  // Licenças pagas só começam a contar quando o cliente ativa na extensão.
   const pendingDurationMs = !isInstant && expires ? new Date(expires).getTime() - now.getTime() : null;
   if (pendingDurationMs !== null) expires = null;
+
+  const snapshotName = frozen?.["name"] ?? plan.name;
+  const snapshotSlug = frozen?.["slug"] ?? plan.slug;
+  const snapshotSoldPrice = nullableNumber(frozen?.["soldPrice"]) ?? Number(plan.price);
+  const snapshotListPrice = nullableNumber(frozen?.["listPrice"]) ?? Number(plan.price);
+  const snapshotCurrency = String(frozen?.["currency"] ?? plan.currency ?? "BRL");
+  const snapshotDurationLabel = frozen?.["durationLabel"] ?? plan.duration_label ?? null;
+  const snapshotDurationDays = frozenDurationDays ?? nullableNumber(plan.duration_days);
+  const snapshotDurationValue = frozenDurationValue ?? nullableNumber((plan as any).duration_value);
+  const snapshotDurationUnit = frozenDurationUnit ?? (plan as any).duration_unit ?? null;
+  const snapshotFeatures = Object.keys(frozenFeatures).length ? frozenFeatures : objectMeta(plan.features);
+  const maxDevices = input.maxDevices ?? frozenMaxDevices ?? nullableNumber(plan.max_devices);
 
   const token = generateLicenseToken();
   const { data, error } = await supabaseAdmin
@@ -167,21 +240,28 @@ export async function issueStandaloneLicense(input: {
       activated_at: isInstant ? now.toISOString() : null,
       starts_at: now.toISOString(),
       expires_at: expires,
-      max_devices: input.maxDevices ?? plan.max_devices,
-      
+      max_devices: maxDevices,
       reseller_id: input.resellerId ?? null,
       transaction_id: input.transactionId ?? null,
-      metadata: { 
-        plan_name_snapshot: plan.name,
-        plan_price_snapshot: plan.price,
-        plan_duration_snapshot: plan.duration_days,
-        plan_duration_value_snapshot: plan.duration_value,
-        plan_duration_unit_snapshot: plan.duration_unit,
-        plan_slug_snapshot: plan.slug,
-        features_snapshot: plan.features || {},
+      metadata: {
+        plan_name_snapshot: snapshotName,
+        plan_price_snapshot: snapshotSoldPrice,
+        plan_list_price_snapshot: snapshotListPrice,
+        plan_currency_snapshot: snapshotCurrency,
+        plan_duration_label_snapshot: snapshotDurationLabel,
+        plan_duration_snapshot: snapshotDurationDays,
+        plan_duration_value_snapshot: snapshotDurationValue,
+        plan_duration_unit_snapshot: snapshotDurationUnit,
+        plan_is_lifetime_snapshot: isLifetime,
+        plan_max_devices_snapshot: maxDevices,
+        plan_slug_snapshot: snapshotSlug,
+        features_snapshot: snapshotFeatures,
+        ...(frozen?.["role"] ? { license_role: String(frozen.role) } : {}),
+        ...(frozen?.["origin"] ? { item_origin: String(frozen.origin) } : {}),
+        ...(snapshotSoldPrice !== null ? { item_unit_price: snapshotSoldPrice } : {}),
         ...(pendingDurationMs !== null ? { pending_duration_ms: pendingDurationMs } : {}),
-        ...(input.extraMetadata ?? {})
-      }
+        ...(input.extraMetadata ?? {}),
+      },
     } as never)
     .select("id")
     .single();
@@ -192,7 +272,7 @@ export async function issueStandaloneLicense(input: {
     license_id: data.id,
     user_id: input.userId,
     event_type: "license_created",
-    metadata: { plan: plan.slug, type: input.type ?? "paid" },
+    metadata: { plan: snapshotSlug, type: input.type ?? "paid" },
   });
   return { licenseId: data.id, token };
 }
@@ -281,8 +361,8 @@ export async function settlePaidTransaction(transactionId: string) {
     .eq("id", tx.id);
 
   const amount = Number(tx.amount);
+  const chargedAmount = exactChargedAmount(tx);
 
-  // Depósito de revendedor: credita saldo.
   if (tx.purpose === "deposit" && tx.reseller_id) {
     const { data: reseller } = await supabaseAdmin
       .from("resellers")
@@ -306,19 +386,12 @@ export async function settlePaidTransaction(transactionId: string) {
     return { deposit: true };
   }
 
-  // Comissão de afiliado processada internamente (processInternalCommission é chamado no webhook).
-  // Mantemos apenas a notificação se a comissão já tiver sido registrada ou delegamos para a função interna.
   {
-    const { affiliateForUser, markReferralConverted, recordAffiliateEvent } = await import(
-      "./affiliate.server"
-    );
-    const { sendNotification } = await import("./notifications.functions");
-    
+    const { affiliateForUser, markReferralConverted, recordAffiliateEvent } = await import("./affiliate.server");
     const affiliateId = tx.affiliate_id ?? (tx.user_id ? await affiliateForUser(tx.user_id) : null);
     if (affiliateId && tx.purpose !== "deposit" && !tx.affiliate_id) {
       await supabaseAdmin.from("transactions").update({ affiliate_id: affiliateId }).eq("id", tx.id);
     }
-
     if (tx.user_id) {
       await markReferralConverted(tx.user_id);
       await recordAffiliateEvent({
@@ -330,7 +403,6 @@ export async function settlePaidTransaction(transactionId: string) {
     }
   }
 
-  // Comissão de revendedor sobre venda indicada.
   if (tx.reseller_id && tx.purpose === "purchase") {
     const { data: reseller } = await supabaseAdmin
       .from("resellers")
@@ -346,7 +418,6 @@ export async function settlePaidTransaction(transactionId: string) {
     }
   }
 
-  // Licença do comprador.
   let licenseId: string | null = null;
   if (tx.user_id && tx.plan_id && (tx.purpose === "purchase" || tx.purpose === "subscription")) {
     const issued = await issueStandaloneLicense({
@@ -358,27 +429,24 @@ export async function settlePaidTransaction(transactionId: string) {
     });
     licenseId = issued.licenseId;
 
-    // Assinar os dados da licença para entrega segura
     const { signData } = await import("./license.server");
-    const signature = await signData(JSON.stringify({ 
-      licenseId: issued.licenseId, 
+    const signature = await signData(JSON.stringify({
+      licenseId: issued.licenseId,
       token: issued.token,
-      userId: tx.user_id 
+      userId: tx.user_id,
     }));
-    
     const { data: licenseSnapshot } = await supabaseAdmin
       .from("licenses")
       .select("metadata")
       .eq("id", issued.licenseId)
       .maybeSingle();
+    await supabaseAdmin
+      .from("licenses")
+      .update({
+        metadata: { ...((licenseSnapshot?.metadata as Record<string, unknown> | null) ?? {}), signature },
+      } as any)
+      .eq("id", issued.licenseId);
 
-    // Preserva a duração pendente e os dados do plano ao incluir a assinatura.
-    await supabaseAdmin.from("licenses").update({ 
-      metadata: { ...((licenseSnapshot?.metadata as Record<string, unknown> | null) ?? {}), signature }
-    } as any).eq("id", issued.licenseId);
-
-
-    // Saldo de tokens do tenant conforme a quantidade adquirida (1 já emitido acima).
     const quantity = Math.max(
       1,
       Number((tx.metadata as Record<string, unknown> | null)?.["quantity"] ?? 1) || 1,
@@ -406,7 +474,6 @@ export async function settlePaidTransaction(transactionId: string) {
     }
   }
 
-  // Aviso ao comprador — nunca pode derrubar a liquidação/entrega da licença.
   if (tx.user_id) {
     try {
       const { sendProfessionalNotification } = await import("./notification-service.server");
@@ -414,7 +481,7 @@ export async function settlePaidTransaction(transactionId: string) {
         userId: tx.user_id,
         type: "pix_approved",
         title: "Pagamento Confirmado",
-        body: `Seu pagamento de R$ ${amount.toFixed(2)} foi processado com sucesso. Aproveite seu acesso!`,
+        body: `Seu pagamento de R$ ${chargedAmount.toFixed(2)} foi processado com sucesso. Aproveite seu acesso!`,
         link: "/painel",
         transactionId: tx.id,
       });
@@ -422,17 +489,17 @@ export async function settlePaidTransaction(transactionId: string) {
       console.error("[settle] notificação de pagamento falhou:", (e as Error).message);
     }
   }
-  
+
   await createInvoice({
     transactionId: tx.id,
     userId: tx.user_id,
     subscriptionId: tx.subscription_id,
     licenseId,
-    amount,
+    amount: chargedAmount,
     currency: tx.currency ?? "BRL",
     method: tx.method,
     externalId: tx.provider_transaction_id,
-    metadata: { purpose: tx.purpose },
+    metadata: { purpose: tx.purpose, base_amount: amount },
   });
 
   await logAudit({
@@ -440,7 +507,7 @@ export async function settlePaidTransaction(transactionId: string) {
     action: "transaction.paid",
     resource: "transactions",
     resourceId: tx.id,
-    metadata: { amount, purpose: tx.purpose },
+    metadata: { amount: chargedAmount, baseAmount: amount, purpose: tx.purpose },
   });
   return { settled: true };
 }
