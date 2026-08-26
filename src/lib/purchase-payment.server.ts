@@ -13,6 +13,21 @@ type PrepareInput = {
   resellerCode?: string | null;
 };
 
+type PlanSnapshot = {
+  name: string;
+  slug: string;
+  soldPrice: number;
+  listPrice: number;
+  currency: string;
+  features: Record<string, unknown>;
+  isLifetime: boolean;
+  durationLabel: string | null;
+  durationDays: number | null;
+  durationValue: number | null;
+  durationUnit: string | null;
+  maxDevices: number | null;
+};
+
 type PreparedLine = {
   planId: string;
   name: string;
@@ -21,7 +36,11 @@ type PreparedLine = {
   unitPrice: number;
   role: string;
   origin: "single" | "cart" | "bump";
+  snapshot: PlanSnapshot;
 };
+
+const PLAN_COLUMNS =
+  "id,name,slug,price,currency,active,is_lifetime,duration_label,duration_days,duration_value,duration_unit,max_devices,features";
 
 function roundMoney(value: number) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -33,6 +52,33 @@ function objectMeta(value: unknown): Record<string, any> {
     : {};
 }
 
+function planSnapshot(plan: any, soldPrice: number): PlanSnapshot {
+  return {
+    name: String(plan?.name ?? "MSK SISTEM"),
+    slug: String(plan?.slug ?? ""),
+    soldPrice: roundMoney(soldPrice),
+    listPrice: roundMoney(Number(plan?.price ?? soldPrice)),
+    currency: String(plan?.currency ?? "BRL"),
+    features: objectMeta(plan?.features),
+    isLifetime: Boolean(plan?.is_lifetime),
+    durationLabel: plan?.duration_label ? String(plan.duration_label) : null,
+    durationDays: Number.isFinite(Number(plan?.duration_days)) ? Number(plan.duration_days) : null,
+    durationValue: Number.isFinite(Number(plan?.duration_value)) ? Number(plan.duration_value) : null,
+    durationUnit: plan?.duration_unit ? String(plan.duration_unit) : null,
+    maxDevices: Number.isFinite(Number(plan?.max_devices)) ? Number(plan.max_devices) : null,
+  };
+}
+
+async function loadPlans(ids: string[]) {
+  if (!ids.length) return new Map<string, any>();
+  const { data } = await supabaseAdmin
+    .from("plans")
+    .select(PLAN_COLUMNS)
+    .in("id", [...new Set(ids)])
+    .eq("active", true);
+  return new Map((data ?? []).map((plan: any) => [String(plan.id), plan]));
+}
+
 async function resolveAffiliate(userId: string, code?: string | null) {
   const direct = await findAffiliateByCode(code ?? null);
   if (direct?.id) return direct.id as string;
@@ -42,7 +88,7 @@ async function resolveAffiliate(userId: string, code?: string | null) {
 
 /**
  * Cria somente o pedido interno. Nenhum gateway é chamado aqui.
- * O comprador escolhe PIX ou cartão somente depois desta etapa.
+ * Também congela preço, duração e recursos de cada item no momento da compra.
  */
 export async function preparePurchasePaymentOrder(input: PrepareInput) {
   const { licenseRoleFromSlug } = await import("./license-purpose");
@@ -55,14 +101,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
   const lineItems: PreparedLine[] = [];
 
   if (!input.planId && input.items?.length) {
-    const ids = [...new Set(input.items.map((item) => item.planId))];
-    const { data: plans } = await supabaseAdmin
-      .from("plans")
-      .select("id,name,slug,price,active")
-      .in("id", ids)
-      .eq("active", true);
-    const byId = new Map((plans ?? []).map((plan: any) => [String(plan.id), plan]));
-
+    const byId = await loadPlans(input.items.map((item) => item.planId));
     const reseller = await findResellerByCode(input.resellerCode ?? null);
     const discountRate = reseller ? Math.max(0, Number(reseller.discount_rate ?? 0)) : 0;
     const priceRatio = Math.max(0, 1 - discountRate / 100);
@@ -82,6 +121,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
         unitPrice,
         role: licenseRoleFromSlug(plan.slug),
         origin: "cart",
+        snapshot: planSnapshot(plan, unitPrice),
       });
     }
 
@@ -89,7 +129,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
   } else if (input.planId) {
     const { data: plan } = await supabaseAdmin
       .from("plans")
-      .select("id,name,slug,price,currency,active")
+      .select(PLAN_COLUMNS)
       .eq("id", input.planId)
       .eq("active", true)
       .maybeSingle();
@@ -98,7 +138,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     const reseller = await findResellerByCode(input.resellerCode ?? null);
     const discountRate = reseller ? Number(reseller.discount_rate ?? 0) : 0;
     resellerId = reseller?.id ?? null;
-    amount = Math.max(0, Number(plan.price) * (1 - discountRate / 100));
+    amount = roundMoney(Math.max(0, Number(plan.price) * (1 - discountRate / 100)));
     basePlanId = plan.id;
     title = plan.name;
     lineItems.push({
@@ -106,9 +146,10 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
       name: plan.name,
       slug: plan.slug,
       quantity: 1,
-      unitPrice: roundMoney(amount),
+      unitPrice: amount,
       role: licenseRoleFromSlug(plan.slug),
       origin: "single",
+      snapshot: planSnapshot(plan, amount),
     });
   } else {
     const cart = await loadCart(input.userId);
@@ -116,16 +157,21 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     amount = Number(cart.total);
     title = cart.lines.length === 1 ? cart.lines[0]!.name : `${cart.lines.length} produtos MSK`;
 
+    const byId = await loadPlans(cart.lines.map((line) => line.planId));
     const ratio = cart.subtotal > 0 ? cart.total / cart.subtotal : 1;
     for (const line of cart.lines) {
+      const plan = byId.get(line.planId);
+      if (!plan) throw new Error("PLAN_UNAVAILABLE");
+      const unitPrice = roundMoney(line.price * ratio);
       lineItems.push({
         planId: line.planId,
         name: line.name,
         slug: line.slug,
         quantity: line.quantity,
-        unitPrice: roundMoney(line.price * ratio),
+        unitPrice,
         role: licenseRoleFromSlug(line.slug),
         origin: "cart",
+        snapshot: planSnapshot(plan, unitPrice),
       });
     }
 
@@ -147,8 +193,11 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
       throw new Error("INVALID_COMPANION");
     }
 
-    const companionPrice = Number(offer.companion.discountedPrice ?? 0);
+    const companionPrice = roundMoney(Number(offer.companion.discountedPrice ?? 0));
     if (!(companionPrice > 0)) throw new Error("INVALID_COMPANION");
+    const companionPlans = await loadPlans([String(offer.companion.id)]);
+    const companionPlan = companionPlans.get(String(offer.companion.id));
+    if (!companionPlan) throw new Error("INVALID_COMPANION");
 
     amount += companionPrice;
     lineItems.push({
@@ -156,14 +205,15 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
       name: String(offer.companion.name),
       slug: String(offer.companion.slug ?? ""),
       quantity: 1,
-      unitPrice: roundMoney(companionPrice),
+      unitPrice: companionPrice,
       role: licenseRoleFromSlug(offer.companion.slug),
       origin: "bump",
+      snapshot: planSnapshot(companionPlan, companionPrice),
     });
     title = `${title} + ${offer.companion.name}`;
     companionMeta = {
       companion_plan_id: offer.companion.id,
-      companion_final_price: roundMoney(companionPrice),
+      companion_final_price: companionPrice,
       companion_original_price: Number(offer.companion.originalPrice ?? 0),
       discount_percent: Number(offer.discountPercent ?? 0),
       plan_ids: [input.companion.mainPlanId, offer.companion.id],
@@ -198,6 +248,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
       status: "PENDING",
       metadata: {
         payment_prepared: true,
+        purchase_snapshot_version: 1,
         bulk: isBulk,
         line_items: lineItems,
         ...(companionMeta ?? {}),
@@ -207,21 +258,12 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     .single();
   if (error) throw new Error(error.message);
 
-  const splits = await buildSplits({
-    amountCents,
-    affiliateId: null,
-    resellerId,
-  });
+  const splits = await buildSplits({ amountCents, affiliateId: null, resellerId });
   await supabaseAdmin.from("transactions").update({ splits: splits as never }).eq("id", tx.id);
 
   if (affiliateId) {
     const { registerPendingCommission } = await import("./affiliate.server");
-    await registerPendingCommission({
-      affiliateId,
-      transactionId: tx.id,
-      planId: transactionPlanId,
-      amount,
-    });
+    await registerPendingCommission({ affiliateId, transactionId: tx.id, planId: transactionPlanId, amount });
   }
 
   await recordPaymentEvent({
@@ -315,14 +357,7 @@ export async function generatePurchasePixForTransaction(userId: string, transact
       .filter((line: any) => line.unitPrice > 0);
 
     if (!items.length) {
-      items = [
-        {
-          title: "MSK SISTEM",
-          unitPrice: Math.round(Number(tx.amount) * 100),
-          quantity: 1,
-          tangible: false,
-        },
-      ];
+      items = [{ title: "MSK SISTEM", unitPrice: Math.round(Number(tx.amount) * 100), quantity: 1, tangible: false }];
     }
 
     const { createPixWithFailover } = await import("./payments/gateway.server");
@@ -392,10 +427,7 @@ export async function generatePurchasePixForTransaction(userId: string, transact
       .eq("id", tx.id)
       .eq("status", "PROCESSING")
       .is("provider_transaction_id", null);
-    console.error(
-      "[purchase-payment] falha ao gerar PIX:",
-      String((error as Error).message).slice(0, 300),
-    );
+    console.error("[purchase-payment] falha ao gerar PIX:", String((error as Error).message).slice(0, 300));
     throw error;
   }
 }

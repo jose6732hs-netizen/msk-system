@@ -1,3 +1,5 @@
+import { isUsableLicense, resolveLicenseSnapshot } from "./license-entitlements.server";
+
 type Client = { from: (t: string) => any };
 
 export type AgentAccess = {
@@ -8,8 +10,8 @@ export type AgentAccess = {
 };
 
 /**
- * Autorização real do MSK Agente: sempre no servidor, com o cliente autenticado
- * (RLS aplicada). Nunca confia no frontend.
+ * Autorização real do MSK Agente: usa o snapshot gravado na licença paga.
+ * Alterar a oferta depois da compra não concede nem remove funções do cliente.
  */
 export async function loadAgentAccess(supabase: Client, userId: string): Promise<AgentAccess> {
   const { data: roleRows } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -19,37 +21,26 @@ export async function loadAgentAccess(supabase: Client, userId: string): Promise
   const { data: rows } = await supabase
     .from("licenses")
     .select(
-      "id,status,expires_at,activated_at,created_at,plans(id,slug,name,duration_label,features,active)",
+      "id,plan_id,status,expires_at,activated_at,created_at,max_devices,metadata,plans(id,slug,name,price,currency,duration_label,duration_days,duration_value,duration_unit,is_lifetime,max_devices,features)",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(100);
 
-  const agentLicenses = ((rows ?? []) as any[]).filter((row) => {
-    const plan = row.plans;
-    if (!plan) return false;
-    const slug = String(plan.slug ?? "");
-    const features = (plan.features ?? {}) as Record<string, unknown>;
-    return slug.startsWith("msk-agent") || features["agent"] === true || features["product_type"] === "agent";
-  });
+  const agentLicenses = ((rows ?? []) as any[]).filter(
+    (row) => resolveLicenseSnapshot(row).role === "agent",
+  );
 
-  const now = Date.now();
-  const isLive = (row: any) => {
-    if (row.status === "revoked" || row.status === "suspended") return false;
-    if (row.status === "expired") return false;
-    if (row.expires_at && new Date(row.expires_at).getTime() <= now) return false;
-    return true;
-  };
-
-  const live = agentLicenses.find(isLive) ?? null;
+  const live = agentLicenses.find(isUsableLicense) ?? null;
   const chosen = live ?? agentLicenses[0] ?? null;
+  const snapshot = chosen ? resolveLicenseSnapshot(chosen) : null;
 
-  const plan = chosen?.plans
+  const plan = snapshot
     ? {
-        id: String(chosen.plans.id),
-        slug: String(chosen.plans.slug),
-        name: String(chosen.plans.name),
-        duration_label: chosen.plans.duration_label ?? null,
+        id: String(snapshot.id ?? chosen?.plan_id ?? ""),
+        slug: String(snapshot.slug ?? ""),
+        name: String(snapshot.name ?? "MSK Agente"),
+        duration_label: snapshot.durationLabel,
       }
     : null;
 

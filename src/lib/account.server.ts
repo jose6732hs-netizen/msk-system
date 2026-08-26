@@ -1,10 +1,23 @@
 import { decryptToken } from "./license.server";
+import { isUsableLicense, resolveLicenseSnapshot } from "./license-entitlements.server";
 
 export type AccountData = Awaited<ReturnType<typeof loadAccount>>;
 
 type Client = {
   from: (t: string) => any;
 };
+
+function meta(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : {};
+}
+
+function moneyOrNull(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
 export async function loadAccount(supabase: Client, userId: string) {
   const { data: profile } = await supabase
@@ -13,20 +26,68 @@ export async function loadAccount(supabase: Client, userId: string) {
     .eq("id", userId)
     .maybeSingle();
 
-  // Busca as últimas licenças e prioriza uma ativa/pendente sobre expiradas
-  // (ex.: licença emitida manualmente pelo admin logo após uma expirar).
   const { data: licenseRows } = await supabase
     .from("licenses")
     .select(
-      "id,status,expires_at,activated_at,starts_at,type,metadata,transaction_id,max_devices,token_preview,token_last4,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,features,max_devices,is_lifetime)",
+      "id,plan_id,status,expires_at,activated_at,starts_at,type,metadata,transaction_id,max_devices,token_preview,token_last4,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,duration_days,duration_value,duration_unit,features,max_devices,is_lifetime)",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
-    .limit(10);
+    .limit(50);
 
-  const list = (licenseRows ?? []) as Record<string, any>[];
+  const rawList = (licenseRows ?? []) as Record<string, any>[];
+  const transactionIds = [
+    ...new Set(rawList.map((row) => String(row["transaction_id"] ?? "")).filter(Boolean)),
+  ];
+
+  const txById = new Map<string, any>();
+  if (transactionIds.length) {
+    const { data: transactions } = await supabase
+      .from("transactions")
+      .select("id,amount,currency,method,status,paid_at,metadata")
+      .in("id", transactionIds);
+    for (const tx of transactions ?? []) txById.set(String(tx.id), tx);
+  }
+
+  const licenseCountByTransaction = new Map<string, number>();
+  for (const row of rawList) {
+    const txId = String(row["transaction_id"] ?? "");
+    if (!txId) continue;
+    licenseCountByTransaction.set(txId, (licenseCountByTransaction.get(txId) ?? 0) + 1);
+  }
+
+  const list = rawList.map((row) => {
+    const resolvedPlan = resolveLicenseSnapshot(row);
+    const txId = String(row["transaction_id"] ?? "");
+    const tx = txId ? txById.get(txId) : null;
+    const txMeta = meta(tx?.metadata);
+    const totalPaid = tx
+      ? moneyOrNull(txMeta["card_charged_total"]) ?? moneyOrNull(tx.amount)
+      : null;
+
+    return {
+      ...row,
+      resolved_plan: resolvedPlan,
+      purchase: tx
+        ? {
+            base_amount: moneyOrNull(tx.amount),
+            total_paid: totalPaid,
+            currency: String(tx.currency ?? resolvedPlan.currency ?? "BRL"),
+            method: String(tx.method ?? ""),
+            status: String(tx.status ?? ""),
+            paid_at: tx.paid_at ?? null,
+            license_count: licenseCountByTransaction.get(txId) ?? 1,
+          }
+        : null,
+    };
+  });
+
+  const usable = list.filter(isUsableLicense);
   const license =
-    list.find((l) => l["status"] === "active" || l["status"] === "inactive") ?? list[0] ?? null;
+    usable.find((row) => row.resolved_plan?.role === "extension") ??
+    usable[0] ??
+    list[0] ??
+    null;
 
   let devices: Record<string, any>[] = [];
   if (license) {
@@ -58,8 +119,7 @@ export async function loadAccount(supabase: Client, userId: string) {
 
   return {
     profile: profile ?? null,
-    license: license ?? null,
-    // Todas as licenças do cliente, cada uma com sua função (extensão, clonador, agente).
+    license,
     licenses: list,
     devices,
     subscription: subscription ?? null,
