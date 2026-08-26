@@ -269,12 +269,8 @@ function PlanosPage() {
     toast.success(`${plan.name} adicionado ao carrinho`);
     revealCheckout();
 
-    if (sameOnly && cart.length === 0) {
-      await loadCheckoutOffer(plan);
-    } else {
-      setOfferAccepted(false);
-      if (!sameOnly) setInlineOffer(null);
-    }
+    // Carrega a oferta inteligente na primeira adição; nas demais mantém a atual.
+    if (!inlineOffer) await loadCheckoutOffer(plan);
   }
 
   function removeFromCart(planId: string) {
@@ -298,7 +294,6 @@ function PlanosPage() {
         item.planId === planId ? { ...item, quantity: Math.max(1, Math.min(20, item.quantity + delta)) } : item,
       ),
     );
-    setOfferAccepted(false);
   }
 
   async function payItem(item: CartItem) {
@@ -308,11 +303,16 @@ function PlanosPage() {
 
   async function checkoutCart() {
     if (!cart.length) return;
-    if (cart.length === 1) {
+    const single = cart.length === 1 && cart[0]!.quantity === 1;
+    // Item único + order bump aceito → combo dedicado (mantém entrega do clonador).
+    if (single) {
       await payItem(cart[0]!);
       return;
     }
+    // Carrinho em lote: envia todas as linhas e o bump para somar o total bruto.
+    track("checkout_start", { label: "Carrinho MSK", value: checkoutTotal });
     await subscribe("", "Checkout Carrinho", false, null);
+
   }
 
   async function subscribe(
