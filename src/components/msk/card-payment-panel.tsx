@@ -153,7 +153,7 @@ export function CardPaymentPanel({
   const totalAmount = Number(options.totalAmount ?? baseAmount);
 
   return (
-    <div className="w-full space-y-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+    <div className="w-full space-y-5 rounded-3xl border border-white/10 bg-white/5 p-4 sm:p-5">
       {paymentPending ? (
         <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
           A cobrança está sendo confirmada. Para evitar pagamento duplicado, não envie o cartão novamente.
@@ -204,7 +204,7 @@ export function CardPaymentPanel({
             value={holderName}
             onChange={(e) => setHolderName(e.target.value.toUpperCase())}
             placeholder="NOME IMPRESSO NO CARTÃO"
-            className="mt-1 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary"
+            className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
           />
         </div>
         <div>
@@ -226,7 +226,7 @@ export function CardPaymentPanel({
               )
             }
             placeholder="0000 0000 0000 0000"
-            className="mt-1 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+            className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-mono text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -244,7 +244,7 @@ export function CardPaymentPanel({
                 setExpiry(d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2)}` : d);
               }}
               placeholder="MM/AA"
-              className="mt-1 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+              className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-mono text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
             />
           </div>
           <div>
@@ -258,7 +258,7 @@ export function CardPaymentPanel({
               value={cvv}
               onChange={(e) => setCvv(e.target.value.replace(/\D+/g, "").slice(0, 4))}
               placeholder="000"
-              className="mt-1 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-mono text-sm text-foreground outline-none focus:border-primary"
+              className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 font-mono text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
             />
           </div>
         </div>
@@ -270,7 +270,7 @@ export function CardPaymentPanel({
             id="card-installments"
             value={installments}
             onChange={(e) => setInstallments(Number(e.target.value))}
-            className="mt-1 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary"
+            className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
           >
             {plans.map((p) => (
               <option key={p.installments} value={p.installments} className="bg-black">

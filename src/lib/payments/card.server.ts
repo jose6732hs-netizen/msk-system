@@ -152,9 +152,6 @@ export async function payTransactionWithCard(input: {
     throw new Error("PAYMENT_TERMINAL");
   }
 
-  // Só bloquear reenvio quando houver evidência de que o POST de cobrança
-  // realmente começou. PROCESSING sem external id e sem esta marca é estado
-  // legado/stale e deve ser recuperado, nunca virar loop infinito.
   if (
     currentMethod === "CREDIT_CARD" &&
     (currentStatus === "AUTHORIZED" ||
@@ -184,8 +181,6 @@ export async function payTransactionWithCard(input: {
     );
   }
 
-  // Recupera pedidos presos pela implementação antiga, que marcava PROCESSING
-  // antes de chegar ao POST /transactions.
   if (
     currentMethod === "CREDIT_CARD" &&
     currentStatus === "PROCESSING" &&
@@ -253,10 +248,9 @@ export async function payTransactionWithCard(input: {
       .maybeSingle();
 
     const currentSettings = await getAtomoSettings();
-    const { AtomoPayService } = await import("./atomo-pay.server");
     const { loadCredentialsFor } = await import("./credentials.server");
     const { absoluteUrl } = await import("../app-url.server");
-    const service = await AtomoPayService.create();
+    const { createAtomoCardTransaction } = await import("./atomo-card.server");
     const creds = await loadCredentialsFor("atomopay");
     const base = await absoluteUrl("/api/public/webhooks/atomopay").catch(() => "");
     const callbackUrl =
@@ -271,7 +265,7 @@ export async function payTransactionWithCard(input: {
       Math.max(1, Math.round(input.installments)),
     );
 
-    const result = await service.createCard({
+    const result = await createAtomoCardTransaction({
       identifier: tx.identifier,
       amountCents,
       installments,
@@ -279,22 +273,14 @@ export async function payTransactionWithCard(input: {
         name: profile?.name || profile?.email || "Cliente MSK",
         email: profile?.email || "cliente@msksystem.online",
         phone: profile?.phone ?? "",
-        document: { number: profile?.document ?? "", type: "CPF" },
+        document: profile?.document ?? "",
       },
-      items: [
-        {
-          title: "MSK SISTEM",
-          unitPrice: amountCents,
-          quantity: 1,
-          tangible: false,
-        },
-      ],
       card: input.card,
       ...(callbackUrl ? { callbackUrl } : {}),
       onTransactionRequestStart: async () => {
         gatewayRequestStarted = true;
         const startedAt = new Date().toISOString();
-        await supabaseAdmin
+        const { error: startError } = await supabaseAdmin
           .from("transactions")
           .update({
             provider: "atomopay",
@@ -306,11 +292,13 @@ export async function payTransactionWithCard(input: {
               charge_request_started_at: startedAt,
               reconciliation_required: false,
               reconciliation_reason: null,
+              provider_error: null,
             } as never,
           } as never)
           .eq("id", tx.id)
           .eq("status", "PROCESSING")
           .eq("method", "CREDIT_CARD");
+        if (startError) throw new Error(`CARD_REQUEST_MARK_FAILED: ${startError.message}`);
       },
     });
 
@@ -331,15 +319,17 @@ export async function payTransactionWithCard(input: {
           card_base_amount: amounts.baseAmount,
           card_fee_amount: amounts.feeAmount,
           card_charged_total: amounts.totalAmount,
-          charge_request_started_at: new Date().toISOString(),
+          charge_request_started_at:
+            internal === "FAILED" ? null : new Date().toISOString(),
           card: {
             brand: cardBrand(input.card.number),
             last4: result.cardLast4,
             installments: result.installments,
           },
           provider_status: result.providerStatus,
+          provider_error: null,
           reconciliation_required: false,
-          reconciliation_reason: null,
+          reconciliation_reason: internal === "FAILED" ? "GATEWAY_REFUSED" : null,
         } as never,
       } as never)
       .eq("id", tx.id);
@@ -347,7 +337,7 @@ export async function payTransactionWithCard(input: {
     const { recordPaymentEvent } = await import("@/lib/financial.server");
     await recordPaymentEvent({
       transactionId: tx.id,
-      externalId: result.transactionHash,
+      externalId: result.transactionHash || undefined,
       event: "CARD_SUBMITTED",
       status: internal,
       amount: amounts.baseAmount,
@@ -387,19 +377,19 @@ export async function payTransactionWithCard(input: {
         .update({
           status: "PENDING",
           method: "PENDING",
-          provider: null,
+          provider: "atomopay",
           metadata: {
             ...initialMeta,
+            charge_request_started_at: null,
             reconciliation_required: false,
             reconciliation_reason: "CARD_PRE_REQUEST_FAILED",
+            provider_error: safe.slice(0, 300),
           } as never,
         } as never)
         .eq("id", tx.id)
         .eq("status", "PROCESSING")
         .eq("method", "CREDIT_CARD");
     } else if (definitiveRejection) {
-      // Resposta 4xx significa que a Átomo recebeu e rejeitou a solicitação;
-      // não existe motivo para prender o usuário em confirmação infinita.
       await supabaseAdmin
         .from("transactions")
         .update({
@@ -409,6 +399,7 @@ export async function payTransactionWithCard(input: {
           metadata: {
             ...initialMeta,
             provider_status: "refused",
+            provider_error: safe.slice(0, 300),
             charge_request_started_at: null,
             reconciliation_required: false,
             reconciliation_reason: "GATEWAY_REJECTED_REQUEST",
@@ -430,6 +421,7 @@ export async function payTransactionWithCard(input: {
           metadata: {
             ...initialMeta,
             provider_status: gatewayProviderStatus ?? initialMeta["provider_status"] ?? "unknown",
+            provider_error: safe.slice(0, 300),
             charge_request_started_at: new Date().toISOString(),
             reconciliation_required: true,
             reconciliation_reason: gatewayResultReceived
