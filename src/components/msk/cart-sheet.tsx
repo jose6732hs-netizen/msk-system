@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import { PixDialog, type PixState } from "@/components/msk/pix-dialog";
 import {
+  addCartItem,
   clearCartItems,
   getCart,
   removeCartItem,
@@ -32,7 +33,7 @@ import {
 } from "@/lib/cart.functions";
 import { startPixCheckout } from "@/lib/commerce.functions";
 import { readAffiliateRef, readResellerRef } from "@/lib/urls";
-import { readCartSnapshot, type AbandonedCart, type AbandonedCartItem } from "@/lib/tracking";
+import { readCartSnapshot, saveCartSnapshot, type AbandonedCart, type AbandonedCartItem } from "@/lib/tracking";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
 import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
 import cardFreeImg from "@/assets/card-free.jpg";
