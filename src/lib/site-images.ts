@@ -45,6 +45,9 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   { key: "panel_afiliado", label: "Programa de afiliados", group: "Painel / Tenants", hint: "Carrossel do painel", defaultUrl: bannerAfiliado.url },
   { key: "panel_ajuda_ia", label: "Ajude pessoas com IA", group: "Painel / Tenants", hint: "Carrossel do painel", defaultUrl: bannerAjudaIA.url },
 
+  { key: "plans_extension_banner", label: "Banner — Extensão MSK", group: "Ofertas / Planos", hint: "Banner acima das ofertas da extensão principal", defaultUrl: bannerOffer.url },
+  { key: "plans_cloner_banner", label: "Banner — Clonagem", group: "Ofertas / Planos", hint: "Banner acima das ofertas do Clonador MSK", defaultUrl: bannerCheap.url },
+  { key: "plans_agent_banner", label: "Banner — MSK Agente", group: "Ofertas / Planos", hint: "Banner acima das ofertas do MSK Agente", defaultUrl: bannerAjudaIA.url },
   { key: "offer_banner", label: "Banner de oferta", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerOffer.url },
   { key: "offer_cheap", label: "Banner promocional", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerCheap.url },
   { key: "offer_ilimited", label: "Banner ilimitado", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerIlimited.url },
