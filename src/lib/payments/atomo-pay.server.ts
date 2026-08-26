@@ -1,7 +1,6 @@
 /**
  * Integração com a AtomoPay (https://api.atomopay.com.br/api/public/v1).
- * Diferente da Amplo Pay/SigiloPay, a autenticação é por `api_token` na query
- * string e os valores trafegam em CENTAVOS. Somente servidor.
+ * Autenticação por api_token e valores monetários em centavos. Somente servidor.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -14,10 +13,39 @@ import type { AmploCustomer, AmploSplit } from "./amplo-pay.server";
 
 const CATALOG_KEY = "atomopay_catalog";
 
+type AtomoCatalogState = {
+  productHash: string;
+  /** Compatibilidade com o cache antigo, que usava uma única oferta de R$ 10. */
+  offerHash?: string;
+  offersByAmount?: Record<string, string>;
+};
+
 type AtomoCatalog = { productHash: string; offerHash: string };
 
 function onlyDigits(v: string | undefined | null) {
   return String(v ?? "").replace(/\D+/g, "");
+}
+
+function sanitizeProviderText(value: string) {
+  return String(value ?? "")
+    .replace(/api_token=([^&\s]+)/gi, "api_token=[redacted]")
+    .replace(/"?(?:number|card_number)"?\s*:\s*"?\d{12,19}"?/gi, '"number":"[card-redacted]"')
+    .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]"')
+    .replace(/\b\d{12,19}\b/g, "[card-redacted]")
+    .slice(0, 500);
+}
+
+function customerData(customer: AmploCustomer) {
+  const phone = onlyDigits(customer.phone);
+  const document = onlyDigits(customer.document?.number);
+  if (phone.length < 10 || phone.length > 13) throw new Error("ATOMOPAY_CUSTOMER_PHONE_INVALID");
+  if (document.length !== 11 && document.length !== 14) throw new Error("ATOMOPAY_CUSTOMER_DOCUMENT_INVALID");
+  return {
+    name: String(customer.name ?? "").trim(),
+    email: String(customer.email ?? "").trim(),
+    phone_number: phone,
+    document,
+  };
 }
 
 export class AtomoPayService {
@@ -26,9 +54,7 @@ export class AtomoPayService {
   static async create(): Promise<AtomoPayService> {
     const creds = await loadCredentialsFor("atomopay");
     if (!creds) {
-      throw new Error(
-        "GATEWAY_NAO_CONFIGURADO: cadastre o API Token da AtomoPay no painel Super Admin.",
-      );
+      throw new Error("GATEWAY_NAO_CONFIGURADO: cadastre o API Token da AtomoPay no painel Super Admin.");
     }
     return new AtomoPayService(creds);
   }
@@ -37,11 +63,7 @@ export class AtomoPayService {
     return this.creds.webhookSecret;
   }
 
-  private async call<T>(
-    method: "GET" | "POST" | "PUT",
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
+  private async call<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown): Promise<T> {
     const sep = path.includes("?") ? "&" : "?";
     const url = `${this.creds.baseUrl}${path}${sep}api_token=${encodeURIComponent(this.creds.secretKey)}`;
     const res = await fetch(url, {
@@ -51,8 +73,9 @@ export class AtomoPayService {
     });
     const text = await res.text();
     if (!res.ok) {
-      console.error(`[atomopay] ${method} ${path} falhou [${res.status}]`, text.slice(0, 400));
-      throw new Error(`AtomoPay [${res.status}]: ${text.slice(0, 400)}`);
+      const safe = sanitizeProviderText(text);
+      console.error(`[atomopay] ${method} ${path} falhou [${res.status}]`, safe);
+      throw new Error(`ATOMOPAY_HTTP_${res.status}: ${safe}`);
     }
     try {
       return JSON.parse(text) as T;
@@ -61,17 +84,14 @@ export class AtomoPayService {
     }
   }
 
-  /** Produtos da conta — GET /products */
   listProducts() {
     return this.call<Record<string, unknown>>("GET", "/products");
   }
 
-  /** Categorias — GET /products/categories */
   listCategories() {
     return this.call<Record<string, unknown>>("GET", "/products/categories");
   }
 
-  /** Cria produto — POST /products */
   createProduct(input: { title: string; amount: number; salePage?: string; cover?: string }) {
     return this.call<Record<string, unknown>>("POST", "/products", {
       title: input.title,
@@ -85,7 +105,6 @@ export class AtomoPayService {
     });
   }
 
-  /** Cria oferta — POST /products/{hash}/offers */
   createOffer(productHash: string, input: { title: string; amount: number }) {
     return this.call<Record<string, unknown>>("POST", `/products/${productHash}/offers`, {
       title: input.title,
@@ -94,10 +113,14 @@ export class AtomoPayService {
   }
 
   /**
-   * Garante um produto + oferta padrão para roteirizar as cobranças do MSK.
-   * O resultado é memorizado em app_settings para não bater na API a cada PIX.
+   * A oferta da Átomo representa preço/condição do produto. Por isso ela é
+   * resolvida pelo valor EXATO da cobrança. O cache antigo reutilizava uma
+   * oferta criada em R$ 10 para cobranças de outros valores, o que podia fazer
+   * POST /transactions ser rejeitado antes de gerar hash externo.
    */
-  async ensureCatalog(): Promise<AtomoCatalog> {
+  async ensureCatalog(amountCents: number): Promise<AtomoCatalog> {
+    const amount = Math.max(1, Math.round(amountCents));
+    const amountKey = String(amount);
     const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
     const envOffer = process.env["ATOMOPAY_OFFER_HASH"];
     if (envProduct && envOffer) return { productHash: envProduct, offerHash: envOffer };
@@ -107,45 +130,70 @@ export class AtomoPayService {
       .select("value")
       .eq("key", CATALOG_KEY)
       .maybeSingle();
-    const cached = (saved?.value ?? {}) as Partial<AtomoCatalog>;
-    if (cached.productHash && cached.offerHash) {
-      return { productHash: cached.productHash, offerHash: cached.offerHash };
+    const cached = (saved?.value ?? {}) as Partial<AtomoCatalogState>;
+    let productHash = String(cached.productHash ?? envProduct ?? "");
+    let listedProduct: any = null;
+
+    if (!productHash) {
+      const listed = (await this.listProducts()) as any;
+      const items: any[] = Array.isArray(listed) ? listed : (listed?.data ?? listed?.products ?? []);
+      // Nunca selecionar arbitrariamente o primeiro produto da conta.
+      listedProduct =
+        items.find((p) => String(p?.title ?? p?.name ?? "").trim().toUpperCase() === "MSK SISTEM") ?? null;
+      if (!listedProduct) {
+        const created = (await this.createProduct({
+          title: "MSK SISTEM",
+          amount,
+          salePage: "https://msksystem.online",
+        })) as any;
+        listedProduct = created?.data ?? created;
+      }
+      productHash = String(listedProduct?.hash ?? listedProduct?.product_hash ?? "");
     }
 
-    const listed = (await this.listProducts()) as any;
-    const items: any[] = Array.isArray(listed) ? listed : (listed?.data ?? listed?.products ?? []);
-    let product = items.find((p) => p?.hash);
-    if (!product) {
-      const created = (await this.createProduct({
-        title: "MSK SISTEM",
-        amount: 1000,
-        salePage: "https://msksystem.online",
-      })) as any;
-      product = created?.data ?? created;
-    }
-    const productHash = String(product?.hash ?? product?.product_hash ?? "");
-    if (!productHash) throw new Error("AtomoPay: não foi possível resolver o produto da conta.");
+    if (!productHash) throw new Error("ATOMOPAY_CATALOG_PRODUCT_MISSING");
 
-    const offers: any[] = product?.offers ?? product?.offer ?? [];
-    let offerHash = String(offers.find((o) => o?.hash)?.hash ?? "");
+    const offersByAmount = { ...(cached.offersByAmount ?? {}) };
+    let offerHash = String(offersByAmount[amountKey] ?? "");
+
+    // O cache legado foi criado pelo código anterior com amount=1000.
+    if (!offerHash && amount === 1000 && cached.offerHash) offerHash = String(cached.offerHash);
+
+    if (!offerHash && listedProduct) {
+      const offers: any[] = Array.isArray(listedProduct?.offers)
+        ? listedProduct.offers
+        : Array.isArray(listedProduct?.offer)
+          ? listedProduct.offer
+          : [];
+      const exact = offers.find((o) => {
+        const offerAmount = Number(o?.amount ?? o?.price ?? o?.value);
+        return o?.hash && Number.isFinite(offerAmount) && Math.round(offerAmount) === amount;
+      });
+      if (exact?.hash) offerHash = String(exact.hash);
+    }
+
     if (!offerHash) {
       const createdOffer = (await this.createOffer(productHash, {
-        title: "MSK SISTEM",
-        amount: 1000,
+        title: `MSK SISTEM ${amountKey}`,
+        amount,
       })) as any;
       offerHash = String((createdOffer?.data ?? createdOffer)?.hash ?? "");
     }
-    if (!offerHash) throw new Error("AtomoPay: não foi possível resolver a oferta da conta.");
+    if (!offerHash) throw new Error("ATOMOPAY_CATALOG_OFFER_MISSING");
 
-    const catalog: AtomoCatalog = { productHash, offerHash };
+    offersByAmount[amountKey] = offerHash;
+    const state: AtomoCatalogState = {
+      productHash,
+      ...(cached.offerHash ? { offerHash: String(cached.offerHash) } : {}),
+      offersByAmount,
+    };
     await supabaseAdmin.from("app_settings").upsert(
-      { key: CATALOG_KEY, value: catalog as never, updated_at: new Date().toISOString() } as never,
+      { key: CATALOG_KEY, value: state as never, updated_at: new Date().toISOString() } as never,
       { onConflict: "key" },
     );
-    return catalog;
+    return { productHash, offerHash };
   }
 
-  /** Cobrança PIX — POST /transactions (valores em centavos). */
   async createPix(input: {
     identifier: string;
     amountCents: number;
@@ -156,19 +204,15 @@ export class AtomoPayService {
     callbackUrl?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
   }) {
-    const catalog = await this.ensureCatalog();
     const amount = Math.round(input.amountCents);
+    const catalog = await this.ensureCatalog(amount);
+    const customer = customerData(input.customer);
 
     const body: Record<string, unknown> = {
       amount,
       offer_hash: catalog.offerHash,
       payment_method: "pix",
-      customer: {
-        name: input.customer.name,
-        email: input.customer.email,
-        phone_number: onlyDigits(input.customer.phone) || "21999999999",
-        document: onlyDigits(input.customer.document?.number) || "00000000000",
-      },
+      customer,
       cart: input.items.map((i) => ({
         product_hash: catalog.productHash,
         title: i.title,
@@ -181,23 +225,15 @@ export class AtomoPayService {
       expire_in_days: 1,
       transaction_origin: "api",
       ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
-      ...(input.metadata ? { metadata: input.metadata } : {}),
+      // A documentação pública não especifica metadata no POST /transactions;
+      // não enviar campos extras que possam causar validação 4xx.
     };
 
     const raw = ((await this.call<Record<string, any>>("POST", "/transactions", body)) ?? {}) as any;
     const tx = raw?.data ?? raw;
     const pix = tx?.pix ?? tx?.pix_information ?? raw?.pix ?? {};
-
-    const code =
-      pix?.pix_qr_code ??
-      pix?.qr_code ??
-      pix?.payload ??
-      pix?.code ??
-      pix?.emv ??
-      tx?.qr_code ??
-      undefined;
-    const base64 =
-      pix?.pix_qr_code_base64 ?? pix?.qr_code_base64 ?? pix?.base64 ?? pix?.image ?? undefined;
+    const code = pix?.pix_qr_code ?? pix?.qr_code ?? pix?.payload ?? pix?.code ?? pix?.emv ?? tx?.qr_code ?? undefined;
+    const base64 = pix?.pix_qr_code_base64 ?? pix?.qr_code_base64 ?? pix?.base64 ?? pix?.image ?? undefined;
 
     return {
       status: String(tx?.payment_status ?? tx?.status ?? "pending"),
@@ -211,7 +247,6 @@ export class AtomoPayService {
     };
   }
 
-  /** Consulta de transação — GET /transactions/{hash} */
   async getTransaction(transactionId: string) {
     const raw = (await this.call<Record<string, any>>(
       "GET",
@@ -221,11 +256,6 @@ export class AtomoPayService {
     return { ...tx, status: tx?.payment_status ?? tx?.status } as Record<string, unknown>;
   }
 
-  /**
-   * Cobrança no CARTÃO DE CRÉDITO — POST /transactions com payment_method
-   * "credit_card". O PAN/CVV existem apenas dentro deste método: nunca são
-   * persistidos, logados ou devolvidos ao cliente.
-   */
   async createCard(input: {
     identifier: string;
     amountCents: number;
@@ -243,11 +273,14 @@ export class AtomoPayService {
     tracking?: Record<string, string> | undefined;
     metadata?: Record<string, unknown> | undefined;
   }) {
-    const catalog = await this.ensureCatalog();
+    const amount = Math.round(input.amountCents);
+    const catalog = await this.ensureCatalog(amount);
     const pan = onlyDigits(input.card.number);
+    const customer = customerData(input.customer);
+    if (pan.length < 13 || pan.length > 19) throw new Error("ATOMOPAY_CARD_NUMBER_INVALID");
 
     const body: Record<string, unknown> = {
-      amount: Math.round(input.amountCents),
+      amount,
       offer_hash: catalog.offerHash,
       payment_method: "credit_card",
       installments: Math.max(1, Math.round(input.installments)),
@@ -258,12 +291,7 @@ export class AtomoPayService {
         exp_year: input.card.expYear,
         cvv: onlyDigits(input.card.cvv),
       },
-      customer: {
-        name: input.customer.name,
-        email: input.customer.email,
-        phone_number: onlyDigits(input.customer.phone) || "21999999999",
-        document: onlyDigits(input.customer.document?.number) || "00000000000",
-      },
+      customer,
       cart: input.items.map((i) => ({
         product_hash: catalog.productHash,
         title: i.title,
@@ -276,21 +304,20 @@ export class AtomoPayService {
       transaction_origin: "api",
       ...(input.tracking ? { tracking: input.tracking } : {}),
       ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
-      ...(input.metadata ? { metadata: input.metadata } : {}),
     };
 
     const raw = ((await this.call<Record<string, any>>("POST", "/transactions", body)) ?? {}) as any;
     const tx = raw?.data ?? raw;
+    const transactionHash = String(tx?.hash ?? tx?.id ?? "");
+    if (!transactionHash) throw new Error("ATOMOPAY_TRANSACTION_HASH_MISSING");
     return {
       providerStatus: String(tx?.payment_status ?? tx?.status ?? "prossessing"),
-      transactionHash: String(tx?.hash ?? tx?.id ?? ""),
+      transactionHash,
       installments: Number(tx?.installments ?? input.installments),
-      // Somente dados NÃO sensíveis do cartão são retornados/persistidos.
       cardLast4: pan.slice(-4),
     };
   }
 
-  /** A AtomoPay não expõe saldo público — o catálogo valida o token. */
   async getBalance() {
     await this.listProducts();
     return { available: null, pending: null } as Record<string, unknown>;
@@ -341,16 +368,13 @@ export async function saveAtomoSettings(
     ...(input.sandbox !== undefined ? { sandbox: input.sandbox } : {}),
   };
   next.maxInstallments = Math.min(12, Math.max(1, Math.round(next.maxInstallments)));
-  const { error } = await supabaseAdmin
-    .from("app_settings")
-    .upsert(
-      { key: SETTINGS_KEY, value: next as never, updated_at: new Date().toISOString() } as never,
-      { onConflict: "key" },
-    );
+  const { error } = await supabaseAdmin.from("app_settings").upsert(
+    { key: SETTINGS_KEY, value: next as never, updated_at: new Date().toISOString() } as never,
+    { onConflict: "key" },
+  );
   if (error) throw error;
   return next;
 }
-
 
 export async function saveAtomoCredentials(input: {
   publicKey?: string | undefined;
@@ -367,13 +391,12 @@ export async function getAtomoSummary() {
   return getSummaryFor("atomopay");
 }
 
-/** Testa o API Token consultando o catálogo de produtos. */
 export async function testAtomoCredentials(): Promise<{ ok: boolean; error?: string }> {
   try {
     const service = await AtomoPayService.create();
     await service.listProducts();
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: (e as Error).message };
+    return { ok: false, error: sanitizeProviderText((e as Error).message) };
   }
 }

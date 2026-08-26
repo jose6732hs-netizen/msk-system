@@ -6,7 +6,7 @@ export const Route = createFileRoute("/api/public/license/validate")({
   server: {
     handlers: {
       OPTIONS: ({ request }) => preflight(request),
-      POST: ({ request }) => handleValidation(request, "validate", 60),
+      POST: ({ request }) => handleValidation(request, "validate", 60, "extension"),
     },
   },
 });

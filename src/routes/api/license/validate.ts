@@ -18,7 +18,8 @@ export const Route = createFileRoute("/api/license/validate")({
   server: {
     handlers: {
       OPTIONS: ({ request }) => preflight(request),
-      POST: async ({ request }) => handleValidation(await asMskCopyRequest(request), "msk-copy", 120),
+      POST: async ({ request }) =>
+        handleValidation(await asMskCopyRequest(request), "msk-copy", 120, "cloner"),
     },
   },
 });

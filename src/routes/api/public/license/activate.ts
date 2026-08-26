@@ -10,6 +10,7 @@ import {
   preflight,
   rateLimit,
 } from "@/lib/license.server";
+import { resolveLicenseSnapshot } from "@/lib/license-entitlements.server";
 import { resolvePlanDuration } from "@/lib/plan-duration";
 
 const schema = z.object({
@@ -21,6 +22,56 @@ const schema = z.object({
   os: z.string().max(64).optional(),
   device_name: z.string().max(120).optional(),
 });
+
+function hasOwn(metadata: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(metadata, key);
+}
+
+async function frozenDuration(license: any) {
+  const metadata = (license?.metadata ?? {}) as Record<string, unknown>;
+  const pending = Number(metadata["pending_duration_ms"] ?? 0);
+  if (pending > 0) return { milliseconds: pending, lifetime: false };
+
+  const hasSnapshot = [
+    "plan_duration_value_snapshot",
+    "plan_duration_unit_snapshot",
+    "plan_duration_snapshot",
+    "plan_is_lifetime_snapshot",
+    "pending_duration_ms",
+  ].some((key) => hasOwn(metadata, key));
+
+  if (metadata["plan_is_lifetime_snapshot"] === true) {
+    return { milliseconds: null as number | null, lifetime: true };
+  }
+
+  const value = Number(metadata["plan_duration_value_snapshot"] ?? 0);
+  const unit = String(metadata["plan_duration_unit_snapshot"] ?? "").trim();
+  if (value > 0 && unit) {
+    const resolved = resolvePlanDuration({ duration_value: value, duration_unit: unit });
+    return { milliseconds: resolved.milliseconds ?? null, lifetime: resolved.lifetime };
+  }
+
+  const days = Number(metadata["plan_duration_snapshot"] ?? 0);
+  if (days > 0) {
+    const resolved = resolvePlanDuration({ duration_value: days, duration_unit: "days" });
+    return { milliseconds: resolved.milliseconds ?? null, lifetime: resolved.lifetime };
+  }
+
+  // Se a licença já tem snapshot, nunca herdar uma duração alterada depois.
+  if (hasSnapshot) return { milliseconds: null as number | null, lifetime: false };
+
+  // Compatibilidade apenas para licenças realmente antigas, sem snapshot.
+  if (!license?.plan_id) return { milliseconds: null as number | null, lifetime: false };
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: plan } = await supabaseAdmin
+    .from("plans")
+    .select("name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit")
+    .eq("id", license.plan_id)
+    .maybeSingle();
+  if (!plan) return { milliseconds: null as number | null, lifetime: false };
+  const resolved = resolvePlanDuration(plan);
+  return { milliseconds: resolved.milliseconds ?? null, lifetime: resolved.lifetime };
+}
 
 export const Route = createFileRoute("/api/public/license/activate")({
   server: {
@@ -60,6 +111,25 @@ export const Route = createFileRoute("/api/public/license/activate")({
               message: "Token inválido. Confira os caracteres e tente novamente.",
             },
             404,
+          );
+        }
+
+        const snapshot = resolveLicenseSnapshot(license);
+        // Este endpoint é da extensão principal. Clonador/agente têm licenças próprias.
+        if (snapshot.role !== "extension") {
+          await logEvent({
+            license_id: license.id,
+            user_id: license.user_id,
+            event_type: "product_mismatch",
+            metadata: { requested_role: "extension", license_role: snapshot.role, license_slug: snapshot.slug },
+          });
+          return jsonResponse(
+            {
+              success: false,
+              error: "LICENSE_PRODUCT_MISMATCH",
+              message: "Este token não é válido para este produto.",
+            },
+            403,
           );
         }
 
@@ -153,29 +223,12 @@ export const Route = createFileRoute("/api/public/license/activate")({
         };
         let effectiveExpiresAt: string | null = license.expires_at ?? null;
 
-        // Licenças pagas/manuais são emitidas como "inactive" com expires_at=null.
-        // A duração real fica em metadata.pending_duration_ms e só começa no primeiro uso.
         if (!license.activated_at) {
           updates["activated_at"] = now.toISOString();
-          const pendingMs = Number(license.metadata?.["pending_duration_ms"] ?? 0);
-
-          if (pendingMs > 0) {
-            effectiveExpiresAt = new Date(now.getTime() + pendingMs).toISOString();
+          const duration = await frozenDuration(license);
+          if (!effectiveExpiresAt && !duration.lifetime && Number(duration.milliseconds ?? 0) > 0) {
+            effectiveExpiresAt = new Date(now.getTime() + Number(duration.milliseconds)).toISOString();
             updates["expires_at"] = effectiveExpiresAt;
-          } else if (!effectiveExpiresAt && license.plan_id) {
-            // Recuperação de licenças antigas: derive do plano real, nunca assuma 30 dias.
-            const { data: plan } = await supabaseAdmin
-              .from("plans")
-              .select("name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit")
-              .eq("id", license.plan_id)
-              .maybeSingle();
-            if (plan) {
-              const resolved = resolvePlanDuration(plan);
-              if (!resolved.lifetime && resolved.milliseconds) {
-                effectiveExpiresAt = new Date(now.getTime() + resolved.milliseconds).toISOString();
-                updates["expires_at"] = effectiveExpiresAt;
-              }
-            }
           }
         }
 
@@ -188,6 +241,8 @@ export const Route = createFileRoute("/api/public/license/activate")({
           device_hash: deviceHash,
           metadata: {
             expires_at: effectiveExpiresAt,
+            license_role: snapshot.role,
+            plan_slug: snapshot.slug,
             pending_duration_ms: Number(license.metadata?.["pending_duration_ms"] ?? 0) || null,
           },
         });
@@ -202,12 +257,13 @@ export const Route = createFileRoute("/api/public/license/activate")({
           success: true,
           license: {
             status: "active",
-            plan: license.plans?.slug ?? null,
-            plan_name: license.plans?.name ?? null,
+            plan: snapshot.slug,
+            plan_name: snapshot.name,
             expires_at: effectiveExpiresAt,
-            max_devices: license.max_devices,
+            max_devices: snapshot.maxDevices ?? license.max_devices,
             devices_used: devices ?? 0,
-            features: license.plans?.features ?? lockedFeatures(),
+            features: snapshot.features ?? lockedFeatures(),
+            role: snapshot.role,
           },
         });
       },
