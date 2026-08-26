@@ -7,9 +7,25 @@ import { pixExpiryFromNow } from "./orders.server";
 type PrepareInput = {
   userId: string;
   planId?: string | null;
+  items?: { planId: string; quantity: number }[] | null;
+  companion?: { mainPlanId: string; companionPlanId: string } | null;
   affiliateCode?: string | null;
   resellerCode?: string | null;
 };
+
+type PreparedLine = {
+  planId: string;
+  name: string;
+  slug: string;
+  quantity: number;
+  unitPrice: number;
+  role: string;
+  origin: "single" | "cart" | "bump";
+};
+
+function roundMoney(value: number) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
 
 function objectMeta(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -26,27 +42,51 @@ async function resolveAffiliate(userId: string, code?: string | null) {
 
 /**
  * Cria somente o pedido interno. Nenhum gateway é chamado aqui.
- * Isso permite mostrar PIX e cartão antes de abrir qualquer cobrança externa.
+ * O comprador escolhe PIX ou cartão somente depois desta etapa.
  */
 export async function preparePurchasePaymentOrder(input: PrepareInput) {
   const { licenseRoleFromSlug } = await import("./license-purpose");
   const { loadCart } = await import("./cart.server");
 
   let amount = 0;
-  let planId: string | null = null;
+  let basePlanId: string | null = null;
   let title = "Pedido MSK";
   let resellerId: string | null = null;
-  const lineItems: Array<{
-    planId: string;
-    name: string;
-    slug: string;
-    quantity: number;
-    unitPrice: number;
-    role: string;
-    origin: "single" | "cart";
-  }> = [];
+  const lineItems: PreparedLine[] = [];
 
-  if (input.planId) {
+  if (!input.planId && input.items?.length) {
+    const ids = [...new Set(input.items.map((item) => item.planId))];
+    const { data: plans } = await supabaseAdmin
+      .from("plans")
+      .select("id,name,slug,price,active")
+      .in("id", ids)
+      .eq("active", true);
+    const byId = new Map((plans ?? []).map((plan: any) => [String(plan.id), plan]));
+
+    const reseller = await findResellerByCode(input.resellerCode ?? null);
+    const discountRate = reseller ? Math.max(0, Number(reseller.discount_rate ?? 0)) : 0;
+    const priceRatio = Math.max(0, 1 - discountRate / 100);
+    resellerId = reseller?.id ?? null;
+
+    for (const requested of input.items) {
+      const plan = byId.get(requested.planId) as any;
+      if (!plan) throw new Error("PLAN_UNAVAILABLE");
+      const quantity = Math.max(1, Math.min(20, Number(requested.quantity) || 1));
+      const unitPrice = roundMoney(Number(plan.price) * priceRatio);
+      amount += unitPrice * quantity;
+      lineItems.push({
+        planId: String(plan.id),
+        name: String(plan.name),
+        slug: String(plan.slug ?? ""),
+        quantity,
+        unitPrice,
+        role: licenseRoleFromSlug(plan.slug),
+        origin: "cart",
+      });
+    }
+
+    title = lineItems.length === 1 ? lineItems[0]!.name : `${lineItems.length} produtos MSK`;
+  } else if (input.planId) {
     const { data: plan } = await supabaseAdmin
       .from("plans")
       .select("id,name,slug,price,currency,active")
@@ -59,14 +99,14 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     const discountRate = reseller ? Number(reseller.discount_rate ?? 0) : 0;
     resellerId = reseller?.id ?? null;
     amount = Math.max(0, Number(plan.price) * (1 - discountRate / 100));
-    planId = plan.id;
+    basePlanId = plan.id;
     title = plan.name;
     lineItems.push({
       planId: plan.id,
       name: plan.name,
       slug: plan.slug,
       quantity: 1,
-      unitPrice: amount,
+      unitPrice: roundMoney(amount),
       role: licenseRoleFromSlug(plan.slug),
       origin: "single",
     });
@@ -83,7 +123,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
         name: line.name,
         slug: line.slug,
         quantity: line.quantity,
-        unitPrice: Math.round(line.price * ratio * 100) / 100,
+        unitPrice: roundMoney(line.price * ratio),
         role: licenseRoleFromSlug(line.slug),
         origin: "cart",
       });
@@ -93,19 +133,62 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     resellerId = reseller?.id ?? null;
   }
 
-  if (!(amount > 0)) throw new Error("INVALID_AMOUNT");
+  let companionMeta: Record<string, unknown> | null = null;
+  if (input.companion?.mainPlanId && input.companion.companionPlanId) {
+    const hasMainPlan = lineItems.some((line) => line.planId === input.companion!.mainPlanId);
+    const companionAlreadyInOrder = lineItems.some(
+      (line) => line.planId === input.companion!.companionPlanId,
+    );
+    if (!hasMainPlan || companionAlreadyInOrder) throw new Error("INVALID_COMPANION");
+
+    const { getSmartOfferForPlan } = await import("./cloner.server");
+    const offer: any = await getSmartOfferForPlan(input.userId, input.companion.mainPlanId);
+    if (!offer?.available || String(offer.companion?.id) !== input.companion.companionPlanId) {
+      throw new Error("INVALID_COMPANION");
+    }
+
+    const companionPrice = Number(offer.companion.discountedPrice ?? 0);
+    if (!(companionPrice > 0)) throw new Error("INVALID_COMPANION");
+
+    amount += companionPrice;
+    lineItems.push({
+      planId: String(offer.companion.id),
+      name: String(offer.companion.name),
+      slug: String(offer.companion.slug ?? ""),
+      quantity: 1,
+      unitPrice: roundMoney(companionPrice),
+      role: licenseRoleFromSlug(offer.companion.slug),
+      origin: "bump",
+    });
+    title = `${title} + ${offer.companion.name}`;
+    companionMeta = {
+      companion_plan_id: offer.companion.id,
+      companion_final_price: roundMoney(companionPrice),
+      companion_original_price: Number(offer.companion.originalPrice ?? 0),
+      discount_percent: Number(offer.discountPercent ?? 0),
+      plan_ids: [input.companion.mainPlanId, offer.companion.id],
+    };
+  }
+
+  amount = roundMoney(amount);
+  if (!(amount > 0) || !lineItems.length) throw new Error("INVALID_AMOUNT");
 
   const amountCents = Math.round(amount * 100);
   const affiliateId = await resolveAffiliate(input.userId, input.affiliateCode ?? null);
   const identifier = newIdentifier("MSK");
-  const isBulk = !planId;
+  const isBulk =
+    !basePlanId ||
+    lineItems.length > 1 ||
+    lineItems.some((line) => line.quantity > 1) ||
+    !!companionMeta;
+  const transactionPlanId = isBulk ? null : basePlanId;
 
   const { data: tx, error } = await supabaseAdmin
     .from("transactions")
     .insert({
       identifier,
       user_id: input.userId,
-      plan_id: planId,
+      plan_id: transactionPlanId,
       affiliate_id: affiliateId,
       reseller_id: resellerId,
       purpose: "purchase",
@@ -117,6 +200,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
         payment_prepared: true,
         bulk: isBulk,
         line_items: lineItems,
+        ...(companionMeta ?? {}),
       } as never,
     } as never)
     .select("id")
@@ -135,7 +219,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     await registerPendingCommission({
       affiliateId,
       transactionId: tx.id,
-      planId,
+      planId: transactionPlanId,
       amount,
     });
   }
@@ -191,7 +275,6 @@ export async function generatePurchasePixForTransaction(userId: string, transact
     };
   }
 
-  // Se já existe uma cobrança externa de cartão, nunca cria PIX no mesmo pedido.
   if (tx.provider_transaction_id && method !== "PIX") throw new Error("PAYMENT_METHOD_LOCKED");
   if (["PROCESSING", "AUTHORIZED"].includes(status) && method !== "PIX") {
     throw new Error("PAYMENT_IN_PROGRESS");
@@ -232,12 +315,14 @@ export async function generatePurchasePixForTransaction(userId: string, transact
       .filter((line: any) => line.unitPrice > 0);
 
     if (!items.length) {
-      items = [{
-        title: "MSK SISTEM",
-        unitPrice: Math.round(Number(tx.amount) * 100),
-        quantity: 1,
-        tangible: false,
-      }];
+      items = [
+        {
+          title: "MSK SISTEM",
+          unitPrice: Math.round(Number(tx.amount) * 100),
+          quantity: 1,
+          tangible: false,
+        },
+      ];
     }
 
     const { createPixWithFailover } = await import("./payments/gateway.server");
@@ -301,14 +386,16 @@ export async function generatePurchasePixForTransaction(userId: string, transact
       expiresAt,
     };
   } catch (error) {
-    // Só volta para PENDING se não houve identificador externo persistido.
     await supabaseAdmin
       .from("transactions")
       .update({ status: "PENDING", method: "PENDING" } as never)
       .eq("id", tx.id)
       .eq("status", "PROCESSING")
       .is("provider_transaction_id", null);
-    console.error("[purchase-payment] falha ao gerar PIX:", String((error as Error).message).slice(0, 300));
+    console.error(
+      "[purchase-payment] falha ao gerar PIX:",
+      String((error as Error).message).slice(0, 300),
+    );
     throw error;
   }
 }

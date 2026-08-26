@@ -2,8 +2,8 @@
  * Pagamento com CARTÃO DE CRÉDITO (AtomoPay) — somente servidor.
  *
  * Regras não negociáveis:
- *  - o valor cobrado vem SEMPRE da transação já gravada no banco (nunca do
- *    navegador);
+ *  - o valor-base vem SEMPRE da transação já gravada no banco;
+ *  - o acréscimo do cartão é calculado no servidor e não altera o preço-base;
  *  - a transação pertence obrigatoriamente ao usuário autenticado;
  *  - PAN e CVV existem apenas em memória dentro desta função — nunca são
  *    gravados, logados ou devolvidos ao cliente;
@@ -28,19 +28,51 @@ export type CardResult = {
   transactionId: string;
 };
 
-/** Opções exibidas no checkout (parcelas reais e disponibilidade do cartão). */
-export async function getCardOptions(amount: number) {
+function roundMoney(value: number) {
+  return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Acréscimo comercial do cartão:
+ * 5% do pedido + R$ 1,00, mínimo R$ 1,50 e máximo R$ 10,00.
+ * O preço-base da licença permanece intacto em transactions.amount.
+ */
+export function calculateCardAmounts(baseAmount: number) {
+  const base = roundMoney(Math.max(0, Number(baseAmount) || 0));
+  const rawFee = roundMoney(base * 0.05 + 1);
+  const feeAmount = roundMoney(Math.min(10, Math.max(1.5, rawFee)));
+  const totalAmount = roundMoney(base + feeAmount);
+  return { baseAmount: base, feeAmount, totalAmount };
+}
+
+/** Opções exibidas no checkout, sempre calculadas a partir da transação canônica. */
+export async function getCardOptionsForTransaction(userId: string, transactionId: string) {
+  const { data: tx } = await supabaseAdmin
+    .from("transactions")
+    .select("id,user_id,amount,status,purpose")
+    .eq("id", transactionId)
+    .maybeSingle();
+
+  if (!tx || tx.user_id !== userId || tx.purpose !== "purchase") {
+    throw new Error("Pedido não encontrado.");
+  }
+
   const { getAtomoSettings } = await import("./atomo-pay.server");
   const { loadCredentialsFor } = await import("./credentials.server");
   const settings = await getAtomoSettings();
   const creds = await loadCredentialsFor("atomopay").catch(() => null);
   const configured = !!creds;
   const enabled = configured && settings.cardEnabled;
+  const amounts = calculateCardAmounts(Number(tx.amount));
 
   const installments = enabled
     ? Array.from({ length: settings.maxInstallments }, (_, i) => {
         const n = i + 1;
-        return { installments: n, amount: Math.round((amount / n) * 100) / 100, interest: false };
+        return {
+          installments: n,
+          amount: roundMoney(amounts.totalAmount / n),
+          interest: false,
+        };
       })
     : [];
 
@@ -48,6 +80,7 @@ export async function getCardOptions(amount: number) {
     enabled,
     configured,
     sandbox: settings.sandbox,
+    ...amounts,
     installments,
     reason: enabled
       ? null
@@ -65,12 +98,12 @@ export async function payTransactionWithCard(input: {
 }): Promise<CardResult> {
   const { data: tx } = await supabaseAdmin
     .from("transactions")
-    .select("id,identifier,user_id,amount,status,method,metadata,provider_transaction_id,pix_code")
+    .select("id,identifier,user_id,amount,status,method,metadata,provider_transaction_id,pix_code,purpose")
     .eq("id", input.transactionId)
     .maybeSingle();
 
   if (!tx) throw new Error("Pedido não encontrado.");
-  if (tx.user_id !== input.userId) throw new Error("Pedido não encontrado.");
+  if (tx.user_id !== input.userId || tx.purpose !== "purchase") throw new Error("Pedido não encontrado.");
 
   const currentStatus = String(tx.status ?? "").toUpperCase();
   const currentMethod = String(tx.method ?? "PENDING").toUpperCase();
@@ -102,10 +135,6 @@ export async function payTransactionWithCard(input: {
   }
 
   // Trava atômica contra clique duplo / duas abas / corrida com geração de PIX.
-  // O filtro de method garante que, se o PIX assumir a transação entre a leitura
-  // e este update, o cartão não consegue prosseguir.
-  // Uma tentativa recusada pode ser refeita com outro cartão; estados
-  // PROCESSING/AUTHORIZED/PAID continuam bloqueados contra duplicidade.
   const { data: locked } = await supabaseAdmin
     .from("transactions")
     .update({ status: "PROCESSING", method: "CREDIT_CARD" } as never)
@@ -130,6 +159,8 @@ export async function payTransactionWithCard(input: {
       .eq("id", input.userId)
       .maybeSingle();
 
+    const { getAtomoSettings } = await import("./atomo-pay.server");
+    const currentSettings = await getAtomoSettings();
     const { AtomoPayService } = await import("./atomo-pay.server");
     const { loadCredentialsFor } = await import("./credentials.server");
     const { absoluteUrl } = await import("../app-url.server");
@@ -141,9 +172,10 @@ export async function payTransactionWithCard(input: {
         ? `${base}?secret=${encodeURIComponent(creds.webhookSecret)}`
         : base;
 
-    const amountCents = Math.round(Number(tx.amount) * 100);
+    const amounts = calculateCardAmounts(Number(tx.amount));
+    const amountCents = Math.round(amounts.totalAmount * 100);
     const installments = Math.min(
-      settings.maxInstallments,
+      currentSettings.maxInstallments,
       Math.max(1, Math.round(input.installments)),
     );
 
@@ -181,6 +213,9 @@ export async function payTransactionWithCard(input: {
         status: internal === "UNKNOWN" ? "PROCESSING" : internal,
         metadata: {
           ...meta,
+          card_base_amount: amounts.baseAmount,
+          card_fee_amount: amounts.feeAmount,
+          card_charged_total: amounts.totalAmount,
           card: {
             brand: cardBrand(input.card.number),
             last4: result.cardLast4,
@@ -197,12 +232,15 @@ export async function payTransactionWithCard(input: {
       externalId: result.transactionHash,
       event: "CARD_SUBMITTED",
       status: internal,
-      amount: Number(tx.amount),
+      amount: amounts.baseAmount,
       metadata: {
         provider: "atomopay",
         provider_status: result.providerStatus,
         installments: result.installments,
         card_last4: result.cardLast4,
+        card_base_amount: amounts.baseAmount,
+        card_fee_amount: amounts.feeAmount,
+        card_charged_total: amounts.totalAmount,
       },
     });
 

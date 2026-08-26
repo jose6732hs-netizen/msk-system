@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import QRCode from "qrcode";
 import {
   CheckCircle2,
@@ -18,6 +19,7 @@ import { CardPaymentPanel } from "@/components/msk/card-payment-panel";
 import { checkTransaction } from "@/lib/commerce.functions";
 import { PIX_PUBLIC_ERROR } from "@/lib/payments/public-messages";
 import { useSupportLink } from "@/lib/support-link";
+import { useModalScrollLock } from "@/hooks/use-modal-scroll-lock";
 
 const brl = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -60,6 +62,8 @@ export function SmartPixModal({
   const [generatingPix, setGeneratingPix] = useState(false);
   const [pixError, setPixError] = useState<string | null>(null);
   const supportLink = useSupportLink("Olá! Tive um problema ao tentar gerar o PIX da minha compra. Podem me ajudar?");
+
+  useModalScrollLock(true);
 
   const left = pix.expiresAt
     ? Math.max(0, new Date(pix.expiresAt).getTime() - now)
@@ -152,10 +156,12 @@ export function SmartPixModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[100030] flex items-end justify-center overflow-y-auto bg-black/90 p-0 backdrop-blur-xl sm:items-center sm:p-4">
-      <div className="w-full max-w-4xl overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#0B0B0B] shadow-2xl sm:rounded-[2rem]">
-        <div className="max-h-[94dvh] overflow-y-auto">
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[2147483000] flex items-end justify-center overflow-hidden bg-black/90 p-0 backdrop-blur-xl sm:items-center sm:p-4">
+      <div className="relative z-[1] flex max-h-[100dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#0B0B0B] shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y [overscroll-behavior:contain]">
           <header className="sticky top-0 z-20 flex items-start justify-between gap-4 border-b border-white/10 bg-[#0B0B0B]/95 px-5 py-4 backdrop-blur-xl sm:px-7">
             <div className="min-w-0">
               <p className="text-[9px] font-black uppercase tracking-[.2em] text-primary">Checkout seguro</p>
@@ -331,6 +337,7 @@ export function SmartPixModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

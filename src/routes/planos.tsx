@@ -7,7 +7,6 @@ import {
   Loader2,
   Minus,
   Plus,
-  RefreshCw,
   Share2,
   ShoppingCart,
   Trash2,
@@ -21,15 +20,13 @@ import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/msk/site-header";
 import { SiteFooter } from "@/components/msk/site-footer";
 import { PayerForm, useBilling } from "@/components/msk/payer-form";
-import { PixDialog, type PixState } from "@/components/msk/pix-dialog";
 import { SmartOfferCard, smartOfferImage } from "@/components/msk/smart-offer-card";
 import { SmartPixModal, type SmartPixState } from "@/components/msk/smart-pix-modal";
-import { startPixCheckout } from "@/lib/commerce.functions";
+import { getClonerProduct, getSmartOffer } from "@/lib/cloner.functions";
 import {
-  getClonerProduct,
-  getSmartOffer,
-  startSmartBundleCheckout,
-} from "@/lib/cloner.functions";
+  generatePurchasePixPayment,
+  preparePurchasePayment,
+} from "@/lib/purchase-payment.functions";
 import { track, saveCartSnapshot } from "@/lib/tracking";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
 import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
@@ -67,6 +64,13 @@ type CartItem = {
 };
 
 type BillingValue = { document: string; phone: string };
+type CheckoutLine = { planId: string; quantity: number };
+type PayerState = {
+  planId: string;
+  planName: string;
+  imageUrl?: string | null;
+  items?: CheckoutLine[] | undefined;
+};
 
 export const Route = createFileRoute("/planos")({
   head: () => ({
@@ -91,14 +95,12 @@ function formatPrice(price: number, currency = "BRL") {
 function PlanosPage() {
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
-  const [payer, setPayer] = useState<{ planId: string; planName: string; imageUrl?: string | null } | null>(null);
-  const [pix, setPix] = useState<PixState | null>(null);
+  const [payer, setPayer] = useState<PayerState | null>(null);
   const [smartPix, setSmartPix] = useState<SmartPixState | null>(null);
   const [inlineOffer, setInlineOffer] = useState<any | null>(null);
   const [offerAccepted, setOfferAccepted] = useState(false);
   const [offerLoading, setOfferLoading] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [pixByPlan, setPixByPlan] = useState<Record<string, { createdAt: string; expiresAt: string; transactionId: string }>>({});
   const { billing, complete } = useBilling();
 
   const { data: clonerProduct } = useQuery({
@@ -107,7 +109,6 @@ function PlanosPage() {
     staleTime: 60_000,
   });
 
-  // O order bump continua válido mesmo com mais itens/quantidades no carrinho.
   const offerEligible =
     !!inlineOffer?.available &&
     !!inlineOffer.companion?.id &&
@@ -174,7 +175,6 @@ function PlanosPage() {
     },
   });
 
-  // Categoria comercial independente: MSK Agente (não mistura com Extensão/Clonagem).
   const { data: agentPlans } = useQuery({
     queryKey: ["plans", "msk-agent"],
     staleTime: 5 * 60_000,
@@ -247,7 +247,6 @@ function PlanosPage() {
       return;
     }
 
-    
     setCart((current) => {
       const existing = current.find((item) => item.planId === plan.id);
       if (existing) {
@@ -270,19 +269,12 @@ function PlanosPage() {
     track("add_to_cart", { label: plan.name, value: Number(plan.price) });
     toast.success(`${plan.name} adicionado ao carrinho`);
     revealCheckout();
-
-    // Carrega a oferta inteligente na primeira adição; nas demais mantém a atual.
     if (!inlineOffer) await loadCheckoutOffer(plan);
   }
 
   function removeFromCart(planId: string) {
     const item = cart.find((row) => row.planId === planId);
     setCart((current) => current.filter((row) => row.planId !== planId));
-    setPixByPlan((current) => {
-      const next = { ...current };
-      delete next[planId];
-      return next;
-    });
     if (inlineOffer?.main?.id === planId) {
       setInlineOffer(null);
       setOfferAccepted(false);
@@ -299,22 +291,27 @@ function PlanosPage() {
   }
 
   async function payItem(item: CartItem) {
-    track("checkout_start", { label: item.planName, value: item.price });
-    await subscribe(item.planId, item.planName, false, item.imageUrl);
+    track("checkout_start", { label: item.planName, value: item.price * item.quantity });
+    const lines = item.quantity > 1 ? [{ planId: item.planId, quantity: item.quantity }] : undefined;
+    await subscribe(lines ? "" : item.planId, item.planName, false, item.imageUrl, undefined, lines);
   }
 
   async function checkoutCart() {
     if (!cart.length) return;
     const single = cart.length === 1 && cart[0]!.quantity === 1;
-    // Item único + order bump aceito → combo dedicado (mantém entrega do clonador).
     if (single) {
       await payItem(cart[0]!);
       return;
     }
-    // Carrinho em lote: envia todas as linhas e o bump para somar o total bruto.
     track("checkout_start", { label: "Carrinho MSK", value: checkoutTotal });
-    await subscribe("", "Checkout Carrinho", false, null);
-
+    await subscribe(
+      "",
+      "Checkout Carrinho",
+      false,
+      null,
+      undefined,
+      cart.map((item) => ({ planId: item.planId, quantity: item.quantity })),
+    );
   }
 
   async function subscribe(
@@ -323,6 +320,7 @@ function PlanosPage() {
     isFree = false,
     imageUrl?: string | null,
     billingOverride?: BillingValue,
+    itemsOverride?: CheckoutLine[],
   ) {
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData.session) {
@@ -354,115 +352,86 @@ function PlanosPage() {
 
     const payerData = billingOverride ?? (complete && billing ? { document: billing.document, phone: billing.phone } : null);
     if (!payerData) {
-      setPayer({ planId, planName, imageUrl: imageUrl ?? null });
+      setPayer({ planId, planName, imageUrl: imageUrl ?? null, items: itemsOverride });
       return;
     }
 
-    if (
-      planId &&
-      offerEligible &&
-      offerAccepted &&
-      inlineOffer?.main?.id === planId &&
-      inlineOffer?.companion?.id
-    ) {
-      await startAcceptedBundle(payerData);
-      return;
-    }
-
-    await startRegularPix(planId, planName, imageUrl, payerData);
+    await preparePaymentChoice(planId, planName, itemsOverride);
   }
 
-  async function startAcceptedBundle(payerData: BillingValue) {
-    if (!inlineOffer?.available) return;
-    setLoadingPlan(String(inlineOffer.main.id));
+  async function preparePaymentChoice(planId: string, planName: string, itemsOverride?: CheckoutLine[]) {
+    const loadingKey = planId || "checkout-bulk";
+    setLoadingPlan(loadingKey);
     try {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
-      const result = await startSmartBundleCheckout({
-        data: {
-          mainPlanId: inlineOffer.main.id,
-          companionPlanId: inlineOffer.companion.id,
-          document: payerData.document,
-          phone: payerData.phone,
-          ...(ref ? { affiliateCode: ref } : {}),
-          ...(rv ? { resellerCode: rv } : {}),
-        },
-      });
-      setPayer(null);
-      if (result.checkoutUrl && !result.pixCode) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
-      setSmartPix({
-        transactionId: result.transactionId,
-        pixCode: result.pixCode,
-        qrCode: result.qrCode,
-        amount: result.amount,
-        expiresAt: new Date(Date.now() + 2 * 60_000).toISOString(),
-        title: `${inlineOffer.main.name} + ${inlineOffer.companion.name}`,
-        subtitle: `${inlineOffer.companion.name} com ${inlineOffer.discountPercent}% OFF no item adicional`,
-      });
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setLoadingPlan(null);
-    }
-  }
-
-  async function startRegularPix(
-    planId: string,
-    planName: string,
-    imageUrl: string | null | undefined,
-    payerData: BillingValue,
-  ) {
-    setLoadingPlan(planId || "checkout-bulk");
-    try {
-      const ref = readAffiliateRef() ?? undefined;
-      const rv = readResellerRef() ?? undefined;
-      const bulkItems = planId ? undefined : cart.map((item) => ({ planId: item.planId, quantity: item.quantity }));
-      // Order bump aceito entra no mesmo PIX (valor recalculado no servidor).
+      const bulkItems = itemsOverride?.length
+        ? itemsOverride
+        : planId
+          ? undefined
+          : cart.map((item) => ({ planId: item.planId, quantity: item.quantity }));
       const companion =
         offerEligible && offerAccepted && inlineOffer?.main?.id && inlineOffer?.companion?.id
           ? { mainPlanId: String(inlineOffer.main.id), companionPlanId: String(inlineOffer.companion.id) }
           : undefined;
-      const result = await startPixCheckout({
+
+      const result = await preparePurchasePayment({
         data: {
-          planId: planId || undefined,
+          ...(planId && !bulkItems?.length ? { planId } : {}),
           ...(bulkItems?.length ? { items: bulkItems } : {}),
           ...(companion ? { companion } : {}),
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
-          document: payerData.document,
-          phone: payerData.phone,
         },
       });
 
       setPayer(null);
-      if (result.checkoutUrl && !result.pixCode) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
-      const createdAt = new Date().toISOString();
-      const expiresAt = new Date(Date.now() + 2 * 60_000).toISOString();
-      const key = planId || "checkout-bulk";
-      setPixByPlan((current) => ({ ...current, [key]: { createdAt, expiresAt, transactionId: result.transactionId } }));
-      track("pix_generated", { label: planName, value: result.amount });
-      setPix({
+      setSmartPix({
         transactionId: result.transactionId,
-        pixCode: result.pixCode,
-        qrCode: result.qrCode,
+        pixCode: null,
+        qrCode: null,
         amount: result.amount,
-        status: "PENDING",
-        expiresAt,
-        planName,
-        imageUrl: imageUrl ?? null,
-        createdAt,
+        expiresAt: null,
+        title: result.title || planName,
+        subtitle: result.subtitle || "Escolha PIX ou cartão para concluir sua compra",
       });
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setLoadingPlan(null);
     }
+  }
+
+  async function generatePixForPreparedOrder() {
+    const current = smartPix;
+    if (!current) return;
+    const result = await generatePurchasePixPayment({ data: { transactionId: current.transactionId } });
+    if (!result.pixCode && !result.qrCode) {
+      throw new Error("O gateway não retornou um PIX válido.");
+    }
+    track("pix_generated", { label: current.title, value: result.amount });
+    setSmartPix((value) =>
+      value
+        ? {
+            ...value,
+            amount: result.amount,
+            pixCode: result.pixCode,
+            qrCode: result.qrCode,
+            expiresAt: result.expiresAt,
+          }
+        : value,
+    );
+  }
+
+  function finishPaidOrder() {
+    if (!smartPix) return;
+    const transactionId = smartPix.transactionId;
+    track("purchase", { label: smartPix.title || "Pedido MSK", value: smartPix.amount });
+    setCart([]);
+    setInlineOffer(null);
+    setOfferAccepted(false);
+    setSmartPix(null);
+    navigate({ to: "/obrigado", search: { transactionId } });
   }
 
   useEffect(() => {
@@ -481,7 +450,7 @@ function PlanosPage() {
         <header className="flex min-w-0 flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 max-w-3xl">
             <h1 className="break-words text-4xl font-black uppercase tracking-tighter sm:text-7xl">Nossos <span className="neon-text">Planos</span></h1>
-            <p className="mt-4 break-words text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground sm:text-sm sm:tracking-[.3em]">Extensão principal · PIX · licença automática</p>
+            <p className="mt-4 break-words text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground sm:text-sm sm:tracking-[.3em]">Extensão principal · PIX ou cartão · licença automática</p>
           </div>
 
           {cart.length > 0 ? (
@@ -492,7 +461,7 @@ function PlanosPage() {
               </div>
               <div className="max-h-[68vh] space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
                 {cart.map((item) => (
-                  <CartRow key={item.planId} item={item} pix={pixByPlan[item.planId] ?? null} busy={loadingPlan === item.planId} onQty={(d) => updateQuantity(item.planId, d)} onRemove={() => removeFromCart(item.planId)} onPay={() => void payItem(item)} />
+                  <CartRow key={item.planId} item={item} busy={loadingPlan === item.planId} onQty={(d) => updateQuantity(item.planId, d)} onRemove={() => removeFromCart(item.planId)} onPay={() => void payItem(item)} />
                 ))}
 
                 {offerLoading && cart.length === 1 ? (
@@ -520,8 +489,8 @@ function PlanosPage() {
                     <span className="shrink-0 font-black text-emerald-400">-{formatPrice(Number(inlineOffer.savings ?? 0))}</span>
                   </div>
                 ) : null}
-                <div className="flex flex-wrap items-end justify-between gap-2"><div><span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total do pedido</span><p className="mt-1 text-[10px] text-muted-foreground">PIX · {checkoutCount} {checkoutCount === 1 ? "item" : "itens"}</p></div><span className="text-2xl font-black text-primary">{formatPrice(checkoutTotal)}</span></div>
-                <Button variant="neon" className="mt-4 min-h-14 w-full whitespace-normal rounded-2xl text-xs font-black uppercase" onClick={() => void checkoutCart()} disabled={loadingPlan !== null}>{loadingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Gerar PIX do pedido</Button>
+                <div className="flex flex-wrap items-end justify-between gap-2"><div><span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total do pedido</span><p className="mt-1 text-[10px] text-muted-foreground">PIX ou cartão · {checkoutCount} {checkoutCount === 1 ? "item" : "itens"}</p></div><span className="text-2xl font-black text-primary">{formatPrice(checkoutTotal)}</span></div>
+                <Button variant="neon" className="mt-4 min-h-14 w-full whitespace-normal rounded-2xl text-xs font-black uppercase" onClick={() => void checkoutCart()} disabled={loadingPlan !== null}>{loadingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Continuar pagamento</Button>
               </div>
             </div>
           ) : null}
@@ -570,7 +539,7 @@ function PlanosPage() {
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-xs text-muted-foreground sm:text-sm">
                 Assistente técnico do seu projeto: analisa, planeja e prepara alterações. Acesso liberado
-                automaticamente após a confirmação do PIX.
+                automaticamente após a confirmação do pagamento.
               </p>
             </div>
 
@@ -639,47 +608,42 @@ function PlanosPage() {
       {payer && typeof document !== "undefined" ? createPortal(
         <div className="fixed inset-0 z-[100010] flex items-end justify-center overflow-y-auto bg-black/85 p-0 backdrop-blur-xl sm:items-center sm:p-4">
           <div className="w-full max-w-md rounded-t-[2rem] border border-white/10 bg-[#0B0B0B] p-5 shadow-2xl sm:rounded-[2rem] sm:p-7">
-            <div className="mb-5 flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-widest text-primary">Dados para o PIX</p><h2 className="mt-1 break-words text-xl font-black uppercase">{offerEligible && offerAccepted ? `${payer.planName} + ${inlineOffer.companion.name}` : payer.planName}</h2></div><button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10" onClick={() => setPayer(null)}><X className="h-4 w-4" /></button></div>
-            <PayerForm compact onSaved={(b) => { const current = payer; setPayer(null); if (current) void subscribe(current.planId, current.planName, false, current.imageUrl, b); }} />
+            <div className="mb-5 flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-widest text-primary">Dados para o pagamento</p><h2 className="mt-1 break-words text-xl font-black uppercase">{offerEligible && offerAccepted ? `${payer.planName} + ${inlineOffer.companion.name}` : payer.planName}</h2></div><button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10" onClick={() => setPayer(null)}><X className="h-4 w-4" /></button></div>
+            <PayerForm compact onSaved={(b) => { const current = payer; setPayer(null); if (current) void subscribe(current.planId, current.planName, false, current.imageUrl, b, current.items); }} />
           </div>
         </div>,
         document.body,
       ) : null}
 
-      {pix ? <PixDialog pix={pix} regenerating={loadingPlan !== null} onClose={() => setPix(null)} onPaid={() => { track("purchase", { label: pix.planName ?? "Plano", value: pix.amount }); setCart([]); setInlineOffer(null); setOfferAccepted(false); setPixByPlan({}); setPix(null); navigate({ to: "/painel" }); }} onRegenerate={() => { const plan = plans?.find((row: any) => row.name === pix.planName); if (plan) void subscribe(plan.id, plan.name, false, planImage(plan)); }} /> : null}
-
-      {smartPix ? <SmartPixModal pix={smartPix} onClose={() => setSmartPix(null)} onPaid={() => { setCart([]); setInlineOffer(null); setOfferAccepted(false); navigate({ to: "/clonagem-entrega", search: { transactionId: smartPix.transactionId } }); }} onRegenerate={() => setSmartPix(null)} /> : null}
+      {smartPix ? (
+        <SmartPixModal
+          pix={smartPix}
+          onClose={() => setSmartPix(null)}
+          onPaid={finishPaidOrder}
+          onGeneratePix={generatePixForPreparedOrder}
+          onRegenerate={() => void generatePixForPreparedOrder()}
+        />
+      ) : null}
     </div>
   );
 }
 
-function CartRow({ item, pix, busy, onQty, onRemove, onPay }: {
+function CartRow({ item, busy, onQty, onRemove, onPay }: {
   item: CartItem;
-  pix: { createdAt: string; expiresAt: string; transactionId: string } | null;
   busy: boolean;
   onQty: (delta: number) => void;
   onRemove: () => void;
   onPay: () => void;
 }) {
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    if (!pix) return;
-    const id = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [pix]);
-  const left = pix ? Math.max(0, new Date(pix.expiresAt).getTime() - now) : 0;
-  const expired = !!pix && left <= 0;
-  const label = `${String(Math.floor(left / 60000)).padStart(2, "0")}:${String(Math.floor((left % 60000) / 1000)).padStart(2, "0")}`;
-
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-black/25 p-3.5">
       <div className="flex min-w-0 gap-3">
         {item.imageUrl ? <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10"><img src={item.imageUrl} alt={item.planName} className="h-full w-full object-cover" /></div> : null}
         <div className="min-w-0 flex-1"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><p className="break-words text-xs font-black uppercase">{item.planName}</p><p className="mt-1 text-sm font-black text-primary">{formatPrice(item.price * item.quantity)}</p></div><button type="button" className="shrink-0 p-1.5 text-muted-foreground hover:text-red-400" onClick={onRemove}><Trash2 className="h-4 w-4" /></button></div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center rounded-lg border border-white/10 bg-black/30 p-1"><button onClick={() => onQty(-1)} disabled={item.quantity <= 1} className="p-1 disabled:opacity-30"><Minus className="h-3 w-3" /></button><span className="w-7 text-center text-[10px] font-black">{item.quantity}</span><button onClick={() => onQty(1)} disabled={item.quantity >= 20} className="p-1 disabled:opacity-30"><Plus className="h-3 w-3" /></button></div>{pix ? <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${expired ? "bg-red-500/15 text-red-400" : "bg-amber-400/15 text-amber-300"}`}>{expired ? "Expirado" : label}</span> : null}</div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center rounded-lg border border-white/10 bg-black/30 p-1"><button onClick={() => onQty(-1)} disabled={item.quantity <= 1} className="p-1 disabled:opacity-30"><Minus className="h-3 w-3" /></button><span className="w-7 text-center text-[10px] font-black">{item.quantity}</span><button onClick={() => onQty(1)} disabled={item.quantity >= 20} className="p-1 disabled:opacity-30"><Plus className="h-3 w-3" /></button></div></div>
         </div>
       </div>
-      <Button size="sm" variant="neonOutline" className="mt-3 w-full whitespace-normal" disabled={busy} onClick={onPay}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : pix && expired ? <><RefreshCw className="mr-2 h-3.5 w-3.5" /> Novo PIX</> : pix ? "Continuar pagamento" : "Gerar PIX deste item"}</Button>
+      <Button size="sm" variant="neonOutline" className="mt-3 w-full whitespace-normal" disabled={busy} onClick={onPay}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Continuar pagamento"}</Button>
     </div>
   );
 }

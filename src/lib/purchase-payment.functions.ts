@@ -17,6 +17,13 @@ export const preparePurchasePayment = createServerFn({ method: "POST" })
     z
       .object({
         planId: z.string().uuid().optional(),
+        items: z
+          .array(z.object({ planId: z.string().uuid(), quantity: z.number().int().min(1).max(20) }))
+          .max(20)
+          .optional(),
+        companion: z
+          .object({ mainPlanId: z.string().uuid(), companionPlanId: z.string().uuid() })
+          .optional(),
         affiliateCode: z.string().max(24).optional(),
         resellerCode: z.string().max(24).optional(),
       })
@@ -28,6 +35,8 @@ export const preparePurchasePayment = createServerFn({ method: "POST" })
       return await preparePurchasePaymentOrder({
         userId: context.userId,
         planId: data.planId ?? null,
+        items: data.items ?? null,
+        companion: data.companion ?? null,
         affiliateCode: data.affiliateCode ?? null,
         resellerCode: data.resellerCode ?? null,
       });
