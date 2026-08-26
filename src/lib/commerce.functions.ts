@@ -17,8 +17,13 @@ export const startPixCheckout = createServerFn({ method: "POST" })
           .array(z.object({ planId: z.string().uuid(), quantity: z.number().int().min(1).max(20) }))
           .max(20)
           .optional(),
+        // Order bump aceito no checkout (preço recalculado no servidor).
+        companion: z
+          .object({ mainPlanId: z.string().uuid(), companionPlanId: z.string().uuid() })
+          .optional(),
         affiliateCode: z.string().max(24).optional(),
         resellerCode: z.string().max(24).optional(),
+
         document: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => v.length === 11 || v.length === 14, "CPF/CNPJ inválido"),
         phone: z.string().transform((v) => v.replace(/\D/g, "")).refine((v) => v.length >= 10 && v.length <= 13, "Telefone inválido"),
       })
