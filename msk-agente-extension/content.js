@@ -419,7 +419,7 @@
     mskPendingProjects[id] = pending;
     await chrome.storage.local.set({ mskPendingProjects });
   };
-  const connectProject = async () => {
+  const connectProject = async (knownRepo = "") => {
     const id = refreshProjectId();
     root.classList.add("msk-menu-open", "msk-panel-open");
     placePanel();
