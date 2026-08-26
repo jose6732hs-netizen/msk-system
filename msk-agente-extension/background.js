@@ -167,3 +167,110 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
     await chrome.storage.session.remove(flowKey);
   }
 });
+
+/* ===== MSK Agente — licença (e-mail + token) validada no MSK SISTEM ===== */
+const MSK_SITE = "https://msksystem.online";
+
+const mskInstallationId = async () => {
+  const { mskInstallId } = await chrome.storage.local.get("mskInstallId");
+  if (mskInstallId) return mskInstallId;
+  const id = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())).replace(/-/g, "");
+  await chrome.storage.local.set({ mskInstallId: id });
+  return id;
+};
+
+const mskValidate = async (email, token) => {
+  const installation_id = await mskInstallationId();
+  const response = await fetch(`${MSK_SITE}/api/public/license/validate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email,
+      token,
+      installation_id,
+      device_fingerprint: installation_id,
+      extension_version: chrome.runtime.getManifest().version,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  return { httpOk: response.ok, data };
+};
+
+const mskFriendly = (code, message) => {
+  const map = {
+    LICENSE_INVALID: "Licença inválida. Confira os caracteres.",
+    EMAIL_MISMATCH: "Este e-mail não corresponde ao dono da licença.",
+    DEVICE_LIMIT: "Limite de dispositivos atingido para esta licença.",
+    RATE_LIMITED: "Muitas tentativas. Aguarde alguns segundos.",
+  };
+  return map[code] || message || "Não foi possível validar esta licença.";
+};
+
+const mskLicenseStatus = async () => {
+  const { mskLicense } = await chrome.storage.local.get("mskLicense");
+  if (!mskLicense?.token || !mskLicense?.email) return { ok: false };
+  if (mskLicense.expires_at && Date.parse(mskLicense.expires_at) <= Date.now()) {
+    await chrome.storage.local.remove("mskLicense");
+    return { ok: false, message: "Sua licença expirou. Insira uma nova licença." };
+  }
+  // Revalida no servidor no máximo a cada 10 minutos.
+  if (Date.now() - Number(mskLicense.checkedAt || 0) < 600000) return { ok: true, license: mskLicense };
+  try {
+    const { data } = await mskValidate(mskLicense.email, mskLicense.token);
+    if (data?.valid) {
+      const next = {
+        ...mskLicense,
+        plan: data.license?.plan || mskLicense.plan,
+        plan_name: data.license?.plan_name || mskLicense.plan_name,
+        expires_at: data.license?.expires_at ?? null,
+        features: data.license?.features || {},
+        checkedAt: Date.now(),
+      };
+      await chrome.storage.local.set({ mskLicense: next });
+      return { ok: true, license: next };
+    }
+    await chrome.storage.local.remove("mskLicense");
+    return { ok: false, message: mskFriendly(data?.code, data?.message) };
+  } catch {
+    return { ok: true, license: mskLicense, offline: true };
+  }
+};
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!["MSK_LICENSE_ACTIVATE", "MSK_LICENSE_STATUS", "MSK_LICENSE_LOGOUT", "MSK_BOOT_AGENT"].includes(message?.type)) return;
+  (async () => {
+    try {
+      if (message.type === "MSK_LICENSE_STATUS") return sendResponse(await mskLicenseStatus());
+      if (message.type === "MSK_LICENSE_LOGOUT") {
+        await chrome.storage.local.remove("mskLicense");
+        return sendResponse({ ok: true });
+      }
+      if (message.type === "MSK_BOOT_AGENT") {
+        const tabId = sender.tab?.id;
+        if (!tabId) return sendResponse({ ok: false });
+        await chrome.scripting.insertCSS({ target: { tabId }, files: ["content.css"] }).catch(() => {});
+        await chrome.scripting.executeScript({ target: { tabId }, files: ["config.js", "content.js"] }).catch(() => {});
+        return sendResponse({ ok: true });
+      }
+      const email = String(message.email || "").trim().toLowerCase();
+      const token = String(message.token || "").trim().toUpperCase();
+      const { data } = await mskValidate(email, token);
+      if (!data?.valid) return sendResponse({ ok: false, message: mskFriendly(data?.code, data?.message) });
+      const license = {
+        email,
+        token,
+        plan: data.license?.plan || null,
+        plan_name: data.license?.plan_name || null,
+        expires_at: data.license?.expires_at ?? null,
+        activated_at: data.license?.activated_at ?? null,
+        features: data.license?.features || {},
+        checkedAt: Date.now(),
+      };
+      await chrome.storage.local.set({ mskLicense: license, mskLicenseEmail: email });
+      return sendResponse({ ok: true, license });
+    } catch (error) {
+      return sendResponse({ ok: false, message: error?.message || "Falha de rede ao validar." });
+    }
+  })();
+  return true;
+});
