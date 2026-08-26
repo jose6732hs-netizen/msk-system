@@ -29,10 +29,10 @@ function safeCardLog(error: unknown) {
 
 export const getCardCheckoutOptions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: unknown) => z.object({ amount: z.number().min(0) }).parse(d))
-  .handler(async ({ data }) => {
-    const { getCardOptions } = await import("./card.server");
-    return getCardOptions(data.amount);
+  .inputValidator((d: unknown) => z.object({ transactionId: z.string().uuid() }).parse(d))
+  .handler(async ({ context, data }) => {
+    const { getCardOptionsForTransaction } = await import("./card.server");
+    return getCardOptionsForTransaction(context.userId, data.transactionId);
   });
 
 export const payWithCard = createServerFn({ method: "POST" })
