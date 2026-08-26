@@ -48,6 +48,14 @@
     .plan{font-size:12px;color:#cdbdf0}
     .clock{font-variant-numeric:tabular-nums;font-size:26px;font-weight:800;color:#22ffa7;letter-spacing:.04em}
     .link{font-size:11px;color:#8b7fb0;text-decoration:none}
+    .menu{display:none;flex-direction:column;align-items:flex-end;gap:8px}
+    .menu.open{display:flex}
+    .mini{display:flex;align-items:center;gap:8px}
+    .mini span{font-size:11px;font-weight:600;letter-spacing:.06em;color:#f5f3ff;background:rgba(11,7,19,.92);
+      border:1px solid rgba(255,47,178,.35);padding:5px 10px;border-radius:9px;white-space:nowrap}
+    .mini button{width:44px;height:44px;border-radius:50%;border:2px solid #7c3aed;background:#0b0713;color:#fff;
+      font-size:17px;cursor:pointer;display:grid;place-items:center;box-shadow:0 0 16px rgba(124,58,237,.5)}
+    .mini.locked button{border-color:#5b4b78;box-shadow:none;opacity:.75}
   </style>
   <div class="wrap">
     <section class="card" id="card">
@@ -69,12 +77,28 @@
         <button class="cta" id="reload">ATUALIZAR E ABRIR EXTENSÃO</button>
       </div>
     </section>
+
+    <div class="menu" id="menu">
+      <div class="mini"><span>Conexão / Acesso</span><button id="btn-access" title="Conectar licença">🔑</button></div>
+      <div class="mini locked" id="chat-mini"><span id="chat-label">Chat (bloqueado)</span><button id="btn-chat" title="Chat MSK">💬</button></div>
+    </div>
     <button class="orb" id="orb" title="MSK Agente"><img src="${asset("msk-agente-logo.png")}" alt="MSK"></button>
   </div>`;
 
   const $ = (id) => sh.getElementById(id);
   const card = $("card");
-  $("orb").addEventListener("click", () => card.classList.toggle("open"));
+  const menu = $("menu");
+  $("orb").addEventListener("click", () => {
+    menu.classList.toggle("open");
+    if (!menu.classList.contains("open")) card.classList.remove("open");
+  });
+  $("btn-access").addEventListener("click", () => card.classList.toggle("open"));
+  $("btn-chat").addEventListener("click", () => {
+    card.classList.add("open");
+    setMsg("O chat só abre depois de conectar seu e-mail e licença.");
+    $("email").focus();
+  });
+
 
   const setMsg = (t, ok) => { const m = $("msg"); m.textContent = t || ""; m.className = "msg" + (ok ? " ok" : ""); };
 
