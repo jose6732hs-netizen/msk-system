@@ -118,22 +118,36 @@ export function PixDialog({
 
 
   // O status final é sempre o do backend/gateway — nunca só o cronômetro.
+  // Polling é apenas complemento do webhook: intervalo de 5s, teto de 30min,
+  // e paramos em qualquer status terminal ou ao desmontar o checkout.
   useEffect(() => {
-    if (status === "PAID") return;
+    const TERMINAL = ["PAID", "FAILED", "REFUNDED", "CHARGED_BACK", "CANCELED", "EXPIRED"];
+    if (TERMINAL.includes(status)) return;
+    let attempts = 0;
+    const maxAttempts = 360; // 30 minutos
     const id = setInterval(async () => {
+      attempts += 1;
+      if (attempts > maxAttempts) {
+        clearInterval(id);
+        return;
+      }
       try {
         const res = await checkTransaction({ data: { transactionId: pix.transactionId } });
         if (res.status !== status) setStatus(res.status);
         if (res.status === "PAID") {
+          clearInterval(id);
           toast.success("Pagamento confirmado! Licença liberada.");
           navigate({ to: "/obrigado", search: { transactionId: pix.transactionId } });
           onPaid();
+        } else if (TERMINAL.includes(res.status)) {
+          clearInterval(id);
         }
       } catch {
         /* mantém o polling */
       }
-    }, 4000);
+    }, 5000);
     return () => clearInterval(id);
+
   }, [pix.transactionId, status, onPaid]);
 
   const createdAt = useMemo(() => {
