@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight } from "@/lib/license.server";
-import { handleAccountTokenValidation } from "@/lib/account-license-validate.server";
+import { handleUnifiedLicenseValidation } from "@/lib/unified-license-validate.server";
 
 function browserExtensionOrigin(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
@@ -40,13 +40,18 @@ function withExtensionCors(response: Response, request: Request) {
   });
 }
 
+/**
+ * Endpoint único do banco central de licenças MSK.
+ * O cliente envia apenas e-mail + token; a compatibilidade Agent/Extension
+ * é resolvida no servidor sem separar banco, IP, navegador ou instalação.
+ */
 export const Route = createFileRoute("/api/public/license/validate")({
   server: {
     handlers: {
       OPTIONS: ({ request }) => extensionPreflight(request),
       POST: async ({ request }) =>
         withExtensionCors(
-          await handleAccountTokenValidation(request, "validate", 60, "extension"),
+          await handleUnifiedLicenseValidation(request, "validate", 60),
           request,
         ),
     },
