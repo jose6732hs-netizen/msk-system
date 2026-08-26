@@ -43,7 +43,7 @@ export function CardPaymentPanel({
   useEffect(() => {
     let alive = true;
     setOptionsLoaded(false);
-    void getCardCheckoutOptions({ data: { amount } })
+    void getCardCheckoutOptions({ data: { transactionId } })
       .then((res) => {
         if (!alive) return;
         setOptions(res);
@@ -57,7 +57,7 @@ export function CardPaymentPanel({
     return () => {
       alive = false;
     };
-  }, [amount]);
+  }, [transactionId]);
 
   const plans = useMemo(() => options?.installments ?? [], [options]);
   const brand = useMemo(() => cardBrand(number), [number]);
@@ -136,6 +136,9 @@ export function CardPaymentPanel({
   }
 
   const paymentFailed = feedback === CARD_PUBLIC_ERROR;
+  const baseAmount = Number(options.baseAmount ?? amount);
+  const feeAmount = Number(options.feeAmount ?? 0);
+  const totalAmount = Number(options.totalAmount ?? baseAmount);
 
   return (
     <div className="w-full space-y-5 rounded-3xl border border-white/10 bg-white/5 p-5">
@@ -150,6 +153,25 @@ export function CardPaymentPanel({
           </span>
         )}
       </div>
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 bg-black/25 p-3.5">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Subtotal</p>
+          <p className="mt-1 text-base font-black text-white">{brl(baseAmount)}</p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/25 p-3.5">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Acréscimo do cartão</p>
+          <p className="mt-1 text-base font-black text-amber-300">+ {brl(feeAmount)}</p>
+        </div>
+        <div className="rounded-2xl border border-primary/25 bg-primary/[.06] p-3.5">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total no cartão</p>
+          <p className="mt-1 text-base font-black text-primary">{brl(totalAmount)}</p>
+        </div>
+      </div>
+
+      <p className="text-[10px] leading-relaxed text-muted-foreground">
+        O acréscimo é aplicado somente ao pagamento no cartão. O preço-base do produto permanece o mesmo.
+      </p>
 
       <CreditCard3D brand={brand} number={number} holderName={holderName} expiry={expiry} />
 
@@ -269,7 +291,7 @@ export function CardPaymentPanel({
           </>
         ) : (
           <>
-            <Lock className="mr-2 h-4 w-4" /> Pagar {brl(amount)}
+            <Lock className="mr-2 h-4 w-4" /> Pagar {brl(totalAmount)}
           </>
         )}
       </Button>
