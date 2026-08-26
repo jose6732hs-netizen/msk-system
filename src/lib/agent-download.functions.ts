@@ -4,9 +4,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const AGENT_BUILD = {
   bucket: "extension-builds",
-  path: "official/2.4.36/1787771939810-MSK-Agente-v2.4.36.zip",
-  fileName: "MSK-Agente-v2.4.36.zip",
-  version: "2.4.36",
+  path: "official/2.4.41/1787784700132-MSK-Agente-v2.4.41.zip",
+  fileName: "MSK-Agente-v2.4.41.zip",
+  version: "2.4.41",
 } as const;
 
 /**
