@@ -6,7 +6,9 @@ import { Loader2, PlugZap, ShieldCheck, Star, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  adminAtomoSettings,
   adminGatewaySettings,
+  adminSaveAtomoSettings,
   adminSaveGateway,
   adminSetGatewayPreference,
   adminTestGateway,
@@ -290,6 +292,87 @@ function ProviderCard({
         <p className="mt-2">
           As chaves são criptografadas antes de serem gravadas e nunca retornam para o navegador.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/** Métodos de pagamento habilitados na AtomoPay (PIX / cartão / parcelas). */
+function AtomoMethodsCard() {
+  const qc = useQueryClient();
+  const loadFn = useServerFn(adminAtomoSettings);
+  const saveFn = useServerFn(adminSaveAtomoSettings);
+  const [saving, setSaving] = useState(false);
+
+  const { data } = useQuery({ queryKey: ["atomo-methods"], queryFn: () => loadFn() });
+
+  async function patch(input: {
+    pixEnabled?: boolean;
+    cardEnabled?: boolean;
+    maxInstallments?: number;
+    sandbox?: boolean;
+  }) {
+    setSaving(true);
+    try {
+      await saveFn({ data: input });
+      await qc.invalidateQueries({ queryKey: ["atomo-methods"] });
+      toast.success("Métodos AtomoPay atualizados.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!data) return null;
+
+  return (
+    <div className="rounded-2xl border border-border/60 p-4">
+      <p className="text-sm font-semibold text-foreground">Pagamentos &gt; AtomoPay</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Métodos disponíveis no checkout interno. O cartão exige que a captura direta esteja
+        liberada comercialmente na sua conta AtomoPay — enquanto estiver desligado, o formulário
+        não aparece para o cliente.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          disabled={saving}
+          variant={data.pixEnabled ? "neon" : "neonOutline"}
+          onClick={() => patch({ pixEnabled: !data.pixEnabled })}
+        >
+          PIX: {data.pixEnabled ? "ativo" : "inativo"}
+        </Button>
+        <Button
+          size="sm"
+          disabled={saving}
+          variant={data.cardEnabled ? "neon" : "neonOutline"}
+          onClick={() => patch({ cardEnabled: !data.cardEnabled })}
+        >
+          Cartão: {data.cardEnabled ? "ativo" : "inativo"}
+        </Button>
+        <Button
+          size="sm"
+          variant="glass"
+          disabled={saving}
+          onClick={() => patch({ sandbox: !data.sandbox })}
+        >
+          Ambiente: {data.sandbox ? "sandbox" : "produção"}
+        </Button>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground">
+          Máx. parcelas
+          <Input
+            type="number"
+            min={1}
+            max={12}
+            defaultValue={data.maxInstallments}
+            className="h-8 w-20"
+            onBlur={(e) => {
+              const v = Number(e.target.value);
+              if (v >= 1 && v <= 12 && v !== data.maxInstallments) patch({ maxInstallments: v });
+            }}
+          />
+        </label>
       </div>
     </div>
   );

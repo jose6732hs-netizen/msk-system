@@ -328,9 +328,18 @@ export async function getAtomoSettings(): Promise<AtomoSettings> {
   };
 }
 
-export async function saveAtomoSettings(input: Partial<AtomoSettings>) {
+export async function saveAtomoSettings(
+  input: { [K in keyof AtomoSettings]?: AtomoSettings[K] | undefined },
+) {
   const current = await getAtomoSettings();
-  const next: AtomoSettings = { ...DEFAULT_SETTINGS, ...current, ...input };
+  const next: AtomoSettings = {
+    ...DEFAULT_SETTINGS,
+    ...current,
+    ...(input.pixEnabled !== undefined ? { pixEnabled: input.pixEnabled } : {}),
+    ...(input.cardEnabled !== undefined ? { cardEnabled: input.cardEnabled } : {}),
+    ...(input.maxInstallments !== undefined ? { maxInstallments: input.maxInstallments } : {}),
+    ...(input.sandbox !== undefined ? { sandbox: input.sandbox } : {}),
+  };
   next.maxInstallments = Math.min(12, Math.max(1, Math.round(next.maxInstallments)));
   const { error } = await supabaseAdmin
     .from("app_settings")
