@@ -4,7 +4,7 @@
 (function (root) {
   "use strict";
 
-  var API_BASE = window.location.origin.includes('localhost') ? 'http://localhost:8080' : "https://ini-joy-maker.lovable.app";
+  var API_BASE = "https://msksystem.online";
   var EP = {
     validate: API_BASE + "/api/public/license/validate",
     heartbeat: API_BASE + "/api/public/license/heartbeat",
@@ -12,6 +12,7 @@
 
   var STORE = {
     token: "og_license_token",
+    email: "og_license_email",
     state: "og_license_state",
     install: "og_installation_id",
   };
@@ -79,6 +80,8 @@
     DEVICE_LIMIT: "Limite de dispositivos atingido para esta licença.",
     RATE_LIMITED: "Muitas tentativas. Aguarde alguns segundos.",
     INVALID_REQUEST: "Token com formato inválido.",
+    EMAIL_MISMATCH: "Este e-mail não corresponde ao dono desta licença.",
+    LICENSE_PRODUCT_MISMATCH: "Esta licença não é válida para esta extensão.",
     NETWORK: "Sem conexão com o servidor de licenças. Verifique sua internet.",
   };
 
@@ -87,10 +90,15 @@
   }
 
   /** Chama o servidor. mode: 'validate' | 'heartbeat' */
-  async function callServer(token, mode) {
+  async function callServer(token, mode, email) {
     var installation_id = await getInstallationId();
+    if (!email) {
+      var saved = await get([STORE.email]);
+      email = saved[STORE.email] || "";
+    }
     var body = {
       token: normalizeToken(token),
+      email: String(email || "").trim().toLowerCase() || undefined,
       installation_id: installation_id,
       device_fingerprint: installation_id,
       extension_version: version(),
@@ -127,7 +135,7 @@
     return true;
   }
 
-  async function saveValid(token, data) {
+  async function saveValid(token, data, email) {
     var state = {
       valid: true,
       checkedAt: Date.now(),
@@ -140,26 +148,35 @@
       features: (data && data.features) || null,
       status: (data && data.status) || "ACTIVE",
     };
+    state.activated_at =
+      (data && (data.activated_at || (data.license && data.license.activated_at))) || null;
     var o = {};
     o[STORE.state] = state;
+    o["OG_LICENSE_STATE"] = state; // alias usado pelo contador regressivo
     o[STORE.token] = normalizeToken(token);
+    if (email) o[STORE.email] = String(email).trim().toLowerCase();
     await set(o);
     return state;
   }
 
   async function clear(reason) {
     var o = {};
-    o[STORE.state] = { valid: false, reason: reason || "cleared", checkedAt: Date.now() };
+    var dead = { valid: false, reason: reason || "cleared", checkedAt: Date.now() };
+    o[STORE.state] = dead;
+    o["OG_LICENSE_STATE"] = dead;
     await set(o);
   }
 
   /** Ativa um token digitado pelo usuário. */
-  async function activate(token) {
+  async function activate(token, email) {
     var t = normalizeToken(token);
-    if (t.length < 8) return { ok: false, message: "Digite o token completo." };
-    var r = await callServer(t, "validate");
+    if (t.length < 8) return { ok: false, message: "Digite a licença completa." };
+    var mail = String(email || "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail))
+      return { ok: false, message: "Informe o e-mail da sua conta MSK." };
+    var r = await callServer(t, "validate", mail);
     if (r.ok) {
-      var st = await saveValid(t, r.data);
+      var st = await saveValid(t, r.data, mail);
       return { ok: true, state: st };
     }
     if (r.offline) return { ok: false, code: "NETWORK", message: friendly("NETWORK") };
