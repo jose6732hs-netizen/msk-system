@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight } from "@/lib/license.server";
-import { handleAccountTokenValidation } from "@/lib/account-license-validate.server";
+import { handleUnifiedLicenseValidation } from "@/lib/unified-license-validate.server";
 
 function browserExtensionOrigin(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
@@ -40,14 +40,13 @@ function withExtensionCors(response: Response, request: Request) {
   });
 }
 
-/** Heartbeat exclusivo do MSK Agente; preserva isolamento entre produtos. */
 export const Route = createFileRoute("/api/public/agent/license/heartbeat")({
   server: {
     handlers: {
       OPTIONS: ({ request }) => extensionPreflight(request),
       POST: async ({ request }) =>
         withExtensionCors(
-          await handleAccountTokenValidation(request, "agent-heartbeat", 30, "agent"),
+          await handleUnifiedLicenseValidation(request, "agent-heartbeat", 30),
           request,
         ),
     },
