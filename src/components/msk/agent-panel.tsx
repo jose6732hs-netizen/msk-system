@@ -270,6 +270,16 @@ export function AgentPanel() {
 
       {tab === "chat" && (
         <div className="mt-4">
+          {status?.agent?.capabilities?.editCode !== true && (
+            <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] text-amber-300">
+              <GitBranch className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <span>
+                GitHub precisa ser conectado para edição real de código. Por enquanto o MSK Agente
+                analisa, planeja e prepara alterações. Merge, publish e rollback sempre exigem sua
+                confirmação explícita.
+              </span>
+            </div>
+          )}
           <div
             ref={listRef}
             className="max-h-72 space-y-3 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-3"
