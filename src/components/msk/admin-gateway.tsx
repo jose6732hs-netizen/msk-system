@@ -92,8 +92,9 @@ export function AdminGatewayTab() {
           busy={busy}
           setBusy={setBusy}
           onSave={async (payload) => {
-            await saveFn({ data: { provider: p.provider as ProviderId, ...payload } });
+            const res = await saveFn({ data: { provider: p.provider as ProviderId, ...payload } });
             await refresh();
+            return (res as { test?: { ok: boolean; error?: string } })?.test ?? { ok: true };
           }}
           onTest={async () => testFn({ data: { provider: p.provider as ProviderId } })}
         />
@@ -130,7 +131,7 @@ function ProviderCard({
     webhookSecret?: string;
     baseUrl?: string;
     active?: boolean;
-  }) => Promise<void>;
+  }) => Promise<{ ok: boolean; error?: string }>;
   onTest: () => Promise<{ ok: boolean; error?: string }>;
 }) {
   const [publicKey, setPublicKey] = useState("");
@@ -149,7 +150,7 @@ function ProviderCard({
   async function save(active?: boolean) {
     setBusy(true);
     try {
-      await onSave({
+      const res = await onSave({
         ...(publicKey ? { publicKey } : {}),
         ...(secretKey ? { secretKey } : {}),
         ...(webhookSecret ? { webhookSecret } : {}),
@@ -159,7 +160,13 @@ function ProviderCard({
       setPublicKey("");
       setSecretKey("");
       setWebhookSecret("");
-      toast.success(`${provider.label}: configurações salvas com segurança.`);
+      if (res && res.ok === false) {
+        toast.error(
+          `${provider.label}: credenciais recusadas pelo gateway — ${res.error ?? "verifique as chaves"}`,
+        );
+      } else {
+        toast.success(`${provider.label}: credenciais salvas, criptografadas e validadas.`);
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
