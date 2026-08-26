@@ -360,22 +360,39 @@ function Painel() {
         ) : (
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-            
-            <div className="md:col-span-2 lg:col-span-1">
-              <LicenseCard 
-                license={license} 
-                token={token}
-                busy={busy}
-                onReveal={reveal}
-                onCopyToken={() => {
-                  navigator.clipboard.writeText(token ?? license.token_preview ?? "");
-                  toast.success("Token copiado com sucesso!");
-                }}
-                onGenerateNew={handleGenerateNewLicense}
-                generating={generatingLicense}
-                highlighted={highlightedId === license.id}
-              />
+            <div className="md:col-span-2 lg:col-span-3">
+              <div className="mb-4 flex items-end justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-black uppercase tracking-tight">Minhas licenças</h2>
+                  <p className="text-xs text-muted-foreground">
+                    Cada licença é separada e identificada pela função que ela libera.
+                  </p>
+                </div>
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                  {licenses.length} {licenses.length === 1 ? "licença" : "licenças"}
+                </span>
+              </div>
+              <div className="grid gap-6 lg:grid-cols-2">
+                {licenses.map((item) => (
+                  <LicenseCard
+                    key={item.id}
+                    license={item}
+                    token={tokens[item.id] ?? (item.id === license.id ? token : null)}
+                    busy={busy}
+                    onReveal={() => void reveal(item.id)}
+                    onCopyToken={() => {
+                      navigator.clipboard.writeText(tokens[item.id] ?? item.token_preview ?? "");
+                      toast.success("Token copiado com sucesso!");
+                    }}
+                    {...(item.id === license.id
+                      ? { onGenerateNew: handleGenerateNewLicense, generating: generatingLicense }
+                      : {})}
+                    highlighted={highlightedId === item.id}
+                  />
+                ))}
+              </div>
             </div>
+
 
             <section className="glass rounded-[2rem] p-6 md:p-8">
               <h2 className="text-lg font-semibold">Plano Atual</h2>
