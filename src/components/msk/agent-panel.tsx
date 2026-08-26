@@ -221,21 +221,23 @@ export function AgentPanel() {
         />
         <StatusChip ok={allowed} label="Plano/Licença" value={String(planLabel)} />
         <StatusChip
-          ok={!!status?.github?.connected}
+          ok={githubConnected}
           label="GitHub"
           value={
-            status?.github?.connected
-              ? status.github?.login
-                ? `@${status.github.login}`
-                : "Conectado"
-              : "Não conectado"
+            !githubConfigured
+              ? "Configuração admin pendente"
+              : githubConnected
+                ? status?.agent?.githubLogin
+                  ? `@${status.agent.githubLogin}`
+                  : "Conectado"
+                : "Conectar GitHub"
           }
           icon={<GitBranch className="h-3.5 w-3.5" />}
         />
         <StatusChip
-          ok={!!status?.project?.name || !!status?.project?.repo}
+          ok={!!activeRepo}
           label="Projeto ativo"
-          value={status?.project?.name ?? status?.project?.repo ?? "Nenhum"}
+          value={activeRepo ?? "Nenhum"}
         />
       </div>
 
