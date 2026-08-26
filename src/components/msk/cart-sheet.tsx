@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   CreditCard,
+  Headphones,
   Loader2,
   Minus,
   PackageCheck,
@@ -14,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { PayerForm, useBilling } from "@/components/msk/payer-form";
+import { SmartPixModal, type SmartPixState } from "@/components/msk/smart-pix-modal";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -23,7 +25,6 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { PixDialog, type PixState } from "@/components/msk/pix-dialog";
 import {
   addCartItem,
   clearCartItems,
@@ -31,9 +32,19 @@ import {
   removeCartItem,
   updateCartItem,
 } from "@/lib/cart.functions";
-import { startPixCheckout } from "@/lib/commerce.functions";
+import {
+  generatePurchasePixPayment,
+  preparePurchasePayment,
+} from "@/lib/purchase-payment.functions";
+import { PAYMENT_PUBLIC_ERROR } from "@/lib/payments/public-messages";
+import { useSupportLink } from "@/lib/support-link";
 import { readAffiliateRef, readResellerRef } from "@/lib/urls";
-import { readCartSnapshot, saveCartSnapshot, type AbandonedCart, type AbandonedCartItem } from "@/lib/tracking";
+import {
+  readCartSnapshot,
+  saveCartSnapshot,
+  type AbandonedCart,
+  type AbandonedCartItem,
+} from "@/lib/tracking";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
 import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
 import cardFreeImg from "@/assets/card-free.jpg";
@@ -58,7 +69,10 @@ function imageForLine(line: { imageUrl?: string | null; slug: string }) {
 }
 
 function localCount(cart: AbandonedCart | null) {
-  return (cart?.items ?? []).reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 0)), 0);
+  return (cart?.items ?? []).reduce(
+    (sum, item) => sum + Math.max(0, Number(item.quantity ?? 0)),
+    0,
+  );
 }
 
 type PendingPay = {
@@ -72,15 +86,19 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [pix, setPix] = useState<PixState | null>(null);
+  const [checkout, setCheckout] = useState<SmartPixState | null>(null);
   const [payingPlanId, setPayingPlanId] = useState("");
   const [askPayer, setAskPayer] = useState(false);
   const [pendingPay, setPendingPay] = useState<PendingPay | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
   const [localCart, setLocalCart] = useState<AbandonedCart | null>(() =>
     typeof window !== "undefined" ? readCartSnapshot() : null,
   );
   const [cartBump, setCartBump] = useState(false);
   const { billing, complete } = useBilling();
+  const supportLink = useSupportLink(
+    "Olá! Tive um problema ao finalizar meu pagamento no MSK. Podem me ajudar?",
+  );
 
   const { data, isLoading } = useQuery({
     queryKey: ["cart"],
@@ -108,7 +126,9 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
   const snapshotCount = localCount(localCart);
   const count = Math.max(persistedCount, snapshotCount);
   const localOnly = lines.length === 0 && !!localCart?.items?.length;
-  const displayTotal = localOnly ? Number(localCart?.total ?? 0) : Number(data?.total ?? 0);
+  const displayTotal = localOnly
+    ? Number(localCart?.total ?? 0)
+    : Number(data?.total ?? 0);
 
   function animateIntoCart(item?: AbandonedCartItem | null) {
     if (typeof window === "undefined" || typeof document === "undefined") return;
@@ -163,8 +183,15 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     const animation = flyer.animate(
       [
         { transform: "translate3d(0,0,0) scale(1)", opacity: 1 },
-        { transform: `translate3d(${(endX - startX) * 0.55}px, ${(endY - startY) * 0.35}px, 0) scale(.8)`, opacity: 0.95, offset: 0.55 },
-        { transform: `translate3d(${endX - startX}px, ${endY - startY}px, 0) scale(.18)`, opacity: 0.15 },
+        {
+          transform: `translate3d(${(endX - startX) * 0.55}px, ${(endY - startY) * 0.35}px, 0) scale(.8)`,
+          opacity: 0.95,
+          offset: 0.55,
+        },
+        {
+          transform: `translate3d(${endX - startX}px, ${endY - startY}px, 0) scale(.18)`,
+          opacity: 0.15,
+        },
       ],
       { duration: 720, easing: "cubic-bezier(.22,.9,.3,1)", fill: "forwards" },
     );
@@ -178,7 +205,8 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
         added?: boolean;
         addedItem?: AbandonedCartItem | null;
       }>;
-      const next = custom?.detail?.cart !== undefined ? custom.detail.cart : readCartSnapshot();
+      const next =
+        custom?.detail?.cart !== undefined ? custom.detail.cart : readCartSnapshot();
       setLocalCart(next ?? null);
       if (custom?.detail?.added) {
         setCartBump(true);
@@ -204,14 +232,14 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     try {
       await fn();
       await qc.invalidateQueries({ queryKey: ["cart"] });
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      toast.error("Não foi possível atualizar o carrinho agora.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function removeSubmittedItems(planId?: string) {
+  async function removePaidItems(planId?: string) {
     try {
       if (!planId) {
         await clearCartItems();
@@ -220,7 +248,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
         if (line) await removeCartItem({ data: { itemId: line.id } });
       }
     } catch (e) {
-      console.error("[cart] não foi possível remover item enviado ao PIX:", e);
+      console.error("[cart] não foi possível limpar item pago:", e);
     } finally {
       await qc.invalidateQueries({ queryKey: ["cart"] });
     }
@@ -231,60 +259,73 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     planName?: string,
     billingOverride?: { document: string; phone: string },
   ) {
-    const bill = billingOverride ?? (complete && billing
-      ? { document: billing.document, phone: billing.phone }
-      : null);
+    const bill =
+      billingOverride ??
+      (complete && billing
+        ? { document: billing.document, phone: billing.phone }
+        : null);
 
     if (!bill) {
       setPendingPay({ planId: planId ?? "", planName: planName ?? "" });
       setPayingPlanId(planId ?? "");
       setAskPayer(true);
       setOpen(true);
-      toast.info("Complete seus dados para gerar o PIX.");
+      toast.info("Complete seus dados para continuar ao pagamento.");
       return;
     }
 
     setPayingPlanId(planId ?? "");
     setBusy(true);
+    setPaymentError(null);
     try {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
-      const result = await startPixCheckout({
+      const result = await preparePurchasePayment({
         data: {
-          planId,
+          ...(planId ? { planId } : {}),
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
-          document: bill.document,
-          phone: bill.phone,
         },
       });
 
-      await removeSubmittedItems(planId);
       setPendingPay(null);
       setAskPayer(false);
-
-      if (result.checkoutUrl && !result.pixCode) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
-
-      setPix({
+      setCheckout({
         transactionId: result.transactionId,
-        pixCode: result.pixCode,
-        qrCode: result.qrCode,
+        pixCode: null,
+        qrCode: null,
         amount: result.amount,
-        status: "PENDING",
-        expiresAt: new Date(Date.now() + 2 * 60 * 1000).toISOString(),
-        planName:
-          planName ??
-          (lines.length === 1 ? (lines[0]?.name ?? "Pedido") : "Carrinho MSK"),
+        expiresAt: null,
+        title: planName ?? result.title,
+        subtitle: result.subtitle,
       });
       setOpen(false);
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      setPaymentError(PAYMENT_PUBLIC_ERROR);
+      toast.error(PAYMENT_PUBLIC_ERROR);
     } finally {
       setBusy(false);
     }
+  }
+
+  async function generateCurrentPix() {
+    if (!checkout) return;
+    const result = await generatePurchasePixPayment({
+      data: { transactionId: checkout.transactionId },
+    });
+    if (result.checkoutUrl && !result.pixCode) {
+      window.location.href = result.checkoutUrl;
+      return;
+    }
+    setCheckout((current) => {
+      if (!current || current.transactionId !== result.transactionId) return current;
+      return {
+        ...current,
+        pixCode: result.pixCode,
+        qrCode: result.qrCode,
+        expiresAt: result.expiresAt,
+      };
+    });
   }
 
   function goToPlans() {
@@ -292,11 +333,6 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     navigate({ to: "/planos" });
   }
 
-  /**
-   * Fluxo único: do carrinho direto para o pagamento.
-   * Sincroniza os itens locais com o carrinho da conta e já chama o PIX
-   * (que pede CPF/telefone somente se ainda não estiverem salvos).
-   */
   async function checkoutLocalCart() {
     const items = localCart?.items ?? [];
     if (!items.length) return;
@@ -331,8 +367,8 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
       await qc.invalidateQueries({ queryKey: ["cart"] });
       saveCartSnapshot(null);
       setLocalCart(null);
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      toast.error("Não foi possível preparar seu carrinho agora.");
       setBusy(false);
       return;
     }
@@ -352,9 +388,13 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
             className={`relative transition-transform duration-300 ${cartBump ? "scale-125" : "scale-100"}`}
             aria-label={`Carrinho${count ? ` com ${count} item(ns)` : ""}`}
           >
-            <ShoppingCart className={`h-5 w-5 text-neon transition-transform ${cartBump ? "-rotate-12 scale-110" : ""}`} />
+            <ShoppingCart
+              className={`h-5 w-5 text-neon transition-transform ${cartBump ? "-rotate-12 scale-110" : ""}`}
+            />
             {count > 0 ? (
-              <span className={`absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] font-black text-primary-foreground shadow-[0_0_16px_rgba(57,255,20,.55)] ${cartBump ? "animate-pulse" : ""}`}>
+              <span
+                className={`absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] font-black text-primary-foreground shadow-[0_0_16px_rgba(57,255,20,.55)] ${cartBump ? "animate-pulse" : ""}`}
+              >
                 {count > 99 ? "99+" : count}
               </span>
             ) : null}
@@ -373,7 +413,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     Seu carrinho
                   </SheetTitle>
                   <SheetDescription className="mt-1 text-xs leading-relaxed">
-                    Itens adicionados aparecem aqui imediatamente com a quantidade atualizada.
+                    Revise seus itens e finalize escolhendo PIX ou cartão.
                   </SheetDescription>
                 </div>
               </div>
@@ -400,7 +440,9 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
             {!signedIn && !localOnly ? (
               <div className="rounded-2xl border border-white/10 bg-white/[.025] p-5 text-center">
                 <ShoppingCart className="mx-auto h-8 w-8 text-muted-foreground" />
-                <p className="mt-3 text-sm text-muted-foreground">Entre na sua conta para usar o carrinho persistente.</p>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Entre na sua conta para usar o carrinho persistente.
+                </p>
               </div>
             ) : null}
 
@@ -416,23 +458,43 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                   Estes produtos foram adicionados na página de planos e estão no seu carrinho atual.
                 </div>
                 {(localCart?.items ?? []).map((item, index) => (
-                  <article key={`${item.name}-${index}`} className="flex min-w-0 gap-3 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3">
+                  <article
+                    key={`${item.name}-${index}`}
+                    className="flex min-w-0 gap-3 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3"
+                  >
                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black">
-                      <img src={item.imageUrl || bannerOfferAsset.url} alt={item.name} className="h-full w-full object-cover" />
+                      <img
+                        src={item.imageUrl || bannerOfferAsset.url}
+                        alt={item.name}
+                        className="h-full w-full object-cover"
+                      />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="break-words text-sm font-black uppercase leading-tight text-white">{item.name}</h3>
-                      <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Quantidade</p>
+                      <h3 className="break-words text-sm font-black uppercase leading-tight text-white">
+                        {item.name}
+                      </h3>
+                      <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Quantidade
+                      </p>
                       <div className="mt-1 flex items-end justify-between gap-3">
-                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary">{item.quantity}x</span>
-                        <span className="text-lg font-black text-primary">{brl(Number(item.price) * Number(item.quantity))}</span>
+                        <span className="rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-xs font-black text-primary">
+                          {item.quantity}x
+                        </span>
+                        <span className="text-lg font-black text-primary">
+                          {brl(Number(item.price) * Number(item.quantity))}
+                        </span>
                       </div>
                     </div>
                   </article>
                 ))}
-                <Button variant="neon" className="w-full h-12 text-sm font-black uppercase tracking-wide" disabled={busy} onClick={() => void checkoutLocalCart()}>
+                <Button
+                  variant="neon"
+                  className="h-12 w-full text-sm font-black uppercase tracking-wide"
+                  disabled={busy}
+                  onClick={() => void checkoutLocalCart()}
+                >
                   {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Ir para o pagamento · {brl(displayTotal)}
+                  Finalizar compra · {brl(displayTotal)}
                 </Button>
               </section>
             ) : null}
@@ -444,8 +506,12 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     <CreditCard className="h-4 w-4" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-black uppercase tracking-widest">Dados para o PIX</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Salvos uma vez na sua conta.</p>
+                    <p className="text-xs font-black uppercase tracking-widest">
+                      Dados do pagador
+                    </p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      Na próxima etapa você escolhe PIX ou cartão.
+                    </p>
                   </div>
                 </div>
                 <PayerForm
@@ -463,6 +529,24 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
             {signedIn && !localOnly && complete && !askPayer ? (
               <div className="mb-4">
                 <PayerForm onSaved={() => setAskPayer(false)} />
+              </div>
+            ) : null}
+
+            {paymentError ? (
+              <div className="mb-4 rounded-2xl border border-red-400/20 bg-red-500/10 p-4" aria-live="polite">
+                <p className="text-sm font-black text-red-100">
+                  Não foi possível abrir o pagamento.
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-red-100/70">
+                  Tente novamente ou contate o suporte para continuar sua compra.
+                </p>
+                {supportLink ? (
+                  <Button asChild type="button" variant="ghost" className="mt-3 w-full border border-white/10 bg-black/20">
+                    <a href={supportLink} target="_blank" rel="noopener noreferrer">
+                      <Headphones className="mr-2 h-4 w-4" /> Contatar o suporte
+                    </a>
+                  </Button>
+                ) : null}
               </div>
             ) : null}
 
@@ -573,7 +657,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                         ) : (
                           <Sparkles className="mr-2 h-4 w-4 shrink-0" />
                         )}
-                        Gerar PIX desta licença
+                        Finalizar esta licença
                       </Button>
                     </div>
                   </article>
@@ -601,7 +685,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     <p className="mt-1 text-2xl font-black text-white">{brl(data?.total)}</p>
                   </div>
                   <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-primary">
-                    PIX
+                    PIX ou cartão
                   </span>
                 </div>
 
@@ -612,7 +696,7 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                   onClick={() => void pay()}
                 >
                   {busy && !payingPlanId ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Gerar PIX do carrinho
+                  Finalizar compra
                 </Button>
 
                 <div className="mt-2 grid grid-cols-2 gap-2">
@@ -635,25 +719,22 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
         </SheetContent>
       </Sheet>
 
-      {pix ? (
-        <PixDialog
-          pix={pix}
-          regenerating={busy}
-          onClose={() => setPix(null)}
+      {checkout ? (
+        <SmartPixModal
+          pix={checkout}
+          onClose={() => setCheckout(null)}
           onPaid={() => {
-            setPix(null);
-            void qc.invalidateQueries({ queryKey: ["cart"] });
+            const planId = payingPlanId || undefined;
+            setCheckout(null);
+            setPaymentError(null);
+            void removePaidItems(planId);
             navigate({ to: "/painel" });
           }}
           onRegenerate={() => {
-            if (payingPlanId) {
-              void pay(payingPlanId, pix.planName ?? "Pedido");
-              return;
-            }
-            setPix(null);
-            toast.info("Adicione novamente os itens para gerar um novo PIX do carrinho.");
-            navigate({ to: "/planos" });
+            setCheckout(null);
+            toast.info("Abra o checkout novamente para gerar uma nova cobrança.");
           }}
+          onGeneratePix={generateCurrentPix}
         />
       ) : null}
     </>
