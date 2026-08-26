@@ -1,5 +1,5 @@
 /**
- * Orquestrador multi-gateway: SigiloPay + Amplo Pay.
+ * Orquestrador multi-gateway: SigiloPay + Amplo Pay + AtomoPay.
  * O admin define o provedor preferido e se o failover automático está ligado.
  * Se o primário falhar (erro de API/credencial), o secundário é acionado na hora.
  */
@@ -87,6 +87,10 @@ export type PixServiceLike = {
 };
 
 export async function getService(provider: ProviderId): Promise<PixServiceLike> {
+  if (provider === "atomopay") {
+    const { AtomoPayService } = await import("./atomo-pay.server");
+    return (await AtomoPayService.create()) as unknown as PixServiceLike;
+  }
   if (provider === "sigilopay") {
     const { SigiloPayService } = await import("./sigilo-pay.server");
     return (await SigiloPayService.create()) as unknown as PixServiceLike;
