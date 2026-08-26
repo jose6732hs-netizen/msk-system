@@ -124,13 +124,38 @@ export const adminSaveGateway = createServerFn({ method: "POST" })
     const { getGatewayOverview } = await import("./payments/gateway.server");
     const { logAudit } = await import("./audit.server");
     await saveCredentialsFor({ ...data, updatedBy: context.userId });
+
+    // Valida as chaves logo após salvar: credencial errada não pode ficar ativa
+    // e derrubar a geração de PIX depois.
+    let test: { ok: boolean; error?: string } = { ok: true };
+    if (data.publicKey || data.secretKey) {
+      try {
+        if (data.provider === "sigilopay") {
+          const { testSigiloCredentials } = await import("./payments/sigilo-pay.server");
+          test = await testSigiloCredentials();
+        } else {
+          const { testCredentials } = await import("./payments/amplo-pay.server");
+          test = await testCredentials();
+        }
+      } catch (e) {
+        test = { ok: false, error: (e as Error).message };
+      }
+      if (!test.ok) {
+        await saveCredentialsFor({
+          provider: data.provider,
+          active: false,
+          updatedBy: context.userId,
+        });
+      }
+    }
     await logAudit({
       userId: context.userId,
       action: "gateway.settings_updated",
       resource: "payment_settings",
       metadata: { provider: data.provider, active: data.active ?? null },
     });
-    return getGatewayOverview();
+    const overview = await getGatewayOverview();
+    return { ...overview, test };
   });
 
 /** Define o gateway preferido e liga/desliga o failover automático. */
