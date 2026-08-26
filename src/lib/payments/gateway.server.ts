@@ -51,16 +51,19 @@ export async function saveGatewayConfig(config: {
   return next;
 }
 
-/** Ordem de tentativa: primário e, com failover ligado, o outro provedor configurado. */
+/**
+ * Ordem de tentativa: primário e, em seguida, os demais provedores.
+ * Mesmo com failover desligado, um provedor sem credenciais nunca pode
+ * derrubar o checkout — o outro gateway configurado assume automaticamente.
+ */
 export async function resolveProviderOrder(preferred?: ProviderId | null) {
   const config = await getGatewayConfig();
   const primary = preferred ?? config.primary;
   const order: ProviderId[] = [primary];
-  if (config.failover) {
-    for (const p of PROVIDERS) if (p !== primary) order.push(p);
-  }
-  return order;
+  for (const p of PROVIDERS) if (p !== primary) order.push(p);
+  return { order, failover: config.failover };
 }
+
 
 export type PixServiceLike = {
   createPix(input: {
