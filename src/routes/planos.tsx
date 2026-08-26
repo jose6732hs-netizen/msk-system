@@ -162,7 +162,27 @@ function PlanosPage() {
         .eq("active", true)
         .order("sort_order");
       if (error) throw error;
-      return (data ?? []).filter((plan: any) => !String(plan.slug ?? "").startsWith("page-cloner"));
+      return (data ?? []).filter(
+        (plan: any) =>
+          !String(plan.slug ?? "").startsWith("page-cloner") &&
+          !String(plan.slug ?? "").startsWith("msk-agent"),
+      );
+    },
+  });
+
+  // Categoria comercial independente: MSK Agente (não mistura com Extensão/Clonagem).
+  const { data: agentPlans } = useQuery({
+    queryKey: ["plans", "msk-agent"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("active", true)
+        .like("slug", "msk-agent%")
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
