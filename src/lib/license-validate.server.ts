@@ -7,19 +7,22 @@ import {
   logEvent,
   rateLimit,
 } from "./license.server";
+import { resolveLicenseSnapshot } from "./license-entitlements.server";
 import { resolvePlanDuration } from "./plan-duration";
 
 export const validateSchema = z.object({
   token: z.string().min(8).max(64),
-  // Login da extensão: e-mail + licença.
   email: z.string().email().max(160).optional(),
   device_fingerprint: z.string().min(8).max(256).optional(),
   installation_id: z.string().min(8).max(128).optional(),
-  // Compatibilidade com builds antigos da MSK COPY.
   deviceId: z.string().min(8).max(256).optional(),
   extension_version: z.string().max(32).optional(),
+  // Mantido apenas para telemetria/compatibilidade. A autorização NÃO confia
+  // neste campo: a ferramenta esperada é definida pelo endpoint do servidor.
   product: z.string().max(40).optional(),
 });
+
+type ExpectedRole = "extension" | "cloner" | "agent";
 
 type LicenseRow = {
   id: string;
@@ -28,9 +31,23 @@ type LicenseRow = {
   status: string;
   type: string;
   expires_at: string | null;
+  activated_at?: string | null;
   max_devices: number;
   metadata: Record<string, unknown> | null;
-  plans: { slug: string; name: string; features: Record<string, boolean> | null } | null;
+  plans: {
+    id?: string;
+    slug: string;
+    name: string;
+    price?: number;
+    currency?: string;
+    max_devices?: number;
+    is_lifetime?: boolean;
+    duration_label?: string | null;
+    duration_days?: number | null;
+    duration_value?: number | null;
+    duration_unit?: string | null;
+    features: Record<string, boolean> | null;
+  } | null;
 };
 
 const LOCKED = {
@@ -40,26 +57,68 @@ const LOCKED = {
   background_tools: false,
 };
 
-async function recoverDurationFromPlan(planId: string) {
+function hasOwn(metadata: Record<string, unknown>, key: string) {
+  return Object.prototype.hasOwnProperty.call(metadata, key);
+}
+
+/**
+ * Recupera a duração sem permitir que uma licença paga herde duração de outro
+ * plano/configuração atual. Snapshot da licença é sempre a fonte da verdade.
+ * A tabela plans só é usada para licenças realmente legadas, sem snapshot.
+ */
+async function durationForLicense(license: LicenseRow) {
+  const metadata = (license.metadata ?? {}) as Record<string, unknown>;
+  const pending = Number(metadata["pending_duration_ms"] ?? 0);
+  if (pending > 0) return { milliseconds: pending, lifetime: false };
+
+  const hasDurationSnapshot = [
+    "plan_duration_value_snapshot",
+    "plan_duration_unit_snapshot",
+    "plan_duration_snapshot",
+    "plan_is_lifetime_snapshot",
+    "pending_duration_ms",
+  ].some((key) => hasOwn(metadata, key));
+
+  if (metadata["plan_is_lifetime_snapshot"] === true) {
+    return { milliseconds: null, lifetime: true };
+  }
+
+  const snapValue = Number(metadata["plan_duration_value_snapshot"] ?? 0);
+  const snapUnit = String(metadata["plan_duration_unit_snapshot"] ?? "").trim();
+  if (snapValue > 0 && snapUnit) {
+    const resolved = resolvePlanDuration({ duration_value: snapValue, duration_unit: snapUnit });
+    return { milliseconds: resolved.milliseconds ?? null, lifetime: resolved.lifetime };
+  }
+
+  const snapDays = Number(metadata["plan_duration_snapshot"] ?? 0);
+  if (snapDays > 0) {
+    const resolved = resolvePlanDuration({ duration_value: snapDays, duration_unit: "days" });
+    return { milliseconds: resolved.milliseconds ?? null, lifetime: resolved.lifetime };
+  }
+
+  // Snapshot existente mas sem duração válida: não inventar prazo nem herdar
+  // configuração nova do plano.
+  if (hasDurationSnapshot) return { milliseconds: null, lifetime: false };
+
+  if (!license.plan_id) return { milliseconds: null, lifetime: false };
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: plan } = await supabaseAdmin
     .from("plans")
     .select("name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit")
-    .eq("id", planId)
+    .eq("id", license.plan_id)
     .maybeSingle();
-  return plan ? resolvePlanDuration(plan) : null;
+  if (!plan) return { milliseconds: null, lifetime: false };
+  const resolved = resolvePlanDuration(plan);
+  return { milliseconds: resolved.milliseconds ?? null, lifetime: resolved.lifetime };
 }
 
-function productAllowed(license: LicenseRow, product?: string) {
-  if (!product) return true;
-  if (product !== "msk-copy") return false;
-  const slug = String(license.plans?.slug ?? "").toLowerCase();
-  const features = license.plans?.features ?? {};
-  return slug.startsWith("page-cloner-") || features["page_cloner"] === true;
-}
-
-/** Lógica compartilhada por /validate e /heartbeat. */
-export async function handleValidation(request: Request, bucket: string, limit: number) {
+/** Lógica compartilhada por validate/heartbeat, com papel fixado pelo endpoint. */
+export async function handleValidation(
+  request: Request,
+  bucket: string,
+  limit: number,
+  expectedRole: ExpectedRole,
+) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const ip = clientIp(request);
   const respond = (body: unknown, status = 200) => jsonResponse(body, status, request);
@@ -98,12 +157,18 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     );
   }
 
-  if (!productAllowed(license, parsed.data.product)) {
+  const snapshot = resolveLicenseSnapshot(license);
+  if (snapshot.role !== expectedRole) {
     await logEvent({
       license_id: license.id,
       user_id: license.user_id,
       event_type: "product_mismatch",
-      metadata: { requested_product: parsed.data.product ?? null, plan: license.plans?.slug ?? null },
+      metadata: {
+        requested_role: expectedRole,
+        license_role: snapshot.role,
+        requested_product: parsed.data.product ?? null,
+        license_slug: snapshot.slug,
+      },
     });
     return respond(
       {
@@ -111,13 +176,12 @@ export async function handleValidation(request: Request, bucket: string, limit: 
         valid: false,
         error: "LICENSE_PRODUCT_MISMATCH",
         code: "LICENSE_PRODUCT_MISMATCH",
-        message: "Este token não pertence ao MSK COPY. Use uma licença do Clonador.",
+        message: "Este token não é válido para este produto.",
       },
       403,
     );
   }
 
-  // Login e-mail + licença: quando o e-mail é enviado, ele precisa ser o dono da licença.
   if (parsed.data.email) {
     const sent = parsed.data.email.trim().toLowerCase();
     const { data: owner } = await supabaseAdmin
@@ -154,44 +218,21 @@ export async function handleValidation(request: Request, bucket: string, limit: 
 
   if (license.status === "inactive") {
     const activatedAt = new Date();
-    const pending = Number((license.metadata as any)?.["pending_duration_ms"] ?? 0);
+    const duration = await durationForLicense(license);
     const patch: Record<string, unknown> = {
       status: "active",
       activated_at: activatedAt.toISOString(),
     };
 
-    if (!license.expires_at && pending > 0) {
-      const expiresAt = new Date(activatedAt.getTime() + pending).toISOString();
+    if (!license.expires_at && !duration.lifetime && Number(duration.milliseconds ?? 0) > 0) {
+      const expiresAt = new Date(activatedAt.getTime() + Number(duration.milliseconds)).toISOString();
       patch["expires_at"] = expiresAt;
       license.expires_at = expiresAt;
-    } else if (!license.expires_at) {
-      const snapVal = Number((license.metadata as any)?.["plan_duration_value_snapshot"] ?? 0);
-      const snapUnit = String((license.metadata as any)?.["plan_duration_unit_snapshot"] || "");
-      let recoveredMs = 0;
-
-      if (snapVal > 0 && snapUnit) {
-        try {
-          recoveredMs = resolvePlanDuration({ duration_value: snapVal, duration_unit: snapUnit }).milliseconds ?? 0;
-        } catch {
-          recoveredMs = 0;
-        }
-      }
-
-      if (!(recoveredMs > 0) && license.plan_id) {
-        const resolved = await recoverDurationFromPlan(license.plan_id);
-        if (resolved?.lifetime) recoveredMs = 0;
-        else recoveredMs = resolved?.milliseconds ?? 0;
-      }
-
-      if (recoveredMs > 0) {
-        const expiresAt = new Date(activatedAt.getTime() + recoveredMs).toISOString();
-        patch["expires_at"] = expiresAt;
-        license.expires_at = expiresAt;
-      }
     }
 
     await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
     license.status = "active";
+    license.activated_at = activatedAt.toISOString();
   }
 
   type DeviceRow = { id: string; status: string };
@@ -216,9 +257,6 @@ export async function handleValidation(request: Request, bucket: string, limit: 
   }
 
   const ipHash = await hashValue(ip);
-
-  // Reinstalou a extensão? O mesmo IP reaproveita o slot já registrado,
-  // em vez de consumir um novo dispositivo da licença.
   if (!device && license.status === "active") {
     const { data: sameIp } = await supabaseAdmin
       .from("license_devices")
@@ -292,7 +330,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
   const now = new Date().toISOString();
   await supabaseAdmin
     .from("license_devices")
-    .update({ last_seen: now, last_ip_hash: await hashValue(ip) })
+    .update({ last_seen: now, last_ip_hash: ipHash })
     .eq("id", device.id);
   await supabaseAdmin.from("licenses").update({ last_validation: now }).eq("id", license.id);
 
@@ -302,7 +340,12 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     user_id: license.user_id,
     event_type: bucket === "heartbeat" ? "heartbeat" : "validated",
     device_hash: deviceHash,
-    metadata: parsed.data.product ? { product: parsed.data.product, extension_version: parsed.data.extension_version ?? null } : {},
+    metadata: {
+      product: parsed.data.product ?? null,
+      expected_role: expectedRole,
+      license_role: snapshot.role,
+      extension_version: parsed.data.extension_version ?? null,
+    },
   });
 
   const responseData = {
@@ -312,24 +355,23 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     action: active ? null : "REAUTH_REQUIRED",
     license: {
       status: license.status.toUpperCase(),
-      plan: license.plans?.slug ?? null,
-      plan_name: license.plans?.name ?? null,
+      plan: snapshot.slug,
+      plan_name: snapshot.name,
       expires_at: license.expires_at,
-      activated_at: (license as unknown as { activated_at?: string | null }).activated_at ?? null,
-      max_devices: license.max_devices,
+      activated_at: license.activated_at ?? null,
+      max_devices: snapshot.maxDevices ?? license.max_devices,
       devices_used: 1,
-      features: active ? (license.plans?.features ?? LOCKED) : LOCKED,
+      features: active ? snapshot.features : LOCKED,
+      role: snapshot.role,
     },
-    // Aliases para builds antigos da extensão.
     expiresAt: license.expires_at,
     email_required: true,
-    planName: license.plans?.name ?? null,
-    planSlug: license.plans?.slug ?? null,
+    planName: snapshot.name,
+    planSlug: snapshot.slug,
     timestamp: Date.now(),
   };
 
   const { signData } = await import("./license.server");
   const signature = await signData(JSON.stringify(responseData));
-
   return respond({ ...responseData, signature });
 }
