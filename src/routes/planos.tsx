@@ -107,11 +107,13 @@ function PlanosPage() {
     staleTime: 60_000,
   });
 
+  // O order bump continua válido mesmo com mais itens/quantidades no carrinho.
   const offerEligible =
     !!inlineOffer?.available &&
-    cart.length === 1 &&
-    cart[0]?.quantity === 1 &&
-    inlineOffer.main?.id === cart[0]?.planId;
+    !!inlineOffer.companion?.id &&
+    cart.some((item) => item.planId === inlineOffer.main?.id) &&
+    !cart.some((item) => item.planId === inlineOffer.companion?.id);
+
   const baseTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const offerTotal = offerEligible && offerAccepted ? Number(inlineOffer.companion?.discountedPrice ?? 0) : 0;
   const checkoutTotal = baseTotal + offerTotal;
