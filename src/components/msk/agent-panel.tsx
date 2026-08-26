@@ -372,9 +372,9 @@ export function AgentPanel() {
                       Arquivos: {files.join(", ")}
                     </p>
                   )}
-                  {run.pr_url && (
+                  {(run.pull_request_url ?? run.pr_url) && (
                     <a
-                      href={run.pr_url}
+                      href={(run.pull_request_url ?? run.pr_url) as string}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-1 inline-block text-primary underline"
