@@ -117,6 +117,35 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     );
   }
 
+  // Login e-mail + licença: quando o e-mail é enviado, ele precisa ser o dono da licença.
+  if (parsed.data.email) {
+    const sent = parsed.data.email.trim().toLowerCase();
+    const { data: owner } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", license.user_id)
+      .maybeSingle();
+    const ownerEmail = String((owner as any)?.email ?? "").trim().toLowerCase();
+    if (!ownerEmail || ownerEmail !== sent) {
+      await logEvent({
+        license_id: license.id,
+        user_id: license.user_id,
+        event_type: "email_mismatch",
+        metadata: { bucket },
+      });
+      return respond(
+        {
+          success: false,
+          valid: false,
+          error: "EMAIL_MISMATCH",
+          code: "EMAIL_MISMATCH",
+          message: "Este e-mail não corresponde ao dono desta licença.",
+        },
+        403,
+      );
+    }
+  }
+
   const identity = parsed.data.installation_id ?? parsed.data.device_fingerprint ?? parsed.data.deviceId;
   if (!identity) {
     return respond({ success: false, valid: false, error: "INVALID_REQUEST", code: "INVALID_REQUEST" }, 400);
