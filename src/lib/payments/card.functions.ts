@@ -6,7 +6,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { CARD_PUBLIC_ERROR } from "./public-messages";
+import { CARD_CONFIRMATION_PENDING, CARD_PUBLIC_ERROR } from "./public-messages";
 
 const cardSchema = z.object({
   transactionId: z.string().uuid(),
@@ -48,7 +48,12 @@ export const payWithCard = createServerFn({ method: "POST" })
         card: data.card,
       });
     } catch (error) {
-      console.error("[payment][card] falha:", safeCardLog(error));
-      throw new Error(CARD_PUBLIC_ERROR);
+      const safeMessage = safeCardLog(error);
+      console.error("[payment][card] falha:", safeMessage);
+      throw new Error(
+        safeMessage === CARD_CONFIRMATION_PENDING
+          ? CARD_CONFIRMATION_PENDING
+          : CARD_PUBLIC_ERROR,
+      );
     }
   });

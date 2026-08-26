@@ -49,7 +49,7 @@ export function calculateCardAmounts(baseAmount: number) {
 export async function getCardOptionsForTransaction(userId: string, transactionId: string) {
   const { data: tx } = await supabaseAdmin
     .from("transactions")
-    .select("id,user_id,amount,status,purpose")
+    .select("id,user_id,amount,status,method,purpose,provider_transaction_id")
     .eq("id", transactionId)
     .maybeSingle();
 
@@ -62,7 +62,14 @@ export async function getCardOptionsForTransaction(userId: string, transactionId
   const settings = await getAtomoSettings();
   const creds = await loadCredentialsFor("atomopay").catch(() => null);
   const configured = !!creds;
-  const enabled = configured && settings.cardEnabled;
+  const status = String(tx.status ?? "").toUpperCase();
+  const method = String(tx.method ?? "PENDING").toUpperCase();
+  const awaitingConfirmation =
+    method === "CREDIT_CARD" &&
+    (["PROCESSING", "AUTHORIZED"].includes(status) ||
+      (status === "PENDING" && Boolean(tx.provider_transaction_id)));
+  const terminal = ["PAID", "CANCELED", "REFUNDED", "CHARGED_BACK", "EXPIRED"].includes(status);
+  const enabled = configured && settings.cardEnabled && !awaitingConfirmation && !terminal;
   const amounts = calculateCardAmounts(Number(tx.amount));
 
   const installments = enabled
@@ -82,11 +89,16 @@ export async function getCardOptionsForTransaction(userId: string, transactionId
     sandbox: settings.sandbox,
     ...amounts,
     installments,
+    awaitingConfirmation,
     reason: enabled
       ? null
-      : configured
-        ? "Cartão de crédito desativado no painel Pagamentos > AtomoPay."
-        : "Integração AtomoPay não configurada.",
+      : awaitingConfirmation
+        ? "Pagamento já enviado e aguardando confirmação do gateway."
+        : terminal
+          ? "Este pedido não aceita uma nova cobrança."
+          : configured
+            ? "Cartão de crédito desativado no painel Pagamentos > AtomoPay."
+            : "Integração AtomoPay não configurada.",
   };
 }
 
@@ -113,6 +125,27 @@ export async function payTransactionWithCard(input: {
       status: "PAID",
       providerStatus: "paid",
       message: atomoStatusMessage("paid"),
+      transactionId: tx.id,
+    };
+  }
+
+  if (["CANCELED", "REFUNDED", "CHARGED_BACK", "EXPIRED"].includes(currentStatus)) {
+    throw new Error("PAYMENT_TERMINAL");
+  }
+
+  // Uma tentativa de cartão já enviada ao gateway nunca pode ser reenviada
+  // enquanto o resultado for ambíguo. Webhook/consulta oficial deve reconciliar.
+  if (
+    currentMethod === "CREDIT_CARD" &&
+    (["PROCESSING", "AUTHORIZED"].includes(currentStatus) ||
+      (currentStatus === "PENDING" && Boolean(tx.provider_transaction_id)))
+  ) {
+    return {
+      status: currentStatus === "AUTHORIZED" ? "AUTHORIZED" : "PROCESSING",
+      providerStatus: String(
+        ((tx.metadata ?? {}) as Record<string, unknown>).provider_status ?? "processing",
+      ),
+      message: atomoStatusMessage("processing"),
       transactionId: tx.id,
     };
   }
@@ -152,6 +185,12 @@ export async function payTransactionWithCard(input: {
     };
   }
 
+  let gatewayRequestStarted = false;
+  let gatewayResultReceived = false;
+  let gatewayExternalId: string | null = null;
+  let gatewayProviderStatus: string | null = null;
+  let gatewayInternalStatus: string | null = null;
+
   try {
     const { data: profile } = await supabaseAdmin
       .from("profiles")
@@ -179,6 +218,9 @@ export async function payTransactionWithCard(input: {
       Math.max(1, Math.round(input.installments)),
     );
 
+    // A partir daqui uma falha de rede é ambígua: o gateway pode ter
+    // processado a cobrança mesmo sem a aplicação receber a resposta.
+    gatewayRequestStarted = true;
     const result = await service.createCard({
       identifier: tx.identifier,
       amountCents,
@@ -202,7 +244,11 @@ export async function payTransactionWithCard(input: {
       metadata: { transactionId: tx.id },
     });
 
+    gatewayResultReceived = true;
+    gatewayExternalId = result.transactionHash || null;
+    gatewayProviderStatus = result.providerStatus;
     const internal = mapAtomoStatus(result.providerStatus);
+    gatewayInternalStatus = internal === "UNKNOWN" ? "PROCESSING" : internal;
     const meta = (tx.metadata ?? {}) as Record<string, unknown>;
 
     await supabaseAdmin
@@ -260,17 +306,49 @@ export async function payTransactionWithCard(input: {
       transactionId: tx.id,
     };
   } catch (e) {
-    await supabaseAdmin
-      .from("transactions")
-      .update({ status: "PENDING" } as never)
-      .eq("id", tx.id)
-      .eq("method", "CREDIT_CARD");
     const safe = String((e as Error).message ?? "").replace(/\d{12,19}/g, (m) => maskPan(m));
+
+    if (!gatewayRequestStarted) {
+      // Nenhuma requisição de cobrança saiu: é seguro permitir nova tentativa.
+      await supabaseAdmin
+        .from("transactions")
+        .update({ status: "PENDING", method: "PENDING" } as never)
+        .eq("id", tx.id)
+        .eq("status", "PROCESSING")
+        .eq("method", "CREDIT_CARD");
+    } else {
+      // A requisição chegou a ser iniciada. Mesmo em timeout/erro local, nunca
+      // voltamos a PENDING: isso impediria uma segunda cobrança acidental.
+      const reconciliationStatus =
+        gatewayResultReceived && gatewayInternalStatus
+          ? gatewayInternalStatus
+          : "PROCESSING";
+      const currentMeta = (tx.metadata ?? {}) as Record<string, unknown>;
+      await supabaseAdmin
+        .from("transactions")
+        .update({
+          status: reconciliationStatus,
+          method: "CREDIT_CARD",
+          ...(gatewayExternalId ? { provider_transaction_id: gatewayExternalId } : {}),
+          metadata: {
+            ...currentMeta,
+            provider_status: gatewayProviderStatus ?? currentMeta.provider_status ?? "unknown",
+            reconciliation_required: true,
+            reconciliation_reason: gatewayResultReceived
+              ? "LOCAL_FINALIZATION_FAILED"
+              : "GATEWAY_RESPONSE_UNCERTAIN",
+          },
+        } as never)
+        .eq("id", tx.id);
+    }
+
     console.error("[card] falha ao processar cartão:", safe.slice(0, 300));
     throw new Error(
-      safe.startsWith("PAGAMENTO_CARTAO_INDISPONIVEL")
-        ? safe
-        : "Não foi possível processar o cartão. Confira os dados ou tente outro meio de pagamento.",
+      gatewayRequestStarted
+        ? "Pagamento enviado para confirmação. Não tente novamente agora; aguarde a atualização automática."
+        : safe.startsWith("PAGAMENTO_CARTAO_INDISPONIVEL")
+          ? safe
+          : "Não foi possível processar o cartão. Confira os dados ou tente outro meio de pagamento.",
     );
   }
 }

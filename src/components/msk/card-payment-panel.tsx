@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CreditCard3D } from "@/components/msk/credit-card-3d";
 import { getCardCheckoutOptions, payWithCard } from "@/lib/payments/card.functions";
 import { cardBrand } from "@/lib/payments/atomo-status";
-import { CARD_PUBLIC_ERROR } from "@/lib/payments/public-messages";
+import { CARD_CONFIRMATION_PENDING, CARD_PUBLIC_ERROR } from "@/lib/payments/public-messages";
 import { useSupportLink } from "@/lib/support-link";
 
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -126,9 +126,20 @@ export function CardPaymentPanel({
       } else {
         toast.info(publicMessage);
       }
-    } catch {
-      setFeedback(CARD_PUBLIC_ERROR);
-      toast.error(CARD_PUBLIC_ERROR);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : CARD_PUBLIC_ERROR;
+      const publicMessage =
+        message.includes(CARD_CONFIRMATION_PENDING)
+          ? CARD_CONFIRMATION_PENDING
+          : CARD_PUBLIC_ERROR;
+      setNumber("");
+      setCvv("");
+      setFeedback(publicMessage);
+      if (publicMessage === CARD_CONFIRMATION_PENDING) {
+        toast.info(publicMessage);
+      } else {
+        toast.error(publicMessage);
+      }
     } finally {
       setSubmitting(false);
       lock.current = false;
@@ -136,12 +147,19 @@ export function CardPaymentPanel({
   }
 
   const paymentFailed = feedback === CARD_PUBLIC_ERROR;
+  const paymentPending = feedback === CARD_CONFIRMATION_PENDING;
   const baseAmount = Number(options.baseAmount ?? amount);
   const feeAmount = Number(options.feeAmount ?? 0);
   const totalAmount = Number(options.totalAmount ?? baseAmount);
 
   return (
     <div className="w-full space-y-5 rounded-3xl border border-white/10 bg-white/5 p-5">
+      {paymentPending ? (
+        <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
+          A cobrança está sendo confirmada. Para evitar pagamento duplicado, não envie o cartão novamente.
+        </div>
+      ) : null}
+
       <div className="flex items-center gap-2">
         <CreditCard className="h-4 w-4 text-primary" />
         <h4 className="text-xs font-black uppercase tracking-[0.2em] text-foreground">
@@ -283,11 +301,15 @@ export function CardPaymentPanel({
         variant="neon"
         className="h-12 w-full text-sm font-black uppercase tracking-widest"
         onClick={submit}
-        disabled={submitting}
+        disabled={submitting || paymentPending}
       >
         {submitting ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...
+          </>
+        ) : paymentPending ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Aguardando confirmação
           </>
         ) : (
           <>
