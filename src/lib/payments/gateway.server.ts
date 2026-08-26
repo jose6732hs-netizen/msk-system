@@ -111,9 +111,10 @@ export async function createPixWithFailover(
   },
   preferred?: ProviderId | null,
 ) {
-  const order = await resolveProviderOrder(preferred);
+  const { order, failover } = await resolveProviderOrder(preferred);
   const { absoluteUrl } = await import("../app-url.server");
   const errors: string[] = [];
+  let attempted = 0;
 
   for (const provider of order) {
     try {
@@ -122,6 +123,9 @@ export async function createPixWithFailover(
         errors.push(`${PROVIDER_LABEL[provider]}: não configurado`);
         continue;
       }
+      // Com failover desligado só o primeiro provedor configurado é usado.
+      if (!failover && attempted > 0) break;
+      attempted += 1;
       const service = await getService(provider);
       const callbackUrl = await absoluteUrl(webhookPathFor(provider)).catch(() => "");
       const result = await service.createPix({
@@ -141,6 +145,7 @@ export async function createPixWithFailover(
   }
 
   throw new Error(`GATEWAY_INDISPONIVEL — ${errors.join(" | ")}`);
+
 }
 
 /** Resumo dos dois provedores + preferência atual (para o painel admin). */
