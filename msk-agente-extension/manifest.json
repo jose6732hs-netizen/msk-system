@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MSK Agente — Guardião Lovable",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Agente MSK multiusuário com conta, licença, GitHub persistente, projetos, chat, skills e histórico.",
   "permissions": [
     "storage",
@@ -12,10 +12,7 @@
   ],
   "host_permissions": [
     "https://lovable.dev/*",
-    "https://*.lovable.dev/*",
-    "https://*.supabase.co/*",
-    "https://msksystem.online/*",
-    "https://msk-sistem.lovable.app/*"
+    "https://msksystem.online/*"
   ],
   "background": {
     "service_worker": "background.js",
@@ -24,8 +21,7 @@
   "content_scripts": [
     {
       "matches": [
-        "https://lovable.dev/*",
-        "https://*.lovable.dev/*"
+        "https://lovable.dev/*"
       ],
       "js": [
         "msk-license.js",
@@ -44,8 +40,7 @@
         "assets/*"
       ],
       "matches": [
-        "https://lovable.dev/*",
-        "https://*.lovable.dev/*"
+        "https://lovable.dev/*"
       ]
     }
   ],
