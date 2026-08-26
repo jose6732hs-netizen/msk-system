@@ -36,15 +36,15 @@ export function WhatsappSupportButton() {
     <aside
       role="status"
       aria-live="polite"
-      className="fixed inset-x-0 top-0 z-[110] border-b border-emerald-400/20 bg-[#07110b]/98 shadow-[0_10px_28px_-18px_rgba(16,185,129,0.75)] backdrop-blur-xl"
+      className="fixed inset-x-0 top-0 z-[110] border-b border-red-400/30 bg-[#220809]/98 shadow-[0_10px_28px_-18px_rgba(239,68,68,0.75)] backdrop-blur-xl"
     >
       <div className="mx-auto flex min-h-[88px] w-full max-w-7xl items-center gap-3 px-3 py-2.5 sm:px-5 md:min-h-[64px] md:gap-4 md:px-6 md:py-2">
         <div className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-amber-300/25 bg-amber-300/10 md:h-10 md:w-10">
-            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-amber-300 shadow-[0_0_10px_rgba(252,211,77,0.8)]" />
+          <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-red-300/30 bg-red-400/10 md:h-10 md:w-10">
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-red-300 shadow-[0_0_10px_rgba(252,165,165,0.85)]" />
             <svg
               viewBox="0 0 24 24"
-              className="h-5 w-5 text-amber-300"
+              className="h-5 w-5 text-red-200"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
@@ -60,17 +60,17 @@ export function WhatsappSupportButton() {
 
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-              <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-amber-200 md:text-[11px]">
+              <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-red-200 md:text-[11px]">
                 Aviso de atendimento
               </span>
-              <span className="hidden items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-300 sm:flex">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-300" />
+              <span className="hidden items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-red-300/90 sm:flex">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-300" />
                 Canal alternativo ativo
               </span>
             </div>
 
-            <p className="mt-0.5 text-[12px] font-medium leading-snug text-white/88 sm:text-[13px] md:truncate md:text-sm">
-              Nosso WhatsApp principal está temporariamente indisponível. Enquanto normalizamos o atendimento, fale com a equipe pelo número secundário.
+            <p className="mt-0.5 text-[12px] font-medium leading-snug text-white/92 sm:text-[13px] md:truncate md:text-sm">
+              Nosso WhatsApp principal está temporariamente indisponível devido à alta demanda de mensagens recebidas. Enquanto normalizamos o atendimento, fale com a equipe pelo número secundário.
             </p>
           </div>
         </div>
