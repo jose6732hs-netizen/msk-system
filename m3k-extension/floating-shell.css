@@ -146,3 +146,17 @@
   pointer-events: auto !important;
   display: block !important;
 }
+
+/* Mobile: keep the host page usable and grow the card upward from the bottom. */
+@media (max-width: 520px) {
+  #ofg-floating-window {
+    left: 10px !important;
+    right: 10px !important;
+    top: auto !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    height: min(500px, 56dvh) !important;
+    max-height: calc(100dvh - 112px) !important;
+    border-radius: 18px !important;
+  }
+}
