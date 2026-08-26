@@ -34,6 +34,9 @@
   const stage = root.querySelector(".msk-stage");
   const mirrorSwitch = root.querySelector(".msk-switch");
   const updateButton = root.querySelector(".msk-apply-update");
+  const syncGithub = root.querySelector('[data-sync="github"]');
+  const syncDatabase = root.querySelector('[data-sync="database"]');
+  const syncLovable = root.querySelector('[data-sync="lovable"]');
   let dragging = false, moved = false, dx = 0, dy = 0;
   let lastPrompt = "", lastAssistant = "", pendingTimer = 0;
   let agentActive = false;
@@ -311,6 +314,7 @@
     const repo = visibleRepo || (cached?.links?.repo ? `https://github.com/${String(cached.links.repo).replace("https://github.com/", "")}` : "");
     const db = supabaseRef() || cached?.links?.db || "";
     if (!repo) return { ok: false, error: "Você ainda não está conectado ao GitHub. Clique em “Conectar este projeto” antes de enviar uma mensagem." };
+    if (!db) return { ok: false, error: "O banco de dados deste projeto ainda não foi conectado ou identificado. Conecte o Lovable Cloud ou seu banco antes de enviar uma mensagem." };
     if (!agentActive || connectedContext.projectId !== id) {
       const status = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_AGENT_STATUS", payload: { lovable_project_id: id, project_name: projectName() } }, resolve));
       if (!status?.connected) return { ok: false, error: "O GitHub foi identificado, mas este projeto ainda não está conectado ao MSK Agente. Clique em “Conectar este projeto”." };
@@ -326,7 +330,12 @@
     placePanel();
     root.querySelector('[data-tab="chat"]').click();
     setStage("Validando conexões", "running");
-    const context = await readMessageContext();
+    let context;
+    try {
+      context = await readMessageContext();
+    } catch (error) {
+      context = { ok: false, error: `Não foi possível validar a conexão do projeto: ${error?.message || "tente novamente"}.` };
+    }
     if (!context.ok) {
       add(context.error, "agent", "error");
       setStage("Conexão necessária", "error");
@@ -1063,9 +1072,6 @@
   };
   const supabaseRef = () => [...document.querySelectorAll('a[href*="supabase.com/dashboard/project/"]')]
     .map(a => a.href.match(/\/project\/([a-z0-9-]+)/i)?.[1]).find(Boolean) || "";
-  const syncGithub = root.querySelector('[data-sync="github"]');
-  const syncDatabase = root.querySelector('[data-sync="database"]');
-  const syncLovable = root.querySelector('[data-sync="lovable"]');
   const refreshSyncCards = () => {
     const repo = repoUrl();
     const db = supabaseRef();
