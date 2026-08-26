@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight } from "@/lib/license.server";
-import { handleAccountTokenValidation } from "@/lib/account-license-validate.server";
+import { handleUnifiedLicenseValidation } from "@/lib/unified-license-validate.server";
 
 function browserExtensionOrigin(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/public/license/heartbeat")({
       OPTIONS: ({ request }) => extensionPreflight(request),
       POST: async ({ request }) =>
         withExtensionCors(
-          await handleAccountTokenValidation(request, "heartbeat", 30, "extension"),
+          await handleUnifiedLicenseValidation(request, "heartbeat", 30),
           request,
         ),
     },
