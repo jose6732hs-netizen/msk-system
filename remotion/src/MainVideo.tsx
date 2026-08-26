@@ -127,16 +127,19 @@ export const MainVideo: React.FC = () => (
   <AbsoluteFill style={{ backgroundColor: "#05030A" }}>
     <Backdrop />
     <TransitionSeries>
-      {SCENES.map((s, i) => (
-        <>
-          {i > 0 ? (
-            <TransitionSeries.Transition key={`t-${i}`} presentation={presentation(s.p)} timing={timing} />
-          ) : null}
+      {SCENES.flatMap((s, i) => {
+        const nodes = [
           <TransitionSeries.Sequence key={`s-${i}`} durationInFrames={s.d}>
             {s.el}
-          </TransitionSeries.Sequence>
-        </>
-      ))}
+          </TransitionSeries.Sequence>,
+        ];
+        if (i > 0) {
+          nodes.unshift(
+            <TransitionSeries.Transition key={`t-${i}`} presentation={presentation(s.p)} timing={timing} />,
+          );
+        }
+        return nodes;
+      })}
     </TransitionSeries>
   </AbsoluteFill>
 );
