@@ -116,6 +116,7 @@
     $("form-state").style.display = "none";
     $("ok-state").classList.add("open");
     card.classList.add("open");
+    menu.classList.add("open");
     $("plan").textContent = lic.plan_name || lic.plan || "Licença ativa";
     const end = lic.expires_at ? Date.parse(lic.expires_at) : null;
     const render = () => { $("clock").textContent = fmt(end ? end - Date.now() : null); };

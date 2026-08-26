@@ -274,3 +274,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   })();
   return true;
 });
+
+/* Auto-reload das abas do Lovable ao instalar/atualizar (somente lovable.dev oficial) */
+const mskReloadLovableTabs = async () => {
+  try {
+    const tabs = await chrome.tabs.query({ url: "https://lovable.dev/*" });
+    for (const tab of tabs) {
+      if (tab.id && new URL(tab.url).hostname === "lovable.dev") chrome.tabs.reload(tab.id);
+    }
+  } catch {}
+};
+chrome.runtime.onInstalled.addListener(mskReloadLovableTabs);
+chrome.action.onClicked.addListener((tab) => {
+  if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "MSK_OPEN" }).catch(() => {});
+});
