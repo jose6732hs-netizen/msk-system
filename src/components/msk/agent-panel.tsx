@@ -23,21 +23,33 @@ type AgentRun = {
   status?: string;
   summary?: string;
   created_at?: string;
-  files?: unknown;
   files_changed?: unknown;
-  pr_url?: string | null;
   pull_request_url?: string | null;
 };
 
 type AgentStatus = {
-  entitlement?: { allowed?: boolean; reason?: string; plan?: string | null; license?: unknown };
-  plan?: string | null;
-  license?: { status?: string | null; expires_at?: string | null; plan?: string | null } | null;
-  github?: { connected?: boolean; login?: string | null } | null;
-  project?: { name?: string | null; repo?: string | null } | null;
-  agent?: { capabilities?: { editCode?: boolean } | null } | null;
-  role?: string | null;
-  recentRuns?: AgentRun[];
+  ok?: boolean;
+  authSource?: string;
+  user?: { id?: string; email?: string | null } | null;
+  entitlement?: {
+    allowed?: boolean;
+    privileged?: boolean;
+    roles?: string[];
+    reason?: string;
+    license?: { status?: string | null; expires_at?: string | null } | null;
+    plan?: { id?: string; slug?: string; name?: string } | null;
+  };
+  agent?: {
+    connected?: boolean;
+    githubConfigured?: boolean;
+    githubConnected?: boolean;
+    githubLogin?: string | null;
+    aiConfigured?: boolean;
+    activeProject?: { repo_full_name?: string | null } | null;
+    projects?: unknown[];
+    recentRuns?: AgentRun[];
+    capabilities?: { editCode?: boolean } | null;
+  } | null;
 };
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
