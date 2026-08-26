@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, PlugZap, ShieldCheck, Star, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -116,6 +116,9 @@ function ProviderCard({
     apiBaseUrl: string;
     publicKeyLast4: string | null;
     secretKeyLast4: string | null;
+    publicKeyMasked?: string | null;
+    secretKeyMasked?: string | null;
+    configured?: boolean;
     hasWebhookSecret: boolean;
     webhookPath: string;
   };
@@ -133,7 +136,12 @@ function ProviderCard({
   const [publicKey, setPublicKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
-  const [baseUrl, setBaseUrl] = useState("");
+  // A URL base fica sempre visível e salva no painel.
+  const [baseUrl, setBaseUrl] = useState(provider.apiBaseUrl);
+
+  useEffect(() => {
+    setBaseUrl(provider.apiBaseUrl);
+  }, [provider.apiBaseUrl]);
 
   const webhookUrl =
     typeof window !== "undefined" ? `${window.location.origin}${provider.webhookPath}` : "";
@@ -145,13 +153,12 @@ function ProviderCard({
         ...(publicKey ? { publicKey } : {}),
         ...(secretKey ? { secretKey } : {}),
         ...(webhookSecret ? { webhookSecret } : {}),
-        ...(baseUrl ? { baseUrl } : {}),
+        ...(baseUrl && baseUrl !== provider.apiBaseUrl ? { baseUrl } : {}),
         ...(typeof active === "boolean" ? { active } : {}),
       });
       setPublicKey("");
       setSecretKey("");
       setWebhookSecret("");
-      setBaseUrl("");
       toast.success(`${provider.label}: configurações salvas com segurança.`);
     } catch (e) {
       toast.error((e as Error).message);
@@ -194,32 +201,58 @@ function ProviderCard({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Input
-          className="sm:col-span-2"
-          type="url"
-          placeholder={provider.apiBaseUrl}
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-        />
-        <Input
-          type="password"
-          placeholder={`x-public-key da ${provider.label}`}
-          value={publicKey}
-          onChange={(e) => setPublicKey(e.target.value)}
-        />
-        <Input
-          type="password"
-          placeholder={`x-secret-key da ${provider.label}`}
-          value={secretKey}
-          onChange={(e) => setSecretKey(e.target.value)}
-        />
-        <Input
-          className="sm:col-span-2"
-          type="password"
-          placeholder="Segredo/token do webhook"
-          value={webhookSecret}
-          onChange={(e) => setWebhookSecret(e.target.value)}
-        />
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">
+            URL base da API (sempre salva)
+          </label>
+          <Input
+            type="url"
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">
+            API Key pública (x-public-key)
+          </label>
+          <Input
+            type="text"
+            placeholder={provider.publicKeyMasked ?? `x-public-key da ${provider.label}`}
+            value={publicKey}
+            onChange={(e) => setPublicKey(e.target.value)}
+          />
+          <p className="mt-1 text-[0.65rem] text-muted-foreground">
+            Salva: <span className="font-mono text-primary">{provider.publicKeyMasked ?? "não cadastrada"}</span>
+          </p>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">
+            API Key secreta (x-secret-key)
+          </label>
+          <Input
+            type="password"
+            placeholder={provider.secretKeyMasked ?? `x-secret-key da ${provider.label}`}
+            value={secretKey}
+            onChange={(e) => setSecretKey(e.target.value)}
+          />
+          <p className="mt-1 text-[0.65rem] text-muted-foreground">
+            Salva: <span className="font-mono text-primary">{provider.secretKeyMasked ?? "não cadastrada"}</span>
+          </p>
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">
+            Segredo do webhook (opcional)
+          </label>
+          <Input
+            type="password"
+            placeholder={provider.hasWebhookSecret ? "•••••••••••• (configurado)" : "Token do webhook"}
+            value={webhookSecret}
+            onChange={(e) => setWebhookSecret(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
