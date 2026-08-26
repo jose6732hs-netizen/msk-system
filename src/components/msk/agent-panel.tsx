@@ -4,7 +4,7 @@ import {
   AlertTriangle,
   Bot,
   CheckCircle2,
-  Github as GithubIcon,
+  GitBranch,
   History,
   Loader2,
   RefreshCw,
@@ -211,7 +211,7 @@ export function AgentPanel() {
                 : "Conectado"
               : "Não conectado"
           }
-          icon={<GithubIcon className="h-3.5 w-3.5" />}
+          icon={<GitBranch className="h-3.5 w-3.5" />}
         />
         <StatusChip
           ok={!!status?.project?.name || !!status?.project?.repo}
