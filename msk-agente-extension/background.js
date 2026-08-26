@@ -77,7 +77,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const signedSession = await activeAuthSession();
       if (signedSession && ["MSK_AGENT_RUN", "MSK_TASK_STATUS", "MSK_TASK_APPROVE", "MSK_AGENT_STATUS"].includes(message.type)) {
         const v2Actions = { MSK_AGENT_RUN: "run", MSK_TASK_STATUS: "run-status", MSK_TASK_APPROVE: "approve-run", MSK_AGENT_STATUS: "connection-status" };
-        const payload = message.type === "MSK_TASK_APPROVE" ? { ...message.payload, confirmed: true } : message.payload;
+        let payload = message.type === "MSK_TASK_APPROVE" ? { ...message.payload, confirmed: true } : message.payload;
+        if (message.type === "MSK_AGENT_RUN") {
+          const projectId = String(payload?.lovable_project_id || "").trim();
+          if (!projectId) return sendResponse({ ok: false, code: "PROJECT_REQUIRED", error: "Conecte-se a um projeto primeiro." });
+          const links = await mskReadLinks(projectId);
+          const repositoryUrl = String(payload?.repository_url || links?.repo || "").trim();
+          if (!repositoryUrl) return sendResponse({ ok: false, code: "GITHUB_REQUIRED", error: "Você ainda não está conectado ao GitHub. Conecte este projeto antes de enviar mensagens." });
+          payload = { ...payload, repository_url: repositoryUrl, database_ref: payload?.database_ref || links?.db || null, connection_context: { github: repositoryUrl, database: payload?.database_ref || links?.db || null } };
+        }
         const result = await v2Api(v2Actions[message.type], payload);
         if (message.type === "MSK_AGENT_STATUS" && result.ok) return sendResponse({ ...result, connected: !!result.authorized && !!result.activeProjectId, repository: result.activeProject?.repo_full_name || null });
         return sendResponse(result);
@@ -86,6 +94,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       const action = actions[message.type];
       try {
         const projectId = String(message.payload?.lovable_project_id || "");
+        if (message.type === "MSK_AGENT_RUN") {
+          if (!projectId) return sendResponse({ ok: false, code: "PROJECT_REQUIRED", error: "Conecte-se a um projeto primeiro." });
+          const links = await mskReadLinks(projectId);
+          const repositoryUrl = String(message.payload?.repository_url || links?.repo || "").trim();
+          if (!repositoryUrl) return sendResponse({ ok: false, code: "GITHUB_REQUIRED", error: "Você ainda não está conectado ao GitHub. Conecte este projeto antes de enviar mensagens." });
+          message.payload = { ...message.payload, repository_url: repositoryUrl, database_ref: message.payload?.database_ref || links?.db || null, connection_context: { github: repositoryUrl, database: message.payload?.database_ref || links?.db || null } };
+        }
         const { mskSessions = {} } = await chrome.storage.local.get("mskSessions");
         const mskSession = String(mskSessions[projectId] || "");
         const response = await fetch(`${cfg.supabaseUrl.replace(/\/$/, "")}/functions/v1/msk-agent?action=${action}`, {
