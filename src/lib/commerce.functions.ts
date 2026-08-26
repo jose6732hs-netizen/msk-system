@@ -37,6 +37,8 @@ export const startPixCheckout = createServerFn({ method: "POST" })
       name: name(context.claims),
       planId: data.planId ?? null,
       items: data.items ?? null,
+      companion: data.companion ?? null,
+
       affiliateCode: data.affiliateCode ?? null,
       resellerCode: data.resellerCode ?? null,
       document: data.document,
