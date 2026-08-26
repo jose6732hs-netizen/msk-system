@@ -327,6 +327,21 @@ export function PixDialog({
                     </div>
                   )}
 
+                  {/* Cartão de crédito (AtomoPay) — aparece só quando habilitado no painel. */}
+                  <div className="mt-6 w-full">
+                    <CardPaymentPanel
+                      transactionId={pix.transactionId}
+                      amount={pix.amount}
+                      onPaid={() => {
+                        setStatus("PAID");
+                        navigate({ to: "/obrigado", search: { transactionId: pix.transactionId } });
+                        onPaid();
+                      }}
+                    />
+                  </div>
+
+
+
                   <div className="mt-8 flex items-center gap-3 text-muted-foreground">
                     <div className="h-4 w-4 relative">
                       <div className="absolute inset-0 border-2 border-primary/30 rounded-full animate-ping" />
