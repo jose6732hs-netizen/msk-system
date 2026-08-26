@@ -101,3 +101,10 @@ body{
 .lic-plan{margin:0;color:var(--lic-green);font-weight:700;font-size:14px}
 .lic-exp{margin:6px 0 0;color:var(--lic-muted);font-size:12.5px}
 .lic-redirect{margin:16px 0 0;font-size:12.5px;color:var(--lic-muted)}
+
+/* Contador regressivo da licença ativada */
+.lic-countdown{margin:14px auto 0;max-width:320px;text-align:center;padding:12px 14px;border-radius:14px;background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.08)}
+.lic-countdown-label{display:block;font-size:9px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.lic-countdown-clock{display:block;margin-top:6px;font-family:ui-monospace,monospace;font-size:24px;font-weight:900;color:#22c55e;text-shadow:0 0 18px rgba(34,197,94,.45)}
+.lic-countdown-bar{margin-top:10px;height:6px;width:100%;border-radius:99px;background:rgba(255,255,255,.1);overflow:hidden}
+.lic-countdown-bar > i{display:block;height:100%;width:100%;background:#22c55e;transition:width 1s linear,background .4s ease}

@@ -26,7 +26,13 @@
       </div>
 
       <form class="lic-form" id="lic-form" autocomplete="off">
-        <label for="lic-token">TOKEN DE LICENÇA</label>
+        <label for="lic-email">E-MAIL DA SUA CONTA MSK</label>
+        <div class="lic-input-wrap">
+          <input id="lic-email" name="email" type="email" spellcheck="false"
+                 placeholder="voce@email.com" autocomplete="email">
+        </div>
+
+        <label for="lic-token">LICENÇA</label>
         <div class="lic-input-wrap">
           <input id="lic-token" name="token" type="text" spellcheck="false"
                  placeholder="MSK-XXXX-XXXX-XXXX" aria-describedby="lic-msg">
@@ -41,9 +47,9 @@
       </form>
 
       <ul class="lic-steps">
-        <li><b>1</b> Cole seu token de acesso</li>
+        <li><b>1</b> Informe seu e-mail e a licença</li>
         <li><b>2</b> Validamos com o servidor MSK</li>
-        <li><b>3</b> A Lovable abre já liberada</li>
+        <li><b>3</b> A contagem começa nesta ativação</li>
       </ul>
 
       <footer class="lic-foot">
@@ -58,6 +64,12 @@
       <h2>Licença ativada</h2>
       <p class="lic-plan" id="lic-plan"></p>
       <p class="lic-exp" id="lic-exp"></p>
+
+      <div class="lic-countdown" id="lic-countdown" hidden>
+        <span class="lic-countdown-label">Tempo restante de uso</span>
+        <span class="lic-countdown-clock" id="lic-countdown-clock">--d 00:00:00</span>
+        <div class="lic-countdown-bar"><i id="lic-countdown-fill"></i></div>
+      </div>
       <p class="lic-redirect" id="lic-redirect">Abrindo a Lovable com a extensão liberada…</p>
       <button class="lic-btn lic-btn-ghost" id="lic-open">ABRIR AGORA</button>
     </section>

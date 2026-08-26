@@ -11,6 +11,8 @@ import { resolvePlanDuration } from "./plan-duration";
 
 export const validateSchema = z.object({
   token: z.string().min(8).max(64),
+  // Login da extensão: e-mail + licença.
+  email: z.string().email().max(160).optional(),
   device_fingerprint: z.string().min(8).max(256).optional(),
   installation_id: z.string().min(8).max(128).optional(),
   // Compatibilidade com builds antigos da MSK COPY.
@@ -115,6 +117,35 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     );
   }
 
+  // Login e-mail + licença: quando o e-mail é enviado, ele precisa ser o dono da licença.
+  if (parsed.data.email) {
+    const sent = parsed.data.email.trim().toLowerCase();
+    const { data: owner } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", license.user_id)
+      .maybeSingle();
+    const ownerEmail = String((owner as any)?.email ?? "").trim().toLowerCase();
+    if (!ownerEmail || ownerEmail !== sent) {
+      await logEvent({
+        license_id: license.id,
+        user_id: license.user_id,
+        event_type: "email_mismatch",
+        metadata: { bucket },
+      });
+      return respond(
+        {
+          success: false,
+          valid: false,
+          error: "EMAIL_MISMATCH",
+          code: "EMAIL_MISMATCH",
+          message: "Este e-mail não corresponde ao dono desta licença.",
+        },
+        403,
+      );
+    }
+  }
+
   const identity = parsed.data.installation_id ?? parsed.data.device_fingerprint ?? parsed.data.deviceId;
   if (!identity) {
     return respond({ success: false, valid: false, error: "INVALID_REQUEST", code: "INVALID_REQUEST" }, 400);
@@ -184,7 +215,52 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     device = data as DeviceRow | null;
   }
 
+  const ipHash = await hashValue(ip);
+
+  // Reinstalou a extensão? O mesmo IP reaproveita o slot já registrado,
+  // em vez de consumir um novo dispositivo da licença.
   if (!device && license.status === "active") {
+    const { data: sameIp } = await supabaseAdmin
+      .from("license_devices")
+      .select("id,status")
+      .eq("license_id", license.id)
+      .eq("last_ip_hash", ipHash)
+      .eq("status", "active")
+      .order("last_seen", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sameIp) {
+      await supabaseAdmin
+        .from("license_devices")
+        .update({
+          device_hash: deviceHash,
+          installation_id: parsed.data.installation_id ?? parsed.data.deviceId ?? null,
+        } as never)
+        .eq("id", (sameIp as DeviceRow).id);
+      device = sameIp as DeviceRow;
+    }
+  }
+
+  if (!device && license.status === "active") {
+    const { count } = await supabaseAdmin
+      .from("license_devices")
+      .select("id", { count: "exact", head: true })
+      .eq("license_id", license.id)
+      .eq("status", "active");
+    const used = count ?? 0;
+    if (license.max_devices > 0 && used >= license.max_devices) {
+      return respond(
+        {
+          success: false,
+          valid: false,
+          error: "DEVICE_LIMIT",
+          code: "DEVICE_LIMIT",
+          message: "Limite de dispositivos atingido para esta licença.",
+        },
+        403,
+      );
+    }
+
     const { data: newDev, error: devErr } = await supabaseAdmin
       .from("license_devices")
       .insert({
@@ -193,7 +269,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
         installation_id: parsed.data.installation_id ?? parsed.data.deviceId ?? null,
         status: "active",
         last_seen: new Date().toISOString(),
-        last_ip_hash: await hashValue(ip),
+        last_ip_hash: ipHash,
       } as never)
       .select("id,status")
       .single();
@@ -239,12 +315,14 @@ export async function handleValidation(request: Request, bucket: string, limit: 
       plan: license.plans?.slug ?? null,
       plan_name: license.plans?.name ?? null,
       expires_at: license.expires_at,
+      activated_at: (license as unknown as { activated_at?: string | null }).activated_at ?? null,
       max_devices: license.max_devices,
       devices_used: 1,
       features: active ? (license.plans?.features ?? LOCKED) : LOCKED,
     },
     // Aliases para builds antigos da extensão.
     expiresAt: license.expires_at,
+    email_required: true,
     planName: license.plans?.name ?? null,
     planSlug: license.plans?.slug ?? null,
     timestamp: Date.now(),
