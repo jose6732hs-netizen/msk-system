@@ -1,8 +1,8 @@
 import { z } from "zod";
 import {
-  clientIp,
   findLicenseByToken,
   hashToken,
+  hashValue,
   jsonResponse,
   logEvent,
   rateLimit,
@@ -41,13 +41,6 @@ type LicenseRow = {
     duration_unit?: string | null;
     features: Record<string, boolean> | null;
   } | null;
-};
-
-const LOCKED = {
-  chat: false,
-  projects: false,
-  download: false,
-  background_tools: false,
 };
 
 function hasOwn(metadata: Record<string, unknown>, key: string) {
@@ -136,21 +129,7 @@ export async function handleExtensionValidation(
   limit: number,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const ip = clientIp(request);
   const respond = (body: unknown, status = 200) => jsonResponse(body, status, request);
-
-  if (!(await rateLimit(bucket, ip, limit))) {
-    return respond(
-      {
-        success: false,
-        valid: false,
-        error: "RATE_LIMITED",
-        code: "RATE_LIMITED",
-        message: "Muitas tentativas em pouco tempo. Aguarde alguns instantes e tente novamente.",
-      },
-      429,
-    );
-  }
 
   const parsed = extensionLicenseSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
@@ -166,7 +145,25 @@ export async function handleExtensionValidation(
     );
   }
 
-  const license = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
+  // Rate limit por credencial, não por IP. Assim usuários em outro provedor,
+  // VPN, CGNAT ou rede compartilhada não bloqueiam uns aos outros.
+  const credentialKey = await hashValue(
+    `${parsed.data.email.trim().toLowerCase()}::${parsed.data.token.trim().toUpperCase()}`,
+  );
+  if (!(await rateLimit(bucket, `extension:${credentialKey}`, limit))) {
+    return respond(
+      {
+        success: false,
+        valid: false,
+        error: "RATE_LIMITED",
+        code: "RATE_LIMITED",
+        message: "Muitas tentativas em pouco tempo. Aguarde alguns instantes e tente novamente.",
+      },
+      429,
+    );
+  }
+
+  let license = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
   if (!license) {
     const sentHash = await hashToken(parsed.data.token);
     await logEvent({
@@ -222,7 +219,13 @@ export async function handleExtensionValidation(
     .select("email")
     .eq("id", license.user_id)
     .maybeSingle();
-  const ownerEmail = String((owner as any)?.email ?? "").trim().toLowerCase();
+
+  let ownerEmail = String((owner as any)?.email ?? "").trim().toLowerCase();
+  // Contas antigas podem ter o e-mail apenas no Supabase Auth.
+  if (!ownerEmail) {
+    const { data: authOwner } = await supabaseAdmin.auth.admin.getUserById(license.user_id);
+    ownerEmail = String(authOwner?.user?.email ?? "").trim().toLowerCase();
+  }
 
   if (!ownerEmail || ownerEmail !== sentEmail) {
     await logEvent({
@@ -243,8 +246,9 @@ export async function handleExtensionValidation(
     );
   }
 
-  // Somente a PRIMEIRA ativação inicia a contagem. Reinstalações não entram
-  // neste bloco porque a licença já está active e mantém os mesmos timestamps.
+  // Somente a PRIMEIRA ativação inicia a contagem. O filtro status=inactive
+  // torna a operação atômica: duas instalações simultâneas não conseguem
+  // reiniciar ou estender a mesma licença.
   if (license.status === "inactive") {
     const activatedAt = new Date();
     const duration = await durationForLicense(license);
@@ -254,14 +258,48 @@ export async function handleExtensionValidation(
     };
 
     if (!license.expires_at && !duration.lifetime && Number(duration.milliseconds ?? 0) > 0) {
-      const expiresAt = new Date(activatedAt.getTime() + Number(duration.milliseconds)).toISOString();
-      patch["expires_at"] = expiresAt;
-      license.expires_at = expiresAt;
+      patch["expires_at"] = new Date(
+        activatedAt.getTime() + Number(duration.milliseconds),
+      ).toISOString();
     }
 
-    await supabaseAdmin.from("licenses").update(patch as never).eq("id", license.id);
-    license.status = "active";
-    license.activated_at = activatedAt.toISOString();
+    const { data: activated, error: activationError } = await supabaseAdmin
+      .from("licenses")
+      .update(patch as never)
+      .eq("id", license.id)
+      .eq("status", "inactive")
+      .select("status,activated_at,expires_at")
+      .maybeSingle();
+
+    if (activationError) {
+      await logEvent({
+        license_id: license.id,
+        user_id: license.user_id,
+        event_type: "activation_error",
+        metadata: { bucket, policy: "account_token" },
+      });
+      return respond(
+        {
+          success: false,
+          valid: false,
+          error: "LICENSE_SERVICE_UNAVAILABLE",
+          code: "LICENSE_SERVICE_UNAVAILABLE",
+          message: "Não foi possível confirmar a licença agora. Tente novamente em instantes.",
+        },
+        503,
+      );
+    }
+
+    if (activated) {
+      license.status = String((activated as any).status ?? "active");
+      license.activated_at = (activated as any).activated_at ?? license.activated_at ?? null;
+      license.expires_at = (activated as any).expires_at ?? license.expires_at ?? null;
+    } else {
+      // Outra requisição ativou primeiro. Recarrega os timestamps oficiais em
+      // vez de sobrescrevê-los com uma segunda contagem.
+      const refreshed = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
+      if (refreshed) license = refreshed;
+    }
   }
 
   const active = license.status === "active";
