@@ -332,6 +332,7 @@ function Painel() {
           </div>
         </div>
 
+        <AgentAccessCard />
         <AgentPanel />
 
 
