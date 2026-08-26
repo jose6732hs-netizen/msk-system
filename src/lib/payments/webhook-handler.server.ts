@@ -253,10 +253,23 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
         externalId: providerTxId,
         event: eventType,
         status: mapGatewayStatus(eventType),
-        metadata: { identifier, provider },
+        // provider_status guarda SEMPRE a grafia original do gateway.
+        metadata: { identifier, provider, provider_status: providerStatus, verified: !isMatch },
       });
 
       if (PAID_EVENTS.includes(eventType)) {
+        // Idempotência financeira: um reenvio de webhook nunca reprocessa a venda.
+        if (String(tx.status).toUpperCase() === "PAID") {
+          await supabaseAdmin
+            .from("webhook_events")
+            .update({
+              processed: true,
+              processed_at: new Date().toISOString(),
+              processing_status: "PROCESSED",
+            } as never)
+            .eq("id", eventRowId!);
+          return json({ received: true, duplicate: true });
+        }
         const { finalizePaidTransaction } = await import("@/lib/payments/settle.server");
         // Uma falha na liquidação legada não pode impedir a entrega das licenças.
         await settlePaidTransaction(tx.id).catch((e) =>
@@ -265,6 +278,7 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
         await finalizePaidTransaction(tx.id);
       } else if (FAIL_EVENTS.includes(eventType)) {
         await supabaseAdmin.from("transactions").update({ status: "FAILED" }).eq("id", tx.id);
+
       } else if (REFUND_EVENTS.includes(eventType)) {
         await reverseTransaction(tx.id, "refund");
       } else if (CHARGEBACK_EVENTS.includes(eventType)) {
