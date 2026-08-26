@@ -85,6 +85,7 @@ function Painel() {
     }
   }
   const [token, setToken] = useState<string | null>(null);
+  const [tokens, setTokens] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
@@ -114,14 +115,17 @@ function Painel() {
   });
 
   const license = data?.license as any;
+  const licenses = ((data as any)?.licenses ?? (license ? [license] : [])) as any[];
   const plan = license?.plans;
 
-  async function reveal() {
-    if (!license) return;
+  async function reveal(licenseId?: string) {
+    const targetId = licenseId ?? license?.id;
+    if (!targetId) return;
     setBusy(true);
     try {
-      const res = await revealFn({ data: { licenseId: license.id } });
-      setToken(res.token);
+      const res = await revealFn({ data: { licenseId: targetId } });
+      setTokens((current) => ({ ...current, [targetId]: res.token }));
+      if (targetId === license?.id) setToken(res.token);
       toast.success("Token revelado com sucesso!");
     } catch (e) {
       toast.error((e as Error).message);
