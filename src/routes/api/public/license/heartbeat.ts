@@ -6,8 +6,8 @@ export const Route = createFileRoute("/api/public/license/heartbeat")({
   server: {
     handlers: {
       OPTIONS: ({ request }) => preflight(request),
-      // Intervalo recomendado da extensão: 15 minutos.
-      POST: ({ request }) => handleValidation(request, "heartbeat", 30),
+      // Heartbeat da extensão principal: token de outro produto nunca é aceito.
+      POST: ({ request }) => handleValidation(request, "heartbeat", 30, "extension"),
     },
   },
 });
