@@ -22,7 +22,7 @@ const SCENES: SceneDef[] = [
     p: "up",
     el: (
       <ShotScene
-        src="d-home.png"
+        src="d2-home.png"
         kind="desktop"
         title="A plataforma completa"
         sub="MSK SISTEM"
@@ -69,14 +69,14 @@ const SCENES: SceneDef[] = [
   {
     d: 88,
     p: "down",
-    el: <ShotScene src="d-como-funciona.png" kind="desktop" title="Ativação guiada passo a passo" from={0.05} to={0.3} tilt={5} y={-90} />,
+    el: <ShotScene src="d2-como-funciona.png" kind="desktop" title="Ativação guiada passo a passo" from={0.05} to={0.3} tilt={5} y={-90} />,
   },
   {
     d: 94,
     p: "wipe",
     el: (
       <ShotScene
-        src="d-parceiros.png"
+        src="d2-parceiros.png"
         kind="desktop"
         title="Programa de afiliados"
         sub="30% por venda"
@@ -104,7 +104,7 @@ const SCENES: SceneDef[] = [
   {
     d: 90,
     p: "fade",
-    el: <ShotScene src="d-premiacoes.png" kind="desktop" title="Central de premiações" sub="Metas e ranking" from={0.03} to={0.32} tilt={5} y={-90} />,
+    el: <ShotScene src="d2-premiacoes.png" kind="desktop" title="Central de premiações" sub="Metas e ranking" from={0.03} to={0.32} tilt={5} y={-90} />,
   },
   {
     d: 84,
