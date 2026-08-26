@@ -145,8 +145,11 @@ export function AgentPanel() {
 
   const allowed = status?.entitlement?.allowed !== false && !!status;
   const planLabel =
-    status?.entitlement?.plan ?? status?.plan ?? status?.license?.plan ?? "Sem plano";
-  const runs = status?.recentRuns ?? [];
+    status?.entitlement?.plan?.name ?? status?.entitlement?.plan?.slug ?? "Sem plano";
+  const githubConfigured = status?.agent?.githubConfigured === true;
+  const githubConnected = status?.agent?.githubConnected === true;
+  const activeRepo = status?.agent?.activeProject?.repo_full_name ?? null;
+  const runs: AgentRun[] = status?.agent?.recentRuns ?? [];
 
   async function send() {
     const text = input.trim();
