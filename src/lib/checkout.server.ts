@@ -323,7 +323,7 @@ export async function createPixCheckout(input: {
       amount: finalPrice,
       currency: "BRL",
       status: "PENDING",
-      metadata: { plan: planSlug, bulk: isBulk } as never,
+      metadata: { plan: planSlug, bulk: isBulk, ...(companionMeta ?? {}) } as never,
     })
     .select("id")
     .single();
