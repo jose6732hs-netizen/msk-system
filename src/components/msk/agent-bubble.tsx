@@ -168,7 +168,7 @@ export function AgentBubble() {
         >
           <div className="flex items-center justify-between gap-2 border-b border-white/10 bg-primary/10 px-4 py-3">
             <div className="flex items-center gap-2">
-              <MskLogo className="h-5 w-5" />
+              <MskLogo size={20} />
               <span className="text-sm font-black uppercase tracking-wider">
                 MSK <span className="neon-text">Agente</span>
               </span>
