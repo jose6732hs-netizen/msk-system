@@ -306,10 +306,10 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
         .from("webhook_events")
         .update({ error: message, processing_status: "FAILED" } as never)
         .eq("id", eventRowId!);
-      return json({ error: "PROCESSING_ERROR", message }, 202);
+      return json({ error: "PROCESSING_ERROR" }, 202);
     }
   } catch (e) {
-    console.error(`[${provider}] erro inesperado no webhook:`, e);
-    return json({ error: "WEBHOOK_ERROR", message: (e as Error).message }, 202);
+    console.error(`[${provider}] erro inesperado no webhook:`, e instanceof Error ? e.message : "unknown_error");
+    return json({ error: "WEBHOOK_ERROR" }, 202);
   }
 }

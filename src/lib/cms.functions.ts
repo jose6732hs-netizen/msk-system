@@ -48,6 +48,7 @@ async function loadPublishedCmsSettings(options: { publicSafe?: boolean } = {}) 
 
   const settings: Record<string, any> = {};
   data?.forEach((item: any) => {
+    if (options.publicSafe && item.key === "vapid_keys") return;
     settings[item.key] = item.value;
   });
   return settings;

@@ -21,8 +21,9 @@ export const Route = createFileRoute("/api/public/cron/renew-licenses")({
           const { runLicenseRenewal } = await import("@/lib/license-renewal.server");
           return jsonResponse({ success: true, ...(await runLicenseRenewal()) }, 200, request);
         } catch (e) {
+          console.error("[cron] Falha ao renovar licenças:", e instanceof Error ? e.message : "unknown_error");
           return jsonResponse(
-            { success: false, error: "RENEWAL_FAILED", message: (e as Error).message },
+            { success: false, error: "RENEWAL_FAILED" },
             500,
             request,
           );
