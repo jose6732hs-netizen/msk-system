@@ -38,6 +38,7 @@
   let lastPrompt = "", lastAssistant = "", pendingTimer = 0;
   let agentActive = false;
   let v2State = null;
+  let connectedContext = { projectId: "", repo: "", db: "" };
   let lastTaskId = "", lastTaskStatus = "";
   let lastTaskCommand = "";
   const historyEl = root.querySelector(".msk-history");
@@ -227,22 +228,13 @@
     if (!mirrorSwitch.checked) return;
     const command = textarea.value.trim();
     if (!command || command === lastPrompt) return;
-    if (agentActive) {
-      event?.preventDefault();
-      event?.stopPropagation();
-      event?.stopImmediatePropagation?.();
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
-      setter?.call(textarea, "");
-      textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      sendToMsk(command);
-      return;
-    }
-    lastPrompt = command;
-    add(command, "user", "sent");
-    add("Enviado ao Lovable. O Guardião está acompanhando a execução…", "agent", "running");
-    setStage("Executando", "running");
-    const form = textarea.closest("form") || textarea.parentElement?.parentElement;
-    setNativeStatus(form, "Executando…", "running");
+    event?.preventDefault();
+    event?.stopPropagation();
+    event?.stopImmediatePropagation?.();
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    setter?.call(textarea, "");
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    sendToMsk(command, textarea);
   };
   document.addEventListener("keydown", event => {
     const textarea = event.target instanceof HTMLTextAreaElement && !root.contains(event.target) ? event.target : null;
@@ -310,15 +302,41 @@
     }, 1800);
     return timer;
   };
-  const sendToMsk = commandValue => {
+  const readMessageContext = async () => {
+    const id = refreshProjectId();
+    if (!id) return { ok: false, error: "Conecte-se a um projeto primeiro. Abra um projeto no editor do Lovable e tente novamente." };
+    const cached = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_GET_LINKS", projectId: id }, resolve));
+    const visibleRepo = repoUrl();
+    const repo = visibleRepo || (cached?.links?.repo ? `https://github.com/${String(cached.links.repo).replace("https://github.com/", "")}` : "");
+    const db = supabaseRef() || cached?.links?.db || "";
+    if (!repo) return { ok: false, error: "Você ainda não está conectado ao GitHub. Clique em “Conectar este projeto” antes de enviar uma mensagem." };
+    if (!agentActive || connectedContext.projectId !== id) {
+      const status = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_AGENT_STATUS", payload: { lovable_project_id: id, project_name: projectName() } }, resolve));
+      if (!status?.connected) return { ok: false, error: "O GitHub foi identificado, mas este projeto ainda não está conectado ao MSK Agente. Clique em “Conectar este projeto”." };
+      agentActive = true;
+    }
+    connectedContext = { projectId: id, repo, db };
+    return { ok: true, ...connectedContext };
+  };
+  const sendToMsk = async (commandValue, nativeInput = null) => {
     const command = String(commandValue ?? input.value).trim();
-    const id = projectId();
-    if (!command || !id) return;
-    if (!agentActive) {
-      add("Conecte este projeto antes de enviar alterações.", "agent", "error");
-      setStage("Projeto não conectado", "error");
+    if (!command) return;
+    root.classList.add("msk-menu-open", "msk-panel-open");
+    placePanel();
+    root.querySelector('[data-tab="chat"]').click();
+    setStage("Validando conexões", "running");
+    const context = await readMessageContext();
+    if (!context.ok) {
+      add(context.error, "agent", "error");
+      setStage("Conexão necessária", "error");
+      if (nativeInput) {
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+        setter?.call(nativeInput, command);
+        nativeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      } else input.value = command;
       return;
     }
+    const id = context.projectId;
     const taskId = crypto.randomUUID();
     lastTaskCommand = command;
     lastTaskId = taskId;
@@ -327,7 +345,7 @@
     add("Comando recebido. Iniciando análise segura do repositório…", "agent", "running");
     setStage("Analisando o projeto", "running");
     const taskTimer = watchTask(taskId, command);
-    chrome.runtime.sendMessage({ type: "MSK_AGENT_RUN", payload: { task_id: taskId, command, lovable_project_id: id, project_name: projectName(), page_url: location.href } }, result => {
+    chrome.runtime.sendMessage({ type: "MSK_AGENT_RUN", payload: { task_id: taskId, command, lovable_project_id: id, project_name: projectName(), page_url: location.href, repository_url: context.repo, database_ref: context.db || null, connection_context: { github: context.repo, database: context.db || null } } }, result => {
       const pending = [...chat.querySelectorAll(".msk-msg.running")].at(-1);
       if (!result?.ok) {
         clearInterval(taskTimer);
@@ -565,8 +583,6 @@
     if (!oauth.popupOpened) { add("O popup foi bloqueado. Libere popups para o Lovable e tente novamente.", "agent", "error"); return; }
     add("Confirme o GitHub no popup. Esta janela fechará automaticamente.", "agent", "running"); setStage("Aguardando GitHub", "running");
   };
-  root.querySelector("[data-action='connect-project']").addEventListener("click", requestFullConnection);
-
   const pollProjectStatus = async () => {
     const id = projectId();
     if (!id) return;
@@ -583,6 +599,7 @@
         setStage("MSK Agente ativo", "done");
         syncGithub.textContent = `GitHub: ${result.repository || "conectado"}`;
         syncGithub.dataset.state = "connected";
+        connectedContext = { projectId: id, repo: result.repository || repoUrl(), db: supabaseRef() || connectedContext.db };
         if (firstActivation) add("Conexão confirmada em tempo real. O MSK já pode executar comandos neste projeto.", "agent", "done");
       } else {
         agentActive = false;
@@ -1251,6 +1268,7 @@
 
       setStage("Ativando MSK Agente", "running");
       await connectProject(links.repo || "");
+      connectedContext = { projectId: id, repo: links.repo || repoUrl(), db: links.db || supabaseRef() };
       await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_CACHE_LINKS", projectId: id, links: { repo: links.repo.replace("https://github.com/", ""), db: links.db } }, resolve));
       refreshSyncCards();
     } catch (error) {
@@ -1285,6 +1303,7 @@
   setTimeout(resumeLovableAction, 900);
 
   root.querySelector(".msk-auto-run").addEventListener("click", requestFullConnection);
+  root.querySelector("[data-action='connect-project']").addEventListener("click", requestFullConnection);
   root.querySelector(".msk-auto-update")?.addEventListener("click", publishUpdateOnly);
 
   chrome.runtime.onMessage.addListener(message => {
