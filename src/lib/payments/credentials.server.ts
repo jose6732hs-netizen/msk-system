@@ -84,6 +84,10 @@ export async function saveCredentialsFor(input: {
   };
   if (input.baseUrl) patch["api_base_url"] = input.baseUrl.replace(/\/+$/, "");
   if (typeof input.active === "boolean") patch["active"] = input.active;
+  // Salvar chaves novas reativa o provedor automaticamente.
+  if (input.publicKey && input.secretKey && typeof input.active !== "boolean") {
+    patch["active"] = true;
+  }
   if (input.publicKey) {
     patch["public_key_encrypted"] = await encryptToken(input.publicKey);
     patch["public_key_last4"] = input.publicKey.slice(-4);
@@ -116,6 +120,10 @@ export async function getSummaryFor(provider: ProviderId) {
     apiBaseUrl: data?.api_base_url ?? DEFAULT_BASE_URL[provider],
     publicKeyLast4: data?.public_key_last4 ?? null,
     secretKeyLast4: data?.secret_key_last4 ?? null,
+    // Visíveis no painel, mas sempre mascaradas — o valor real fica criptografado.
+    publicKeyMasked: data?.public_key_last4 ? `••••••••••••${data.public_key_last4}` : null,
+    secretKeyMasked: data?.secret_key_last4 ? `••••••••••••${data.secret_key_last4}` : null,
+    configured: Boolean(data?.public_key_encrypted && data?.secret_key_encrypted),
     hasWebhookSecret: Boolean(data?.webhook_secret_encrypted),
     updatedAt: data?.updated_at ?? null,
   };
