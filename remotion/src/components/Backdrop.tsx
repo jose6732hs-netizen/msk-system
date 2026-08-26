@@ -1,3 +1,4 @@
+import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate } from "remotion";
 import { COLORS } from "../theme";
 

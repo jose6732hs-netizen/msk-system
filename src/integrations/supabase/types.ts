@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      _msk_migration_payloads: {
+        Row: {
+          cipher_hex: string
+          row_count: number
+          schema_name: string
+          seq: number
+          table_name: string
+        }
+        Insert: {
+          cipher_hex: string
+          row_count: number
+          schema_name: string
+          seq: number
+          table_name: string
+        }
+        Update: {
+          cipher_hex?: string
+          row_count?: number
+          schema_name?: string
+          seq?: number
+          table_name?: string
+        }
+        Relationships: []
+      }
       affiliate_attributions: {
         Row: {
           affiliate_id: string
