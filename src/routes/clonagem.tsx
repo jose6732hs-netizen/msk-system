@@ -7,6 +7,7 @@ import {
   ChevronRight,
   FileArchive,
   Gift,
+  Headphones,
   Loader2,
   LockKeyhole,
   Share2,
@@ -25,10 +26,15 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   getClonerProduct,
   getSmartOffer,
-  startClonerCheckout,
-  startSmartBundleCheckout,
   trackClonerPublic,
 } from "@/lib/cloner.functions";
+import {
+  generateClonerPixPayment,
+  prepareClonerPayment,
+  prepareSmartBundlePayment,
+} from "@/lib/cloner-payment.functions";
+import { PAYMENT_PUBLIC_ERROR } from "@/lib/payments/public-messages";
+import { useSupportLink } from "@/lib/support-link";
 import { saveCartSnapshot, track } from "@/lib/tracking";
 import { getVisitorId, readAffiliateRef, storeAffiliateRef } from "@/lib/urls";
 
@@ -38,10 +44,10 @@ export const Route = createFileRoute("/clonagem")({
       { title: "Clonador de Páginas — MSK SISTEM" },
       {
         name: "description",
-        content: "Planos diário, semanal e mensal do MSK Clonador de Páginas com PIX, licença e download protegido.",
+        content: "Planos diário, semanal e mensal do MSK Clonador de Páginas com PIX ou cartão, licença e download protegido.",
       },
       { property: "og:title", content: "MSK Clonador de Páginas" },
-      { property: "og:description", content: "Escolha seu plano e libere a ferramenta após a confirmação do PIX." },
+      { property: "og:description", content: "Escolha seu plano e finalize com PIX ou cartão em checkout seguro." },
       { property: "og:type", content: "website" },
     ],
   }),
@@ -68,6 +74,7 @@ function clonerImage(plan?: any) {
 function ClonagemPage() {
   const navigate = useNavigate();
   const { billing, complete } = useBilling();
+  const supportLink = useSupportLink("Olá! Tive um problema ao finalizar uma compra do Clonador MSK. Podem me ajudar?");
   const carouselRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -79,6 +86,7 @@ function ClonagemPage() {
   const [offerAccepted, setOfferAccepted] = useState(false);
   const [offerLoading, setOfferLoading] = useState(false);
   const [pix, setPix] = useState<SmartPixState | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   const { data: product, isLoading } = useQuery({
     queryKey: ["cloner-product"],
@@ -175,6 +183,7 @@ function ClonagemPage() {
     setCheckoutPlan(plan);
     setCheckoutOffer(null);
     setOfferAccepted(false);
+    setPaymentError(null);
     track("add_to_cart", { label: plan.name, value: Number(plan.price) });
     toast.success(`${plan.name} adicionado ao pedido`);
     window.setTimeout(() => document.getElementById("cloner-checkout")?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
@@ -193,6 +202,7 @@ function ClonagemPage() {
   }
 
   async function beginCheckout(plan: any, billingOverride?: { document: string; phone: string }) {
+    setPaymentError(null);
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
       localStorage.setItem("msk_cloner_selected_plan", String(plan.id));
@@ -216,9 +226,10 @@ function ClonagemPage() {
 
   async function startSingle(plan: any, payer: { document: string; phone: string }) {
     setBusyPlan(plan.id);
+    setPaymentError(null);
     try {
       const ref = readAffiliateRef() ?? undefined;
-      const result = await startClonerCheckout({
+      const result = await prepareClonerPayment({
         data: {
           planId: plan.id,
           document: payer.document,
@@ -226,21 +237,18 @@ function ClonagemPage() {
           ...(ref ? { affiliateCode: ref } : {}),
         },
       });
-      if (result.checkoutUrl && !result.pixCode) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
       setPix({
         transactionId: result.transactionId,
-        pixCode: result.pixCode,
-        qrCode: result.qrCode,
+        pixCode: null,
+        qrCode: null,
         amount: result.amount,
-        expiresAt: new Date(Date.now() + 2 * 60_000).toISOString(),
-        title: plan.name,
-        subtitle: "Licença + ZIP liberados após o PIX",
+        expiresAt: null,
+        title: result.title,
+        subtitle: result.subtitle,
       });
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      setPaymentError(PAYMENT_PUBLIC_ERROR);
+      toast.error(PAYMENT_PUBLIC_ERROR);
     } finally {
       setBusyPlan(null);
     }
@@ -249,9 +257,10 @@ function ClonagemPage() {
   async function startBundle(plan: any, payer: { document: string; phone: string }) {
     if (!checkoutOffer?.available) return startSingle(plan, payer);
     setBusyPlan(plan.id);
+    setPaymentError(null);
     try {
       const ref = readAffiliateRef() ?? undefined;
-      const result = await startSmartBundleCheckout({
+      const result = await prepareSmartBundlePayment({
         data: {
           mainPlanId: checkoutOffer.main.id,
           companionPlanId: checkoutOffer.companion.id,
@@ -260,24 +269,39 @@ function ClonagemPage() {
           ...(ref ? { affiliateCode: ref } : {}),
         },
       });
-      if (result.checkoutUrl && !result.pixCode) {
-        window.location.href = result.checkoutUrl;
-        return;
-      }
       setPix({
         transactionId: result.transactionId,
-        pixCode: result.pixCode,
-        qrCode: result.qrCode,
+        pixCode: null,
+        qrCode: null,
         amount: result.amount,
-        expiresAt: new Date(Date.now() + 2 * 60_000).toISOString(),
-        title: `${checkoutOffer.main.name} + ${checkoutOffer.companion.name}`,
-        subtitle: `${checkoutOffer.companion.name} com ${checkoutOffer.discountPercent}% OFF no item adicional`,
+        expiresAt: null,
+        title: result.title,
+        subtitle: result.subtitle,
       });
-    } catch (e) {
-      toast.error((e as Error).message);
+    } catch {
+      setPaymentError(PAYMENT_PUBLIC_ERROR);
+      toast.error(PAYMENT_PUBLIC_ERROR);
     } finally {
       setBusyPlan(null);
     }
+  }
+
+  async function generateCurrentPix() {
+    if (!pix) return;
+    const result = await generateClonerPixPayment({ data: { transactionId: pix.transactionId } });
+    if (result.checkoutUrl && !result.pixCode) {
+      window.location.href = result.checkoutUrl;
+      return;
+    }
+    setPix((current) => {
+      if (!current || current.transactionId !== result.transactionId) return current;
+      return {
+        ...current,
+        pixCode: result.pixCode,
+        qrCode: result.qrCode,
+        expiresAt: result.expiresAt,
+      };
+    });
   }
 
   useEffect(() => {
@@ -307,14 +331,14 @@ function ClonagemPage() {
                 {product?.title ?? "MSK Clonador de Páginas"}
               </h1>
               <p className="mt-4 max-w-2xl break-words text-sm font-medium leading-relaxed text-white/55 sm:text-lg">
-                {product?.subtitle ?? "Escolha seu período e libere a ferramenta após o PIX."}
+                {product?.subtitle ?? "Escolha seu período e finalize com PIX ou cartão."}
               </p>
             </div>
             <div className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[.03] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground lg:w-auto"><FileArchive className="h-4 w-4 shrink-0 text-primary" /> {human(product?.zipSizeBytes)}</div>
           </div>
 
           <div className="mt-8 grid gap-3 sm:grid-cols-3">
-            <Feature icon={<Zap />} title="Liberação automática" text="Gateway confirma o PIX antes da entrega." />
+            <Feature icon={<Zap />} title="Liberação automática" text="A compra é liberada somente após a confirmação do pagamento." />
             <Feature icon={<LockKeyhole />} title="ZIP protegido" text="Arquivo privado e link temporário após pagamento." />
             <Feature icon={<Gift />} title="Oferta no checkout" text="Depois de escolher o plano, a melhor combinação aparece no resumo do pedido." />
           </div>
@@ -381,7 +405,7 @@ function ClonagemPage() {
               <div className="space-y-3 p-4 sm:p-5">
                 <article className="flex min-w-0 gap-3 rounded-2xl border border-white/10 bg-black/25 p-3.5 sm:gap-4">
                   <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black sm:h-28 sm:w-28"><img src={clonerImage(checkoutPlan)} alt={checkoutPlan.name} className="h-full w-full object-cover" /></div>
-                  <div className="min-w-0 flex-1"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-widest text-primary">{checkoutPlan.durationLabel}</p><h2 className="mt-1 break-words text-base font-black uppercase leading-tight">{checkoutPlan.name}</h2><p className="mt-2 text-2xl font-black text-primary">{brl(Number(checkoutPlan.price), checkoutPlan.currency)}</p></div><button type="button" aria-label="Remover do pedido" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-red-400" onClick={() => { setCheckoutPlan(null); setCheckoutOffer(null); setOfferAccepted(false); }}><Trash2 className="h-4 w-4" /></button></div></div>
+                  <div className="min-w-0 flex-1"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-widest text-primary">{checkoutPlan.durationLabel}</p><h2 className="mt-1 break-words text-base font-black uppercase leading-tight">{checkoutPlan.name}</h2><p className="mt-2 text-2xl font-black text-primary">{brl(Number(checkoutPlan.price), checkoutPlan.currency)}</p></div><button type="button" aria-label="Remover do pedido" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 text-muted-foreground hover:text-red-400" onClick={() => { setCheckoutPlan(null); setCheckoutOffer(null); setOfferAccepted(false); setPaymentError(null); }}><Trash2 className="h-4 w-4" /></button></div></div>
                 </article>
 
                 {offerLoading ? <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[.025] p-5 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin text-primary" /> Buscando a melhor combinação...</div> : null}
@@ -393,18 +417,36 @@ function ClonagemPage() {
                     busy={busyPlan !== null}
                     onAdd={() => {
                       setOfferAccepted(true);
+                      setPaymentError(null);
                       track("add_to_cart", { label: checkoutOffer.companion.name, value: checkoutOffer.companion.discountedPrice });
                       toast.success(`${checkoutOffer.companion.name} adicionado com ${checkoutOffer.discountPercent}% OFF`);
                     }}
-                    onRemove={() => setOfferAccepted(false)}
+                    onRemove={() => {
+                      setOfferAccepted(false);
+                      setPaymentError(null);
+                    }}
                   />
                 ) : null}
               </div>
 
               <div className="border-t border-white/5 bg-black/20 p-4 sm:p-5">
                 {offerEligible && offerAccepted ? <div className="mb-3 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-emerald-400/15 bg-emerald-400/[.04] px-3 py-2 text-[10px]"><span className="min-w-0 break-words text-muted-foreground">Desconto em {checkoutOffer.companion.name}</span><span className="shrink-0 font-black text-emerald-400">-{brl(Number(checkoutOffer.savings))}</span></div> : null}
-                <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total do pedido</p><p className="mt-1 text-[10px] text-muted-foreground">PIX · licença(s) + ZIP após pagamento</p></div><p className="text-3xl font-black text-primary">{brl(total, checkoutPlan.currency)}</p></div>
-                <Button variant="neon" className="mt-4 min-h-14 w-full rounded-2xl text-xs font-black uppercase" disabled={busyPlan !== null || !product?.enabled} onClick={() => void beginCheckout(checkoutPlan)}>{busyPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />} Gerar PIX do pedido</Button>
+                <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total do pedido</p><p className="mt-1 text-[10px] text-muted-foreground">PIX ou cartão · licença(s) + ZIP após pagamento</p></div><p className="text-3xl font-black text-primary">{brl(total, checkoutPlan.currency)}</p></div>
+                <Button variant="neon" className="mt-4 min-h-14 w-full rounded-2xl text-xs font-black uppercase" disabled={busyPlan !== null || !product?.enabled} onClick={() => void beginCheckout(checkoutPlan)}>{busyPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LockKeyhole className="mr-2 h-4 w-4" />} Finalizar compra</Button>
+
+                {paymentError ? (
+                  <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 p-4" aria-live="polite">
+                    <p className="text-sm font-black text-red-100">Não foi possível abrir o pagamento.</p>
+                    <p className="mt-1 text-xs leading-relaxed text-red-100/70">Tente novamente ou fale com o suporte para continuar sua compra.</p>
+                    {supportLink ? (
+                      <Button asChild type="button" variant="ghost" className="mt-3 w-full border border-white/10 bg-black/20">
+                        <a href={supportLink} target="_blank" rel="noopener noreferrer">
+                          <Headphones className="mr-2 h-4 w-4" /> Contatar o suporte
+                        </a>
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </section>
           ) : null}
@@ -417,7 +459,7 @@ function ClonagemPage() {
       {showPayer ? (
         <div className="fixed inset-0 z-[100010] flex items-end justify-center overflow-y-auto bg-black/85 p-0 backdrop-blur-xl sm:items-center sm:p-4">
           <div className="w-full max-w-md rounded-t-[2rem] border border-white/10 bg-[#0B0B0B] p-5 shadow-2xl sm:rounded-[2rem] sm:p-7">
-            <div className="mb-5"><p className="text-[9px] font-black uppercase tracking-[.2em] text-primary">Dados para o PIX</p><h2 className="mt-1 break-words text-xl font-black uppercase">{offerEligible && offerAccepted ? `${pendingPlan?.name} + ${checkoutOffer.companion.name}` : pendingPlan?.name ?? "Clonador"}</h2></div>
+            <div className="mb-5"><p className="text-[9px] font-black uppercase tracking-[.2em] text-primary">Dados para pagamento</p><h2 className="mt-1 break-words text-xl font-black uppercase">{offerEligible && offerAccepted ? `${pendingPlan?.name} + ${checkoutOffer.companion.name}` : pendingPlan?.name ?? "Clonador"}</h2><p className="mt-2 text-xs text-muted-foreground">Preencha seus dados e, na próxima etapa, escolha PIX ou cartão.</p></div>
             <PayerForm compact onSaved={(b) => { const plan = pendingPlan; setShowPayer(false); setPendingPlan(null); if (plan) void beginCheckout(plan, b); }} />
             <Button variant="ghost" className="mt-2 w-full" onClick={() => { setShowPayer(false); setPendingPlan(null); }}>Cancelar</Button>
           </div>
@@ -433,9 +475,11 @@ function ClonagemPage() {
             setCheckoutPlan(null);
             setCheckoutOffer(null);
             setOfferAccepted(false);
+            setPaymentError(null);
             navigate({ to: "/clonagem-entrega", search: { transactionId } });
           }}
           onRegenerate={() => setPix(null)}
+          onGeneratePix={generateCurrentPix}
         />
       ) : null}
     </div>

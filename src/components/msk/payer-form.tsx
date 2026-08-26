@@ -142,7 +142,7 @@ export function PayerForm({
           disabled={!docOk || !phoneOk || save.isPending}
         >
           {save.isPending && <Loader2 className="mr-2 h-4 w-4 shrink-0 animate-spin" />}
-          Salvar e gerar PIX
+          Continuar para pagamento
         </Button>
         {complete && (
           <Button

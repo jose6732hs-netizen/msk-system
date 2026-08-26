@@ -40,7 +40,6 @@ export async function getCardOptions(amount: number) {
   const installments = enabled
     ? Array.from({ length: settings.maxInstallments }, (_, i) => {
         const n = i + 1;
-        // Sem juros aplicados pelo SaaS: o valor total é dividido igualmente.
         return { installments: n, amount: Math.round((amount / n) * 100) / 100, interest: false };
       })
     : [];
@@ -66,20 +65,32 @@ export async function payTransactionWithCard(input: {
 }): Promise<CardResult> {
   const { data: tx } = await supabaseAdmin
     .from("transactions")
-    .select("id,identifier,user_id,amount,status,metadata,provider_transaction_id")
+    .select("id,identifier,user_id,amount,status,method,metadata,provider_transaction_id,pix_code")
     .eq("id", input.transactionId)
     .maybeSingle();
 
   if (!tx) throw new Error("Pedido não encontrado.");
-  // Isolamento multi-tenant: ninguém paga a cobrança de outra conta.
   if (tx.user_id !== input.userId) throw new Error("Pedido não encontrado.");
-  if (String(tx.status).toUpperCase() === "PAID") {
+
+  const currentStatus = String(tx.status ?? "").toUpperCase();
+  const currentMethod = String(tx.method ?? "PENDING").toUpperCase();
+
+  if (currentStatus === "PAID") {
     return {
       status: "PAID",
       providerStatus: "paid",
       message: atomoStatusMessage("paid"),
       transactionId: tx.id,
     };
+  }
+
+  // Se já existe uma cobrança PIX real para este pedido, o cartão não pode
+  // assumir a mesma transação. A trava é feita no servidor, não só na UI.
+  if (
+    currentMethod === "PIX" &&
+    (Boolean(tx.provider_transaction_id) || Boolean(tx.pix_code))
+  ) {
+    throw new Error("PAYMENT_METHOD_LOCKED");
   }
 
   const { getAtomoSettings } = await import("./atomo-pay.server");
@@ -90,13 +101,17 @@ export async function payTransactionWithCard(input: {
     );
   }
 
-  // Trava atômica contra clique duplo / duas abas / reload:
-  // só quem conseguir mover PENDING -> PROCESSING segue adiante.
+  // Trava atômica contra clique duplo / duas abas / corrida com geração de PIX.
+  // O filtro de method garante que, se o PIX assumir a transação entre a leitura
+  // e este update, o cartão não consegue prosseguir.
+  // Uma tentativa recusada pode ser refeita com outro cartão; estados
+  // PROCESSING/AUTHORIZED/PAID continuam bloqueados contra duplicidade.
   const { data: locked } = await supabaseAdmin
     .from("transactions")
     .update({ status: "PROCESSING", method: "CREDIT_CARD" } as never)
     .eq("id", tx.id)
-    .eq("status", "PENDING")
+    .in("status", ["PENDING", "FAILED"])
+    .in("method", ["PENDING", "CREDIT_CARD", "CARD"])
     .select("id")
     .maybeSingle();
   if (!locked) {
@@ -166,7 +181,6 @@ export async function payTransactionWithCard(input: {
         status: internal === "UNKNOWN" ? "PROCESSING" : internal,
         metadata: {
           ...meta,
-          // Somente dados NÃO sensíveis do cartão.
           card: {
             brand: cardBrand(input.card.number),
             last4: result.cardLast4,
@@ -208,8 +222,11 @@ export async function payTransactionWithCard(input: {
       transactionId: tx.id,
     };
   } catch (e) {
-    // Libera a trava para uma nova tentativa e nunca vaza dados do cartão.
-    await supabaseAdmin.from("transactions").update({ status: "PENDING" } as never).eq("id", tx.id);
+    await supabaseAdmin
+      .from("transactions")
+      .update({ status: "PENDING" } as never)
+      .eq("id", tx.id)
+      .eq("method", "CREDIT_CARD");
     const safe = String((e as Error).message ?? "").replace(/\d{12,19}/g, (m) => maskPan(m));
     console.error("[card] falha ao processar cartão:", safe.slice(0, 300));
     throw new Error(
