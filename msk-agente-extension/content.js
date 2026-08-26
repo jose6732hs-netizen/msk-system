@@ -558,7 +558,7 @@
     if (!oauth.popupOpened) { add("O popup foi bloqueado. Libere popups para o Lovable e tente novamente.", "agent", "error"); return; }
     add("Confirme o GitHub no popup. Esta janela fechará automaticamente.", "agent", "running"); setStage("Aguardando GitHub", "running");
   };
-  root.querySelector("[data-action='connect-project']").addEventListener("click", requestProjectConnection);
+  root.querySelector("[data-action='connect-project']").addEventListener("click", requestFullConnection);
 
   const pollProjectStatus = async () => {
     const id = projectId();
