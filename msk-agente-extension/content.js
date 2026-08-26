@@ -633,7 +633,6 @@
       currentProjectId = id;
       syncLovable.textContent = `Lovable: ${id}`;
       syncLovable.dataset.state = "connected";
-      markStep("lovable", "done");
       setStage("Projeto identificado", "done");
     }
     return id;
