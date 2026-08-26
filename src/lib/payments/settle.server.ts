@@ -13,6 +13,12 @@ function asMeta(value: unknown) {
     : {};
 }
 
+function numberOrNull(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 type DeliveryLine = {
   planId: string;
   name?: string | undefined;
@@ -21,16 +27,11 @@ type DeliveryLine = {
   unitPrice?: number | undefined;
   role?: string | undefined;
   origin?: string | undefined;
+  snapshot?: Record<string, unknown> | undefined;
 };
 
-/**
- * Lê a composição do pedido (compra simples, carrinho em lote, order bump ou combo)
- * e devolve UMA linha por produto — é isso que garante licenças separadas e
- * identificadas por função, mesmo quando a pessoa comprou duas ofertas juntas.
- */
 function deliveryLines(metadata: Record<string, unknown>, planId: string | null): DeliveryLine[] {
   const out: DeliveryLine[] = [];
-
   const raw = Array.isArray(metadata["line_items"])
     ? (metadata["line_items"] as any[])
     : Array.isArray(metadata["lines"])
@@ -40,6 +41,7 @@ function deliveryLines(metadata: Record<string, unknown>, planId: string | null)
   for (const line of raw) {
     const id = String(line?.planId ?? line?.plan_id ?? "");
     if (!id) continue;
+    const snapshot = asMeta(line?.snapshot);
     out.push({
       planId: id,
       name: line?.name ? String(line.name) : undefined,
@@ -48,6 +50,7 @@ function deliveryLines(metadata: Record<string, unknown>, planId: string | null)
       unitPrice: Number(line?.finalPrice ?? line?.unitPrice ?? 0) || undefined,
       role: line?.role ? String(line.role) : undefined,
       origin: line?.origin ? String(line.origin) : undefined,
+      ...(Object.keys(snapshot).length ? { snapshot } : {}),
     });
   }
 
@@ -57,10 +60,8 @@ function deliveryLines(metadata: Record<string, unknown>, planId: string | null)
       if (typeof id === "string" && id) out.push({ planId: id, quantity: 1 });
     }
   }
-
   if (!out.length && planId) out.push({ planId, quantity: 1 });
 
-  // Agrupa por plano preservando a origem da primeira ocorrência.
   const merged = new Map<string, DeliveryLine>();
   for (const line of out) {
     const current = merged.get(line.planId);
@@ -70,11 +71,6 @@ function deliveryLines(metadata: Record<string, unknown>, planId: string | null)
   return [...merged.values()];
 }
 
-/**
- * Emite as licenças do pedido — uma por unidade comprada — de forma idempotente.
- * Cada licença recebe metadados com a função (extensão, clonador, agente),
- * o rótulo do item e a origem (compra, carrinho, oferta adicional).
- */
 async function ensureTransactionLicenses(tx: {
   id: string;
   user_id: string | null;
@@ -106,6 +102,7 @@ async function ensureTransactionLicenses(tx: {
 
     const role = line.role ?? licenseRoleFromSlug(line.slug);
     const purpose = licensePurpose({ slug: line.slug ?? null, role });
+    const snapshotMaxDevices = numberOrNull(line.snapshot?.["maxDevices"]);
 
     for (let i = 0; i < missing; i += 1) {
       try {
@@ -114,7 +111,7 @@ async function ensureTransactionLicenses(tx: {
           planId: line.planId,
           type: "paid",
           transactionId: tx.id,
-          maxDevices: 1,
+          ...(snapshotMaxDevices !== null ? { maxDevices: snapshotMaxDevices } : {}),
           extraMetadata: {
             license_role: purpose.role,
             license_purpose: purpose.label,
@@ -133,7 +130,6 @@ async function ensureTransactionLicenses(tx: {
   }
 }
 
-
 export async function finalizePaidTransaction(transactionId: string) {
   const { data: tx } = await supabaseAdmin
     .from("transactions")
@@ -144,8 +140,6 @@ export async function finalizePaidTransaction(transactionId: string) {
 
   const metadata = asMeta(tx.metadata);
 
-  // A entrega do combo vem ANTES da trava de notificações. Assim uma tentativa
-  // anterior que já notificou, mas falhou ao emitir licença, é autorreparada.
   console.info("[settle] entregando licenças do pedido", tx.identifier);
   await ensureTransactionLicenses({
     id: tx.id,
@@ -156,9 +150,13 @@ export async function finalizePaidTransaction(transactionId: string) {
 
   if (metadata["settled_notified"] === true) return;
 
-  const gross = brl(Number(tx.amount));
+  const cardChargedTotal = numberOrNull(metadata["card_charged_total"]);
+  const customerAmount = cardChargedTotal !== null && cardChargedTotal > 0
+    ? cardChargedTotal
+    : Number(tx.amount);
+  const paidLabel = brl(customerAmount);
+  const baseLabel = brl(Number(tx.amount));
 
-  // 1. Comissão do afiliado (também envia o push de comissão ao afiliado).
   const { processInternalCommission } = await import("@/lib/parceiro/internal-affiliate.server");
   await processInternalCommission(transactionId).catch((e) =>
     console.error("[settle] comissão falhou:", e),
@@ -170,33 +168,32 @@ export async function finalizePaidTransaction(transactionId: string) {
 
   const isSmartBundle = metadata["smart_bundle"] === true;
 
-  // 2. Comprador
   if (tx.user_id) {
     await sendProfessionalNotification({
       userId: tx.user_id,
       type: "pix_approved",
       title: "Pagamento confirmado",
       body: isSmartBundle
-        ? `✅ Pagamento aprovado\n💵 Valor: ${gross}\n🎁 Suas duas licenças do combo já estão liberadas`
-        : `✅ Pagamento aprovado\n💵 Valor: ${gross}\n🔑 Sua licença já está liberada`,
-      link: isSmartBundle ? "/painel" : "/painel",
+        ? `✅ Pagamento aprovado\n💵 Valor pago: ${paidLabel}\n🎁 Suas licenças do pedido já estão liberadas`
+        : `✅ Pagamento aprovado\n💵 Valor pago: ${paidLabel}\n🔑 Sua licença já está liberada`,
+      link: "/painel",
       recipientRole: "user",
       transactionId: tx.id,
     }).catch((e) => console.error("[settle] push comprador:", e));
   }
 
-  // 3. Administradores (valor bruto)
   await notifyAdmins({
     type: "sale_approved",
     title: isSmartBundle ? "Combo aprovado" : "Venda aprovada",
-    body: isSmartBundle
-      ? `✅ Combo inteligente aprovado\n💵 Valor bruto: ${gross}`
-      : `✅ Venda aprovada\n💵 Valor bruto: ${gross}`,
+    body: cardChargedTotal !== null && Math.abs(customerAmount - Number(tx.amount)) > 0.009
+      ? `✅ ${isSmartBundle ? "Combo inteligente" : "Venda"} aprovado\n💵 Produto: ${baseLabel}\n💳 Total cobrado: ${paidLabel}`
+      : `✅ ${isSmartBundle ? "Combo inteligente" : "Venda"} aprovado\n💵 Valor: ${paidLabel}`,
     link: "/admin",
     transactionId: tx.id,
     metadata: {
       transactionId: tx.id,
-      amount: Number(tx.amount),
+      baseAmount: Number(tx.amount),
+      chargedAmount: customerAmount,
       smartBundle: isSmartBundle,
     },
   }).catch((e) => console.error("[settle] push admin:", e));
