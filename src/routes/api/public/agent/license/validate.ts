@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight } from "@/lib/license.server";
-import { handleAccountTokenValidation } from "@/lib/account-license-validate.server";
+import { handleUnifiedLicenseValidation } from "@/lib/unified-license-validate.server";
 
 function browserExtensionOrigin(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
@@ -41,9 +41,8 @@ function withExtensionCors(response: Response, request: Request) {
 }
 
 /**
- * Validação exclusiva do MSK Agente.
- * O CORS aceita a origem real da extensão instalada em cada navegador;
- * autorização continua dependendo apenas de e-mail + token + status/vencimento.
+ * Compatibilidade para clientes antigos que ainda chamam a rota /agent.
+ * A validação usa o mesmo banco central e a mesma política da rota principal.
  */
 export const Route = createFileRoute("/api/public/agent/license/validate")({
   server: {
@@ -51,7 +50,7 @@ export const Route = createFileRoute("/api/public/agent/license/validate")({
       OPTIONS: ({ request }) => extensionPreflight(request),
       POST: async ({ request }) =>
         withExtensionCors(
-          await handleAccountTokenValidation(request, "agent-validate", 60, "agent"),
+          await handleUnifiedLicenseValidation(request, "agent-validate", 60),
           request,
         ),
     },
