@@ -47,7 +47,7 @@ export function WhatsappSupportButton() {
                 Nosso WhatsApp principal está temporariamente indisponível
               </h2>
               <p className="mt-1.5 text-xs leading-relaxed text-white/72 sm:text-sm">
-                Devido ao alto volume de atendimentos, estamos direcionando o suporte para um número secundário. Para não ficar sem atendimento, fale com nossa equipe pelo canal alternativo abaixo.
+                Para dar conta da demanda enquanto normalizamos o canal principal, o suporte está sendo direcionado para um número secundário. Para não ficar sem atendimento, fale com nossa equipe pelo canal alternativo abaixo.
               </p>
             </div>
           </div>
