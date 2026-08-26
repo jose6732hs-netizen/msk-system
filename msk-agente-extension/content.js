@@ -646,7 +646,7 @@
     const id = refreshProjectId();
     if (!id) return add("Abra um projeto Lovable antes de usar esta ação.", "agent", "error");
     if (type === "publish") return publishUpdateOnly();
-    if (type === "github") return requestProjectConnection();
+    if (type === "github") return requestFullConnection();
     const state = { type, returnUrl: location.href, startedAt: Date.now() };
     await chrome.storage.local.set({ [actionKey(id)]: state });
     setStage(type === "badge" ? "Verificando plano e badge" : "Abrindo Cloud / banco", "running");
@@ -1234,12 +1234,12 @@
   setTimeout(renderGitGuide, 700);
   setTimeout(resumeLovableAction, 900);
 
-  root.querySelector(".msk-auto-run").addEventListener("click", requestProjectConnection);
+  root.querySelector(".msk-auto-run").addEventListener("click", requestFullConnection);
   root.querySelector(".msk-auto-update")?.addEventListener("click", publishUpdateOnly);
 
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type === "MSK_OPEN") { root.classList.add("msk-menu-open", "msk-panel-open"); placePanel(); input.focus(); }
-    if (message?.type === "MSK_AUTOMATE") requestProjectConnection();
+    if (message?.type === "MSK_AUTOMATE") requestFullConnection();
     if (message?.type === "MSK_PUBLISH_UPDATE") publishUpdateOnly();
     if (message?.type === "MSK_V2_AUTH_COMPLETE") {
       if (!message.result?.ok) {
