@@ -8,6 +8,7 @@ function meta(value: unknown): Record<string, any> {
 }
 
 function numberOrNull(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
