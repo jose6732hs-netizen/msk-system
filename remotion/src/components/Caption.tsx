@@ -1,3 +1,4 @@
+import React from "react";
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from "remotion";
 import { COLORS } from "../theme";
 import { fontFamily, displayFamily } from "../fonts";

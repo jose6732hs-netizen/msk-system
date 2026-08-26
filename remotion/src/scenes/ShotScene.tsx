@@ -1,3 +1,4 @@
+import React from "react";
 import { AbsoluteFill, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
 import { Shot } from "../components/Shot";
 import { Caption } from "../components/Caption";

@@ -1,3 +1,4 @@
+import React from "react";
 import { Img, staticFile, useCurrentFrame, useVideoConfig, interpolate, spring } from "remotion";
 import { COLORS } from "../theme";
 

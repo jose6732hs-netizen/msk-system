@@ -1,3 +1,4 @@
+import React from "react";
 import { Composition } from "remotion";
 import { MainVideo, TOTAL } from "./MainVideo";
 
