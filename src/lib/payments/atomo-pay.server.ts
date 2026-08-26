@@ -112,7 +112,7 @@ export class AtomoPayService {
       return { productHash: cached.productHash, offerHash: cached.offerHash };
     }
 
-    const listed = (await this.listProducts()) as Record<string, any>;
+    const listed = (await this.listProducts()) as any;
     const items: any[] = Array.isArray(listed) ? listed : (listed?.data ?? listed?.products ?? []);
     let product = items.find((p) => p?.hash);
     if (!product) {
@@ -120,7 +120,7 @@ export class AtomoPayService {
         title: "MSK SISTEM",
         amount: 1000,
         salePage: "https://msksystem.online",
-      })) as Record<string, any>;
+      })) as any;
       product = created?.data ?? created;
     }
     const productHash = String(product?.hash ?? product?.product_hash ?? "");
@@ -132,7 +132,7 @@ export class AtomoPayService {
       const createdOffer = (await this.createOffer(productHash, {
         title: "MSK SISTEM",
         amount: 1000,
-      })) as Record<string, any>;
+      })) as any;
       offerHash = String((createdOffer?.data ?? createdOffer)?.hash ?? "");
     }
     if (!offerHash) throw new Error("AtomoPay: não foi possível resolver a oferta da conta.");
@@ -184,7 +184,7 @@ export class AtomoPayService {
       ...(input.metadata ? { metadata: input.metadata } : {}),
     };
 
-    const raw = (await this.call<Record<string, any>>("POST", "/transactions", body)) ?? {};
+    const raw = ((await this.call<Record<string, any>>("POST", "/transactions", body)) ?? {}) as any;
     const tx = raw?.data ?? raw;
     const pix = tx?.pix ?? tx?.pix_information ?? raw?.pix ?? {};
 
@@ -213,10 +213,10 @@ export class AtomoPayService {
 
   /** Consulta de transação — GET /transactions/{hash} */
   async getTransaction(transactionId: string) {
-    const raw = await this.call<Record<string, any>>(
+    const raw = (await this.call<Record<string, any>>(
       "GET",
       `/transactions/${encodeURIComponent(transactionId)}`,
-    );
+    )) as any;
     const tx = raw?.data ?? raw;
     return { ...tx, status: tx?.payment_status ?? tx?.status } as Record<string, unknown>;
   }
