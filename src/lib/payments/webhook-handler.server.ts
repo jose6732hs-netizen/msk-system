@@ -69,9 +69,18 @@ const FAIL_EVENTS = [
   "CANCELLED",
   "REJECTED",
   "FAILED",
+  // Vocabulário AtomoPay
+  "REFUSED",
+  "ANTIFRAUD",
 ];
 const REFUND_EVENTS = ["TRANSACTION_REFUNDED", "REFUNDED"];
-const CHARGEBACK_EVENTS = ["TRANSACTION_CHARGED_BACK", "CHARGEBACK", "CHARGED_BACK"];
+const CHARGEBACK_EVENTS = [
+  "TRANSACTION_CHARGED_BACK",
+  "CHARGEBACK",
+  "CHARGED_BACK",
+  "CHARGEDBACK",
+];
+
 
 export async function handleGatewayWebhook(provider: ProviderId, request: Request) {
   try {
