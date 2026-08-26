@@ -62,6 +62,8 @@ function AuthenticatedLayout() {
         `}</style>
       )}
       <Outlet />
+      <AssistantWidget />
     </RequiredPhoneGate>
   );
 }
+
