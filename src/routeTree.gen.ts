@@ -32,6 +32,7 @@ import { Route as ParceirosIndexRouteImport } from './routes/parceiros/index'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiAgentChatRouteImport } from './routes/api/agent/chat'
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
@@ -169,6 +170,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiAgentChatRoute = ApiAgentChatRouteImport.update({
+  id: '/api/agent/chat',
+  path: '/api/agent/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiLicenseValidateRoute = ApiLicenseValidateRouteImport.update({
   id: '/api/license/validate',
   path: '/api/license/validate',
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
@@ -337,6 +344,7 @@ export interface FileRoutesByTo {
   '/parceiros': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
@@ -381,6 +389,7 @@ export interface FileRoutesById {
   '/parceiros/': typeof ParceirosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
@@ -425,6 +434,7 @@ export interface FileRouteTypes {
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/agent/chat'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
@@ -467,6 +477,7 @@ export interface FileRouteTypes {
     | '/parceiros'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/agent/chat'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/parceiros/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/agent/chat'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
@@ -549,6 +561,7 @@ export interface RootRouteChildren {
   ParceirosIndexRoute: typeof ParceirosIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiAgentChatRoute: typeof ApiAgentChatRoute
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
@@ -731,6 +744,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/chat': {
+      id: '/api/agent/chat'
+      path: '/api/agent/chat'
+      fullPath: '/api/agent/chat'
+      preLoaderRoute: typeof ApiAgentChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/license/validate': {
       id: '/api/license/validate'
       path: '/api/license/validate'
@@ -911,6 +931,7 @@ const rootRouteChildren: RootRouteChildren = {
   ParceirosIndexRoute: ParceirosIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiAgentChatRoute: ApiAgentChatRoute,
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
