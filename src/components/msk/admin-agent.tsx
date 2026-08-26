@@ -85,10 +85,10 @@ export function AdminAgentTab() {
 
   async function handleUpload() {
     const file = fileRef.current?.files?.[0];
-    if (!file) return toast.error("Selecione o arquivo .zip do MSK Agente.");
-    if (!/\.zip$/i.test(file.name)) return toast.error("O arquivo precisa ser .zip");
+    if (!file) { toast.error("Selecione o arquivo .zip do MSK Agente."); return; }
+    if (!/\.zip$/i.test(file.name)) { toast.error("O arquivo precisa ser .zip"); return; }
     const v = version.trim();
-    if (!v) return toast.error("Informe a versão (ex.: 2.3.0).");
+    if (!v) { toast.error("Informe a versão (ex.: 2.3.0)."); return; }
     setUploading(true);
     try {
       const signed = await createUploadUrl({ data: { version: v, fileName: file.name } });
