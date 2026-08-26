@@ -45,4 +45,4 @@ export const planSchema = z
     return { ...p, slug };
   });
 
-export const providerSchema = z.enum(["amplopay", "sigilopay"]);
+export const providerSchema = z.enum(["amplopay", "sigilopay", "atomopay"]);

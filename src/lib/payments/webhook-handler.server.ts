@@ -1,5 +1,5 @@
 /**
- * Handler compartilhado de webhooks de pagamento (Amplo Pay e SigiloPay).
+ * Handler compartilhado de webhooks (Amplo Pay, SigiloPay e AtomoPay).
  * Autenticidade aceita duas formas usadas pelos gateways:
  *  - assinatura HMAC-SHA256 do corpo bruto em header;
  *  - token compartilhado (header OU campo `token` do payload, padrão SigiloPay).
@@ -55,6 +55,7 @@ type GatewayWebhook = {
 
 const PAID_EVENTS = [
   "TRANSACTION_PAID",
+  "PAGO",
   "PAID",
   "APPROVED",
   "COMPLETED",
@@ -130,7 +131,10 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
     ).toUpperCase();
     const providerTxId =
       (payload.transactionId ? String(payload.transactionId) : null) ??
-      (payload.transaction?.id ? String(payload.transaction.id) : null);
+      (payload.transaction?.id ? String(payload.transaction.id) : null) ??
+      ((payload as Record<string, unknown>)["hash"]
+        ? String((payload as Record<string, unknown>)["hash"])
+        : null);
     const identifier =
       (payload.identifier ? String(payload.identifier) : null) ??
       (payload.transaction?.identifier ? String(payload.transaction.identifier) : null);
@@ -203,7 +207,10 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
 
       if (PAID_EVENTS.includes(eventType)) {
         const { finalizePaidTransaction } = await import("@/lib/payments/settle.server");
-        await settlePaidTransaction(tx.id);
+        // Uma falha na liquidação legada não pode impedir a entrega das licenças.
+        await settlePaidTransaction(tx.id).catch((e) =>
+          console.error("[webhook] settlePaidTransaction:", (e as Error).message),
+        );
         await finalizePaidTransaction(tx.id);
       } else if (FAIL_EVENTS.includes(eventType)) {
         await supabaseAdmin.from("transactions").update({ status: "FAILED" }).eq("id", tx.id);

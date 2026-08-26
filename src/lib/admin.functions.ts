@@ -94,7 +94,7 @@ export const adminSavePlan = createServerFn({ method: "POST" })
     return savePlan(data);
   });
 
-/* ============ Gateways de pagamento (Amplo Pay + SigiloPay) ============ */
+/* ====== Gateways de pagamento (Amplo Pay + SigiloPay + AtomoPay) ====== */
 
 export const adminGatewaySettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -110,8 +110,8 @@ export const adminSaveGateway = createServerFn({ method: "POST" })
     z
       .object({
         provider: providerSchema,
-        publicKey: z.string().min(8).max(400).optional(),
-        secretKey: z.string().min(8).max(400).optional(),
+        publicKey: z.string().min(4).max(400).optional(),
+        secretKey: z.string().min(4).max(400).optional(),
         webhookSecret: z.string().min(8).max(400).optional(),
         baseUrl: z.string().url().optional(),
         active: z.boolean().optional(),
@@ -130,7 +130,10 @@ export const adminSaveGateway = createServerFn({ method: "POST" })
     let test: { ok: boolean; error?: string } = { ok: true };
     if (data.publicKey || data.secretKey) {
       try {
-        if (data.provider === "sigilopay") {
+        if (data.provider === "atomopay") {
+          const { testAtomoCredentials } = await import("./payments/atomo-pay.server");
+          test = await testAtomoCredentials();
+        } else if (data.provider === "sigilopay") {
           const { testSigiloCredentials } = await import("./payments/sigilo-pay.server");
           test = await testSigiloCredentials();
         } else {
@@ -179,6 +182,10 @@ export const adminTestGateway = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     try {
+      if (data.provider === "atomopay") {
+        const { testAtomoCredentials } = await import("./payments/atomo-pay.server");
+        return await testAtomoCredentials();
+      }
       if (data.provider === "sigilopay") {
         const { testSigiloCredentials } = await import("./payments/sigilo-pay.server");
         return await testSigiloCredentials();

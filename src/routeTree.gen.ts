@@ -47,6 +47,7 @@ import { Route as ApiPublicLicenseHeartbeatRouteImport } from './routes/api/publ
 import { Route as ApiPublicLicenseMeRouteImport } from './routes/api/public/license/me'
 import { Route as ApiPublicLicenseValidateRouteImport } from './routes/api/public/license/validate'
 import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/public/webhooks/amplopay'
+import { Route as ApiPublicWebhooksAtomopayRouteImport } from './routes/api/public/webhooks/atomopay'
 import { Route as ApiPublicWebhooksPaymentRouteImport } from './routes/api/public/webhooks/payment'
 import { Route as ApiPublicWebhooksSigilopayRouteImport } from './routes/api/public/webhooks/sigilopay'
 import { Route as ApiPublicExtRuntimeBundleRouteImport } from './routes/api/public/ext/runtime/bundle'
@@ -254,6 +255,12 @@ const ApiPublicWebhooksAmplopayRoute =
     path: '/api/public/webhooks/amplopay',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksAtomopayRoute =
+  ApiPublicWebhooksAtomopayRouteImport.update({
+    id: '/api/public/webhooks/atomopay',
+    path: '/api/public/webhooks/atomopay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksPaymentRoute =
   ApiPublicWebhooksPaymentRouteImport.update({
     id: '/api/public/webhooks/payment',
@@ -323,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/api/public/license/me': typeof ApiPublicLicenseMeRoute
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
+  '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
@@ -367,6 +375,7 @@ export interface FileRoutesByTo {
   '/api/public/license/me': typeof ApiPublicLicenseMeRoute
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
+  '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
@@ -413,6 +422,7 @@ export interface FileRoutesById {
   '/api/public/license/me': typeof ApiPublicLicenseMeRoute
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
+  '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
@@ -459,6 +469,7 @@ export interface FileRouteTypes {
     | '/api/public/license/me'
     | '/api/public/license/validate'
     | '/api/public/webhooks/amplopay'
+    | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
     | '/api/public/ext/runtime/bundle'
@@ -503,6 +514,7 @@ export interface FileRouteTypes {
     | '/api/public/license/me'
     | '/api/public/license/validate'
     | '/api/public/webhooks/amplopay'
+    | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
     | '/api/public/ext/runtime/bundle'
@@ -548,6 +560,7 @@ export interface FileRouteTypes {
     | '/api/public/license/me'
     | '/api/public/license/validate'
     | '/api/public/webhooks/amplopay'
+    | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
     | '/api/public/ext/runtime/bundle'
@@ -588,6 +601,7 @@ export interface RootRouteChildren {
   ApiPublicLicenseMeRoute: typeof ApiPublicLicenseMeRoute
   ApiPublicLicenseValidateRoute: typeof ApiPublicLicenseValidateRoute
   ApiPublicWebhooksAmplopayRoute: typeof ApiPublicWebhooksAmplopayRoute
+  ApiPublicWebhooksAtomopayRoute: typeof ApiPublicWebhooksAtomopayRoute
   ApiPublicWebhooksPaymentRoute: typeof ApiPublicWebhooksPaymentRoute
   ApiPublicWebhooksSigilopayRoute: typeof ApiPublicWebhooksSigilopayRoute
   ApiPublicExtRuntimeBundleRoute: typeof ApiPublicExtRuntimeBundleRoute
@@ -863,6 +877,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksAmplopayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/atomopay': {
+      id: '/api/public/webhooks/atomopay'
+      path: '/api/public/webhooks/atomopay'
+      fullPath: '/api/public/webhooks/atomopay'
+      preLoaderRoute: typeof ApiPublicWebhooksAtomopayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/payment': {
       id: '/api/public/webhooks/payment'
       path: '/api/public/webhooks/payment'
@@ -966,6 +987,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicLicenseMeRoute: ApiPublicLicenseMeRoute,
   ApiPublicLicenseValidateRoute: ApiPublicLicenseValidateRoute,
   ApiPublicWebhooksAmplopayRoute: ApiPublicWebhooksAmplopayRoute,
+  ApiPublicWebhooksAtomopayRoute: ApiPublicWebhooksAtomopayRoute,
   ApiPublicWebhooksPaymentRoute: ApiPublicWebhooksPaymentRoute,
   ApiPublicWebhooksSigilopayRoute: ApiPublicWebhooksSigilopayRoute,
   ApiPublicExtRuntimeBundleRoute: ApiPublicExtRuntimeBundleRoute,

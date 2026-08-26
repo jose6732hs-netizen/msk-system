@@ -6,23 +6,26 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { decryptToken, encryptToken } from "../license.server";
 
-export type ProviderId = "amplopay" | "sigilopay";
+export type ProviderId = "amplopay" | "sigilopay" | "atomopay";
 
-export const PROVIDERS: ProviderId[] = ["amplopay", "sigilopay"];
+export const PROVIDERS: ProviderId[] = ["amplopay", "sigilopay", "atomopay"];
 
 export const PROVIDER_LABEL: Record<ProviderId, string> = {
   amplopay: "Amplo Pay",
   sigilopay: "SigiloPay",
+  atomopay: "AtomoPay",
 };
 
 export const DEFAULT_BASE_URL: Record<ProviderId, string> = {
   amplopay: "https://app.amplopay.com/api/v1",
   sigilopay: "https://app.sigilopay.com.br/api/v1",
+  atomopay: "https://api.atomopay.com.br/api/public/v1",
 };
 
 const ENV_PREFIX: Record<ProviderId, string> = {
   amplopay: "AMPLOPAY",
   sigilopay: "SIGILOPAY",
+  atomopay: "ATOMOPAY",
 };
 
 export type GatewayCredentials = {
@@ -56,13 +59,16 @@ export async function loadCredentialsFor(
     ? await decryptToken(data.webhook_secret_encrypted)
     : process.env[`${prefix}_WEBHOOK_SECRET`] ?? null;
 
-  if (!publicKey || !secretKey) return null;
+  // A AtomoPay autentica só com api_token (guardado no campo secreto).
+  const tokenOnly = provider === "atomopay";
+  if (!secretKey) return null;
+  if (!tokenOnly && !publicKey) return null;
   if (data && data.active === false && !envPublic) return null;
 
   return {
     provider,
     baseUrl: (data?.api_base_url || DEFAULT_BASE_URL[provider]).replace(/\/+$/, ""),
-    publicKey,
+    publicKey: publicKey ?? "",
     secretKey,
     webhookSecret,
   };
@@ -123,7 +129,12 @@ export async function getSummaryFor(provider: ProviderId) {
     // Visíveis no painel, mas sempre mascaradas — o valor real fica criptografado.
     publicKeyMasked: data?.public_key_last4 ? `••••••••••••${data.public_key_last4}` : null,
     secretKeyMasked: data?.secret_key_last4 ? `••••••••••••${data.secret_key_last4}` : null,
-    configured: Boolean(data?.public_key_last4 && data?.secret_key_last4),
+    // AtomoPay: só o API Token é obrigatório.
+    tokenOnly: provider === "atomopay",
+    configured:
+      provider === "atomopay"
+        ? Boolean(data?.secret_key_last4)
+        : Boolean(data?.public_key_last4 && data?.secret_key_last4),
     hasWebhookSecret: Boolean(data?.webhook_secret_encrypted),
     updatedAt: data?.updated_at ?? null,
   };

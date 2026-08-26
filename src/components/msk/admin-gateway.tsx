@@ -12,7 +12,7 @@ import {
   adminTestGateway,
 } from "@/lib/admin.functions";
 
-type ProviderId = "amplopay" | "sigilopay";
+type ProviderId = "amplopay" | "sigilopay" | "atomopay";
 
 export function AdminGatewayTab() {
   const qc = useQueryClient();
@@ -120,6 +120,7 @@ function ProviderCard({
     publicKeyMasked?: string | null;
     secretKeyMasked?: string | null;
     configured?: boolean;
+    tokenOnly?: boolean;
     hasWebhookSecret: boolean;
     webhookPath: string;
   };
@@ -134,6 +135,8 @@ function ProviderCard({
   }) => Promise<{ ok: boolean; error?: string }>;
   onTest: () => Promise<{ ok: boolean; error?: string }>;
 }) {
+  // AtomoPay autentica apenas com API Token (enviado como api_token na URL).
+  const tokenOnly = provider.tokenOnly === true;
   const [publicKey, setPublicKey] = useState("");
   const [secretKey, setSecretKey] = useState("");
   const [webhookSecret, setWebhookSecret] = useState("");
@@ -201,8 +204,8 @@ function ProviderCard({
           {provider.active ? "Ativo" : "Inativo"}
         </span>
         <span className="text-xs text-muted-foreground">
-          Pública ····{provider.publicKeyLast4 ?? "----"} · Secreta ····
-          {provider.secretKeyLast4 ?? "----"} ·{" "}
+          {tokenOnly ? "API Token ····" : `Pública ····${provider.publicKeyLast4 ?? "----"} · Secreta ····`}
+          {tokenOnly ? "" : ""}{provider.secretKeyLast4 ?? "----"} ·{" "}
           {provider.hasWebhookSecret ? "webhook configurado" : "webhook pendente"}
         </span>
       </div>
@@ -219,7 +222,7 @@ function ProviderCard({
           />
         </div>
 
-        <div>
+        <div className={tokenOnly ? "hidden" : ""}>
           <label className="mb-1 block text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">
             API Key pública (x-public-key)
           </label>
@@ -234,13 +237,16 @@ function ProviderCard({
           </p>
         </div>
 
-        <div>
+        <div className={tokenOnly ? "sm:col-span-2" : ""}>
           <label className="mb-1 block text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">
-            API Key secreta (x-secret-key)
+            {tokenOnly ? "API Token (api_token)" : "API Key secreta (x-secret-key)"}
           </label>
           <Input
             type="password"
-            placeholder={provider.secretKeyMasked ?? `x-secret-key da ${provider.label}`}
+            placeholder={
+              provider.secretKeyMasked ??
+              (tokenOnly ? `API Token da ${provider.label}` : `x-secret-key da ${provider.label}`)
+            }
             value={secretKey}
             onChange={(e) => setSecretKey(e.target.value)}
           />
