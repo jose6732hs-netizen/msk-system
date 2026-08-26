@@ -95,15 +95,55 @@
     const days = Math.floor(seconds / 86400), hours = Math.floor((seconds % 86400) / 3600);
     return days ? `${days}d ${hours}h restantes` : `${hours}h restantes`;
   };
-  const renderAccount = (auth, state) => {
-    accountCard.querySelector(".msk-account-name").textContent = state?.profile?.display_name || auth?.user?.email?.split("@")[0] || "Conta MSK";
-    accountCard.querySelector(".msk-account-email").textContent = auth?.user?.email || "Entre para ativar sua licença";
-    accountCard.querySelector(".msk-account-plan").textContent = state?.plan ? `${String(state.plan.tier).toUpperCase()} · ${state.plan.billing_period || "mensal"}` : "Não conectado";
-    accountCard.querySelector(".msk-account-time").textContent = state?.plan ? formatRemaining(state.plan.remainingSeconds) : "";
-    accountCard.querySelector(".msk-account-login").hidden = !!auth?.ok;
-    accountCard.dataset.state = state?.plan?.status || (auth?.ok ? "active" : "login");
+  let licenseInfo = null;
+  let licenseTick = 0;
+  const licenseRemaining = lic => {
+    if (!lic?.expires_at) return "Sem vencimento";
+    const ms = Date.parse(lic.expires_at) - Date.now();
+    if (!(ms > 0)) return "Licença expirada";
+    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000);
+    const m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+    const p = n => String(n).padStart(2, "0");
+    return `${d > 0 ? d + "d " : ""}${p(h)}:${p(m)}:${p(s)}`;
   };
-  accountCard.querySelector(".msk-account-login").addEventListener("click", () => chrome.runtime.openOptionsPage());
+  const renderAccount = (auth, state) => {
+    const loginBtn = accountCard.querySelector(".msk-account-login");
+    const licensed = !!licenseInfo;
+    accountCard.querySelector(".msk-account-name").textContent = state?.profile?.display_name || auth?.user?.email?.split("@")[0] || licenseInfo?.email?.split("@")[0] || "Conta MSK";
+    accountCard.querySelector(".msk-account-email").textContent = auth?.user?.email || licenseInfo?.email || "Entre para ativar sua licença";
+    accountCard.querySelector(".msk-account-plan").textContent = state?.plan
+      ? `${String(state.plan.tier).toUpperCase()} · ${state.plan.billing_period || "mensal"}`
+      : licensed ? (licenseInfo.plan_name || licenseInfo.plan || "Licença ativa") : "Não conectado";
+    accountCard.querySelector(".msk-account-time").textContent = state?.plan
+      ? formatRemaining(state.plan.remainingSeconds)
+      : licensed ? licenseRemaining(licenseInfo) : "";
+    const connected = !!auth?.ok || licensed;
+    loginBtn.hidden = false;
+    loginBtn.textContent = connected ? "Sair" : "Entrar";
+    loginBtn.dataset.mode = connected ? "logout" : "login";
+    accountCard.dataset.state = state?.plan?.status || (connected ? "active" : "login");
+  };
+  accountCard.querySelector(".msk-account-login").addEventListener("click", async event => {
+    const btn = event.currentTarget;
+    if (btn.dataset.mode !== "logout") return chrome.runtime.openOptionsPage();
+    btn.disabled = true;
+    btn.textContent = "Saindo…";
+    await chrome.runtime.sendMessage({ type: "MSK_LICENSE_LOGOUT" }).catch(() => {});
+    await chrome.runtime.sendMessage({ type: "MSK_AUTH_LOGOUT" }).catch(() => {});
+    location.reload();
+  });
+  (async () => {
+    const st = await chrome.runtime.sendMessage({ type: "MSK_LICENSE_STATUS" }).catch(() => null);
+    licenseInfo = st?.ok ? { email: st.license?.email, ...st.license } : null;
+    renderAccount(null, null);
+    if (licenseInfo?.expires_at) {
+      if (licenseTick) clearInterval(licenseTick);
+      licenseTick = setInterval(() => {
+        accountCard.querySelector(".msk-account-time").textContent = licenseRemaining(licenseInfo);
+      }, 1000);
+    }
+  })();
+
   const returnedSession = new URLSearchParams(location.hash.replace(/^#/, "")).get("msk_session");
   if (returnedSession) {
     const returnedProjectId = location.pathname.match(/(?:projects|p)\/([0-9a-f-]{8,})/i)?.[1] || "";
