@@ -324,7 +324,10 @@ const mskProbeApi = async (id) => {
   ];
   for (const path of paths) {
     try {
-      const response = await fetch(`${MSK_LOVABLE_ORIGIN}${path}`, { credentials: "include", headers: { accept: "application/json" } });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2500);
+      const response = await fetch(`${MSK_LOVABLE_ORIGIN}${path}`, { credentials: "include", headers: { accept: "application/json" }, signal: controller.signal });
+      clearTimeout(timeout);
       if (!response.ok) continue;
       const text = await response.text();
       const repo = mskParseRepo(text);
@@ -338,8 +341,8 @@ const mskProbeTab = async (id) => {
   let tab = null;
   try {
     tab = await chrome.tabs.create({ url: `${MSK_LOVABLE_ORIGIN}/projects/${id}/settings/git`, active: false });
-    for (let attempt = 0; attempt < 20; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 1200));
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 900));
       const injected = await chrome.scripting.executeScript({
         target: { tabId: tab.id },
         func: () => {
@@ -357,6 +360,7 @@ const mskProbeTab = async (id) => {
   }
   return null;
 };
+const mskProjectProbes = new Map();
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!["MSK_PROBE_PROJECT", "MSK_CACHE_LINKS", "MSK_GET_LINKS"].includes(message?.type)) return;
   (async () => {
@@ -367,7 +371,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const cached = await mskReadLinks(id);
     const fresh = cached?.repo && Date.now() - Number(cached.detectedAt || 0) < 900000;
     if (fresh && !message.force) return sendResponse({ ok: true, ...cached, source: "cache" });
-    const found = (await mskProbeApi(id)) || (message.deep ? await mskProbeTab(id) : null);
+    let probe = mskProjectProbes.get(id);
+    if (!probe) {
+      probe = (async () => (await mskProbeApi(id)) || (message.deep ? await mskProbeTab(id) : null))();
+      mskProjectProbes.set(id, probe);
+      probe.finally(() => mskProjectProbes.delete(id));
+    }
+    const found = await probe;
     if (!found) return sendResponse({ ok: false, repo: cached?.repo || "", db: cached?.db || "", source: "none" });
     const saved = await mskWriteLinks(id, { repo: found.repo || cached?.repo || "", db: found.db || cached?.db || "" });
     return sendResponse({ ok: true, ...saved, source: found.source });

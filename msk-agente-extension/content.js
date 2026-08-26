@@ -359,7 +359,14 @@
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
   }));
-  root.querySelector(".msk-open-project").addEventListener("click", () => chrome.runtime.sendMessage({ type: "MSK_CONNECT", provider: "lovable" }));
+  root.querySelector(".msk-open-project").addEventListener("click", event => {
+    const button = event.currentTarget;
+    button.disabled = true;
+    button.textContent = "Abrindo…";
+    chrome.runtime.sendMessage({ type: "MSK_CONNECT", provider: "lovable" }, () => {
+      window.setTimeout(() => { button.disabled = false; button.textContent = "Abrir Lovable"; }, 900);
+    });
+  });
   updateButton.addEventListener("click", () => {
     const id = projectId();
     if (!id || !lastTaskId) return;
@@ -592,8 +599,26 @@
 
   /* ============ ID DO PROJETO SINCRONIZADO ============ */
   const idEl = root.querySelector(".msk-project-id");
-  const projectId = () => location.pathname.match(/(?:projects|p)\/([0-9a-f-]{8,})/i)?.[1]
-    || location.hostname.match(/([0-9a-f]{8}-[0-9a-f-]{27,})/i)?.[1] || "";
+  const validProjectId = value => {
+    const clean = String(value || "").trim();
+    return /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(clean) || /^[a-z0-9][a-z0-9_-]{7,}$/i.test(clean) ? clean : "";
+  };
+  const projectId = () => {
+    const url = new URL(location.href);
+    const segments = url.pathname.split("/").filter(Boolean);
+    const routeIndex = segments.findIndex(segment => /^(projects?|p)$/i.test(segment));
+    const routeId = routeIndex >= 0 ? validProjectId(segments[routeIndex + 1]) : "";
+    if (routeId) return routeId;
+    for (const key of ["projectId", "project_id", "project", "id"]) {
+      const queryId = validProjectId(url.searchParams.get(key));
+      if (queryId) return queryId;
+    }
+    const pageLink = [...document.querySelectorAll('a[href*="/projects/"],a[href*="/project/"]')]
+      .map(link => String(link.href || "").match(/\/projects?\/([^/?#]+)/i)?.[1])
+      .map(validProjectId).find(Boolean);
+    return pageLink || validProjectId(location.hostname.match(/([0-9a-f]{8}-[0-9a-f-]{27,})/i)?.[1]);
+  };
+  let currentProjectId = "";
   const refreshProjectId = () => {
     const id = projectId();
     idEl.textContent = id || "sem projeto aberto";
@@ -604,6 +629,12 @@
     root.querySelector(".msk-onboarding").hidden = !!id;
     root.querySelector(".msk-auto").hidden = !id;
     root.querySelector(".msk-compose").classList.toggle("disabled", !id);
+    if (id && id !== currentProjectId) {
+      currentProjectId = id;
+      syncLovable.textContent = `Lovable: ${id}`;
+      syncLovable.dataset.state = "connected";
+      setStage("Projeto identificado", "done");
+    }
     return id;
   };
   root.querySelector(".msk-project-copy").addEventListener("click", () => {
@@ -613,7 +644,17 @@
     add(`ID copiado: ${id}`, "agent", "sent");
   });
   refreshProjectId();
-  setInterval(refreshProjectId, 2000);
+  let routeRefreshTimer = 0;
+  const scheduleRouteRefresh = () => {
+    clearTimeout(routeRefreshTimer);
+    routeRefreshTimer = window.setTimeout(() => { refreshProjectId(); refreshSyncCards(); }, 120);
+  };
+  addEventListener("popstate", scheduleRouteRefresh);
+  addEventListener("hashchange", scheduleRouteRefresh);
+  const originalPushState = history.pushState.bind(history);
+  const originalReplaceState = history.replaceState.bind(history);
+  history.pushState = (...args) => { const result = originalPushState(...args); scheduleRouteRefresh(); return result; };
+  history.replaceState = (...args) => { const result = originalReplaceState(...args); scheduleRouteRefresh(); return result; };
 
   /* ============ AUTOMACAO COMPLETA ============ */
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -769,7 +810,7 @@
     const flow = await clickText(/(create repository|criar repositório|connect (to )?github|conectar (ao )?github|transfer|install|instalar)/i, 10000);
     if (flow) {
       await clickText(/^(authorize|autorizar|confirm|confirmar|continue|continuar|create|criar|connect|conectar)\b/i, 9000);
-      const ok = await waitFor(() => (alreadyConnected(/(github\.com\/[\w.-]+\/[\w.-]+|conectado|connected|sync)/i) ? "ok" : null), 90000, 2000);
+      const ok = await waitFor(() => (alreadyConnected(/(github\.com\/[\w.-]+\/[\w.-]+|conectado|connected|sync)/i) ? "ok" : null), 15000, 1000);
       if (ok) {
         add("GitHub conectado e repositório sincronizado.", "agent", "done");
         markStep("github", "done");
@@ -800,7 +841,7 @@
     const flow = await clickText(/(enable|ativar|connect (to )?supabase|conectar (ao )?supabase|create (project|database)|criar (projeto|banco))/i, 9000);
     if (flow) {
       await clickText(/^(authorize|autorizar|confirm|confirmar|continue|continuar|enable|ativar|connect|conectar)\b/i, 9000);
-      const ok = await waitFor(() => (alreadyConnected(/(supabase\.com\/dashboard\/project|conectado|connected|cloud ativo)/i) ? "ok" : null), 90000, 2000);
+      const ok = await waitFor(() => (alreadyConnected(/(supabase\.com\/dashboard\/project|conectado|connected|cloud ativo)/i) ? "ok" : null), 12000, 1000);
       if (ok) {
         add(`Supabase conectado ao projeto ${id}.`, "agent", "done");
         markStep("db", "done");
@@ -1153,7 +1194,10 @@
 
   let pipelineRunning = false;
   const runConnectPipeline = async () => {
-    if (pipelineRunning) return;
+    if (pipelineRunning) {
+      setStage("Conexão já em andamento", "running");
+      return;
+    }
     pipelineRunning = true;
     const runBtn = root.querySelector(".msk-auto-run");
     const originalLabel = runBtn.textContent;
@@ -1182,7 +1226,7 @@
       } else {
         add("Nenhum repositório vinculado a este projeto. Iniciando a conexão oficial do GitHub dentro do Lovable…", "agent", "running");
         const connected = await connectGithub(id);
-        links = await resolveProjectLinks(id, true);
+        links = await resolveProjectLinks(id, false);
         if (!links.repo && !connected) {
           markStep("github", "pending");
           setStage("Aguardando GitHub", "running");
@@ -1199,7 +1243,10 @@
         markStep("db", "done");
         add(links.db === "lovable-cloud" ? "Banco Lovable Cloud detectado e vinculado ao ID do projeto." : `Supabase detectado (${links.db}) e vinculado ao ID do projeto.`, "agent", "done");
       } else {
-        await connectSupabase(id);
+        syncDatabase.textContent = "Banco: não identificado nesta tela";
+        syncDatabase.dataset.state = "pending";
+        markStep("db", "pending");
+        add("Banco ainda não identificado. A ativação continuará e você pode abrir Cloud / banco depois, sem manter a extensão em espera.", "agent", "pending");
       }
 
       setStage("Ativando MSK Agente", "running");
@@ -1220,6 +1267,9 @@
     root.classList.add("msk-menu-open", "msk-panel-open");
     placePanel();
     root.querySelector('[data-tab="chat"]').click();
+    const quickButton = root.querySelector("[data-action='connect-project']");
+    quickButton.classList.add("msk-clicked");
+    window.setTimeout(() => quickButton.classList.remove("msk-clicked"), 450);
     setStage("Confirmação necessária", "running");
     addApprovalCard({
       title: "Autorizar MSK neste projeto?",
@@ -1228,9 +1278,9 @@
       onConfirm: runConnectPipeline
     });
   };
-  setInterval(refreshSyncCards, 2000);
+  setInterval(refreshSyncCards, 5000);
   setTimeout(refreshSyncCards, 500);
-  setInterval(renderGitGuide, 1500);
+  setInterval(renderGitGuide, 4000);
   setTimeout(renderGitGuide, 700);
   setTimeout(resumeLovableAction, 900);
 
