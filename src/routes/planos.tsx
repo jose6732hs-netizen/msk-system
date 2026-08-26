@@ -125,6 +125,7 @@ function PlanosPage() {
       return;
     }
     const items = cart.map((item) => ({
+      planId: item.planId,
       name: item.planName,
       quantity: item.quantity,
       price: item.price,
@@ -132,6 +133,7 @@ function PlanosPage() {
     }));
     if (offerEligible && offerAccepted && inlineOffer?.companion) {
       items.push({
+        planId: inlineOffer.companion.id,
         name: inlineOffer.companion.name,
         quantity: 1,
         price: Number(inlineOffer.companion.discountedPrice ?? 0),

@@ -77,6 +77,8 @@ export function clearEvents() {
 
 /** Snapshot do carrinho para detectar abandono e manter o indicador global sincronizado. */
 export type AbandonedCartItem = {
+  /** Plano correspondente — permite ir direto para o pagamento pelo carrinho. */
+  planId?: string | null;
   name: string;
   quantity: number;
   price: number;

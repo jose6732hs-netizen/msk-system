@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/sheet";
 import { PixDialog, type PixState } from "@/components/msk/pix-dialog";
 import {
+  addCartItem,
   clearCartItems,
   getCart,
   removeCartItem,
@@ -32,7 +33,7 @@ import {
 } from "@/lib/cart.functions";
 import { startPixCheckout } from "@/lib/commerce.functions";
 import { readAffiliateRef, readResellerRef } from "@/lib/urls";
-import { readCartSnapshot, type AbandonedCart, type AbandonedCartItem } from "@/lib/tracking";
+import { readCartSnapshot, saveCartSnapshot, type AbandonedCart, type AbandonedCartItem } from "@/lib/tracking";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
 import bannerOfferAsset from "@/assets/banner-offer.png.asset.json";
 import cardFreeImg from "@/assets/card-free.jpg";
@@ -291,6 +292,54 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
     navigate({ to: "/planos" });
   }
 
+  /**
+   * Fluxo único: do carrinho direto para o pagamento.
+   * Sincroniza os itens locais com o carrinho da conta e já chama o PIX
+   * (que pede CPF/telefone somente se ainda não estiverem salvos).
+   */
+  async function checkoutLocalCart() {
+    const items = localCart?.items ?? [];
+    if (!items.length) return;
+
+    if (!signedIn) {
+      setOpen(false);
+      toast.info("Entre na sua conta para finalizar o pagamento.");
+      navigate({ to: "/auth" });
+      return;
+    }
+
+    const withPlan = items.filter((item) => !!item.planId);
+    if (!withPlan.length) {
+      goToPlans();
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const ref = readAffiliateRef() ?? undefined;
+      const rv = readResellerRef() ?? undefined;
+      for (const item of withPlan) {
+        await addCartItem({
+          data: {
+            planId: String(item.planId),
+            quantity: Math.max(1, Number(item.quantity ?? 1)),
+            ...(ref ? { affiliateCode: ref } : {}),
+            ...(rv ? { resellerCode: rv } : {}),
+          },
+        });
+      }
+      await qc.invalidateQueries({ queryKey: ["cart"] });
+      saveCartSnapshot(null);
+      setLocalCart(null);
+    } catch (e) {
+      toast.error((e as Error).message);
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    await pay(undefined, "Carrinho MSK");
+  }
+
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -381,8 +430,9 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     </div>
                   </article>
                 ))}
-                <Button variant="neon" className="w-full" onClick={goToPlans}>
-                  Abrir carrinho completo
+                <Button variant="neon" className="w-full h-12 text-sm font-black uppercase tracking-wide" disabled={busy} onClick={() => void checkoutLocalCart()}>
+                  {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Ir para o pagamento · {brl(displayTotal)}
                 </Button>
               </section>
             ) : null}

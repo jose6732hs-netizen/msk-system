@@ -8,7 +8,7 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   let licenseQuery = supabaseAdmin
     .from("licenses")
     .select(
-      "id,user_id,status,type,expires_at,activated_at,created_at,max_devices,token_preview,token_last4,last_validation,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
+      "id,user_id,status,type,expires_at,activated_at,created_at,transaction_id,max_devices,token_preview,token_last4,last_validation,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
     )
     .order("created_at", { ascending: false })
     .limit(100);
@@ -30,8 +30,14 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     : { data: [] as any[] };
   const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o]));
 
+  const { licensePurpose, licenseRoleFromSlug } = await import("./license-purpose");
+
   const now = Date.now();
   const licenses = (licensesRaw ?? []).map((l: any) => {
+    const purpose = licensePurpose({
+      slug: l.plans?.slug ?? null,
+      role: l.metadata?.license_role ?? licenseRoleFromSlug(l.plans?.slug),
+    });
     const expired = !!l.expires_at && new Date(l.expires_at).getTime() <= now;
     const pendingMs = Number(l.metadata?.pending_duration_ms ?? 0);
     const effectiveStatus =
@@ -46,6 +52,12 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
       ...l,
       status: effectiveStatus,
       pending_duration_ms: pendingMs || null,
+      purpose_role: purpose.role,
+      purpose_label: purpose.label,
+      purpose_where: purpose.where,
+      purpose_accent: purpose.accent,
+      item_label: l.metadata?.item_label ?? l.plans?.name ?? purpose.label,
+      item_origin: l.metadata?.item_origin ?? null,
       profiles: l.user_id ? ownerMap.get(l.user_id) ?? null : null,
     };
   });

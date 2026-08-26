@@ -120,6 +120,8 @@ export async function issueStandaloneLicense(input: {
   transactionId?: string | null;
   maxDevices?: number | null;
   expiresAtOverride?: string | null;
+  /** Identifica a função da licença (extensão, clonador, agente) e o item comprado. */
+  extraMetadata?: Record<string, unknown> | null;
 }) {
   const { data: plan } = await supabaseAdmin
     .from("plans")
@@ -177,7 +179,8 @@ export async function issueStandaloneLicense(input: {
         plan_duration_unit_snapshot: plan.duration_unit,
         plan_slug_snapshot: plan.slug,
         features_snapshot: plan.features || {},
-        ...(pendingDurationMs !== null ? { pending_duration_ms: pendingDurationMs } : {})
+        ...(pendingDurationMs !== null ? { pending_duration_ms: pendingDurationMs } : {}),
+        ...(input.extraMetadata ?? {})
       }
     } as never)
     .select("id")

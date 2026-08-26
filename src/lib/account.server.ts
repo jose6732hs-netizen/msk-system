@@ -18,7 +18,7 @@ export async function loadAccount(supabase: Client, userId: string) {
   const { data: licenseRows } = await supabase
     .from("licenses")
     .select(
-      "id,status,expires_at,activated_at,max_devices,token_preview,token_last4,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,features,max_devices)",
+      "id,status,expires_at,activated_at,starts_at,type,metadata,transaction_id,max_devices,token_preview,token_last4,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,features,max_devices,is_lifetime)",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
@@ -59,6 +59,8 @@ export async function loadAccount(supabase: Client, userId: string) {
   return {
     profile: profile ?? null,
     license: license ?? null,
+    // Todas as licenças do cliente, cada uma com sua função (extensão, clonador, agente).
+    licenses: list,
     devices,
     subscription: subscription ?? null,
     events: events ?? [],

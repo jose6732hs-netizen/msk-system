@@ -408,7 +408,7 @@ function Admin() {
                   <div className="overflow-x-auto">
                     <div className="flex items-center gap-3 mb-6"><div className="h-8 w-1 bg-primary rounded-full" /><h4 className="text-[0.7rem] font-black uppercase tracking-widest">Gestão de Licenças</h4></div>
                     <table className="w-full text-left text-sm">
-                      <thead className="text-[0.65rem] uppercase tracking-widest text-muted-foreground border-b border-border/50"><tr><th className="p-4">Usuário</th><th className="p-4">Token</th><th className="p-4">Plano</th><th className="p-4">Status</th><th className="p-4">Validade / contador</th><th className="p-4 text-right">Ações</th></tr></thead>
+                      <thead className="text-[0.65rem] uppercase tracking-widest text-muted-foreground border-b border-border/50"><tr><th className="p-4">Usuário</th><th className="p-4">Token</th><th className="p-4">Plano</th><th className="p-4">Função</th><th className="p-4">Status</th><th className="p-4">Validade / contador</th><th className="p-4 text-right">Ações</th></tr></thead>
                       <tbody className="divide-y divide-border/30">
                         {(data?.licenses ?? []).filter((l: any) => statusFilter === "all" || l.status === statusFilter).map((l: any) => {
                           const isOnline = l.last_validation && new Date(l.last_validation).getTime() > Date.now() - 60_000;
@@ -420,7 +420,8 @@ function Admin() {
                             <tr key={l.id} className="group hover:bg-muted/5 transition-colors">
                               <td className="p-4"><div className="flex flex-col"><span className="font-medium truncate max-w-[180px]">{l.profiles?.email ?? "Sem usuário"}</span><div className="flex items-center gap-1.5 mt-1"><span className={`h-1.5 w-1.5 rounded-full ${isOnline ? "bg-green-500 animate-pulse" : "bg-muted"}`} /><span className="text-[0.65rem] text-muted-foreground uppercase">{isOnline ? "Online" : "Offline"}</span></div></div></td>
                               <td className="p-4"><code className="rounded bg-muted/30 px-2 py-1 font-mono text-xs text-primary">{l.token_preview ?? `••••${l.token_last4 ?? ""}`}</code></td>
-                              <td className="p-4"><span className="rounded-lg border border-border/40 bg-muted/20 px-2 py-1 text-xs">{l.plans?.name ?? "Manual"}</span></td>
+                              <td className="p-4"><span className="rounded-lg border border-border/40 bg-muted/20 px-2 py-1 text-xs">{l.plans?.name ?? l.item_label ?? "Manual"}</span></td>
+                              <td className="p-4"><div className="flex flex-col gap-1"><span className={cn("w-fit rounded-full border px-2.5 py-0.5 text-[0.6rem] font-black uppercase", l.purpose_accent ?? "border-border/40 bg-muted/20")}>{l.purpose_label ?? "Extensão MSK"}</span><span className="text-[0.6rem] text-muted-foreground">{l.purpose_where ?? ""}{l.item_origin === "bump" ? " · oferta adicional" : l.item_origin === "cart" ? " · carrinho" : ""}</span></div></td>
                               <td className="p-4"><span className={cn("rounded-full border px-2.5 py-0.5 text-[0.6rem] font-bold uppercase", l.status === "active" ? "text-primary border-primary/30 bg-primary/10" : l.status === "pending" ? "text-amber-400 border-amber-400/30 bg-amber-400/10" : l.status === "expired" ? "text-yellow-500 border-yellow-500/30 bg-yellow-500/10" : "text-red-500 border-red-500/30 bg-red-500/10")}>{label}</span></td>
                               <td className="p-4 text-xs min-w-[190px]">
                                 {l.status === "pending" ? (

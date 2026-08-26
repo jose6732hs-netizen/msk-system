@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { purposeForLicense } from "@/lib/license-purpose";
 
 interface LicenseCardProps {
   license: any;
@@ -67,6 +68,8 @@ export function LicenseCard({ license, token, busy, onReveal, onCopyToken, onGen
     return () => clearInterval(timer);
   }, [license.expires_at]);
 
+  const purpose = purposeForLicense(license);
+  const itemLabel = (license?.metadata as any)?.item_label as string | undefined;
   const awaitingActivation = license.status === "inactive" && !license.expires_at;
   const status = timeLeft?.isExpired ? "expired" : license.status;
   const plan = license.plans;
@@ -105,6 +108,9 @@ export function LicenseCard({ license, token, busy, onReveal, onCopyToken, onGen
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-sm font-black uppercase tracking-widest text-white/60">Licença</h3>
+                <span className={cn("px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border", purpose.accent)}>
+                  {purpose.label}
+                </span>
                 <span className={cn(
                   "px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider",
                   status === "active" ? "bg-green-500/20 text-green-500" : 
@@ -116,8 +122,11 @@ export function LicenseCard({ license, token, busy, onReveal, onCopyToken, onGen
               </div>
               <h2 className="text-3xl font-black tracking-tighter text-white uppercase flex items-center gap-3">
                 <Rocket className="text-primary h-6 w-6" />
-                {plan?.name || "Plano Pro"}
+                {plan?.name || itemLabel || "Plano Pro"}
               </h2>
+              <p className="mt-1 text-[11px] leading-relaxed text-white/50">
+                {purpose.description} · Usar em: {purpose.where}
+              </p>
             </div>
           </div>
 

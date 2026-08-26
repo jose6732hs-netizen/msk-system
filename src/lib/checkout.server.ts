@@ -214,11 +214,24 @@ export async function createPixCheckout(input: {
 }) {
   const { loadCart } = await import("./cart.server");
 
+  const { licenseRoleFromSlug } = await import("./license-purpose");
+
   let finalPrice = 0;
   let planName = "";
   let planSlug = "";
   let items: any[] = [];
   let isBulk = false;
+  /** Cada linha vira uma licença separada e identificada na entrega. */
+  const lineItems: {
+    planId: string;
+    name: string;
+    slug: string;
+    quantity: number;
+    unitPrice: number;
+    role: string;
+    origin: "single" | "cart" | "bump";
+  }[] = [];
+
 
   if (!input.planId && input.items?.length) {
     // Lote enviado pelo carrinho do navegador (fonte de verdade: tabela plans).
@@ -240,6 +253,15 @@ export async function createPixCheckout(input: {
         quantity: line.quantity,
         tangible: false,
       });
+      lineItems.push({
+        planId: plan.id,
+        name: plan.name,
+        slug: plan.slug,
+        quantity: line.quantity,
+        unitPrice: Number(plan.price),
+        role: licenseRoleFromSlug(plan.slug),
+        origin: "cart",
+      });
     }
     planName = items.length === 1 ? String(items[0].title) : `${items.length} Planos MSK`;
     planSlug = "cart_bulk";
@@ -256,6 +278,17 @@ export async function createPixCheckout(input: {
       quantity: l.quantity,
       tangible: false,
     }));
+    for (const l of cart.lines as any[]) {
+      lineItems.push({
+        planId: String(l.planId),
+        name: String(l.name),
+        slug: String(l.slug ?? ""),
+        quantity: Number(l.quantity ?? 1),
+        unitPrice: Number(l.price ?? 0),
+        role: licenseRoleFromSlug(l.slug),
+        origin: "cart",
+      });
+    }
   } else {
     const planId = input.planId;
     const { data: plan } = await supabaseAdmin
@@ -272,6 +305,15 @@ export async function createPixCheckout(input: {
     planName = plan.name;
     planSlug = plan.slug;
     items = [{ title: plan.name, unitPrice: Math.round(finalPrice * 100), quantity: 1, tangible: false }];
+    lineItems.push({
+      planId: plan.id,
+      name: plan.name,
+      slug: plan.slug,
+      quantity: 1,
+      unitPrice: finalPrice,
+      role: licenseRoleFromSlug(plan.slug),
+      origin: "single",
+    });
   }
 
   // Order bump aceito ("quero adquirir também essa oferta"): o preço com desconto
@@ -290,6 +332,15 @@ export async function createPixCheckout(input: {
           quantity: 1,
           tangible: false,
         });
+        lineItems.push({
+          planId: String(offer.companion.id),
+          name: String(offer.companion.name),
+          slug: String(offer.companion.slug ?? ""),
+          quantity: 1,
+          unitPrice: companionPrice,
+          role: licenseRoleFromSlug(offer.companion.slug),
+          origin: "bump",
+        });
         isBulk = true;
         planName = `${planName} + ${offer.companion.name}`;
         companionMeta = {
@@ -302,6 +353,7 @@ export async function createPixCheckout(input: {
       }
     }
   }
+
 
   const amountCents = Math.round(finalPrice * 100);
 
@@ -323,7 +375,14 @@ export async function createPixCheckout(input: {
       amount: finalPrice,
       currency: "BRL",
       status: "PENDING",
-      metadata: { plan: planSlug, bulk: isBulk, ...(companionMeta ?? {}) } as never,
+      metadata: {
+        plan: planSlug,
+        bulk: isBulk,
+        // Cada linha gera uma licença separada e rotulada na liquidação.
+        line_items: lineItems,
+        ...(companionMeta ?? {}),
+      } as never,
+
     })
     .select("id")
     .single();
