@@ -85,6 +85,10 @@ export function AdminGatewayTab() {
         </div>
       </div>
 
+      <AtomoMethodsCard />
+
+
+
       {data.providers.map((p) => (
         <ProviderCard
           key={p.provider}
