@@ -1,11 +1,12 @@
 /**
- * Server functions do cartão de crédito (AtomoPay).
- * O cartão trafega apenas cliente -> nosso backend (HTTPS) -> AtomoPay.
+ * Server functions do cartão de crédito.
+ * O cartão trafega apenas cliente -> nosso backend (HTTPS) -> provedor.
  * Nada de PAN/CVV é persistido, logado ou devolvido.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { CARD_PUBLIC_ERROR } from "./public-messages";
 
 const cardSchema = z.object({
   transactionId: z.string().uuid(),
@@ -19,6 +20,13 @@ const cardSchema = z.object({
   }),
 });
 
+function safeCardLog(error: unknown) {
+  return String(error instanceof Error ? error.message : error ?? "unknown_card_error")
+    .replace(/\d{12,19}/g, "[card-redacted]")
+    .replace(/cvv\s*[:=]\s*\d{3,4}/gi, "cvv=[redacted]")
+    .slice(0, 300);
+}
+
 export const getCardCheckoutOptions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ amount: z.number().min(0) }).parse(d))
@@ -31,11 +39,16 @@ export const payWithCard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => cardSchema.parse(d))
   .handler(async ({ context, data }) => {
-    const { payTransactionWithCard } = await import("./card.server");
-    return payTransactionWithCard({
-      userId: context.userId,
-      transactionId: data.transactionId,
-      installments: data.installments,
-      card: data.card,
-    });
+    try {
+      const { payTransactionWithCard } = await import("./card.server");
+      return await payTransactionWithCard({
+        userId: context.userId,
+        transactionId: data.transactionId,
+        installments: data.installments,
+        card: data.card,
+      });
+    } catch (error) {
+      console.error("[payment][card] falha:", safeCardLog(error));
+      throw new Error(CARD_PUBLIC_ERROR);
+    }
   });

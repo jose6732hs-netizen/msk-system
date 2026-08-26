@@ -2,7 +2,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { CreditCard, Loader2, Lock, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CreditCard3D } from "@/components/msk/credit-card-3d";
 import { getCardCheckoutOptions, payWithCard } from "@/lib/payments/card.functions";
+import { cardBrand } from "@/lib/payments/atomo-status";
+import { CARD_PUBLIC_ERROR } from "@/lib/payments/public-messages";
 
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -11,7 +14,7 @@ type Options = Awaited<ReturnType<typeof getCardCheckoutOptions>>;
 /**
  * Formulário de cartão do checkout interno.
  * Os dados do cartão só existem no estado local do componente e vão direto
- * para o nosso backend, que repassa à AtomoPay. Nada é salvo no navegador.
+ * para o nosso backend. Nada é salvo no navegador.
  */
 export function CardPaymentPanel({
   transactionId,
@@ -43,6 +46,7 @@ export function CardPaymentPanel({
   }, [amount]);
 
   const plans = useMemo(() => options?.installments ?? [], [options]);
+  const brand = useMemo(() => cardBrand(number), [number]);
 
   if (!options?.enabled) return null;
 
@@ -71,19 +75,21 @@ export function CardPaymentPanel({
       // Limpa imediatamente os dados sensíveis da memória do formulário.
       setNumber("");
       setCvv("");
-      setFeedback(res.message);
+
+      const publicMessage = res.status === "FAILED" ? CARD_PUBLIC_ERROR : res.message;
+      setFeedback(publicMessage);
+
       if (res.status === "PAID") {
         toast.success("Pagamento aprovado!");
         onPaid();
       } else if (res.status === "FAILED") {
-        toast.error(res.message);
+        toast.error(CARD_PUBLIC_ERROR);
       } else {
-        toast.info(res.message);
+        toast.info(publicMessage);
       }
-    } catch (e) {
-      const msg = (e as Error).message || "Não foi possível processar o cartão.";
-      setFeedback(msg);
-      toast.error(msg);
+    } catch {
+      setFeedback(CARD_PUBLIC_ERROR);
+      toast.error(CARD_PUBLIC_ERROR);
     } finally {
       setSubmitting(false);
       lock.current = false;
@@ -91,7 +97,7 @@ export function CardPaymentPanel({
   }
 
   return (
-    <div className="w-full space-y-3 rounded-3xl border border-white/10 bg-white/5 p-5">
+    <div className="w-full space-y-5 rounded-3xl border border-white/10 bg-white/5 p-5">
       <div className="flex items-center gap-2">
         <CreditCard className="h-4 w-4 text-primary" />
         <h4 className="text-xs font-black uppercase tracking-[0.2em] text-foreground">
@@ -104,6 +110,13 @@ export function CardPaymentPanel({
         )}
       </div>
 
+      <CreditCard3D
+        brand={brand}
+        number={number}
+        holderName={holderName}
+        expiry={expiry}
+      />
+
       <div className="space-y-3">
         <div>
           <label htmlFor="card-holder" className="text-[0.65rem] font-bold uppercase text-muted-foreground">
@@ -114,6 +127,7 @@ export function CardPaymentPanel({
             autoComplete="cc-name"
             value={holderName}
             onChange={(e) => setHolderName(e.target.value.toUpperCase())}
+            placeholder="NOME IMPRESSO NO CARTÃO"
             className="mt-1 h-11 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-sm text-foreground outline-none focus:border-primary"
           />
         </div>
@@ -193,7 +207,7 @@ export function CardPaymentPanel({
       </div>
 
       {feedback && (
-        <p className="rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-muted-foreground">
+        <p className="rounded-xl border border-white/10 bg-black/40 p-3 text-xs text-muted-foreground" aria-live="polite">
           {feedback}
         </p>
       )}
