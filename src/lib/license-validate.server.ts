@@ -11,6 +11,8 @@ import { resolvePlanDuration } from "./plan-duration";
 
 export const validateSchema = z.object({
   token: z.string().min(8).max(64),
+  // Login da extensão: e-mail + licença.
+  email: z.string().email().max(160).optional(),
   device_fingerprint: z.string().min(8).max(256).optional(),
   installation_id: z.string().min(8).max(128).optional(),
   // Compatibilidade com builds antigos da MSK COPY.
