@@ -245,7 +245,7 @@ function PlanosPage() {
       return;
     }
 
-    const sameOnly = cart.length === 0 || (cart.length === 1 && cart[0]?.planId === plan.id);
+    
     setCart((current) => {
       const existing = current.find((item) => item.planId === plan.id);
       if (existing) {
