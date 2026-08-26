@@ -23,6 +23,8 @@ import { PayerForm, useBilling } from "@/components/msk/payer-form";
 import { SmartOfferCard, smartOfferImage } from "@/components/msk/smart-offer-card";
 import { SmartPixModal, type SmartPixState } from "@/components/msk/smart-pix-modal";
 import { getClonerProduct, getSmartOffer } from "@/lib/cloner.functions";
+import { getCmsContent } from "@/lib/cms.functions";
+import { resolveSiteImage } from "@/lib/site-images";
 import {
   generatePurchasePixPayment,
   preparePurchasePayment,
@@ -72,16 +74,32 @@ type PayerState = {
   items?: CheckoutLine[] | undefined;
 };
 
+type OfferCarouselSectionProps = {
+  sectionId: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  bannerUrl: string;
+  plans: any[];
+  highlightSlug?: string;
+  loadingPlan: string | null;
+  onAdd: (plan: any) => void;
+  onShare: (plan: any) => void;
+};
+
 export const Route = createFileRoute("/planos")({
   head: () => ({
     meta: [
       { title: "Planos e preços — MSK SISTEM" },
       {
         name: "description",
-        content: "Planos da extensão principal MSK com licença automática após o pagamento.",
+        content: "Planos da Extensão MSK, Clonador e MSK Agente com licença automática após o pagamento.",
       },
       { property: "og:title", content: "Planos MSK SISTEM" },
-      { property: "og:description", content: "Escolha seu período e aproveite ofertas inteligentes no checkout." },
+      {
+        property: "og:description",
+        content: "Escolha sua ferramenta, período e conclua por PIX ou cartão.",
+      },
       { property: "og:type", content: "website" },
     ],
   }),
@@ -90,6 +108,160 @@ export const Route = createFileRoute("/planos")({
 
 function formatPrice(price: number, currency = "BRL") {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(price);
+}
+
+function OfferCarouselSection({
+  sectionId,
+  eyebrow,
+  title,
+  description,
+  bannerUrl,
+  plans,
+  highlightSlug,
+  loadingPlan,
+  onAdd,
+  onShare,
+}: OfferCarouselSectionProps) {
+  if (!plans.length) return null;
+  const carouselId = `${sectionId}-carousel`;
+
+  return (
+    <section id={sectionId} className="mt-14 min-w-0 scroll-mt-24 overflow-hidden sm:mt-16">
+      <div className="relative min-h-[190px] w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-[#080808] sm:min-h-[230px] lg:min-h-[280px]">
+        {bannerUrl ? (
+          <img
+            src={bannerUrl}
+            alt={`Banner ${title}`}
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/20" />
+        <div className="relative z-10 flex min-h-[190px] items-end p-5 sm:min-h-[230px] sm:p-7 lg:min-h-[280px] lg:p-10">
+          <div className="max-w-2xl">
+            <p className="text-[9px] font-black uppercase tracking-[.24em] text-primary sm:text-[10px]">
+              {eyebrow}
+            </p>
+            <h2 className="mt-2 break-words text-3xl font-black uppercase tracking-tight text-white sm:text-4xl lg:text-5xl">
+              {title}
+            </h2>
+            <p className="mt-3 max-w-xl text-xs font-medium leading-relaxed text-white/70 sm:text-sm">
+              {description}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-6 min-w-0 overflow-hidden sm:mt-8">
+        <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 hidden items-center justify-between lg:flex">
+          <button
+            type="button"
+            aria-label={`Ofertas anteriores de ${title}`}
+            className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/85 text-primary shadow-xl"
+            onClick={() =>
+              document.getElementById(carouselId)?.scrollBy({ left: -360, behavior: "smooth" })
+            }
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            aria-label={`Próximas ofertas de ${title}`}
+            className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/85 text-primary shadow-xl"
+            onClick={() =>
+              document.getElementById(carouselId)?.scrollBy({ left: 360, behavior: "smooth" })
+            }
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div
+          id={carouselId}
+          className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-8"
+        >
+          {plans.map((plan: any) => {
+            const highlighted = String(plan.slug ?? "") === highlightSlug;
+            const isFree = Number(plan.price) === 0;
+            return (
+              <article
+                key={plan.id}
+                className={`relative flex w-[82vw] max-w-[330px] shrink-0 snap-center flex-col overflow-hidden rounded-[2rem] border bg-[#0A0A0A] sm:w-[45vw] lg:w-[310px] ${
+                  highlighted
+                    ? "border-primary/60 shadow-[0_0_60px_rgba(57,255,20,.12)]"
+                    : "border-white/10"
+                }`}
+              >
+                <div className="relative h-48 w-full overflow-hidden sm:h-56">
+                  <img
+                    src={planImage(plan)}
+                    alt={plan.name}
+                    loading="lazy"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
+                  <span className="absolute right-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[8px] font-black uppercase text-black">
+                    {highlighted ? "Mais popular" : isFree ? "Teste" : "Oferta"}
+                  </span>
+                </div>
+                <div className="flex flex-1 flex-col p-5 sm:p-6">
+                  <p className="break-words text-[10px] font-black uppercase tracking-[.18em] text-primary">
+                    {plan.name}
+                  </p>
+                  <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                    <span className="text-3xl font-black text-white">
+                      {formatPrice(Number(plan.price), plan.currency)}
+                    </span>
+                    {!plan.is_lifetime ? (
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground">
+                        /{plan.duration_label}
+                      </span>
+                    ) : null}
+                  </div>
+                  <ul className="mt-5 flex-1 space-y-2.5">
+                    {(plan.highlights ?? []).map((highlight: string) => (
+                      <li
+                        key={highlight}
+                        className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground"
+                      >
+                        <span className="mt-0.5 rounded-full bg-primary p-0.5 text-black">
+                          <Check className="h-2.5 w-2.5" />
+                        </span>
+                        <span className="min-w-0 break-words">{highlight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <Button
+                      className="min-h-14 w-full whitespace-normal rounded-2xl bg-[#22C55E] px-3 text-center text-[10px] font-black uppercase leading-tight text-white hover:bg-[#28D56A] sm:text-xs"
+                      disabled={loadingPlan === plan.id}
+                      onClick={() => onAdd(plan)}
+                    >
+                      {loadingPlan === plan.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isFree ? (
+                        "Testar grátis"
+                      ) : (
+                        "Adicionar"
+                      )}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="min-h-14 w-full whitespace-normal rounded-2xl border border-white/10 px-3 text-center text-[10px] font-black uppercase text-white/70 hover:border-primary/30 hover:text-primary sm:text-xs"
+                      onClick={() => onShare(plan)}
+                    >
+                      <Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar
+                    </Button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function PlanosPage() {
@@ -109,6 +281,12 @@ function PlanosPage() {
     staleTime: 60_000,
   });
 
+  const { data: cmsSettings } = useQuery({
+    queryKey: ["cms-content", "plans"],
+    queryFn: () => getCmsContent(),
+    staleTime: 60_000,
+  });
+
   const offerEligible =
     !!inlineOffer?.available &&
     !!inlineOffer.companion?.id &&
@@ -116,9 +294,12 @@ function PlanosPage() {
     !cart.some((item) => item.planId === inlineOffer.companion?.id);
 
   const baseTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const offerTotal = offerEligible && offerAccepted ? Number(inlineOffer.companion?.discountedPrice ?? 0) : 0;
+  const offerTotal =
+    offerEligible && offerAccepted ? Number(inlineOffer.companion?.discountedPrice ?? 0) : 0;
   const checkoutTotal = baseTotal + offerTotal;
-  const checkoutCount = cart.reduce((acc, item) => acc + item.quantity, 0) + (offerEligible && offerAccepted ? 1 : 0);
+  const checkoutCount =
+    cart.reduce((acc, item) => acc + item.quantity, 0) +
+    (offerEligible && offerAccepted ? 1 : 0);
 
   useEffect(() => {
     if (!cart.length) {
@@ -157,7 +338,7 @@ function PlanosPage() {
   }, []);
 
   const { data: plans, isLoading } = useQuery({
-    queryKey: ["plans"],
+    queryKey: ["plans", "extension"],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: async () => {
@@ -175,7 +356,22 @@ function PlanosPage() {
     },
   });
 
-  const { data: agentPlans } = useQuery({
+  const { data: clonerPlans, isLoading: clonerLoading } = useQuery({
+    queryKey: ["plans", "page-cloner"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("active", true)
+        .like("slug", "page-cloner%")
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: agentPlans, isLoading: agentLoading } = useQuery({
     queryKey: ["plans", "msk-agent"],
     staleTime: 5 * 60_000,
     queryFn: async () => {
@@ -215,7 +411,9 @@ function PlanosPage() {
 
   function revealCheckout() {
     window.setTimeout(() => {
-      document.getElementById("checkout-cart")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById("checkout-cart")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 120);
   }
 
@@ -224,7 +422,10 @@ function PlanosPage() {
     shareUrl.searchParams.set("offer", String(plan.slug ?? plan.id));
     const url = shareUrl.toString();
     const duration = !plan.is_lifetime && plan.duration_label ? ` · ${plan.duration_label}` : "";
-    const text = `${plan.name}${duration} · ${formatPrice(Number(plan.price ?? 0), plan.currency)}. Confira esta oferta da MSK SISTEM.`;
+    const text = `${plan.name}${duration} · ${formatPrice(
+      Number(plan.price ?? 0),
+      plan.currency,
+    )}. Confira esta oferta da MSK SISTEM.`;
     try {
       if (navigator.share) {
         await navigator.share({ title: plan.name, text, url });
@@ -233,7 +434,9 @@ function PlanosPage() {
         toast.success(`Link de ${plan.name} copiado.`);
       }
     } catch (e) {
-      if ((e as Error)?.name !== "AbortError") toast.error("Não foi possível compartilhar esta oferta agora.");
+      if ((e as Error)?.name !== "AbortError") {
+        toast.error("Não foi possível compartilhar esta oferta agora.");
+      }
     }
   }
 
@@ -251,7 +454,9 @@ function PlanosPage() {
       const existing = current.find((item) => item.planId === plan.id);
       if (existing) {
         return current.map((item) =>
-          item.planId === plan.id ? { ...item, quantity: Math.min(20, item.quantity + 1) } : item,
+          item.planId === plan.id
+            ? { ...item, quantity: Math.min(20, item.quantity + 1) }
+            : item,
         );
       }
       return [
@@ -285,15 +490,25 @@ function PlanosPage() {
   function updateQuantity(planId: string, delta: number) {
     setCart((current) =>
       current.map((item) =>
-        item.planId === planId ? { ...item, quantity: Math.max(1, Math.min(20, item.quantity + delta)) } : item,
+        item.planId === planId
+          ? { ...item, quantity: Math.max(1, Math.min(20, item.quantity + delta)) }
+          : item,
       ),
     );
   }
 
   async function payItem(item: CartItem) {
     track("checkout_start", { label: item.planName, value: item.price * item.quantity });
-    const lines = item.quantity > 1 ? [{ planId: item.planId, quantity: item.quantity }] : undefined;
-    await subscribe(lines ? "" : item.planId, item.planName, false, item.imageUrl, undefined, lines);
+    const lines =
+      item.quantity > 1 ? [{ planId: item.planId, quantity: item.quantity }] : undefined;
+    await subscribe(
+      lines ? "" : item.planId,
+      item.planName,
+      false,
+      item.imageUrl,
+      undefined,
+      lines,
+    );
   }
 
   async function checkoutCart() {
@@ -350,7 +565,9 @@ function PlanosPage() {
       return;
     }
 
-    const payerData = billingOverride ?? (complete && billing ? { document: billing.document, phone: billing.phone } : null);
+    const payerData =
+      billingOverride ??
+      (complete && billing ? { document: billing.document, phone: billing.phone } : null);
     if (!payerData) {
       setPayer({ planId, planName, imageUrl: imageUrl ?? null, items: itemsOverride });
       return;
@@ -359,7 +576,11 @@ function PlanosPage() {
     await preparePaymentChoice(planId, planName, itemsOverride);
   }
 
-  async function preparePaymentChoice(planId: string, planName: string, itemsOverride?: CheckoutLine[]) {
+  async function preparePaymentChoice(
+    planId: string,
+    planName: string,
+    itemsOverride?: CheckoutLine[],
+  ) {
     const loadingKey = planId || "checkout-bulk";
     setLoadingPlan(loadingKey);
     try {
@@ -372,7 +593,10 @@ function PlanosPage() {
           : cart.map((item) => ({ planId: item.planId, quantity: item.quantity }));
       const companion =
         offerEligible && offerAccepted && inlineOffer?.main?.id && inlineOffer?.companion?.id
-          ? { mainPlanId: String(inlineOffer.main.id), companionPlanId: String(inlineOffer.companion.id) }
+          ? {
+              mainPlanId: String(inlineOffer.main.id),
+              companionPlanId: String(inlineOffer.companion.id),
+            }
           : undefined;
 
       const result = await preparePurchasePayment({
@@ -405,7 +629,9 @@ function PlanosPage() {
   async function generatePixForPreparedOrder() {
     const current = smartPix;
     if (!current) return;
-    const result = await generatePurchasePixPayment({ data: { transactionId: current.transactionId } });
+    const result = await generatePurchasePixPayment({
+      data: { transactionId: current.transactionId },
+    });
     if (!result.pixCode && !result.qrCode) {
       throw new Error("O gateway não retornou um PIX válido.");
     }
@@ -443,29 +669,58 @@ function PlanosPage() {
     }
   }, [plans, isLoading]);
 
+  const extensionBanner = resolveSiteImage(cmsSettings, "plans_extension_banner");
+  const clonerBanner = resolveSiteImage(cmsSettings, "plans_cloner_banner");
+  const agentBanner = resolveSiteImage(cmsSettings, "plans_agent_banner");
+  const offersLoading = isLoading || clonerLoading || agentLoading;
+
   return (
     <div className="min-h-screen overflow-x-hidden">
       <SiteHeader />
       <main className="mx-auto w-full max-w-7xl min-w-0 px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
         <header className="flex min-w-0 flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 max-w-3xl">
-            <h1 className="break-words text-4xl font-black uppercase tracking-tighter sm:text-7xl">Nossos <span className="neon-text">Planos</span></h1>
-            <p className="mt-4 break-words text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground sm:text-sm sm:tracking-[.3em]">Extensão principal · PIX ou cartão · licença automática</p>
+            <h1 className="break-words text-4xl font-black uppercase tracking-tighter sm:text-7xl">
+              Nossos <span className="neon-text">Planos</span>
+            </h1>
+            <p className="mt-4 break-words text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground sm:text-sm sm:tracking-[.25em]">
+              Extensão · Clonagem · MSK Agente · PIX ou cartão · licença automática
+            </p>
           </div>
 
           {cart.length > 0 ? (
-            <div id="checkout-cart" className="w-full min-w-0 scroll-mt-24 overflow-hidden rounded-[1.5rem] border border-primary/20 bg-[#0F0F0F] shadow-2xl lg:max-w-[470px]">
+            <div
+              id="checkout-cart"
+              className="w-full min-w-0 scroll-mt-24 overflow-hidden rounded-[1.5rem] border border-primary/20 bg-[#0F0F0F] shadow-2xl lg:max-w-[470px]"
+            >
               <div className="flex min-w-0 items-center justify-between gap-3 border-b border-primary/20 bg-primary/10 px-4 py-3">
-                <div className="flex min-w-0 items-center gap-2"><ShoppingCart className="h-4 w-4 shrink-0 text-primary" /><span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-primary">Checkout · seu pedido</span></div>
-                <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[9px] font-black text-black">{checkoutCount} {checkoutCount === 1 ? "produto" : "produtos"}</span>
+                <div className="flex min-w-0 items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 shrink-0 text-primary" />
+                  <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-primary">
+                    Checkout · seu pedido
+                  </span>
+                </div>
+                <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-[9px] font-black text-black">
+                  {checkoutCount} {checkoutCount === 1 ? "produto" : "produtos"}
+                </span>
               </div>
               <div className="max-h-[68vh] space-y-3 overflow-y-auto overscroll-contain p-4 sm:p-5">
                 {cart.map((item) => (
-                  <CartRow key={item.planId} item={item} busy={loadingPlan === item.planId} onQty={(d) => updateQuantity(item.planId, d)} onRemove={() => removeFromCart(item.planId)} onPay={() => void payItem(item)} />
+                  <CartRow
+                    key={item.planId}
+                    item={item}
+                    busy={loadingPlan === item.planId}
+                    onQty={(delta) => updateQuantity(item.planId, delta)}
+                    onRemove={() => removeFromCart(item.planId)}
+                    onPay={() => void payItem(item)}
+                  />
                 ))}
 
                 {offerLoading && cart.length === 1 ? (
-                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[.025] p-5 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin text-primary" /> Buscando a melhor oferta para este pedido...</div>
+                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[.025] p-5 text-xs text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" /> Buscando a melhor oferta
+                    para este pedido...
+                  </div>
                 ) : null}
 
                 {offerEligible ? (
@@ -475,8 +730,13 @@ function PlanosPage() {
                     busy={loadingPlan !== null}
                     onAdd={() => {
                       setOfferAccepted(true);
-                      track("add_to_cart", { label: inlineOffer.companion.name, value: inlineOffer.companion.discountedPrice });
-                      toast.success(`${inlineOffer.companion.name} adicionado com ${inlineOffer.discountPercent}% OFF`);
+                      track("add_to_cart", {
+                        label: inlineOffer.companion.name,
+                        value: inlineOffer.companion.discountedPrice,
+                      });
+                      toast.success(
+                        `${inlineOffer.companion.name} adicionado com ${inlineOffer.discountPercent}% OFF`,
+                      );
                     }}
                     onRemove={() => setOfferAccepted(false)}
                   />
@@ -485,135 +745,135 @@ function PlanosPage() {
               <div className="border-t border-white/5 bg-black/20 p-4 sm:p-5">
                 {offerEligible && offerAccepted ? (
                   <div className="mb-3 flex min-w-0 items-center justify-between gap-3 rounded-xl border border-emerald-400/15 bg-emerald-400/[.04] px-3 py-2 text-[10px]">
-                    <span className="min-w-0 break-words text-muted-foreground">Desconto em {inlineOffer.companion.name}</span>
-                    <span className="shrink-0 font-black text-emerald-400">-{formatPrice(Number(inlineOffer.savings ?? 0))}</span>
+                    <span className="min-w-0 break-words text-muted-foreground">
+                      Desconto em {inlineOffer.companion.name}
+                    </span>
+                    <span className="shrink-0 font-black text-emerald-400">
+                      -{formatPrice(Number(inlineOffer.savings ?? 0))}
+                    </span>
                   </div>
                 ) : null}
-                <div className="flex flex-wrap items-end justify-between gap-2"><div><span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Total do pedido</span><p className="mt-1 text-[10px] text-muted-foreground">PIX ou cartão · {checkoutCount} {checkoutCount === 1 ? "item" : "itens"}</p></div><span className="text-2xl font-black text-primary">{formatPrice(checkoutTotal)}</span></div>
-                <Button variant="neon" className="mt-4 min-h-14 w-full whitespace-normal rounded-2xl text-xs font-black uppercase" onClick={() => void checkoutCart()} disabled={loadingPlan !== null}>{loadingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Continuar pagamento</Button>
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                      Total do pedido
+                    </span>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      PIX ou cartão · {checkoutCount} {checkoutCount === 1 ? "item" : "itens"}
+                    </p>
+                  </div>
+                  <span className="text-2xl font-black text-primary">
+                    {formatPrice(checkoutTotal)}
+                  </span>
+                </div>
+                <Button
+                  variant="neon"
+                  className="mt-4 min-h-14 w-full whitespace-normal rounded-2xl text-xs font-black uppercase"
+                  onClick={() => void checkoutCart()}
+                  disabled={loadingPlan !== null}
+                >
+                  {loadingPlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Continuar pagamento
+                </Button>
               </div>
             </div>
           ) : null}
         </header>
 
-        {isLoading ? (
-          <div className="mt-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : (
-          <div className="relative mt-10 min-w-0 overflow-hidden sm:mt-12">
-            <div className="pointer-events-none absolute inset-y-0 left-0 right-0 z-20 hidden items-center justify-between lg:flex">
-              <button aria-label="Ofertas anteriores" className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/80 text-primary" onClick={() => document.getElementById("plans-carousel")?.scrollBy({ left: -360, behavior: "smooth" })}><ChevronLeft className="h-6 w-6" /></button>
-              <button aria-label="Próximas ofertas" className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/80 text-primary" onClick={() => document.getElementById("plans-carousel")?.scrollBy({ left: 360, behavior: "smooth" })}><ChevronRight className="h-6 w-6" /></button>
-            </div>
-
-            <div id="plans-carousel" className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-8">
-              {(plans ?? []).map((plan: any) => {
-                const highlighted = plan.slug === "monthly";
-                const isFree = Number(plan.price) === 0;
-                return (
-                  <article key={plan.id} className={`relative flex w-[82vw] max-w-[330px] shrink-0 snap-center flex-col overflow-hidden rounded-[2rem] border bg-[#0A0A0A] sm:w-[45vw] lg:w-[310px] ${highlighted ? "border-primary/60 shadow-[0_0_60px_rgba(57,255,20,.12)]" : "border-white/10"}`}>
-                    <div className="relative h-48 w-full overflow-hidden sm:h-56"><img src={planImage(plan)} alt={plan.name} className="h-full w-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" /><span className="absolute right-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[8px] font-black uppercase text-black">{highlighted ? "Mais popular" : isFree ? "Teste" : "Oferta"}</span></div>
-                    <div className="flex flex-1 flex-col p-5 sm:p-6">
-                      <p className="break-words text-[10px] font-black uppercase tracking-[.18em] text-primary">{plan.name}</p>
-                      <div className="mt-3 flex flex-wrap items-baseline gap-2"><span className="text-3xl font-black text-white">{formatPrice(Number(plan.price), plan.currency)}</span>{!plan.is_lifetime ? <span className="text-[10px] font-bold uppercase text-muted-foreground">/{plan.duration_label}</span> : null}</div>
-                      <ul className="mt-5 flex-1 space-y-2.5">{(plan.highlights ?? []).map((h: string) => <li key={h} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground"><span className="mt-0.5 rounded-full bg-primary p-0.5 text-black"><Check className="h-2.5 w-2.5" /></span><span className="min-w-0 break-words">{h}</span></li>)}</ul>
-                      <div className="mt-5 grid grid-cols-2 gap-2">
-                        <Button className="min-h-14 w-full whitespace-normal rounded-2xl bg-[#22C55E] px-3 text-center text-[10px] font-black uppercase leading-tight text-white hover:bg-[#28D56A] sm:text-xs" disabled={loadingPlan === plan.id} onClick={() => void addToCart(plan)}>{loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isFree ? "Testar grátis" : "Adicionar"}</Button>
-                        <Button type="button" variant="ghost" className="min-h-14 w-full whitespace-normal rounded-2xl border border-white/10 px-3 text-center text-[10px] font-black uppercase text-white/70 hover:border-primary/30 hover:text-primary sm:text-xs" onClick={() => void sharePlan(plan)}><Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar</Button>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+        {offersLoading ? (
+          <div className="mt-16 flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
+        ) : (
+          <>
+            <OfferCarouselSection
+              sectionId="extensao-msk"
+              eyebrow="Extensão principal"
+              title="Extensão MSK"
+              description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
+              bannerUrl={extensionBanner}
+              plans={plans ?? []}
+              highlightSlug="monthly"
+              loadingPlan={loadingPlan}
+              onAdd={(plan) => void addToCart(plan)}
+              onShare={(plan) => void sharePlan(plan)}
+            />
+
+            <OfferCarouselSection
+              sectionId="clonagem-msk"
+              eyebrow="Ferramenta independente"
+              title="Clonagem"
+              description="Capture e recrie páginas com o Clonador MSK. A licença do Clonador é independente da extensão principal."
+              bannerUrl={clonerBanner}
+              plans={clonerPlans ?? []}
+              highlightSlug="page-cloner-monthly"
+              loadingPlan={loadingPlan}
+              onAdd={(plan) => void addToCart(plan)}
+              onShare={(plan) => void sharePlan(plan)}
+            />
+
+            <OfferCarouselSection
+              sectionId="msk-agente"
+              eyebrow="Assistente do projeto"
+              title="MSK Agente"
+              description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
+              bannerUrl={agentBanner}
+              plans={agentPlans ?? []}
+              highlightSlug="msk-agent-2"
+              loadingPlan={loadingPlan}
+              onAdd={(plan) => void addToCart(plan)}
+              onShare={(plan) => void sharePlan(plan)}
+            />
+          </>
         )}
-
-        {(agentPlans ?? []).length > 0 ? (
-          <section id="msk-agente" className="mt-20 scroll-mt-24">
-            <div className="text-center">
-              <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[.2em] text-primary">
-                Nova categoria
-              </span>
-              <h2 className="mt-4 text-3xl font-black uppercase sm:text-4xl">
-                MSK <span className="neon-text">Agente</span>
-              </h2>
-              <p className="mx-auto mt-3 max-w-xl text-xs text-muted-foreground sm:text-sm">
-                Assistente técnico do seu projeto: analisa, planeja e prepara alterações. Acesso liberado
-                automaticamente após a confirmação do pagamento.
-              </p>
-            </div>
-
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {(agentPlans ?? []).map((plan: any) => (
-                <article
-                  key={plan.id}
-                  className="flex flex-col overflow-hidden rounded-[2rem] border border-primary/25 bg-[#0A0A0A] shadow-[0_0_50px_rgba(57,255,20,.08)]"
-                >
-                  {plan.image_url ? (
-                    <div className="aspect-square w-full overflow-hidden bg-black">
-                      <img
-                        src={plan.image_url}
-                        alt={plan.name}
-                        loading="lazy"
-                        width={1024}
-                        height={1024}
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  ) : null}
-                  <div className="flex flex-1 flex-col p-6">
-                  <p className="break-words text-[10px] font-black uppercase tracking-[.18em] text-primary">{plan.name}</p>
-
-                  <div className="mt-3 flex flex-wrap items-baseline gap-2">
-                    <span className="text-3xl font-black text-white">{formatPrice(Number(plan.price), plan.currency)}</span>
-                    {!plan.is_lifetime ? (
-                      <span className="text-[10px] font-bold uppercase text-muted-foreground">/{plan.duration_label}</span>
-                    ) : null}
-                  </div>
-                  <ul className="mt-5 flex-1 space-y-2.5">
-                    {(plan.highlights ?? []).map((h: string) => (
-                      <li key={h} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
-                        <span className="mt-0.5 rounded-full bg-primary p-0.5 text-black"><Check className="h-2.5 w-2.5" /></span>
-                        <span className="min-w-0 break-words">{h}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5 grid grid-cols-2 gap-2">
-                    <Button
-                      className="min-h-14 w-full whitespace-normal rounded-2xl bg-[#22C55E] px-3 text-center text-[10px] font-black uppercase leading-tight text-white hover:bg-[#28D56A] sm:text-xs"
-                      disabled={loadingPlan === plan.id}
-                      onClick={() => void addToCart(plan)}
-                    >
-                      {loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      className="min-h-14 w-full whitespace-normal rounded-2xl border border-white/10 px-3 text-center text-[10px] font-black uppercase text-white/70 hover:border-primary/30 hover:text-primary sm:text-xs"
-                      onClick={() => void sharePlan(plan)}
-                    >
-                      <Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar
-                    </Button>
-                  </div>
-                  </div>
-                </article>
-
-              ))}
-            </div>
-          </section>
-        ) : null}
       </main>
       <SiteFooter />
 
-      {payer && typeof document !== "undefined" ? createPortal(
-        <div className="fixed inset-0 z-[100010] flex items-end justify-center overflow-y-auto bg-black/85 p-0 backdrop-blur-xl sm:items-center sm:p-4">
-          <div className="w-full max-w-md rounded-t-[2rem] border border-white/10 bg-[#0B0B0B] p-5 shadow-2xl sm:rounded-[2rem] sm:p-7">
-            <div className="mb-5 flex min-w-0 items-start justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-widest text-primary">Dados para o pagamento</p><h2 className="mt-1 break-words text-xl font-black uppercase">{offerEligible && offerAccepted ? `${payer.planName} + ${inlineOffer.companion.name}` : payer.planName}</h2></div><button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10" onClick={() => setPayer(null)}><X className="h-4 w-4" /></button></div>
-            <PayerForm compact onSaved={(b) => { const current = payer; setPayer(null); if (current) void subscribe(current.planId, current.planName, false, current.imageUrl, b, current.items); }} />
-          </div>
-        </div>,
-        document.body,
-      ) : null}
+      {payer && typeof document !== "undefined"
+        ? createPortal(
+            <div className="fixed inset-0 z-[100010] flex items-end justify-center overflow-y-auto bg-black/85 p-0 backdrop-blur-xl sm:items-center sm:p-4">
+              <div className="w-full max-w-md rounded-t-[2rem] border border-white/10 bg-[#0B0B0B] p-5 shadow-2xl sm:rounded-[2rem] sm:p-7">
+                <div className="mb-5 flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-primary">
+                      Dados para o pagamento
+                    </p>
+                    <h2 className="mt-1 break-words text-xl font-black uppercase">
+                      {offerEligible && offerAccepted
+                        ? `${payer.planName} + ${inlineOffer.companion.name}`
+                        : payer.planName}
+                    </h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-white/10"
+                    onClick={() => setPayer(null)}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <PayerForm
+                  compact
+                  onSaved={(nextBilling) => {
+                    const current = payer;
+                    setPayer(null);
+                    if (current) {
+                      void subscribe(
+                        current.planId,
+                        current.planName,
+                        false,
+                        current.imageUrl,
+                        nextBilling,
+                        current.items,
+                      );
+                    }
+                  }}
+                />
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {smartPix ? (
         <SmartPixModal
@@ -628,7 +888,13 @@ function PlanosPage() {
   );
 }
 
-function CartRow({ item, busy, onQty, onRemove, onPay }: {
+function CartRow({
+  item,
+  busy,
+  onQty,
+  onRemove,
+  onPay,
+}: {
   item: CartItem;
   busy: boolean;
   onQty: (delta: number) => void;
@@ -638,12 +904,63 @@ function CartRow({ item, busy, onQty, onRemove, onPay }: {
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-black/25 p-3.5">
       <div className="flex min-w-0 gap-3">
-        {item.imageUrl ? <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10"><img src={item.imageUrl} alt={item.planName} className="h-full w-full object-cover" /></div> : null}
-        <div className="min-w-0 flex-1"><div className="flex min-w-0 items-start justify-between gap-2"><div className="min-w-0"><p className="break-words text-xs font-black uppercase">{item.planName}</p><p className="mt-1 text-sm font-black text-primary">{formatPrice(item.price * item.quantity)}</p></div><button type="button" className="shrink-0 p-1.5 text-muted-foreground hover:text-red-400" onClick={onRemove}><Trash2 className="h-4 w-4" /></button></div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center rounded-lg border border-white/10 bg-black/30 p-1"><button onClick={() => onQty(-1)} disabled={item.quantity <= 1} className="p-1 disabled:opacity-30"><Minus className="h-3 w-3" /></button><span className="w-7 text-center text-[10px] font-black">{item.quantity}</span><button onClick={() => onQty(1)} disabled={item.quantity >= 20} className="p-1 disabled:opacity-30"><Plus className="h-3 w-3" /></button></div></div>
+        {item.imageUrl ? (
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10">
+            <img
+              src={item.imageUrl}
+              alt={item.planName}
+              className="h-full w-full object-cover"
+            />
+          </div>
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="break-words text-xs font-black uppercase">{item.planName}</p>
+              <p className="mt-1 text-sm font-black text-primary">
+                {formatPrice(item.price * item.quantity)}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="shrink-0 p-1.5 text-muted-foreground hover:text-red-400"
+              onClick={onRemove}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center rounded-lg border border-white/10 bg-black/30 p-1">
+              <button
+                type="button"
+                onClick={() => onQty(-1)}
+                disabled={item.quantity <= 1}
+                className="p-1 disabled:opacity-30"
+              >
+                <Minus className="h-3 w-3" />
+              </button>
+              <span className="w-7 text-center text-[10px] font-black">{item.quantity}</span>
+              <button
+                type="button"
+                onClick={() => onQty(1)}
+                disabled={item.quantity >= 20}
+                className="p-1 disabled:opacity-30"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-      <Button size="sm" variant="neonOutline" className="mt-3 w-full whitespace-normal" disabled={busy} onClick={onPay}>{busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Continuar pagamento"}</Button>
+      <Button
+        size="sm"
+        variant="neonOutline"
+        className="mt-3 w-full whitespace-normal"
+        disabled={busy}
+        onClick={onPay}
+      >
+        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Continuar pagamento"}
+      </Button>
     </div>
   );
 }
