@@ -288,3 +288,89 @@ chrome.runtime.onInstalled.addListener(mskReloadLovableTabs);
 chrome.action.onClicked.addListener((tab) => {
   if (tab?.id) chrome.tabs.sendMessage(tab.id, { type: "MSK_OPEN" }).catch(() => {});
 });
+
+/* ============ DETECÇÃO AUTOMÁTICA DE VÍNCULOS POR ID DO PROJETO ============ */
+/* Descobre, a partir do ID do projeto Lovable, se já existe repositório GitHub
+   conectado e qual banco (Lovable Cloud / Supabase) está vinculado — mesmo que a
+   aba atual não mostre essa informação. Ordem: cache → API do Lovable → aba oculta. */
+const MSK_LOVABLE_ORIGIN = "https://lovable.dev";
+const mskParseRepo = (text) => {
+  const m = String(text || "").match(/github\.com[\\/]+([A-Za-z0-9_.-]+)[\\/]+([A-Za-z0-9_.-]+?)(?:\.git)?(?=["'\s<>,)\\/]|$)/i);
+  if (!m) return "";
+  const full = `${m[1]}/${m[2]}`;
+  return /^(login|apps|settings|orgs|features|about)$/i.test(m[1]) ? "" : full;
+};
+const mskParseDb = (text) => {
+  const t = String(text || "");
+  const ref = t.match(/supabase\.com[\\/]+dashboard[\\/]+project[\\/]+([a-z0-9]{16,})/i)?.[1]
+    || t.match(/https?:[\\/]+([a-z0-9]{20})\.supabase\.co/i)?.[1];
+  if (ref) return ref;
+  return /("cloud_enabled"\s*:\s*true|lovable[\s_-]?cloud\s*(ativo|enabled|on)\b|backend connected)/i.test(t) ? "lovable-cloud" : "";
+};
+const mskReadLinks = async (id) => (await chrome.storage.local.get("mskProjectLinks")).mskProjectLinks?.[id] || null;
+const mskWriteLinks = async (id, links) => {
+  const { mskProjectLinks = {} } = await chrome.storage.local.get("mskProjectLinks");
+  mskProjectLinks[id] = { ...(mskProjectLinks[id] || {}), ...links, detectedAt: Date.now() };
+  await chrome.storage.local.set({ mskProjectLinks });
+  return mskProjectLinks[id];
+};
+const mskProbeApi = async (id) => {
+  const paths = [
+    `/api/projects/${id}`,
+    `/api/projects/${id}/github`,
+    `/api/projects/${id}/integrations`,
+    `/api/projects/${id}/settings`,
+    `/api/v1/projects/${id}`,
+  ];
+  for (const path of paths) {
+    try {
+      const response = await fetch(`${MSK_LOVABLE_ORIGIN}${path}`, { credentials: "include", headers: { accept: "application/json" } });
+      if (!response.ok) continue;
+      const text = await response.text();
+      const repo = mskParseRepo(text);
+      const db = mskParseDb(text);
+      if (repo || db) return { repo, db, source: "api" };
+    } catch {}
+  }
+  return null;
+};
+const mskProbeTab = async (id) => {
+  let tab = null;
+  try {
+    tab = await chrome.tabs.create({ url: `${MSK_LOVABLE_ORIGIN}/projects/${id}/settings/git`, active: false });
+    for (let attempt = 0; attempt < 20; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      const injected = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: () => {
+          const links = [...document.querySelectorAll('a[href*="github.com/"],a[href*="supabase.com/"]')].map((a) => a.href).join(" ");
+          return `${links} ${document.body ? document.body.innerText : ""} ${document.body ? document.body.innerHTML.slice(0, 200000) : ""}`;
+        },
+      }).catch(() => []);
+      const text = injected?.[0]?.result || "";
+      const repo = mskParseRepo(text);
+      const db = mskParseDb(text);
+      if (repo || db) return { repo, db, source: "tab" };
+    }
+  } catch {} finally {
+    if (tab?.id) chrome.tabs.remove(tab.id).catch(() => {});
+  }
+  return null;
+};
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!["MSK_PROBE_PROJECT", "MSK_CACHE_LINKS", "MSK_GET_LINKS"].includes(message?.type)) return;
+  (async () => {
+    const id = String(message.projectId || "").trim();
+    if (!id) return sendResponse({ ok: false, error: "Projeto não identificado." });
+    if (message.type === "MSK_CACHE_LINKS") return sendResponse({ ok: true, links: await mskWriteLinks(id, message.links || {}) });
+    if (message.type === "MSK_GET_LINKS") return sendResponse({ ok: true, links: await mskReadLinks(id) });
+    const cached = await mskReadLinks(id);
+    const fresh = cached?.repo && Date.now() - Number(cached.detectedAt || 0) < 900000;
+    if (fresh && !message.force) return sendResponse({ ok: true, ...cached, source: "cache" });
+    const found = (await mskProbeApi(id)) || (message.deep ? await mskProbeTab(id) : null);
+    if (!found) return sendResponse({ ok: false, repo: cached?.repo || "", db: cached?.db || "", source: "none" });
+    const saved = await mskWriteLinks(id, { repo: found.repo || cached?.repo || "", db: found.db || cached?.db || "" });
+    return sendResponse({ ok: true, ...saved, source: found.source });
+  })();
+  return true;
+});
