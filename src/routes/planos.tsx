@@ -107,11 +107,13 @@ function PlanosPage() {
     staleTime: 60_000,
   });
 
+  // O order bump continua válido mesmo com mais itens/quantidades no carrinho.
   const offerEligible =
     !!inlineOffer?.available &&
-    cart.length === 1 &&
-    cart[0]?.quantity === 1 &&
-    inlineOffer.main?.id === cart[0]?.planId;
+    !!inlineOffer.companion?.id &&
+    cart.some((item) => item.planId === inlineOffer.main?.id) &&
+    !cart.some((item) => item.planId === inlineOffer.companion?.id);
+
   const baseTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const offerTotal = offerEligible && offerAccepted ? Number(inlineOffer.companion?.discountedPrice ?? 0) : 0;
   const checkoutTotal = baseTotal + offerTotal;
@@ -243,7 +245,7 @@ function PlanosPage() {
       return;
     }
 
-    const sameOnly = cart.length === 0 || (cart.length === 1 && cart[0]?.planId === plan.id);
+    
     setCart((current) => {
       const existing = current.find((item) => item.planId === plan.id);
       if (existing) {
@@ -267,12 +269,8 @@ function PlanosPage() {
     toast.success(`${plan.name} adicionado ao carrinho`);
     revealCheckout();
 
-    if (sameOnly && cart.length === 0) {
-      await loadCheckoutOffer(plan);
-    } else {
-      setOfferAccepted(false);
-      if (!sameOnly) setInlineOffer(null);
-    }
+    // Carrega a oferta inteligente na primeira adição; nas demais mantém a atual.
+    if (!inlineOffer) await loadCheckoutOffer(plan);
   }
 
   function removeFromCart(planId: string) {
@@ -296,7 +294,6 @@ function PlanosPage() {
         item.planId === planId ? { ...item, quantity: Math.max(1, Math.min(20, item.quantity + delta)) } : item,
       ),
     );
-    setOfferAccepted(false);
   }
 
   async function payItem(item: CartItem) {
@@ -306,11 +303,16 @@ function PlanosPage() {
 
   async function checkoutCart() {
     if (!cart.length) return;
-    if (cart.length === 1) {
+    const single = cart.length === 1 && cart[0]!.quantity === 1;
+    // Item único + order bump aceito → combo dedicado (mantém entrega do clonador).
+    if (single) {
       await payItem(cart[0]!);
       return;
     }
+    // Carrinho em lote: envia todas as linhas e o bump para somar o total bruto.
+    track("checkout_start", { label: "Carrinho MSK", value: checkoutTotal });
     await subscribe("", "Checkout Carrinho", false, null);
+
   }
 
   async function subscribe(
@@ -416,16 +418,23 @@ function PlanosPage() {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
       const bulkItems = planId ? undefined : cart.map((item) => ({ planId: item.planId, quantity: item.quantity }));
+      // Order bump aceito entra no mesmo PIX (valor recalculado no servidor).
+      const companion =
+        offerEligible && offerAccepted && inlineOffer?.main?.id && inlineOffer?.companion?.id
+          ? { mainPlanId: String(inlineOffer.main.id), companionPlanId: String(inlineOffer.companion.id) }
+          : undefined;
       const result = await startPixCheckout({
         data: {
           planId: planId || undefined,
           ...(bulkItems?.length ? { items: bulkItems } : {}),
+          ...(companion ? { companion } : {}),
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
           document: payerData.document,
           phone: payerData.phone,
         },
       });
+
       setPayer(null);
       if (result.checkoutUrl && !result.pixCode) {
         window.location.href = result.checkoutUrl;

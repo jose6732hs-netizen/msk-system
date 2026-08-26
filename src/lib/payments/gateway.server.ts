@@ -51,16 +51,19 @@ export async function saveGatewayConfig(config: {
   return next;
 }
 
-/** Ordem de tentativa: primário e, com failover ligado, o outro provedor configurado. */
+/**
+ * Ordem de tentativa: primário e, em seguida, os demais provedores.
+ * Mesmo com failover desligado, um provedor sem credenciais nunca pode
+ * derrubar o checkout — o outro gateway configurado assume automaticamente.
+ */
 export async function resolveProviderOrder(preferred?: ProviderId | null) {
   const config = await getGatewayConfig();
   const primary = preferred ?? config.primary;
   const order: ProviderId[] = [primary];
-  if (config.failover) {
-    for (const p of PROVIDERS) if (p !== primary) order.push(p);
-  }
-  return order;
+  for (const p of PROVIDERS) if (p !== primary) order.push(p);
+  return { order, failover: config.failover };
 }
+
 
 export type PixServiceLike = {
   createPix(input: {
@@ -108,9 +111,10 @@ export async function createPixWithFailover(
   },
   preferred?: ProviderId | null,
 ) {
-  const order = await resolveProviderOrder(preferred);
+  const { order, failover } = await resolveProviderOrder(preferred);
   const { absoluteUrl } = await import("../app-url.server");
   const errors: string[] = [];
+  let attempted = 0;
 
   for (const provider of order) {
     try {
@@ -119,6 +123,9 @@ export async function createPixWithFailover(
         errors.push(`${PROVIDER_LABEL[provider]}: não configurado`);
         continue;
       }
+      // Com failover desligado só o primeiro provedor configurado é usado.
+      if (!failover && attempted > 0) break;
+      attempted += 1;
       const service = await getService(provider);
       const callbackUrl = await absoluteUrl(webhookPathFor(provider)).catch(() => "");
       const result = await service.createPix({
@@ -138,6 +145,7 @@ export async function createPixWithFailover(
   }
 
   throw new Error(`GATEWAY_INDISPONIVEL — ${errors.join(" | ")}`);
+
 }
 
 /** Resumo dos dois provedores + preferência atual (para o painel admin). */

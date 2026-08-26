@@ -204,6 +204,9 @@ export async function createPixCheckout(input: {
   name: string;
   planId?: string | null; // Agora opcional se houver carrinho
   items?: { planId: string; quantity: number }[] | null;
+  /** Order bump aceito no checkout (oferta inteligente): item adicional com desconto. */
+  companion?: { mainPlanId: string; companionPlanId: string } | null;
+
   affiliateCode?: string | null;
   resellerCode?: string | null;
   document: string;
@@ -271,7 +274,37 @@ export async function createPixCheckout(input: {
     items = [{ title: plan.name, unitPrice: Math.round(finalPrice * 100), quantity: 1, tangible: false }];
   }
 
+  // Order bump aceito ("quero adquirir também essa oferta"): o preço com desconto
+  // é sempre recalculado no servidor e somado ao total bruto do pedido.
+  let companionMeta: Record<string, unknown> | null = null;
+  if (input.companion?.companionPlanId && input.companion.mainPlanId) {
+    const { getSmartOfferForPlan } = await import("./cloner.server");
+    const offer: any = await getSmartOfferForPlan(input.userId, input.companion.mainPlanId);
+    if (offer?.available && offer.companion?.id === input.companion.companionPlanId) {
+      const companionPrice = Number(offer.companion.discountedPrice ?? 0);
+      if (companionPrice > 0) {
+        finalPrice += companionPrice;
+        items.push({
+          title: `${offer.companion.name} (${offer.discountPercent}% OFF)`,
+          unitPrice: Math.round(companionPrice * 100),
+          quantity: 1,
+          tangible: false,
+        });
+        isBulk = true;
+        planName = `${planName} + ${offer.companion.name}`;
+        companionMeta = {
+          companion_plan_id: offer.companion.id,
+          companion_final_price: companionPrice,
+          companion_original_price: Number(offer.companion.originalPrice ?? 0),
+          discount_percent: offer.discountPercent,
+          plan_ids: [input.companion.mainPlanId, offer.companion.id],
+        };
+      }
+    }
+  }
+
   const amountCents = Math.round(finalPrice * 100);
+
   const identifier = newIdentifier("MSK");
   const { affiliateForUser, registerPendingCommission } = await import("./affiliate.server");
   const affiliate = await findAffiliateByCode(input.affiliateCode);
@@ -290,7 +323,7 @@ export async function createPixCheckout(input: {
       amount: finalPrice,
       currency: "BRL",
       status: "PENDING",
-      metadata: { plan: planSlug, bulk: isBulk } as never,
+      metadata: { plan: planSlug, bulk: isBulk, ...(companionMeta ?? {}) } as never,
     })
     .select("id")
     .single();
