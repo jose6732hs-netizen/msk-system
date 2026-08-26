@@ -567,9 +567,23 @@ function PlanosPage() {
               {(agentPlans ?? []).map((plan: any) => (
                 <article
                   key={plan.id}
-                  className="flex flex-col overflow-hidden rounded-[2rem] border border-primary/25 bg-[#0A0A0A] p-6 shadow-[0_0_50px_rgba(57,255,20,.08)]"
+                  className="flex flex-col overflow-hidden rounded-[2rem] border border-primary/25 bg-[#0A0A0A] shadow-[0_0_50px_rgba(57,255,20,.08)]"
                 >
+                  {plan.image_url ? (
+                    <div className="aspect-square w-full overflow-hidden bg-black">
+                      <img
+                        src={plan.image_url}
+                        alt={plan.name}
+                        loading="lazy"
+                        width={1024}
+                        height={1024}
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="flex flex-1 flex-col p-6">
                   <p className="break-words text-[10px] font-black uppercase tracking-[.18em] text-primary">{plan.name}</p>
+
                   <div className="mt-3 flex flex-wrap items-baseline gap-2">
                     <span className="text-3xl font-black text-white">{formatPrice(Number(plan.price), plan.currency)}</span>
                     {!plan.is_lifetime ? (
@@ -601,7 +615,9 @@ function PlanosPage() {
                       <Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar
                     </Button>
                   </div>
+                  </div>
                 </article>
+
               ))}
             </div>
           </section>
