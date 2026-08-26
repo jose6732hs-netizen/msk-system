@@ -1,7 +1,6 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { RequiredPhoneGate } from "@/components/msk/required-phone-gate";
-import { AssistantWidget } from "@/components/msk/assistant-widget";
 
 
 export const Route = createFileRoute("/_authenticated")({
@@ -62,7 +61,6 @@ function AuthenticatedLayout() {
         `}</style>
       )}
       <Outlet />
-      <AssistantWidget />
     </RequiredPhoneGate>
   );
 }

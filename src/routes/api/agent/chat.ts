@@ -62,22 +62,42 @@ export const Route = createFileRoute("/api/agent/chat")({
         }
         const userId = userData.user.id;
 
-        // Licença ativa OU papel administrativo liberam o agente.
+        // Papel administrativo OU licença ativa iniciada, não expirada,
+        // cujo plano ativo tenha features.chat === true.
+        const nowIso = new Date().toISOString();
         const [licenses, roles] = await Promise.all([
           supabase
             .from("licenses")
-            .select("id, status, expires_at")
+            .select("id, status, starts_at, expires_at, plan_id")
             .eq("user_id", userId)
             .eq("status", "active")
-            .limit(1),
+            .lte("starts_at", nowIso)
+            .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+            .limit(50),
           supabase.from("user_roles").select("role").eq("user_id", userId),
         ]);
 
         const isAdmin = (roles.data ?? []).some((r: { role: string }) =>
           ["admin", "super_admin"].includes(r.role),
         );
-        const hasLicense = (licenses.data ?? []).length > 0;
-        if (!hasLicense && !isAdmin) {
+
+        let hasChatLicense = false;
+        const planIds = Array.from(
+          new Set((licenses.data ?? []).map((l) => l.plan_id).filter(Boolean)),
+        );
+        if (!isAdmin && planIds.length > 0) {
+          const { data: plans } = await supabase
+            .from("plans")
+            .select("id, status, features")
+            .in("id", planIds);
+          hasChatLicense = (plans ?? []).some((p) => {
+            if (p.status !== "active") return false;
+            const f = p.features as Record<string, unknown> | null;
+            return !!f && f["chat"] === true;
+          });
+        }
+
+        if (!hasChatLicense && !isAdmin) {
           return json(
             { error: "Seu plano atual não inclui o MSK Agente.", requiresPlan: true },
             403,

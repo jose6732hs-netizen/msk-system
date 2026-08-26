@@ -23,21 +23,33 @@ type AgentRun = {
   status?: string;
   summary?: string;
   created_at?: string;
-  files?: unknown;
   files_changed?: unknown;
-  pr_url?: string | null;
   pull_request_url?: string | null;
 };
 
 type AgentStatus = {
-  entitlement?: { allowed?: boolean; reason?: string; plan?: string | null; license?: unknown };
-  plan?: string | null;
-  license?: { status?: string | null; expires_at?: string | null; plan?: string | null } | null;
-  github?: { connected?: boolean; login?: string | null } | null;
-  project?: { name?: string | null; repo?: string | null } | null;
-  agent?: { capabilities?: { editCode?: boolean } | null } | null;
-  role?: string | null;
-  recentRuns?: AgentRun[];
+  ok?: boolean;
+  authSource?: string;
+  user?: { id?: string; email?: string | null } | null;
+  entitlement?: {
+    allowed?: boolean;
+    privileged?: boolean;
+    roles?: string[];
+    reason?: string;
+    license?: { status?: string | null; expires_at?: string | null } | null;
+    plan?: { id?: string; slug?: string; name?: string } | null;
+  };
+  agent?: {
+    connected?: boolean;
+    githubConfigured?: boolean;
+    githubConnected?: boolean;
+    githubLogin?: string | null;
+    aiConfigured?: boolean;
+    activeProject?: { repo_full_name?: string | null } | null;
+    projects?: unknown[];
+    recentRuns?: AgentRun[];
+    capabilities?: { editCode?: boolean } | null;
+  } | null;
 };
 
 type ChatMsg = { role: "user" | "assistant"; content: string };
@@ -77,7 +89,7 @@ function fmtDate(v?: string | null) {
 }
 
 function filesOf(run: AgentRun): string[] {
-  const f = run.files_changed ?? run.files;
+  const f = run.files_changed;
   if (Array.isArray(f)) return f.map((x) => (typeof x === "string" ? x : JSON.stringify(x)));
   if (typeof f === "string" && f.trim()) return [f];
   if (typeof f === "number") return [String(f)];
@@ -133,8 +145,11 @@ export function AgentPanel() {
 
   const allowed = status?.entitlement?.allowed !== false && !!status;
   const planLabel =
-    status?.entitlement?.plan ?? status?.plan ?? status?.license?.plan ?? "Sem plano";
-  const runs = status?.recentRuns ?? [];
+    status?.entitlement?.plan?.name ?? status?.entitlement?.plan?.slug ?? "Sem plano";
+  const githubConfigured = status?.agent?.githubConfigured === true;
+  const githubConnected = status?.agent?.githubConnected === true;
+  const activeRepo = status?.agent?.activeProject?.repo_full_name ?? null;
+  const runs: AgentRun[] = status?.agent?.recentRuns ?? [];
 
   async function send() {
     const text = input.trim();
@@ -206,21 +221,23 @@ export function AgentPanel() {
         />
         <StatusChip ok={allowed} label="Plano/Licença" value={String(planLabel)} />
         <StatusChip
-          ok={!!status?.github?.connected}
+          ok={githubConnected}
           label="GitHub"
           value={
-            status?.github?.connected
-              ? status.github?.login
-                ? `@${status.github.login}`
-                : "Conectado"
-              : "Não conectado"
+            !githubConfigured
+              ? "Configuração admin pendente"
+              : githubConnected
+                ? status?.agent?.githubLogin
+                  ? `@${status.agent.githubLogin}`
+                  : "Conectado"
+                : "Conectar GitHub"
           }
           icon={<GitBranch className="h-3.5 w-3.5" />}
         />
         <StatusChip
-          ok={!!status?.project?.name || !!status?.project?.repo}
+          ok={!!activeRepo}
           label="Projeto ativo"
-          value={status?.project?.name ?? status?.project?.repo ?? "Nenhum"}
+          value={activeRepo ?? "Nenhum"}
         />
       </div>
 
@@ -382,9 +399,9 @@ export function AgentPanel() {
                       Arquivos: {files.join(", ")}
                     </p>
                   )}
-                  {(run.pull_request_url ?? run.pr_url) && (
+                  {run.pull_request_url && (
                     <a
-                      href={(run.pull_request_url ?? run.pr_url) as string}
+                      href={run.pull_request_url}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-1 inline-block text-primary underline"
