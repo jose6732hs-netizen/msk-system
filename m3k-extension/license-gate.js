@@ -6,6 +6,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var form = $("lic-form"),
     input = $("lic-token"),
+    emailInput = $("lic-email"),
     msg = $("lic-msg"),
     submit = $("lic-submit"),
     spinner = submit.querySelector(".lic-spinner"),
@@ -69,6 +70,7 @@
     success.hidden = false;
     $("lic-plan").textContent = state.plan_name || state.plan || "Licença ativa";
     $("lic-exp").textContent = fmtDate(state.expires_at);
+    startCountdown(state);
     
     // Confetes no sucesso
     try {
@@ -97,18 +99,65 @@
     });
   }
 
+  var countdownTick = null;
+  function startCountdown(state) {
+    var box = $("lic-countdown");
+    var clock = $("lic-countdown-clock");
+    var fill = $("lic-countdown-fill");
+    if (!box || !clock) return;
+    if (countdownTick) clearInterval(countdownTick);
+    if (!state || !state.expires_at) {
+      box.hidden = true;
+      return;
+    }
+    var end = Date.parse(state.expires_at);
+    var start = state.activated_at ? Date.parse(state.activated_at) : Date.now();
+    if (!end || isNaN(end)) { box.hidden = true; return; }
+    var total = Math.max(end - start, 1);
+    box.hidden = false;
+
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function render() {
+      var left = end - Date.now();
+      if (left <= 0) {
+        clock.textContent = "EXPIRADA";
+        if (fill) { fill.style.width = "0%"; fill.style.background = "#ef4444"; }
+        clearInterval(countdownTick);
+        return;
+      }
+      var d = Math.floor(left / 86400000);
+      var h = Math.floor((left % 86400000) / 3600000);
+      var m = Math.floor((left % 3600000) / 60000);
+      var s2 = Math.floor((left % 60000) / 1000);
+      clock.textContent = (d > 0 ? d + "d " : "") + pad(h) + ":" + pad(m) + ":" + pad(s2);
+      if (fill) {
+        var pct = Math.max(0, Math.min(100, (left / total) * 100));
+        fill.style.width = pct + "%";
+        fill.style.background = pct > 40 ? "#22c55e" : pct > 15 ? "#f59e0b" : "#ef4444";
+      }
+    }
+    render();
+    countdownTick = setInterval(render, 1000);
+  }
+
   form.addEventListener("submit", async function (ev) {
     ev.preventDefault();
     var token = maskInput(input.value);
+    var email = String((emailInput && emailInput.value) || "").trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      setMsg("Informe o e-mail da sua conta MSK.");
+      if (emailInput) emailInput.focus();
+      return;
+    }
     if (token.length < 8) {
-      setMsg("Digite o token completo recebido na compra.");
+      setMsg("Digite a licença completa recebida na compra.");
       input.focus();
       return;
     }
     busy(true);
-    setStatus("busy", "Validando token no servidor MSK…");
+    setStatus("busy", "Validando e-mail e licença no servidor MSK…");
     setMsg("");
-    var r = await L.activate(token);
+    var r = await L.activate(token, email);
     busy(false);
     if (r.ok) {
       setStatus("ok", "Licença válida e vinculada a este dispositivo.");
@@ -181,6 +230,9 @@
 
     var s = await L.getState();
     if (s.token) input.value = s.token;
+    chrome.storage.local.get(["og_license_email"], function (v) {
+      if (v && v.og_license_email && emailInput) emailInput.value = v.og_license_email;
+    });
     if (s.token) {
       setStatus("busy", "Reverificando licença salva…");
       var r = await L.refresh(true);
@@ -192,8 +244,8 @@
       setStatus("err", L.friendly(r.code));
       setMsg(L.friendly(r.code));
     } else {
-      setStatus("idle", "Aguardando token de acesso…");
-      input.focus();
+      setStatus("idle", "Informe e-mail + licença para ativar…");
+      if (emailInput) emailInput.focus(); else input.focus();
     }
   })();
 })();
