@@ -214,7 +214,6 @@ function RootComponent() {
       <Outlet />
       {!isBoard && !isAuth && <MobileNavigation />}
       <WhatsappSupportButton />
-      <AgentBubble />
       <Toaster position="top-right" />
 
     </QueryClientProvider>
