@@ -2,15 +2,58 @@ import { createFileRoute } from "@tanstack/react-router";
 import { preflight } from "@/lib/license.server";
 import { handleAccountTokenValidation } from "@/lib/account-license-validate.server";
 
+function browserExtensionOrigin(request: Request) {
+  const origin = request.headers.get("origin")?.trim() ?? "";
+  if (origin.startsWith("chrome-extension://") || origin.startsWith("moz-extension://")) {
+    return origin;
+  }
+  return null;
+}
+
+function extensionPreflight(request: Request) {
+  const origin = browserExtensionOrigin(request);
+  if (!origin) return preflight(request);
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "access-control-allow-origin": origin,
+      "access-control-allow-headers": "content-type, authorization",
+      "access-control-allow-methods": "POST, GET, OPTIONS",
+      "access-control-max-age": "86400",
+      vary: "Origin",
+    },
+  });
+}
+
+function withExtensionCors(response: Response, request: Request) {
+  const origin = browserExtensionOrigin(request);
+  if (!origin) return response;
+  const headers = new Headers(response.headers);
+  headers.set("access-control-allow-origin", origin);
+  headers.set("access-control-allow-headers", "content-type, authorization");
+  headers.set("access-control-allow-methods", "POST, GET, OPTIONS");
+  headers.set("vary", "Origin");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 /**
  * Validação exclusiva do MSK Agente.
- * Um token da Extensão ou do Clonador nunca é aceito nesta rota.
+ * O CORS aceita a origem real da extensão instalada em cada navegador;
+ * autorização continua dependendo apenas de e-mail + token + status/vencimento.
  */
 export const Route = createFileRoute("/api/public/agent/license/validate")({
   server: {
     handlers: {
-      OPTIONS: ({ request }) => preflight(request),
-      POST: ({ request }) => handleAccountTokenValidation(request, "agent-validate", 60, "agent"),
+      OPTIONS: ({ request }) => extensionPreflight(request),
+      POST: async ({ request }) =>
+        withExtensionCors(
+          await handleAccountTokenValidation(request, "agent-validate", 60, "agent"),
+          request,
+        ),
     },
   },
 });
