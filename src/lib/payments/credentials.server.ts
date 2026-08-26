@@ -123,7 +123,7 @@ export async function getSummaryFor(provider: ProviderId) {
     // Visíveis no painel, mas sempre mascaradas — o valor real fica criptografado.
     publicKeyMasked: data?.public_key_last4 ? `••••••••••••${data.public_key_last4}` : null,
     secretKeyMasked: data?.secret_key_last4 ? `••••••••••••${data.secret_key_last4}` : null,
-    configured: Boolean(data?.public_key_encrypted && data?.secret_key_encrypted),
+    configured: Boolean(data?.public_key_last4 && data?.secret_key_last4),
     hasWebhookSecret: Boolean(data?.webhook_secret_encrypted),
     updatedAt: data?.updated_at ?? null,
   };
