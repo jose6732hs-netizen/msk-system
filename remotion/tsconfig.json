@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "Preserve",
-    "jsx": "react-jsx",
+    "jsx": "react",
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "skipLibCheck": true,
