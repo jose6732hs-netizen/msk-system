@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight } from "@/lib/license.server";
-import { handleValidation } from "@/lib/license-validate.server";
+import { handleAccountTokenValidation } from "@/lib/account-license-validate.server";
 
 /**
  * Validação exclusiva do MSK Agente.
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/api/public/agent/license/validate")({
   server: {
     handlers: {
       OPTIONS: ({ request }) => preflight(request),
-      POST: ({ request }) => handleValidation(request, "agent-validate", 60, "agent"),
+      POST: ({ request }) => handleAccountTokenValidation(request, "agent-validate", 60, "agent"),
     },
   },
 });
