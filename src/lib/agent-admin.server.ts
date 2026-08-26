@@ -50,7 +50,8 @@ export async function loadAgentAdmin() {
   const planById = new Map(plans.map((p) => [p.id, p]));
 
   let sales: AgentSaleRow[] = [];
-  let licenses: Array<Record<string, unknown>> = [];
+  type Loose = Record<string, string | number | boolean | null>;
+  let licenses: Loose[] = [];
 
   if (planIds.length) {
     const [txRes, licRes] = await Promise.all([
@@ -107,7 +108,7 @@ export async function loadAgentAdmin() {
     });
 
     licenses = licRows.map((l) => ({
-      ...l,
+      ...(l as Loose),
       plan_name: planById.get(l["plan_id"])?.name ?? "MSK Agente",
       buyer_email: profiles.get(l["user_id"])?.email ?? "—",
     }));
@@ -133,7 +134,7 @@ export async function loadAgentAdmin() {
     plans,
     sales,
     licenses,
-    builds: (buildRows ?? []) as Array<Record<string, unknown>>,
+    builds: (buildRows ?? []) as unknown as Array<Record<string, string | number | boolean | null>>,
     channel: channel ?? null,
     metrics: {
       revenue: paid.reduce((sum, s) => sum + s.amount, 0),
