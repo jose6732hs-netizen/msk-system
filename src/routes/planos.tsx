@@ -418,16 +418,23 @@ function PlanosPage() {
       const ref = readAffiliateRef() ?? undefined;
       const rv = readResellerRef() ?? undefined;
       const bulkItems = planId ? undefined : cart.map((item) => ({ planId: item.planId, quantity: item.quantity }));
+      // Order bump aceito entra no mesmo PIX (valor recalculado no servidor).
+      const companion =
+        offerEligible && offerAccepted && inlineOffer?.main?.id && inlineOffer?.companion?.id
+          ? { mainPlanId: String(inlineOffer.main.id), companionPlanId: String(inlineOffer.companion.id) }
+          : undefined;
       const result = await startPixCheckout({
         data: {
           planId: planId || undefined,
           ...(bulkItems?.length ? { items: bulkItems } : {}),
+          ...(companion ? { companion } : {}),
           ...(ref ? { affiliateCode: ref } : {}),
           ...(rv ? { resellerCode: rv } : {}),
           document: payerData.document,
           phone: payerData.phone,
         },
       });
+
       setPayer(null);
       if (result.checkoutUrl && !result.pixCode) {
         window.location.href = result.checkoutUrl;
