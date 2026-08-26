@@ -615,7 +615,9 @@ function PlanosPage() {
                       <Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar
                     </Button>
                   </div>
+                  </div>
                 </article>
+
               ))}
             </div>
           </section>
