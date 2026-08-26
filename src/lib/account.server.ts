@@ -14,6 +14,7 @@ function meta(value: unknown): Record<string, any> {
 }
 
 function moneyOrNull(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
   const n = Number(value);
   return Number.isFinite(n) ? n : null;
 }
@@ -81,8 +82,6 @@ export async function loadAccount(supabase: Client, userId: string) {
     };
   });
 
-  // Para o bloco principal, prioriza a licença da extensão principal e utilizável.
-  // Agente/Clonador continuam aparecendo individualmente, mas não substituem a licença principal.
   const usable = list.filter(isUsableLicense);
   const license =
     usable.find((row) => row.resolved_plan?.role === "extension") ??
