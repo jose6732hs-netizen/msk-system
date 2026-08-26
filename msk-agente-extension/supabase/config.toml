@@ -1,0 +1,5 @@
+[functions.msk-agent]
+verify_jwt = false
+
+[functions.msk-api]
+verify_jwt = false

@@ -29,7 +29,6 @@ import { TokenManager } from "@/components/msk/token-manager";
 import { PanelCarousel } from "@/components/msk/panel-carousel";
 import { NotificationSettings } from "@/components/msk/notification-settings";
 import { LicenseCard } from "@/components/msk/license-card";
-import { AgentPanel } from "@/components/msk/agent-panel";
 import { AgentAccessCard } from "@/components/msk/agent-access-card";
 import { AffiliateRequestCard } from "@/components/msk/affiliate-request-card";
 
@@ -334,7 +333,6 @@ function Painel() {
         </div>
 
         <AgentAccessCard />
-        <AgentPanel />
 
 
 
