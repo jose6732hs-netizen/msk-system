@@ -69,9 +69,18 @@ const FAIL_EVENTS = [
   "CANCELLED",
   "REJECTED",
   "FAILED",
+  // Vocabulário AtomoPay
+  "REFUSED",
+  "ANTIFRAUD",
 ];
 const REFUND_EVENTS = ["TRANSACTION_REFUNDED", "REFUNDED"];
-const CHARGEBACK_EVENTS = ["TRANSACTION_CHARGED_BACK", "CHARGEBACK", "CHARGED_BACK"];
+const CHARGEBACK_EVENTS = [
+  "TRANSACTION_CHARGED_BACK",
+  "CHARGEBACK",
+  "CHARGED_BACK",
+  "CHARGEDBACK",
+];
+
 
 export async function handleGatewayWebhook(provider: ProviderId, request: Request) {
   try {
@@ -94,10 +103,13 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
       return json({ error: "INVALID_PAYLOAD" }, 400);
     }
 
-    if (!secret) {
-      console.error(`[${provider}] webhook secret não configurado`);
-      return json({ error: "WEBHOOK_SECRET_NOT_CONFIGURED" }, 503);
-    }
+    const urlSecret = (() => {
+      try {
+        return (new URL(request.url).searchParams.get("secret") ?? "").trim();
+      } catch {
+        return "";
+      }
+    })();
 
     const headerToken = (
       request.headers.get("x-webhook-signature") ||
@@ -110,35 +122,74 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
       .replace(/^sha256=/, "")
       .trim();
     const bodyToken = String(payload.token ?? "").trim();
-    const expected = await hmacHex(secret, rawBody);
+    const expected = secret ? await hmacHex(secret, rawBody) : "";
 
     const isMatch =
-      timingSafeEqual(headerToken.toLowerCase(), expected) ||
-      timingSafeEqual(headerToken, secret) ||
-      timingSafeEqual(bodyToken, secret);
+      !!secret &&
+      (timingSafeEqual(headerToken.toLowerCase(), expected) ||
+        timingSafeEqual(headerToken, secret) ||
+        timingSafeEqual(bodyToken, secret) ||
+        timingSafeEqual(urlSecret, secret));
 
-    if (!isMatch) {
-      await logAudit({
-        action: "webhook.invalid_signature",
-        resource: provider,
-        result: "failure",
-      });
-      return json({ error: "INVALID_SIGNATURE" }, 401);
-    }
-
-    const eventType = String(
-      payload.event ?? payload.type ?? payload.transaction?.status ?? payload.status ?? "UNKNOWN",
-    ).toUpperCase();
     const providerTxId =
       (payload.transactionId ? String(payload.transactionId) : null) ??
       (payload.transaction?.id ? String(payload.transaction.id) : null) ??
+      ((payload as Record<string, unknown>)["transaction_hash"]
+        ? String((payload as Record<string, unknown>)["transaction_hash"])
+        : null) ??
       ((payload as Record<string, unknown>)["hash"]
         ? String((payload as Record<string, unknown>)["hash"])
         : null);
+
+    /**
+     * A AtomoPay não publica assinatura de webhook. Em vez de confiar no corpo
+     * recebido, consultamos a própria API (server-to-server) e usamos o status
+     * oficial como fonte da verdade. Um POST forjado nunca marca como pago.
+     */
+    let verifiedStatus: string | null = null;
+    if (!isMatch) {
+      if (provider === "atomopay" && providerTxId) {
+        try {
+          const { AtomoPayService } = await import("./atomo-pay.server");
+          const service = await AtomoPayService.create();
+          const remote = (await service.getTransaction(providerTxId)) as Record<string, unknown>;
+          verifiedStatus = String(remote?.["status"] ?? "") || null;
+        } catch (e) {
+          console.error("[atomopay] falha ao verificar transação:", (e as Error).message);
+        }
+      }
+      if (!verifiedStatus) {
+        await logAudit({
+          action: "webhook.invalid_signature",
+          resource: provider,
+          result: "failure",
+        });
+        return json({ error: secret ? "INVALID_SIGNATURE" : "WEBHOOK_UNVERIFIED" }, 401);
+      }
+    }
+
+    // Status bruto do provedor (grafia original preservada) + status do evento.
+    const providerStatus = String(
+      verifiedStatus ??
+        payload.status ??
+        payload.transaction?.status ??
+        payload.event ??
+        payload.type ??
+        "unknown",
+    );
+    const eventType = String(
+      verifiedStatus ??
+        payload.event ??
+        payload.type ??
+        payload.transaction?.status ??
+        payload.status ??
+        "UNKNOWN",
+    ).toUpperCase();
     const identifier =
       (payload.identifier ? String(payload.identifier) : null) ??
       (payload.transaction?.identifier ? String(payload.transaction.identifier) : null);
     const eventId = `${eventType}:${providerTxId ?? identifier ?? (await sha256(rawBody)).slice(0, 32)}`;
+
 
     // Idempotência
     const { data: existing } = await supabaseAdmin
@@ -202,10 +253,23 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
         externalId: providerTxId,
         event: eventType,
         status: mapGatewayStatus(eventType),
-        metadata: { identifier, provider },
+        // provider_status guarda SEMPRE a grafia original do gateway.
+        metadata: { identifier, provider, provider_status: providerStatus, verified: !isMatch },
       });
 
       if (PAID_EVENTS.includes(eventType)) {
+        // Idempotência financeira: um reenvio de webhook nunca reprocessa a venda.
+        if (String(tx.status).toUpperCase() === "PAID") {
+          await supabaseAdmin
+            .from("webhook_events")
+            .update({
+              processed: true,
+              processed_at: new Date().toISOString(),
+              processing_status: "PROCESSED",
+            } as never)
+            .eq("id", eventRowId!);
+          return json({ received: true, duplicate: true });
+        }
         const { finalizePaidTransaction } = await import("@/lib/payments/settle.server");
         // Uma falha na liquidação legada não pode impedir a entrega das licenças.
         await settlePaidTransaction(tx.id).catch((e) =>
@@ -214,6 +278,7 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
         await finalizePaidTransaction(tx.id);
       } else if (FAIL_EVENTS.includes(eventType)) {
         await supabaseAdmin.from("transactions").update({ status: "FAILED" }).eq("id", tx.id);
+
       } else if (REFUND_EVENTS.includes(eventType)) {
         await reverseTransaction(tx.id, "refund");
       } else if (CHARGEBACK_EVENTS.includes(eventType)) {

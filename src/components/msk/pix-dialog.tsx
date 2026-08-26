@@ -21,6 +21,8 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CardPaymentPanel } from "@/components/msk/card-payment-panel";
+
 import { checkTransaction } from "@/lib/commerce.functions";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -118,22 +120,36 @@ export function PixDialog({
 
 
   // O status final é sempre o do backend/gateway — nunca só o cronômetro.
+  // Polling é apenas complemento do webhook: intervalo de 5s, teto de 30min,
+  // e paramos em qualquer status terminal ou ao desmontar o checkout.
   useEffect(() => {
-    if (status === "PAID") return;
+    const TERMINAL = ["PAID", "FAILED", "REFUNDED", "CHARGED_BACK", "CANCELED", "EXPIRED"];
+    if (TERMINAL.includes(status)) return;
+    let attempts = 0;
+    const maxAttempts = 360; // 30 minutos
     const id = setInterval(async () => {
+      attempts += 1;
+      if (attempts > maxAttempts) {
+        clearInterval(id);
+        return;
+      }
       try {
         const res = await checkTransaction({ data: { transactionId: pix.transactionId } });
         if (res.status !== status) setStatus(res.status);
         if (res.status === "PAID") {
+          clearInterval(id);
           toast.success("Pagamento confirmado! Licença liberada.");
           navigate({ to: "/obrigado", search: { transactionId: pix.transactionId } });
           onPaid();
+        } else if (TERMINAL.includes(res.status)) {
+          clearInterval(id);
         }
       } catch {
         /* mantém o polling */
       }
-    }, 4000);
+    }, 5000);
     return () => clearInterval(id);
+
   }, [pix.transactionId, status, onPaid]);
 
   const createdAt = useMemo(() => {
@@ -312,6 +328,21 @@ export function PixDialog({
                       </Button>
                     </div>
                   )}
+
+                  {/* Cartão de crédito (AtomoPay) — aparece só quando habilitado no painel. */}
+                  <div className="mt-6 w-full">
+                    <CardPaymentPanel
+                      transactionId={pix.transactionId}
+                      amount={pix.amount}
+                      onPaid={() => {
+                        setStatus("PAID");
+                        navigate({ to: "/obrigado", search: { transactionId: pix.transactionId } });
+                        onPaid();
+                      }}
+                    />
+                  </div>
+
+
 
                   <div className="mt-8 flex items-center gap-3 text-muted-foreground">
                     <div className="h-4 w-4 relative">

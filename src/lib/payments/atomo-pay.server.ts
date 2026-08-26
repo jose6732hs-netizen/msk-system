@@ -221,12 +221,136 @@ export class AtomoPayService {
     return { ...tx, status: tx?.payment_status ?? tx?.status } as Record<string, unknown>;
   }
 
+  /**
+   * Cobrança no CARTÃO DE CRÉDITO — POST /transactions com payment_method
+   * "credit_card". O PAN/CVV existem apenas dentro deste método: nunca são
+   * persistidos, logados ou devolvidos ao cliente.
+   */
+  async createCard(input: {
+    identifier: string;
+    amountCents: number;
+    installments: number;
+    customer: AmploCustomer;
+    items: { title: string; unitPrice: number; quantity: number; tangible: boolean }[];
+    card: {
+      number: string;
+      holderName: string;
+      expMonth: number;
+      expYear: number;
+      cvv: string;
+    };
+    callbackUrl?: string | undefined;
+    tracking?: Record<string, string> | undefined;
+    metadata?: Record<string, unknown> | undefined;
+  }) {
+    const catalog = await this.ensureCatalog();
+    const pan = onlyDigits(input.card.number);
+
+    const body: Record<string, unknown> = {
+      amount: Math.round(input.amountCents),
+      offer_hash: catalog.offerHash,
+      payment_method: "credit_card",
+      installments: Math.max(1, Math.round(input.installments)),
+      card: {
+        number: pan,
+        holder_name: input.card.holderName,
+        exp_month: input.card.expMonth,
+        exp_year: input.card.expYear,
+        cvv: onlyDigits(input.card.cvv),
+      },
+      customer: {
+        name: input.customer.name,
+        email: input.customer.email,
+        phone_number: onlyDigits(input.customer.phone) || "21999999999",
+        document: onlyDigits(input.customer.document?.number) || "00000000000",
+      },
+      cart: input.items.map((i) => ({
+        product_hash: catalog.productHash,
+        title: i.title,
+        cover: null,
+        price: Math.round(i.unitPrice),
+        quantity: i.quantity,
+        operation_type: 1,
+        tangible: false,
+      })),
+      transaction_origin: "api",
+      ...(input.tracking ? { tracking: input.tracking } : {}),
+      ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
+      ...(input.metadata ? { metadata: input.metadata } : {}),
+    };
+
+    const raw = ((await this.call<Record<string, any>>("POST", "/transactions", body)) ?? {}) as any;
+    const tx = raw?.data ?? raw;
+    return {
+      providerStatus: String(tx?.payment_status ?? tx?.status ?? "prossessing"),
+      transactionHash: String(tx?.hash ?? tx?.id ?? ""),
+      installments: Number(tx?.installments ?? input.installments),
+      // Somente dados NÃO sensíveis do cartão são retornados/persistidos.
+      cardLast4: pan.slice(-4),
+    };
+  }
+
   /** A AtomoPay não expõe saldo público — o catálogo valida o token. */
   async getBalance() {
     await this.listProducts();
     return { available: null, pending: null } as Record<string, unknown>;
   }
 }
+
+const SETTINGS_KEY = "atomopay_settings";
+
+export type AtomoSettings = {
+  pixEnabled: boolean;
+  cardEnabled: boolean;
+  maxInstallments: number;
+  sandbox: boolean;
+};
+
+const DEFAULT_SETTINGS: AtomoSettings = {
+  pixEnabled: true,
+  cardEnabled: false,
+  maxInstallments: 12,
+  sandbox: false,
+};
+
+export async function getAtomoSettings(): Promise<AtomoSettings> {
+  const { data } = await supabaseAdmin
+    .from("app_settings")
+    .select("value")
+    .eq("key", SETTINGS_KEY)
+    .maybeSingle();
+  const value = (data?.value ?? {}) as Partial<AtomoSettings>;
+  return {
+    pixEnabled: value.pixEnabled !== false,
+    cardEnabled: value.cardEnabled === true,
+    maxInstallments: Math.min(12, Math.max(1, Number(value.maxInstallments ?? 12))),
+    sandbox: value.sandbox === true,
+  };
+}
+
+export async function saveAtomoSettings(
+  input: { [K in keyof AtomoSettings]?: AtomoSettings[K] | undefined },
+) {
+  const current = await getAtomoSettings();
+  const next: AtomoSettings = {
+    ...DEFAULT_SETTINGS,
+    ...current,
+    ...(input.pixEnabled !== undefined ? { pixEnabled: input.pixEnabled } : {}),
+    ...(input.cardEnabled !== undefined ? { cardEnabled: input.cardEnabled } : {}),
+    ...(input.maxInstallments !== undefined ? { maxInstallments: input.maxInstallments } : {}),
+    ...(input.sandbox !== undefined ? { sandbox: input.sandbox } : {}),
+  };
+  next.maxInstallments = Math.min(12, Math.max(1, Math.round(next.maxInstallments)));
+  const { error } = await supabaseAdmin
+    .from("app_settings")
+    .upsert(
+      { key: SETTINGS_KEY, value: next as never, updated_at: new Date().toISOString() } as never,
+      { onConflict: "key" },
+    );
+  if (error) throw error;
+  return next;
+}
+
 
 export async function saveAtomoCredentials(input: {
   publicKey?: string | undefined;

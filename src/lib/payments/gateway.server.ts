@@ -131,7 +131,14 @@ export async function createPixWithFailover(
       if (!failover && attempted > 0) break;
       attempted += 1;
       const service = await getService(provider);
-      const callbackUrl = await absoluteUrl(webhookPathFor(provider)).catch(() => "");
+      // A AtomoPay não assina o postback: levamos o segredo na própria URL
+      // (além da verificação server-to-server feita no handler).
+      const base = await absoluteUrl(webhookPathFor(provider)).catch(() => "");
+      const callbackUrl =
+        base && creds.webhookSecret
+          ? `${base}?secret=${encodeURIComponent(creds.webhookSecret)}`
+          : base;
+
       const result = await service.createPix({
         ...input,
         ...(callbackUrl ? { callbackUrl } : {}),
