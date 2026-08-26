@@ -89,7 +89,7 @@ function fmtDate(v?: string | null) {
 }
 
 function filesOf(run: AgentRun): string[] {
-  const f = run.files_changed ?? run.files;
+  const f = run.files_changed;
   if (Array.isArray(f)) return f.map((x) => (typeof x === "string" ? x : JSON.stringify(x)));
   if (typeof f === "string" && f.trim()) return [f];
   if (typeof f === "number") return [String(f)];
