@@ -419,7 +419,7 @@
     mskPendingProjects[id] = pending;
     await chrome.storage.local.set({ mskPendingProjects });
   };
-  const connectProject = async () => {
+  const connectProject = async (knownRepo = "") => {
     const id = refreshProjectId();
     root.classList.add("msk-menu-open", "msk-panel-open");
     placePanel();
@@ -437,7 +437,7 @@
       return;
     }
     setStage("Conectando projeto", "running");
-    const nativeRepo = repoUrl();
+    const nativeRepo = (typeof knownRepo === "string" && knownRepo) || repoUrl();
     if (!nativeRepo) {
       const recovered = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_GPT_CONNECT", payload: { lovable_project_id: id, project_name: projectName(), page_url: location.href, check_only: true } }, resolve));
       if (recovered?.connected) {
@@ -558,7 +558,7 @@
     if (!oauth.popupOpened) { add("O popup foi bloqueado. Libere popups para o Lovable e tente novamente.", "agent", "error"); return; }
     add("Confirme o GitHub no popup. Esta janela fechará automaticamente.", "agent", "running"); setStage("Aguardando GitHub", "running");
   };
-  root.querySelector("[data-action='connect-project']").addEventListener("click", requestProjectConnection);
+  root.querySelector("[data-action='connect-project']").addEventListener("click", requestFullConnection);
 
   const pollProjectStatus = async () => {
     const id = projectId();
@@ -646,7 +646,7 @@
     const id = refreshProjectId();
     if (!id) return add("Abra um projeto Lovable antes de usar esta ação.", "agent", "error");
     if (type === "publish") return publishUpdateOnly();
-    if (type === "github") return requestProjectConnection();
+    if (type === "github") return requestFullConnection();
     const state = { type, returnUrl: location.href, startedAt: Date.now() };
     await chrome.storage.local.set({ [actionKey(id)]: state });
     setStage(type === "badge" ? "Verificando plano e badge" : "Abrindo Cloud / banco", "running");
@@ -1134,18 +1134,112 @@
     add("Publicação confirmada. Abrindo a conexão GitHub…", "agent", "done");
     location.assign(`https://lovable.dev/projects/${id}/settings/git`);
   };
+
+  /* ============ PIPELINE ÚNICO DO BOTÃO "CONECTAR" ============ */
+  /* 1) identifica o projeto → 2) descobre GitHub pelo ID (DOM, cache, API do Lovable
+     ou aba oculta) → 3) conecta o GitHub se faltar → 4) detecta banco (Cloud/Supabase)
+     → 5) registra o projeto no agente MSK. Tudo em um clique. */
+  const resolveProjectLinks = async (id, deep = false) => {
+    const domRepo = repoUrl();
+    const domDb = supabaseRef() || (/cloud (ativo|enabled)|backend connected/i.test(document.body.innerText || "") ? "lovable-cloud" : "");
+    if (domRepo) {
+      await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_CACHE_LINKS", projectId: id, links: { repo: domRepo.replace("https://github.com/", ""), db: domDb } }, resolve));
+      return { repo: domRepo, db: domDb, source: "tela" };
+    }
+    const probe = await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_PROBE_PROJECT", projectId: id, deep }, resolve));
+    const repo = probe?.repo ? `https://github.com/${String(probe.repo).replace("https://github.com/", "")}` : "";
+    return { repo, db: domDb || probe?.db || "", source: probe?.source || "none" };
+  };
+
+  let pipelineRunning = false;
+  const runConnectPipeline = async () => {
+    if (pipelineRunning) return;
+    pipelineRunning = true;
+    const runBtn = root.querySelector(".msk-auto-run");
+    const originalLabel = runBtn.textContent;
+    runBtn.disabled = true;
+    runBtn.textContent = "⏳ Conectando…";
+    root.classList.add("msk-menu-open", "msk-panel-open");
+    placePanel();
+    try {
+      const id = refreshProjectId();
+      if (!id) {
+        setStage("Sem projeto aberto", "error");
+        add("Abra um projeto no editor do Lovable antes de conectar.", "agent", "error");
+        return;
+      }
+      markStep("lovable", "done");
+      markStep("github", "running");
+      setStage("Identificando GitHub do projeto", "running");
+      add(`Projeto ${id} identificado. Verificando se ele já está conectado ao GitHub…`, "agent", "running");
+
+      let links = await resolveProjectLinks(id, true);
+      if (links.repo) {
+        syncGithub.textContent = `GitHub: ${links.repo.replace("https://github.com/", "")}`;
+        syncGithub.dataset.state = "connected";
+        markStep("github", "done");
+        add(`GitHub já conectado (${links.repo.replace("https://github.com/", "")}) — detectado ${links.source === "cache" ? "pelo histórico deste projeto" : links.source === "api" ? "pelo ID do projeto no Lovable" : links.source === "tab" ? "nas configurações Git do projeto" : "nesta tela"}. Nenhuma nova autorização será pedida.`, "agent", "done");
+      } else {
+        add("Nenhum repositório vinculado a este projeto. Iniciando a conexão oficial do GitHub dentro do Lovable…", "agent", "running");
+        const connected = await connectGithub(id);
+        links = await resolveProjectLinks(id, true);
+        if (!links.repo && !connected) {
+          markStep("github", "pending");
+          setStage("Aguardando GitHub", "running");
+          await startGitGuide(id);
+          return;
+        }
+      }
+
+      markStep("db", "running");
+      setStage("Detectando banco de dados", "running");
+      if (links.db) {
+        syncDatabase.textContent = links.db === "lovable-cloud" ? "Banco: Lovable Cloud" : `Supabase: ${links.db}`;
+        syncDatabase.dataset.state = "connected";
+        markStep("db", "done");
+        add(links.db === "lovable-cloud" ? "Banco Lovable Cloud detectado e vinculado ao ID do projeto." : `Supabase detectado (${links.db}) e vinculado ao ID do projeto.`, "agent", "done");
+      } else {
+        await connectSupabase(id);
+      }
+
+      setStage("Ativando MSK Agente", "running");
+      await connectProject(links.repo || "");
+      await new Promise(resolve => chrome.runtime.sendMessage({ type: "MSK_CACHE_LINKS", projectId: id, links: { repo: links.repo.replace("https://github.com/", ""), db: links.db } }, resolve));
+      refreshSyncCards();
+    } catch (error) {
+      add(`Conexão interrompida: ${error?.message || error}`, "agent", "error");
+      setStage("Falha na conexão", "error");
+    } finally {
+      pipelineRunning = false;
+      runBtn.disabled = false;
+      runBtn.textContent = originalLabel;
+    }
+  };
+
+  const requestFullConnection = () => {
+    root.classList.add("msk-menu-open", "msk-panel-open");
+    placePanel();
+    root.querySelector('[data-tab="chat"]').click();
+    setStage("Confirmação necessária", "running");
+    addApprovalCard({
+      title: "Autorizar MSK neste projeto?",
+      description: "Em um clique o MSK identifica o projeto, verifica o GitHub pelo ID, conecta o que faltar, detecta o banco e ativa o agente.",
+      permissions: ["Identificar o projeto Lovable aberto", "Verificar/registrar o repositório GitHub deste projeto", "Detectar Lovable Cloud ou Supabase vinculado", "Ativar o MSK Agente e pedir confirmação antes de aplicar alterações"],
+      onConfirm: runConnectPipeline
+    });
+  };
   setInterval(refreshSyncCards, 2000);
   setTimeout(refreshSyncCards, 500);
   setInterval(renderGitGuide, 1500);
   setTimeout(renderGitGuide, 700);
   setTimeout(resumeLovableAction, 900);
 
-  root.querySelector(".msk-auto-run").addEventListener("click", requestProjectConnection);
+  root.querySelector(".msk-auto-run").addEventListener("click", requestFullConnection);
   root.querySelector(".msk-auto-update")?.addEventListener("click", publishUpdateOnly);
 
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type === "MSK_OPEN") { root.classList.add("msk-menu-open", "msk-panel-open"); placePanel(); input.focus(); }
-    if (message?.type === "MSK_AUTOMATE") requestProjectConnection();
+    if (message?.type === "MSK_AUTOMATE") requestFullConnection();
     if (message?.type === "MSK_PUBLISH_UPDATE") publishUpdateOnly();
     if (message?.type === "MSK_V2_AUTH_COMPLETE") {
       if (!message.result?.ok) {
