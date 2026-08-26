@@ -38,6 +38,7 @@ import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
 import { Route as ApiPublicCmsUploadRouteImport } from './routes/api/public/cms.upload'
+import { Route as ApiPublicCronReconcilePaymentsRouteImport } from './routes/api/public/cron/reconcile-payments'
 import { Route as ApiPublicCronRenewLicensesRouteImport } from './routes/api/public/cron/renew-licenses'
 import { Route as ApiPublicExtensionStatusRouteImport } from './routes/api/public/extension/status'
 import { Route as ApiPublicLicenseActivateRouteImport } from './routes/api/public/license/activate'
@@ -200,6 +201,12 @@ const ApiPublicCmsUploadRoute = ApiPublicCmsUploadRouteImport.update({
   path: '/upload',
   getParentRoute: () => ApiPublicCmsRoute,
 } as any)
+const ApiPublicCronReconcilePaymentsRoute =
+  ApiPublicCronReconcilePaymentsRouteImport.update({
+    id: '/api/public/cron/reconcile-payments',
+    path: '/api/public/cron/reconcile-payments',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronRenewLicensesRoute =
   ApiPublicCronRenewLicensesRouteImport.update({
     id: '/api/public/cron/renew-licenses',
@@ -307,6 +314,7 @@ export interface FileRoutesByFullPath {
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
+  '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -350,6 +358,7 @@ export interface FileRoutesByTo {
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
+  '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -395,6 +404,7 @@ export interface FileRoutesById {
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
+  '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
   '/api/public/extension/status': typeof ApiPublicExtensionStatusRoute
   '/api/public/license/activate': typeof ApiPublicLicenseActivateRoute
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
+    | '/api/public/cron/reconcile-payments'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -483,6 +494,7 @@ export interface FileRouteTypes {
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
+    | '/api/public/cron/reconcile-payments'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -527,6 +539,7 @@ export interface FileRouteTypes {
     | '/api/public/openapi'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
+    | '/api/public/cron/reconcile-payments'
     | '/api/public/cron/renew-licenses'
     | '/api/public/extension/status'
     | '/api/public/license/activate'
@@ -566,6 +579,7 @@ export interface RootRouteChildren {
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
   ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
+  ApiPublicCronReconcilePaymentsRoute: typeof ApiPublicCronReconcilePaymentsRoute
   ApiPublicCronRenewLicensesRoute: typeof ApiPublicCronRenewLicensesRoute
   ApiPublicExtensionStatusRoute: typeof ApiPublicExtensionStatusRoute
   ApiPublicLicenseActivateRoute: typeof ApiPublicLicenseActivateRoute
@@ -786,6 +800,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmsUploadRouteImport
       parentRoute: typeof ApiPublicCmsRoute
     }
+    '/api/public/cron/reconcile-payments': {
+      id: '/api/public/cron/reconcile-payments'
+      path: '/api/public/cron/reconcile-payments'
+      fullPath: '/api/public/cron/reconcile-payments'
+      preLoaderRoute: typeof ApiPublicCronReconcilePaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/renew-licenses': {
       id: '/api/public/cron/renew-licenses'
       path: '/api/public/cron/renew-licenses'
@@ -936,6 +957,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
   ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
+  ApiPublicCronReconcilePaymentsRoute: ApiPublicCronReconcilePaymentsRoute,
   ApiPublicCronRenewLicensesRoute: ApiPublicCronRenewLicensesRoute,
   ApiPublicExtensionStatusRoute: ApiPublicExtensionStatusRoute,
   ApiPublicLicenseActivateRoute: ApiPublicLicenseActivateRoute,

@@ -146,6 +146,7 @@ export async function finalizePaidTransaction(transactionId: string) {
 
   // A entrega do combo vem ANTES da trava de notificações. Assim uma tentativa
   // anterior que já notificou, mas falhou ao emitir licença, é autorreparada.
+  console.info("[settle] entregando licenças do pedido", tx.identifier);
   await ensureTransactionLicenses({
     id: tx.id,
     user_id: tx.user_id,

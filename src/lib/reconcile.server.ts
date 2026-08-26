@@ -62,7 +62,13 @@ export async function settleFromGateway(
   remote?: unknown,
 ) {
   const { settlePaidTransaction } = await import("./commerce.server");
-  const result = await settlePaidTransaction(transactionId);
+  // Uma falha na liquidação legada não pode impedir a entrega das licenças.
+  let result: unknown = null;
+  try {
+    result = await settlePaidTransaction(transactionId);
+  } catch (e) {
+    console.error("[reconcile] settlePaidTransaction falhou:", (e as Error).message);
+  }
 
   await supabaseAdmin
     .from("transactions")
