@@ -412,12 +412,12 @@ export async function settlePaidTransaction(transactionId: string) {
       const { sendProfessionalNotification } = await import("./notification-service.server");
       await sendProfessionalNotification({
         userId: tx.user_id,
-        eventType: "payment_confirmed",
+        type: "pix_approved",
         title: "Pagamento Confirmado",
         body: `Seu pagamento de R$ ${amount.toFixed(2)} foi processado com sucesso. Aproveite seu acesso!`,
-        emoji: "✅",
         link: "/painel",
-      } as never);
+        transactionId: tx.id,
+      });
     } catch (e) {
       console.error("[settle] notificação de pagamento falhou:", (e as Error).message);
     }
