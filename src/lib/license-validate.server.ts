@@ -215,7 +215,52 @@ export async function handleValidation(request: Request, bucket: string, limit: 
     device = data as DeviceRow | null;
   }
 
+  const ipHash = await hashValue(ip);
+
+  // Reinstalou a extensão? O mesmo IP reaproveita o slot já registrado,
+  // em vez de consumir um novo dispositivo da licença.
   if (!device && license.status === "active") {
+    const { data: sameIp } = await supabaseAdmin
+      .from("license_devices")
+      .select("id,status")
+      .eq("license_id", license.id)
+      .eq("last_ip_hash", ipHash)
+      .eq("status", "active")
+      .order("last_seen", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sameIp) {
+      await supabaseAdmin
+        .from("license_devices")
+        .update({
+          device_hash: deviceHash,
+          installation_id: parsed.data.installation_id ?? parsed.data.deviceId ?? null,
+        } as never)
+        .eq("id", (sameIp as DeviceRow).id);
+      device = sameIp as DeviceRow;
+    }
+  }
+
+  if (!device && license.status === "active") {
+    const { count } = await supabaseAdmin
+      .from("license_devices")
+      .select("id", { count: "exact", head: true })
+      .eq("license_id", license.id)
+      .eq("status", "active");
+    const used = count ?? 0;
+    if (license.max_devices > 0 && used >= license.max_devices) {
+      return respond(
+        {
+          success: false,
+          valid: false,
+          error: "DEVICE_LIMIT",
+          code: "DEVICE_LIMIT",
+          message: "Limite de dispositivos atingido para esta licença.",
+        },
+        403,
+      );
+    }
+
     const { data: newDev, error: devErr } = await supabaseAdmin
       .from("license_devices")
       .insert({
@@ -224,7 +269,7 @@ export async function handleValidation(request: Request, bucket: string, limit: 
         installation_id: parsed.data.installation_id ?? parsed.data.deviceId ?? null,
         status: "active",
         last_seen: new Date().toISOString(),
-        last_ip_hash: await hashValue(ip),
+        last_ip_hash: ipHash,
       } as never)
       .select("id,status")
       .single();
