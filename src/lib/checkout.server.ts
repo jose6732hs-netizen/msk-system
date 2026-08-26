@@ -204,6 +204,9 @@ export async function createPixCheckout(input: {
   name: string;
   planId?: string | null; // Agora opcional se houver carrinho
   items?: { planId: string; quantity: number }[] | null;
+  /** Order bump aceito no checkout (oferta inteligente): item adicional com desconto. */
+  companion?: { mainPlanId: string; companionPlanId: string } | null;
+
   affiliateCode?: string | null;
   resellerCode?: string | null;
   document: string;
