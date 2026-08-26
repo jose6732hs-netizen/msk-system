@@ -14,7 +14,7 @@ export function WhatsappSupportButton() {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Falar com o suporte no WhatsApp"
-      className="group fixed bottom-24 right-4 z-[9990] md:bottom-8 md:right-8"
+      className="group fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] right-3 z-[105] md:bottom-8 md:right-8"
     >
       <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-[#25D366]/30" />
       <span

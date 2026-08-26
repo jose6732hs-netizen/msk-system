@@ -56,49 +56,48 @@ export function CreditCard3D({
   const theme = THEMES[brand] ?? DEFAULT_THEME;
 
   return (
-    <div className="mx-auto w-full max-w-[430px] [perspective:1200px]">
+    <div className="mx-auto w-full max-w-[430px] px-1 [perspective:1200px] sm:px-0">
       <div
-        className={`relative min-h-[220px] w-full overflow-hidden rounded-[28px] border border-white/15 bg-gradient-to-br ${theme.gradient} p-6 text-white shadow-[0_28px_80px_rgba(0,0,0,0.45)] transition-all duration-500`}
-        style={{ transform: "rotateX(7deg) rotateY(-10deg)", transformStyle: "preserve-3d" }}
+        className={`relative min-h-[190px] w-full overflow-hidden rounded-[22px] border border-white/15 bg-gradient-to-br ${theme.gradient} p-4 text-white shadow-[0_24px_60px_rgba(0,0,0,0.4)] transition-all duration-500 [transform:rotateX(3deg)_rotateY(-3deg)] [transform-style:preserve-3d] sm:min-h-[220px] sm:rounded-[28px] sm:p-6 sm:shadow-[0_28px_80px_rgba(0,0,0,0.45)] sm:[transform:rotateX(7deg)_rotateY(-10deg)]`}
       >
         <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -left-16 h-56 w-56 rounded-full bg-black/25 blur-3xl" />
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.22),transparent_34%,transparent_62%,rgba(255,255,255,0.07))]" />
 
-        <div className="relative flex min-h-[172px] flex-col justify-between" style={{ transform: "translateZ(26px)" }}>
-          <div className="flex items-start justify-between gap-4">
-            <div className={`grid h-11 w-14 place-items-center rounded-xl border border-white/20 ${theme.accent} backdrop-blur-md`}>
-              <CreditCard className="h-6 w-6" />
+        <div className="relative flex min-h-[158px] flex-col justify-between sm:min-h-[172px]" style={{ transform: "translateZ(22px)" }}>
+          <div className="flex items-start justify-between gap-2 sm:gap-4">
+            <div className={`grid h-10 w-12 shrink-0 place-items-center rounded-xl border border-white/20 ${theme.accent} backdrop-blur-md sm:h-11 sm:w-14`}>
+              <CreditCard className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div className="flex items-center gap-3">
-              <Wifi className="h-5 w-5 rotate-90 text-white/75" />
-              <span className="rounded-full border border-white/15 bg-black/15 px-3 py-1 text-[10px] font-black tracking-[0.18em] backdrop-blur-md">
+            <div className="flex min-w-0 items-center gap-1.5 sm:gap-3">
+              <Wifi className="h-4 w-4 shrink-0 rotate-90 text-white/75 sm:h-5 sm:w-5" />
+              <span className="max-w-[110px] truncate rounded-full border border-white/15 bg-black/15 px-2 py-1 text-[8px] font-black tracking-[0.12em] backdrop-blur-md sm:max-w-none sm:px-3 sm:text-[10px] sm:tracking-[0.18em]">
                 {theme.label}
               </span>
             </div>
           </div>
 
-          <div className="mt-7">
-            <p className="break-all font-mono text-lg font-black tracking-[0.16em] drop-shadow sm:text-xl">
+          <div className="mt-5 sm:mt-7">
+            <p className="break-all font-mono text-base font-black tracking-[0.1em] drop-shadow sm:text-xl sm:tracking-[0.16em]">
               {previewNumber(number)}
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-[minmax(0,1fr)_auto] gap-5">
+          <div className="mt-5 grid grid-cols-[minmax(0,1fr)_auto] gap-3 sm:mt-6 sm:gap-5">
             <div className="min-w-0">
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/65">Titular</p>
-              <p className="truncate text-sm font-black uppercase tracking-wide">
+              <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-white/65 sm:text-[9px] sm:tracking-[0.2em]">Titular</p>
+              <p className="truncate text-xs font-black uppercase tracking-wide sm:text-sm">
                 {holderName.trim() || "SEU NOME"}
               </p>
             </div>
-            <div className="text-right">
-              <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/65">Validade</p>
-              <p className="font-mono text-sm font-black tracking-widest">{expiry || "MM/AA"}</p>
+            <div className="shrink-0 text-right">
+              <p className="text-[8px] font-bold uppercase tracking-[0.16em] text-white/65 sm:text-[9px] sm:tracking-[0.2em]">Validade</p>
+              <p className="font-mono text-xs font-black tracking-wider sm:text-sm sm:tracking-widest">{expiry || "MM/AA"}</p>
             </div>
           </div>
         </div>
       </div>
-      <div className="mx-auto mt-5 h-3 w-[72%] rounded-full bg-black/35 blur-md" />
+      <div className="mx-auto mt-4 h-3 w-[68%] rounded-full bg-black/35 blur-md sm:mt-5 sm:w-[72%]" />
     </div>
   );
 }

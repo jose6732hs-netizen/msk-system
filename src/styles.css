@@ -22,11 +22,9 @@
   will-change: transform;
 }
 
-
 .pause-animation:hover {
   animation-play-state: paused;
 }
-
 
 @custom-variant dark (&:is(.dark *));
 
@@ -92,28 +90,28 @@
 
 :root {
   --radius: 0.9rem;
-  --background: oklch(0.06 0.01 260); /* Deep dark background */
+  --background: oklch(0.06 0.01 260);
   --foreground: oklch(0.98 0.01 260);
   --card: oklch(0.12 0.02 260 / 65%);
   --card-foreground: oklch(0.98 0.01 260);
   --popover: oklch(0.1 0.02 260);
   --popover-foreground: oklch(0.98 0.01 260);
-  --primary: oklch(0.65 0.28 320); /* Neon Pink/Rose */
+  --primary: oklch(0.65 0.28 320);
   --primary-foreground: oklch(0.98 0.01 320);
-  --secondary: oklch(0.65 0.2 250); /* Neon Blue */
+  --secondary: oklch(0.65 0.2 250);
   --secondary-foreground: oklch(0.98 0.01 250);
   --muted: oklch(0.15 0.02 260);
   --muted-foreground: oklch(0.7 0.02 260);
-  --accent: oklch(0.75 0.2 160); /* Neon Green accent */
+  --accent: oklch(0.75 0.2 160);
   --accent-foreground: oklch(0.1 0.05 160);
   --destructive: oklch(0.6 0.25 25);
   --destructive-foreground: oklch(0.98 0.01 25);
   --border: oklch(0.65 0.28 320 / 18%);
   --input: oklch(0.65 0.28 320 / 24%);
   --ring: oklch(0.65 0.28 320 / 60%);
-  --neon: oklch(0.65 0.28 320); /* Neon Rose */
+  --neon: oklch(0.65 0.28 320);
   --neon-soft: oklch(0.65 0.28 320 / 14%);
-  --cyan: oklch(0.75 0.2 160); /* Now using Neon Green for 'cyan' vars */
+  --cyan: oklch(0.75 0.2 160);
   --deep-red: oklch(0.25 0.09 320);
   --surface: oklch(0.12 0.02 260 / 72%);
   --gradient-hero: radial-gradient(
@@ -162,11 +160,24 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow-x: hidden;
+    overflow-x: clip;
     padding-bottom: env(safe-area-inset-bottom, 0px);
     background-image: var(--gradient-hero);
     background-attachment: fixed;
     background-repeat: no-repeat;
+  }
+
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  input,
+  select,
+  textarea {
+    min-width: 0;
+    max-width: 100%;
   }
 
   h1,
@@ -177,7 +188,6 @@
     letter-spacing: -0.02em;
   }
 
-  /* Ícones Lucide fluo por padrão; dentro de botões/links herdam a cor do pai. */
   svg.lucide:not([class*="text-"]) {
     color: var(--neon);
   }
@@ -231,33 +241,67 @@
   display: none;
 }
 
-
-/* Ocultar barra de rolagem global mas permitir scroll profissional */
 html {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 html::-webkit-scrollbar {
-  display: none; /* Chrome/Safari */
+  display: none;
 }
 
 body {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Navegação mobile fixa estilo app: evita conteúdo escondido e scroll lateral */
 .mobile-top-bar {
   @apply lg:hidden sticky top-0 z-[60] flex items-center justify-between px-5 h-16 bg-background/80 backdrop-blur-xl border-b border-white/5;
 }
 
-html, body {
-  overflow-x: hidden;
+html,
+body {
+  overflow-x: clip;
   max-width: 100%;
 }
 
 @media (max-width: 1023px) {
   body:not(.board-layout) {
     padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 430px) {
+  [class~="p-12"],
+  [class~="p-10"] {
+    padding: 1.5rem;
+  }
+
+  [class~="p-8"] {
+    padding: 1.25rem;
+  }
+
+  [class~="px-8"] {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  [class~="py-12"] {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  /* O contador de licença usa esse token em cada bloco; 60px fixos estouravam 320px. */
+  [class~="min-w-[60px]"] {
+    min-width: 0;
+  }
+
+  /* URLs, e-mails e metadados não podem definir a largura mínima de cards do painel. */
+  .board-layout p,
+  .board-layout h1,
+  .board-layout h2,
+  .board-layout h3,
+  .board-layout h4,
+  .glass p {
+    overflow-wrap: anywhere;
   }
 }
 
