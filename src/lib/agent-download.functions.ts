@@ -2,17 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const AGENT_BUILD = {
-  bucket: "extension-builds",
-  path: "official/2.4.41/1787784700132-MSK-Agente-v2.4.41.zip",
-  fileName: "MSK-Agente-v2.4.41.zip",
-  version: "2.4.41",
-} as const;
+const AGENT_BUCKET = "extension-builds";
+const AGENT_CHANNEL = "msk-agente";
 
 /**
- * Gera um link temporário para o ZIP oficial do MSK Agente.
- * A URL nunca é pública/permanente e só é emitida para o dono de uma licença
- * utilizável cujo snapshot histórico pertença ao produto `agent`.
+ * Gera um link temporário para o ZIP oficial publicado do MSK Agente.
+ * A versão não fica fixa no código: o download sempre usa o build oficial
+ * atualmente publicado no canal `msk-agente`.
  */
 export const getAgentExtensionDownload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -44,12 +40,38 @@ export const getAgentExtensionDownload = createServerFn({ method: "POST" })
       throw new Error("Esta licença não libera o download do MSK Agente.");
     }
 
+    const { data: build, error: buildError } = await supabaseAdmin
+      .from("extension_builds")
+      .select("id,version,file_name,storage_path,status,is_official,is_published,created_at")
+      .eq("channel_slug", AGENT_CHANNEL as never)
+      .eq("is_published", true as never)
+      .eq("is_official", true as never)
+      .eq("status", "ready" as never)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const activeBuild = build as unknown as {
+      id: string;
+      version: string;
+      file_name: string;
+      storage_path: string | null;
+    } | null;
+
+    if (buildError || !activeBuild?.storage_path) {
+      console.error(
+        "[agent-download] nenhum ZIP publicado disponível:",
+        String(buildError?.message ?? "missing_build").slice(0, 200),
+      );
+      throw new Error("Nenhuma versão publicada do MSK Agente está disponível agora.");
+    }
+
     // Mantém o bucket privado. O link expira rapidamente e é gerado somente no servidor.
-    const storage = supabaseAdmin.storage.from(AGENT_BUILD.bucket) as any;
+    const storage = supabaseAdmin.storage.from(AGENT_BUCKET) as any;
     const { data: signed, error: signedError } = await storage.createSignedUrl(
-      AGENT_BUILD.path,
+      activeBuild.storage_path,
       90,
-      { download: AGENT_BUILD.fileName },
+      { download: activeBuild.file_name },
     );
 
     if (signedError || !signed?.signedUrl) {
@@ -61,13 +83,18 @@ export const getAgentExtensionDownload = createServerFn({ method: "POST" })
       license_id: license.id,
       user_id: context.userId,
       event_type: "agent_extension_download",
-      metadata: { version: AGENT_BUILD.version, source: "painel" },
+      metadata: {
+        version: activeBuild.version,
+        build_id: activeBuild.id,
+        channel: AGENT_CHANNEL,
+        source: "painel",
+      },
     });
 
     return {
       url: String(signed.signedUrl),
-      fileName: AGENT_BUILD.fileName,
-      version: AGENT_BUILD.version,
+      fileName: activeBuild.file_name,
+      version: activeBuild.version,
       expiresIn: 90,
     };
   });
