@@ -162,7 +162,27 @@ function PlanosPage() {
         .eq("active", true)
         .order("sort_order");
       if (error) throw error;
-      return (data ?? []).filter((plan: any) => !String(plan.slug ?? "").startsWith("page-cloner"));
+      return (data ?? []).filter(
+        (plan: any) =>
+          !String(plan.slug ?? "").startsWith("page-cloner") &&
+          !String(plan.slug ?? "").startsWith("msk-agent"),
+      );
+    },
+  });
+
+  // Categoria comercial independente: MSK Agente (não mistura com Extensão/Clonagem).
+  const { data: agentPlans } = useQuery({
+    queryKey: ["plans", "msk-agent"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("active", true)
+        .like("slug", "msk-agent%")
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
     },
   });
 
@@ -527,6 +547,65 @@ function PlanosPage() {
             </div>
           </div>
         )}
+
+        {(agentPlans ?? []).length > 0 ? (
+          <section id="msk-agente" className="mt-20 scroll-mt-24">
+            <div className="text-center">
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[.2em] text-primary">
+                Nova categoria
+              </span>
+              <h2 className="mt-4 text-3xl font-black uppercase sm:text-4xl">
+                MSK <span className="neon-text">Agente</span>
+              </h2>
+              <p className="mx-auto mt-3 max-w-xl text-xs text-muted-foreground sm:text-sm">
+                Assistente técnico do seu projeto: analisa, planeja e prepara alterações. Acesso liberado
+                automaticamente após a confirmação do PIX.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {(agentPlans ?? []).map((plan: any) => (
+                <article
+                  key={plan.id}
+                  className="flex flex-col overflow-hidden rounded-[2rem] border border-primary/25 bg-[#0A0A0A] p-6 shadow-[0_0_50px_rgba(57,255,20,.08)]"
+                >
+                  <p className="break-words text-[10px] font-black uppercase tracking-[.18em] text-primary">{plan.name}</p>
+                  <div className="mt-3 flex flex-wrap items-baseline gap-2">
+                    <span className="text-3xl font-black text-white">{formatPrice(Number(plan.price), plan.currency)}</span>
+                    {!plan.is_lifetime ? (
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground">/{plan.duration_label}</span>
+                    ) : null}
+                  </div>
+                  <ul className="mt-5 flex-1 space-y-2.5">
+                    {(plan.highlights ?? []).map((h: string) => (
+                      <li key={h} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+                        <span className="mt-0.5 rounded-full bg-primary p-0.5 text-black"><Check className="h-2.5 w-2.5" /></span>
+                        <span className="min-w-0 break-words">{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 grid grid-cols-2 gap-2">
+                    <Button
+                      className="min-h-14 w-full whitespace-normal rounded-2xl bg-[#22C55E] px-3 text-center text-[10px] font-black uppercase leading-tight text-white hover:bg-[#28D56A] sm:text-xs"
+                      disabled={loadingPlan === plan.id}
+                      onClick={() => void addToCart(plan)}
+                    >
+                      {loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="min-h-14 w-full whitespace-normal rounded-2xl border border-white/10 px-3 text-center text-[10px] font-black uppercase text-white/70 hover:border-primary/30 hover:text-primary sm:text-xs"
+                      onClick={() => void sharePlan(plan)}
+                    >
+                      <Share2 className="mr-2 h-4 w-4 shrink-0" /> Compartilhar
+                    </Button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </main>
       <SiteFooter />
 

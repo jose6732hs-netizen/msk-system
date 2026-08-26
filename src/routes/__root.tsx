@@ -214,6 +214,7 @@ function RootComponent() {
       <Outlet />
       {!isBoard && !isAuth && <MobileNavigation />}
       <WhatsappSupportButton />
+      <AgentBubble />
       <Toaster position="top-right" />
 
     </QueryClientProvider>
@@ -224,6 +225,7 @@ import { Home, CreditCard, LayoutDashboard, Share2, Menu, X, Download, ShieldChe
 import { PwaInstallBanner } from "@/components/msk/pwa-install-banner";
 import { PushPermissionPrompt } from "@/components/msk/push-permission-prompt";
 import { WhatsappSupportButton } from "@/components/msk/whatsapp-support";
+import { AgentBubble } from "@/components/msk/agent-bubble";
 
 import { MskLogo } from "@/components/msk/logo";
 import { Button } from "@/components/ui/button";
