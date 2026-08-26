@@ -205,6 +205,7 @@
   };
   const observer = new MutationObserver(() => {
     applyGuardian();
+    scheduleProjectRefresh();
     if (!mirrorSwitch.checked || !lastPrompt) return;
     clearTimeout(pendingTimer);
     pendingTimer = setTimeout(() => {
@@ -636,6 +637,14 @@
     return pageLink || validProjectId(location.hostname.match(/([0-9a-f]{8}-[0-9a-f-]{27,})/i)?.[1]);
   };
   let currentProjectId = "";
+  let projectRefreshTimer = 0;
+  const scheduleProjectRefresh = () => {
+    clearTimeout(projectRefreshTimer);
+    projectRefreshTimer = window.setTimeout(() => {
+      refreshProjectId();
+      refreshSyncCards();
+    }, 180);
+  };
   const refreshProjectId = () => {
     const id = projectId();
     idEl.textContent = id || "sem projeto aberto";
@@ -648,6 +657,8 @@
     root.querySelector(".msk-compose").classList.toggle("disabled", !id);
     if (id && id !== currentProjectId) {
       currentProjectId = id;
+      agentActive = false;
+      connectedContext = { projectId: id, repo: "", db: "" };
       syncLovable.textContent = `Lovable: ${id}`;
       syncLovable.dataset.state = "connected";
       setStage("Projeto identificado", "done");
@@ -1297,8 +1308,17 @@
     });
   };
   setInterval(refreshSyncCards, 5000);
+  let lastObservedUrl = location.href;
+  setInterval(() => {
+    if (location.href === lastObservedUrl) return;
+    lastObservedUrl = location.href;
+    scheduleProjectRefresh();
+  }, 500);
   setTimeout(refreshSyncCards, 500);
-  setInterval(renderGitGuide, 4000);
+  setInterval(() => {
+    const id = projectId();
+    if (!pipelineRunning && (!agentActive || connectedContext.projectId !== id)) renderGitGuide();
+  }, 4000);
   setTimeout(renderGitGuide, 700);
   setTimeout(resumeLovableAction, 900);
 
