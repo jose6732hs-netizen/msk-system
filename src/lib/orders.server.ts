@@ -1,7 +1,7 @@
-/** Pedidos: expiração de PIX (2 minutos) e recuperação de pagamentos pendentes. */
+/** Pedidos: expiração de PIX (30 minutos) e recuperação de pagamentos pendentes. */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export const PIX_TTL_MS = 2 * 60 * 1000;
+export const PIX_TTL_MS = 30 * 60 * 1000;
 
 export function pixExpiryFromNow() {
   return new Date(Date.now() + PIX_TTL_MS).toISOString();
@@ -59,7 +59,6 @@ export async function getOrder(userId: string, transactionId: string) {
   } catch (e) {
     console.error("[orders] reconciliação falhou:", (e as Error).message);
   }
-  await expireStalePix(userId);
   const { data } = await supabaseAdmin
     .from("transactions")
     .select(
