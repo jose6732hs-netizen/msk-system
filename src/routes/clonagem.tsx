@@ -125,6 +125,7 @@ function ClonagemPage() {
       return;
     }
     const items = [{
+      planId: checkoutPlan.id,
       name: checkoutPlan.name,
       quantity: 1,
       price: Number(checkoutPlan.price ?? 0),
@@ -132,6 +133,7 @@ function ClonagemPage() {
     }];
     if (offerEligible && offerAccepted) {
       items.push({
+        planId: checkoutOffer.companion.id,
         name: checkoutOffer.companion.name,
         quantity: 1,
         price: Number(checkoutOffer.companion.discountedPrice ?? 0),
