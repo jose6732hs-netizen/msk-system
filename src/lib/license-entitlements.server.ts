@@ -31,14 +31,14 @@ export type LicenseSnapshot = {
 
 /**
  * Resolve o produto comprado priorizando o snapshot gravado na licença.
- * A tabela plans serve apenas como fallback para licenças antigas.
+ * A tabela plans serve apenas como fallback para licenças realmente antigas,
+ * isto é, aquelas que não possuem o campo de snapshot.
  */
 export function resolveLicenseSnapshot(row: any): LicenseSnapshot {
   const metadata = meta(row?.metadata);
   const plan = row?.plans ?? {};
-  const snapshotFeatures = meta(metadata["features_snapshot"]);
-  const currentFeatures = meta(plan?.features);
-  const features = Object.keys(snapshotFeatures).length ? snapshotFeatures : currentFeatures;
+  const hasFeaturesSnapshot = Object.prototype.hasOwnProperty.call(metadata, "features_snapshot");
+  const features = hasFeaturesSnapshot ? meta(metadata["features_snapshot"]) : meta(plan?.features);
 
   const slug = String(metadata["plan_slug_snapshot"] ?? plan?.slug ?? "").trim() || null;
   const explicitRole = String(metadata["license_role"] ?? "").trim();
