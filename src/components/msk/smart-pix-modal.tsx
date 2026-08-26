@@ -31,6 +31,41 @@ function normalizeQr(raw?: string | null) {
   return `data:image/png;base64,${value}`;
 }
 
+async function copyTextToClipboard(value: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // Tenta o fallback abaixo quando a Clipboard API for bloqueada pelo navegador.
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  textarea.style.opacity = "0";
+  textarea.style.pointerEvents = "none";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  let copied = false;
+  try {
+    copied = document.execCommand("copy");
+  } catch {
+    copied = false;
+  } finally {
+    document.body.removeChild(textarea);
+  }
+
+  return copied;
+}
+
 export type SmartPixState = {
   transactionId: string;
   pixCode: string | null;
@@ -61,6 +96,7 @@ export function SmartPixModal({
   const [checking, setChecking] = useState(false);
   const [generatingPix, setGeneratingPix] = useState(false);
   const [pixError, setPixError] = useState<string | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
   const supportLink = useSupportLink("Olá! Tive um problema ao tentar gerar o PIX da minha compra. Podem me ajudar?");
 
   useModalScrollLock(true);
@@ -81,6 +117,16 @@ export function SmartPixModal({
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, [pix.expiresAt]);
+
+  useEffect(() => {
+    if (!pixCopied) return;
+    const id = window.setTimeout(() => setPixCopied(false), 1900);
+    return () => window.clearTimeout(id);
+  }, [pixCopied]);
+
+  useEffect(() => {
+    setPixCopied(false);
+  }, [pix.pixCode, pix.transactionId]);
 
   useEffect(() => {
     let alive = true;
@@ -137,8 +183,20 @@ export function SmartPixModal({
   }, [method, pix.pixCode, pix.transactionId, status, onPaid]);
 
   async function copyPix() {
-    if (!pix.pixCode) return;
-    await navigator.clipboard.writeText(pix.pixCode);
+    const code = pix.pixCode?.trim();
+    if (!code) {
+      setPixCopied(false);
+      return;
+    }
+
+    const copied = await copyTextToClipboard(code);
+    if (!copied) {
+      setPixCopied(false);
+      toast.error("Não foi possível copiar. Selecione o código manualmente.");
+      return;
+    }
+
+    setPixCopied(true);
     toast.success("Código PIX copiado.");
   }
 
@@ -269,8 +327,16 @@ export function SmartPixModal({
                   <div className="mt-5 min-w-0 rounded-2xl border border-white/10 bg-black/30 p-4">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">PIX copia e cola</p>
                     <p className="mt-2 max-h-20 overflow-hidden break-all font-mono text-[10px] leading-relaxed text-white/50">{pix.pixCode}</p>
-                    <Button type="button" variant="ghost" className="mt-3 w-full border border-white/10" onClick={copyPix}>
-                      <ClipboardCopy className="mr-2 h-4 w-4" /> Copiar código PIX
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className={`mt-3 w-full border transition-all duration-300 ${pixCopied ? "border-emerald-400/70 bg-emerald-500/20 text-emerald-100 shadow-[0_0_26px_rgba(16,185,129,.55)] hover:bg-emerald-500/20 hover:text-emerald-100 animate-pulse" : "border-white/10"}`}
+                      onClick={() => void copyPix()}
+                      disabled={!pix.pixCode?.trim()}
+                      aria-label={pixCopied ? "Código PIX copiado" : "Copiar código PIX"}
+                    >
+                      {pixCopied ? <CheckCircle2 className="mr-2 h-4 w-4" /> : <ClipboardCopy className="mr-2 h-4 w-4" />}
+                      <span aria-live="polite">{pixCopied ? "Copiado" : "Copiar código PIX"}</span>
                     </Button>
                   </div>
                 ) : null}
