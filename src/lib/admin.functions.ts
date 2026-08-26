@@ -359,3 +359,40 @@ export const adminUserAction = createServerFn({ method: "POST" })
 
     return { ok: false };
   });
+
+/* ====== AtomoPay: métodos habilitados (PIX / cartão) ====== */
+
+export const adminAtomoSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { getAtomoSettings } = await import("./payments/atomo-pay.server");
+    return getAtomoSettings();
+  });
+
+export const adminSaveAtomoSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z
+      .object({
+        pixEnabled: z.boolean().optional(),
+        cardEnabled: z.boolean().optional(),
+        maxInstallments: z.number().int().min(1).max(12).optional(),
+        sandbox: z.boolean().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { saveAtomoSettings } = await import("./payments/atomo-pay.server");
+    const { logAudit } = await import("./audit.server");
+    const saved = await saveAtomoSettings(data);
+    await logAudit({
+      userId: context.userId,
+      action: "gateway.atomopay_methods_updated",
+      resource: "atomopay",
+      result: "success",
+      metadata: saved as unknown as Record<string, unknown>,
+    });
+    return saved;
+  });
