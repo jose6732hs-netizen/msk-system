@@ -11,6 +11,7 @@ import { AdminGatewayTab } from "@/components/msk/admin-gateway";
 import { AdminFinanceTab } from "@/components/msk/admin-finance";
 import { AdminExtensionTab } from "@/components/msk/admin-extension";
 import { AdminClonerTab } from "@/components/msk/admin-cloner";
+import { AdminAgentTab } from "@/components/msk/admin-agent";
 import { AdminAffiliatesTab } from "@/components/msk/admin-affiliates";
 import { AdminTokenGenerator } from "@/components/msk/admin-token-generator";
 import { AdminTrackingTab } from "@/components/msk/admin-tracking";
@@ -62,6 +63,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
           { value: "subs", label: "Planos & Ofertas" },
           { value: "extension", label: "Extensão" },
           { value: "cloner", label: "Clonador" },
+          { value: "agent", label: "MSK Agente" },
         ],
       },
       { value: "users", label: "Usuários", Icon: Users },
@@ -448,6 +450,7 @@ function Admin() {
                 {activeTab === "gateway" && <AdminGatewayTab />}
                 {activeTab === "extension" && <AdminExtensionTab />}
                 {activeTab === "cloner" && <AdminClonerTab />}
+                {activeTab === "agent" && <AdminAgentTab />}
                 {activeTab === "wallets" && <AdminWalletsTab />}
                 {activeTab === "withdrawals" && <AdminWithdrawalsTab />}
                 {activeTab === "push" && <AdminPushTestsTab />}
