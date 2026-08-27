@@ -10,34 +10,10 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
-      _msk_migration_payloads: {
-        Row: {
-          cipher_hex: string
-          row_count: number
-          schema_name: string
-          seq: number
-          table_name: string
-        }
-        Insert: {
-          cipher_hex: string
-          row_count: number
-          schema_name: string
-          seq: number
-          table_name: string
-        }
-        Update: {
-          cipher_hex?: string
-          row_count?: number
-          schema_name?: string
-          seq?: number
-          table_name?: string
-        }
-        Relationships: []
-      }
       affiliate_attributions: {
         Row: {
           affiliate_id: string
@@ -1643,28 +1619,34 @@ export type Database = {
           amount: number | null
           created_at: string
           event: string
+          external_id: string | null
           id: string
           metadata: Json
           status: string
           transaction_id: string | null
+          webhook_event_id: string | null
         }
         Insert: {
           amount?: number | null
           created_at?: string
           event: string
+          external_id?: string | null
           id?: string
           metadata?: Json
           status: string
           transaction_id?: string | null
+          webhook_event_id?: string | null
         }
         Update: {
           amount?: number | null
           created_at?: string
           event?: string
+          external_id?: string | null
           id?: string
           metadata?: Json
           status?: string
           transaction_id?: string | null
+          webhook_event_id?: string | null
         }
         Relationships: [
           {

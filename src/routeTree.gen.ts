@@ -50,6 +50,8 @@ import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/publ
 import { Route as ApiPublicWebhooksAtomopayRouteImport } from './routes/api/public/webhooks/atomopay'
 import { Route as ApiPublicWebhooksPaymentRouteImport } from './routes/api/public/webhooks/payment'
 import { Route as ApiPublicWebhooksSigilopayRouteImport } from './routes/api/public/webhooks/sigilopay'
+import { Route as ApiPublicAgentLicenseHeartbeatRouteImport } from './routes/api/public/agent/license/heartbeat'
+import { Route as ApiPublicAgentLicenseValidateRouteImport } from './routes/api/public/agent/license/validate'
 import { Route as ApiPublicExtRuntimeBundleRouteImport } from './routes/api/public/ext/runtime/bundle'
 import { Route as ApiPublicExtRuntimeManifestRouteImport } from './routes/api/public/ext/runtime/manifest'
 import { Route as ApiPublicLicenseDeviceRemoveRouteImport } from './routes/api/public/license/device/remove'
@@ -273,6 +275,18 @@ const ApiPublicWebhooksSigilopayRoute =
     path: '/api/public/webhooks/sigilopay',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAgentLicenseHeartbeatRoute =
+  ApiPublicAgentLicenseHeartbeatRouteImport.update({
+    id: '/api/public/agent/license/heartbeat',
+    path: '/api/public/agent/license/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAgentLicenseValidateRoute =
+  ApiPublicAgentLicenseValidateRouteImport.update({
+    id: '/api/public/agent/license/validate',
+    path: '/api/public/agent/license/validate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicExtRuntimeBundleRoute =
   ApiPublicExtRuntimeBundleRouteImport.update({
     id: '/api/public/ext/runtime/bundle',
@@ -333,6 +347,8 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
+  '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
+  '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -378,6 +394,8 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
+  '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
+  '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -425,6 +443,8 @@ export interface FileRoutesById {
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
+  '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
+  '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -472,6 +492,8 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
+    | '/api/public/agent/license/heartbeat'
+    | '/api/public/agent/license/validate'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -517,6 +539,8 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
+    | '/api/public/agent/license/heartbeat'
+    | '/api/public/agent/license/validate'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -563,6 +587,8 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
+    | '/api/public/agent/license/heartbeat'
+    | '/api/public/agent/license/validate'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -604,6 +630,8 @@ export interface RootRouteChildren {
   ApiPublicWebhooksAtomopayRoute: typeof ApiPublicWebhooksAtomopayRoute
   ApiPublicWebhooksPaymentRoute: typeof ApiPublicWebhooksPaymentRoute
   ApiPublicWebhooksSigilopayRoute: typeof ApiPublicWebhooksSigilopayRoute
+  ApiPublicAgentLicenseHeartbeatRoute: typeof ApiPublicAgentLicenseHeartbeatRoute
+  ApiPublicAgentLicenseValidateRoute: typeof ApiPublicAgentLicenseValidateRoute
   ApiPublicExtRuntimeBundleRoute: typeof ApiPublicExtRuntimeBundleRoute
   ApiPublicExtRuntimeManifestRoute: typeof ApiPublicExtRuntimeManifestRoute
   ApiPublicLicenseDeviceRemoveRoute: typeof ApiPublicLicenseDeviceRemoveRoute
@@ -898,6 +926,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksSigilopayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/license/heartbeat': {
+      id: '/api/public/agent/license/heartbeat'
+      path: '/api/public/agent/license/heartbeat'
+      fullPath: '/api/public/agent/license/heartbeat'
+      preLoaderRoute: typeof ApiPublicAgentLicenseHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/license/validate': {
+      id: '/api/public/agent/license/validate'
+      path: '/api/public/agent/license/validate'
+      fullPath: '/api/public/agent/license/validate'
+      preLoaderRoute: typeof ApiPublicAgentLicenseValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/ext/runtime/bundle': {
       id: '/api/public/ext/runtime/bundle'
       path: '/api/public/ext/runtime/bundle'
@@ -990,6 +1032,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksAtomopayRoute: ApiPublicWebhooksAtomopayRoute,
   ApiPublicWebhooksPaymentRoute: ApiPublicWebhooksPaymentRoute,
   ApiPublicWebhooksSigilopayRoute: ApiPublicWebhooksSigilopayRoute,
+  ApiPublicAgentLicenseHeartbeatRoute: ApiPublicAgentLicenseHeartbeatRoute,
+  ApiPublicAgentLicenseValidateRoute: ApiPublicAgentLicenseValidateRoute,
   ApiPublicExtRuntimeBundleRoute: ApiPublicExtRuntimeBundleRoute,
   ApiPublicExtRuntimeManifestRoute: ApiPublicExtRuntimeManifestRoute,
   ApiPublicLicenseDeviceRemoveRoute: ApiPublicLicenseDeviceRemoveRoute,
