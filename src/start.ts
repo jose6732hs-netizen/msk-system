@@ -5,7 +5,11 @@ import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
 import { supabase } from "@/integrations/supabase/client";
 import { enablePushNotifications, pushPermission } from "@/lib/push-client";
 
-const errorMiddleware = createMiddleware().server(async ({ next }) => {
+const errorMiddleware = createMiddleware().server(async ({ next, request }) => {
+  // Lovable-managed email/webhook routes authenticate themselves.
+  if (new URL(request.url).pathname.startsWith("/lovable/")) {
+    return next();
+  }
   try {
     return await next();
   } catch (error) {
