@@ -80,9 +80,9 @@ function adminLivePreviewFix(): Plugin {
 }
 
 /**
- * Conecta a nova Central MSK Agente ao item já existente do Super Admin sem
- * reescrever a rota administrativa inteira. O componente comercial antigo é
- * importado pela própria Central e permanece disponível como aba interna.
+ * Conecta a Central MSK Agente ao Super Admin e a expõe como menu principal.
+ * O componente comercial antigo continua disponível dentro da Central, então
+ * nenhuma função de ofertas/compras/upload é removida.
  */
 function adminAgentCenter(): Plugin {
   return {
@@ -90,10 +90,22 @@ function adminAgentCenter(): Plugin {
     enforce: "pre",
     transform(code, id) {
       if (!id.replace(/\\/g, "/").includes("/src/routes/_authenticated/admin.tsx")) return null;
+
+      let next = code;
       const oldImport = 'import { AdminAgentTab } from "@/components/msk/admin-agent";';
       const newImport = 'import { AdminAgentCenter as AdminAgentTab } from "@/components/msk/admin-agent-center";';
-      if (!code.includes(oldImport)) return null;
-      return { code: code.replace(oldImport, newImport), map: null };
+      if (next.includes(oldImport)) next = next.replace(oldImport, newImport);
+
+      // Remove o atalho antigo escondido dentro de Licenças e cria uma seção
+      // principal visível chamada MSK Agente no grupo Operação.
+      next = next.replace('          { value: "agent", label: "MSK Agente" },\n', "");
+      const usersItem = '      { value: "users", label: "Usuários", Icon: Users },';
+      const agentItem = '      { value: "agent", label: "MSK Agente", Icon: Activity },';
+      if (!next.includes(agentItem) && next.includes(usersItem)) {
+        next = next.replace(usersItem, `${agentItem}\n${usersItem}`);
+      }
+
+      return next === code ? null : { code: next, map: null };
     },
   };
 }
