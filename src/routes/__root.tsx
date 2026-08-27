@@ -208,12 +208,12 @@ function RootComponent() {
         meteorInterval={isAuth ? 1.6 : isBoard ? 9 : 4.5}
         birdInterval={isAuth ? 9 : 22}
       />
+      <WhatsappSupportButton />
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <PwaInstallBanner />
       <PushPermissionPrompt />
       <Outlet />
       {!isBoard && !isAuth && <MobileNavigation />}
-      <WhatsappSupportButton />
       <Toaster position="top-right" />
 
     </QueryClientProvider>
@@ -485,4 +485,3 @@ function MobileNavigation() {
     </div>
   );
 }
-
