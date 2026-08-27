@@ -150,6 +150,13 @@ export async function finalizePaidTransaction(transactionId: string) {
 
   if (metadata["settled_notified"] === true) return;
 
+  if (tx.user_id) {
+    const { sendPurchaseApprovedEmail } = await import("@/lib/transactional-email.server");
+    await sendPurchaseApprovedEmail(tx.id).catch((e) =>
+      console.error("[settle] e-mail de compra aprovada falhou:", e),
+    );
+  }
+
   const cardChargedTotal = numberOrNull(metadata["card_charged_total"]);
   const customerAmount = cardChargedTotal !== null && cardChargedTotal > 0
     ? cardChargedTotal
