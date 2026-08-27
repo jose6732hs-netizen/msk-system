@@ -356,7 +356,7 @@ export async function handleExtensionEvent(request: Request) {
   try {
     const sanitized = sanitizeMetadata(parsed.data.metadata);
     await touchInstallation(identity, { metadata: { last_event: parsed.data.action } });
-    await upsertProject(identity, projectPatchForEvent(parsed.data));
+    await upsertProject(identity, projectPatchForEvent(parsed.data) as any);
     const { error } = await db.from("extension_events").insert({
       event_id: parsed.data.event_id ?? crypto.randomUUID(),
       user_id: identity.userId,
@@ -453,7 +453,7 @@ export async function handleExtensionError(request: Request) {
     return extensionJson(request, { ok: false, code: "RATE_LIMITED", message: "Muitos erros enviados em pouco tempo." }, 429);
   }
   try {
-    await touchInstallation(identity, { browser: parsed.data.browser, metadata: { last_error_code: parsed.data.error_code } });
+    await touchInstallation(identity, { browser: parsed.data.browser ?? null, metadata: { last_error_code: parsed.data.error_code } });
     const { data: catalog } = await db
       .from("extension_error_catalog")
       .select("title,user_message,severity,recovery_action")
@@ -513,7 +513,7 @@ export async function handleExtensionHeartbeat(request: Request) {
     return extensionJson(request, { ok: false, code: "RATE_LIMITED", message: "Heartbeat muito frequente." }, 429);
   }
   try {
-    await touchInstallation(identity, { browser: parsed.data.browser, os: parsed.data.os, metadata: { provider: parsed.data.provider ?? null, project_id: parsed.data.project_id ?? null } });
+    await touchInstallation(identity, { browser: parsed.data.browser ?? null, os: parsed.data.os ?? null, metadata: { provider: parsed.data.provider ?? null, project_id: parsed.data.project_id ?? null } });
     await upsertProject(identity, {
       project_id: parsed.data.project_id,
       project_name: parsed.data.project_name,

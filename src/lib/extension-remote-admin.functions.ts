@@ -11,7 +11,7 @@ export const extensionRemoteAdminOverview = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { loadRemoteControlAdmin } = await import("./extension-remote-control.server");
-    return loadRemoteControlAdmin();
+    return (await loadRemoteControlAdmin()) as unknown as Record<string, any>;
   });
 
 export const extensionRemoteAdminSendMessage = createServerFn({ method: "POST" })
@@ -26,7 +26,7 @@ export const extensionRemoteAdminSendMessage = createServerFn({ method: "POST" }
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { sendRemoteMessage } = await import("./extension-remote-control.server");
-    return sendRemoteMessage(data, context.userId);
+    return sendRemoteMessage(data as any, context.userId);
   });
 
 export const extensionRemoteAdminSetBlock = createServerFn({ method: "POST" })
@@ -40,5 +40,5 @@ export const extensionRemoteAdminSetBlock = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { setRemoteBlock } = await import("./extension-remote-control.server");
-    return setRemoteBlock(data, context.userId);
+    return setRemoteBlock(data as any, context.userId);
   });

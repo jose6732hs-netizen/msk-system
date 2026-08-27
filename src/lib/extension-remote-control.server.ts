@@ -173,7 +173,7 @@ export async function loadRemoteControlAdmin() {
     db.from("extension_remote_commands").select("id,user_id,installation_id,command_type,title,message,severity,status,created_at,delivered_at,acknowledged_at,expires_at").order("created_at", { ascending: false }).limit(200),
   ]);
   const installRows = installations ?? [];
-  const userIds = [...new Set(installRows.map((row: any) => String(row.user_id)))];
+  const userIds: string[] = [...new Set(installRows.map((row: any) => String(row.user_id)))];
   const profiles = await profileMap(userIds);
   const controlRows = controls ?? [];
   const clients = userIds.map((userId) => {
