@@ -11,3 +11,4 @@ globalThis.fetch = (input, init) => {
 
 await import("./background.js");
 await import("./telemetry.js");
+await import("./license-watch.js");
