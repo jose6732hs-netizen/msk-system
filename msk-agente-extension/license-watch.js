@@ -31,6 +31,7 @@ async function openLicenseGate() {
 async function lockLicense(reason = "LICENSE_EXPIRED") {
   await chrome.storage.local.remove(LICENSE_KEY);
   await chrome.storage.local.set({
+    mskForceLicenseOpen: true,
     mskLicenseBlockedAt: Date.now(),
     mskLicenseBlockReason: reason,
   });
