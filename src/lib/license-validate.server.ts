@@ -168,7 +168,7 @@ export async function handleValidation(
   const productBinding = await resolveLicenseProductBinding({
     licenseId: license.id,
     planId: license.plan_id,
-    expectedProductIdentifier: parsed.data.product,
+    expectedProductIdentifier: parsed.data.product ?? null,
   });
   const productMismatch =
     !!expectedProduct && !!productBinding.product && productBinding.product.id !== expectedProduct.id;

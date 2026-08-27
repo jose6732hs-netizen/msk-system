@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/public/agent/license/validate")({
 
         const body = await response.clone().json().catch(() => null) as Record<string, unknown> | null;
         if (body?.["valid"] === true && typeof input?.["token"] === "string") {
-          const license = await findLicenseByToken(String(input.token));
+          const license: any = await findLicenseByToken(String(input["token"]));
           if (license?.user_id) {
             const control = await isAgentUserRemotelyBlocked(String(license.user_id));
             if (control?.blocked) {

@@ -33,6 +33,12 @@ import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent/chat'
+import { Route as ApiExtensionControlRouteImport } from './routes/api/extension/control'
+import { Route as ApiExtensionDownloadRouteImport } from './routes/api/extension/download'
+import { Route as ApiExtensionErrorsRouteImport } from './routes/api/extension/errors'
+import { Route as ApiExtensionEventsRouteImport } from './routes/api/extension/events'
+import { Route as ApiExtensionHeartbeatRouteImport } from './routes/api/extension/heartbeat'
+import { Route as ApiExtensionVersionRouteImport } from './routes/api/extension/version'
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
@@ -178,6 +184,36 @@ const Char91DotmcpChar93InvokeToolToolRoute =
 const ApiAgentChatRoute = ApiAgentChatRouteImport.update({
   id: '/api/agent/chat',
   path: '/api/agent/chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionControlRoute = ApiExtensionControlRouteImport.update({
+  id: '/api/extension/control',
+  path: '/api/extension/control',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionDownloadRoute = ApiExtensionDownloadRouteImport.update({
+  id: '/api/extension/download',
+  path: '/api/extension/download',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionErrorsRoute = ApiExtensionErrorsRouteImport.update({
+  id: '/api/extension/errors',
+  path: '/api/extension/errors',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionEventsRoute = ApiExtensionEventsRouteImport.update({
+  id: '/api/extension/events',
+  path: '/api/extension/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionHeartbeatRoute = ApiExtensionHeartbeatRouteImport.update({
+  id: '/api/extension/heartbeat',
+  path: '/api/extension/heartbeat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionVersionRoute = ApiExtensionVersionRouteImport.update({
+  id: '/api/extension/version',
+  path: '/api/extension/version',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiLicenseValidateRoute = ApiLicenseValidateRouteImport.update({
@@ -337,6 +373,12 @@ export interface FileRoutesByFullPath {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
+  '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/download': typeof ApiExtensionDownloadRoute
+  '/api/extension/errors': typeof ApiExtensionErrorsRoute
+  '/api/extension/events': typeof ApiExtensionEventsRoute
+  '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
+  '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
@@ -385,6 +427,12 @@ export interface FileRoutesByTo {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
+  '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/download': typeof ApiExtensionDownloadRoute
+  '/api/extension/errors': typeof ApiExtensionErrorsRoute
+  '/api/extension/events': typeof ApiExtensionEventsRoute
+  '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
+  '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
@@ -435,6 +483,12 @@ export interface FileRoutesById {
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
+  '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/download': typeof ApiExtensionDownloadRoute
+  '/api/extension/errors': typeof ApiExtensionErrorsRoute
+  '/api/extension/events': typeof ApiExtensionEventsRoute
+  '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
+  '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
@@ -485,6 +539,12 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
+    | '/api/extension/control'
+    | '/api/extension/download'
+    | '/api/extension/errors'
+    | '/api/extension/events'
+    | '/api/extension/heartbeat'
+    | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
@@ -533,6 +593,12 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
+    | '/api/extension/control'
+    | '/api/extension/download'
+    | '/api/extension/errors'
+    | '/api/extension/events'
+    | '/api/extension/heartbeat'
+    | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
@@ -582,6 +648,12 @@ export interface FileRouteTypes {
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
+    | '/api/extension/control'
+    | '/api/extension/download'
+    | '/api/extension/errors'
+    | '/api/extension/events'
+    | '/api/extension/heartbeat'
+    | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
@@ -627,6 +699,12 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
+  ApiExtensionControlRoute: typeof ApiExtensionControlRoute
+  ApiExtensionDownloadRoute: typeof ApiExtensionDownloadRoute
+  ApiExtensionErrorsRoute: typeof ApiExtensionErrorsRoute
+  ApiExtensionEventsRoute: typeof ApiExtensionEventsRoute
+  ApiExtensionHeartbeatRoute: typeof ApiExtensionHeartbeatRoute
+  ApiExtensionVersionRoute: typeof ApiExtensionVersionRoute
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
@@ -819,6 +897,48 @@ declare module '@tanstack/react-router' {
       path: '/api/agent/chat'
       fullPath: '/api/agent/chat'
       preLoaderRoute: typeof ApiAgentChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/control': {
+      id: '/api/extension/control'
+      path: '/api/extension/control'
+      fullPath: '/api/extension/control'
+      preLoaderRoute: typeof ApiExtensionControlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/download': {
+      id: '/api/extension/download'
+      path: '/api/extension/download'
+      fullPath: '/api/extension/download'
+      preLoaderRoute: typeof ApiExtensionDownloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/errors': {
+      id: '/api/extension/errors'
+      path: '/api/extension/errors'
+      fullPath: '/api/extension/errors'
+      preLoaderRoute: typeof ApiExtensionErrorsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/events': {
+      id: '/api/extension/events'
+      path: '/api/extension/events'
+      fullPath: '/api/extension/events'
+      preLoaderRoute: typeof ApiExtensionEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/heartbeat': {
+      id: '/api/extension/heartbeat'
+      path: '/api/extension/heartbeat'
+      fullPath: '/api/extension/heartbeat'
+      preLoaderRoute: typeof ApiExtensionHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/version': {
+      id: '/api/extension/version'
+      path: '/api/extension/version'
+      fullPath: '/api/extension/version'
+      preLoaderRoute: typeof ApiExtensionVersionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/license/validate': {
@@ -1037,6 +1157,12 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
+  ApiExtensionControlRoute: ApiExtensionControlRoute,
+  ApiExtensionDownloadRoute: ApiExtensionDownloadRoute,
+  ApiExtensionErrorsRoute: ApiExtensionErrorsRoute,
+  ApiExtensionEventsRoute: ApiExtensionEventsRoute,
+  ApiExtensionHeartbeatRoute: ApiExtensionHeartbeatRoute,
+  ApiExtensionVersionRoute: ApiExtensionVersionRoute,
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,

@@ -10,7 +10,7 @@ export const extensionAdminOverview = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { loadExtensionAdminCenter } = await import("./extension-admin.server");
-    return loadExtensionAdminCenter();
+    return (await loadExtensionAdminCenter()) as any;
   });
 
 export const extensionAdminResolveError = createServerFn({ method: "POST" })
@@ -46,7 +46,7 @@ export const extensionAdminSaveRelease = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { saveExtensionRelease } = await import("./extension-admin.server");
-    return saveExtensionRelease(data, context.userId);
+    return saveExtensionRelease(data as any, context.userId);
   });
 
 export const extensionAdminAcknowledgeAlert = createServerFn({ method: "POST" })

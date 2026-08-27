@@ -65,18 +65,18 @@ function Index() {
               </div>
 
               <h1 className="break-words bg-gradient-to-b from-primary to-primary/40 bg-clip-text py-2 text-center text-3xl font-black uppercase leading-[0.98] tracking-tighter text-transparent sm:text-5xl lg:text-left lg:text-7xl">
-                {cms.hero?.title || "Pare de ser interrompido no meio da criação"}
+                {cms["hero"]?.title || "Pare de ser interrompido no meio da criação"}
               </h1>
 
               <p className="mx-auto max-w-xl text-center text-base leading-relaxed text-muted-foreground sm:text-lg lg:mx-0 lg:text-left">
-                {cms.hero?.subtitle ||
+                {cms["hero"]?.subtitle ||
                   "Acesso completo à extensão Lovable com créditos infinitos. Crie apps, landing pages e sistemas o dia inteiro sem travar, sem contar crédito e sem perder o ritmo."}
               </p>
 
               <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
                 <Button asChild variant="neon" size="lg" className="min-h-14 w-full whitespace-normal text-center sm:w-auto">
-                  <Link to={cms.hero?.cta_link || "/auth"}>
-                    {cms.hero?.cta_text || "Quero créditos infinitos agora"}
+                  <Link to={cms["hero"]?.cta_link || "/auth"}>
+                    {cms["hero"]?.cta_text || "Quero créditos infinitos agora"}
                   </Link>
                 </Button>
                 <Button asChild variant="neonOutline" size="lg" className="min-h-14 w-full whitespace-normal text-center sm:w-auto">
@@ -98,10 +98,10 @@ function Index() {
               PARA AFILIADOS E EMPRESAS
             </span>
             <h2 className="text-2xl font-black uppercase tracking-tighter sm:text-4xl">
-              {cms.partners_teaser?.title || "Revenda e ganhe comissões recorrentes"}
+              {cms["partners_teaser"]?.title || "Revenda e ganhe comissões recorrentes"}
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              {cms.partners_teaser?.subtitle ||
+              {cms["partners_teaser"]?.subtitle ||
                 "Entre para o programa de parceiros Infinity e transforme sua audiência em renda. Estrutura simples, pagamentos via PIX e suporte total."}
             </p>
 
