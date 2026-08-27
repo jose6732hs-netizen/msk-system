@@ -15,6 +15,49 @@ import path from "node:path";
 Object.assign(process.env, loadEnv(process.env["NODE_ENV"] || "development", process.cwd(), ""));
 
 /**
+ * Todos os uploads do CMS passam por uma rota protegida que exige o JWT da
+ * sessão de Admin/Super Admin. Os componentes antigos enviavam apenas o FormData,
+ * então a API respondia 401 e nenhuma imagem de plano/banner era persistida.
+ *
+ * Mantemos a rota protegida e corrigimos somente os callers, anexando o bearer
+ * token atual sem expor service-role nem transformar o upload em endpoint público.
+ */
+function adminCmsUploadAuthFix(): Plugin {
+  return {
+    name: "msk-admin-cms-upload-auth-fix",
+    enforce: "pre",
+    transform(code, id) {
+      const normalized = id.replace(/\\/g, "/");
+      const isUploadUi =
+        normalized.includes("/src/components/msk/admin-editor.tsx") ||
+        normalized.includes("/src/components/msk/admin-subscriptions.tsx");
+      if (!isUploadUi || !code.includes('fetch("/api/public/cms/upload"')) return null;
+
+      let next = code;
+      const supabaseImport = 'import { supabase } from "@/integrations/supabase/client";';
+      const helper = `async function mskCmsUploadFetch(input: RequestInfo | URL, init?: RequestInit) {
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+  if (!accessToken) throw new Error("Sessão expirada. Entre novamente para enviar imagens.");
+
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", \`Bearer \${accessToken}\`);
+  return fetch(input, { ...init, headers });
+}`;
+
+      if (!next.includes(supabaseImport)) next = `${supabaseImport}\n${next}`;
+      if (!next.includes("async function mskCmsUploadFetch")) next = `${helper}\n\n${next}`;
+      next = next.replaceAll(
+        'fetch("/api/public/cms/upload"',
+        'mskCmsUploadFetch("/api/public/cms/upload"',
+      );
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
+/**
  * Compatibilidade do editor CMS.
  *
  * O admin-editor antigo só renderiza preview para Hero e Parceiros. Nas demais
@@ -112,7 +155,7 @@ function adminAgentCenter(): Plugin {
 
 export default defineConfig({
   vite: {
-    plugins: [adminLivePreviewFix(), adminAgentCenter(), mcpPlugin()],
+    plugins: [adminCmsUploadAuthFix(), adminLivePreviewFix(), adminAgentCenter(), mcpPlugin()],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(__dirname, "node_modules/entities/lib/decode.js"),
