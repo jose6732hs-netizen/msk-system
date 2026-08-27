@@ -1,8 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { getExtensionDownload } from "@/lib/extension.functions";
+import { getAgentAccess } from "@/lib/agent-access.functions";
+import { getAgentExtensionDownload } from "@/lib/agent-download.functions";
 import { Download, LayoutDashboard, Loader2, Menu, ShieldCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -20,52 +22,64 @@ const NAV = [
 
 export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolean }) {
   const navigate = useNavigate();
+  const loadAgentAccess = useServerFn(getAgentAccess);
+  const prepareAgentDownload = useServerFn(getAgentExtensionDownload);
   const [signedIn, setSignedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
-  /** O pacote baixado é sempre o canal que o admin deixou ativo — nunca um zip fixo. */
+  /** Topo e painel usam a mesma fonte: o build oficial publicado no canal `msk-agente`. */
   async function downloadExtension() {
-    // A opção de baixar a extensão agora é livre (não precisa de login)
+    if (downloading) return;
+
+    if (!signedIn) {
+      toast.info("Entre na sua conta para baixar o MSK Agente.");
+      navigate({ to: "/auth" });
+      return;
+    }
+
     setDownloading(true);
     setDownloadProgress(0);
+    let interval: ReturnType<typeof setInterval> | null = null;
 
     try {
-      // Começa a buscar o link de download imediatamente
-      const downloadTask = getExtensionDownload({ data: {} });
-      
-      // Simulando barra de progresso
+      const access = await loadAgentAccess({});
+      const licenseId = access?.license?.id;
+
+      if (access?.status !== "active" || !licenseId) {
+        toast.info("Você precisa de uma licença ativa do MSK Agente para baixar a extensão.");
+        navigate({ to: "/planos", hash: "msk-agente" });
+        return;
+      }
+
+      const downloadTask = prepareAgentDownload({ data: { licenseId } });
       let currentProgress = 0;
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         currentProgress += Math.floor(Math.random() * 10) + 5;
-        if (currentProgress >= 95) {
-          // Trava em 95% até o downloadTask resolver
-          setDownloadProgress(95);
-        } else {
-          setDownloadProgress(currentProgress);
-        }
+        setDownloadProgress(Math.min(currentProgress, 95));
       }, 200);
 
       const res = await downloadTask;
-      
-      // Quando o link chega, termina o progresso até 100% rapidamente
-      clearInterval(interval);
+      if (interval) {
+        clearInterval(interval);
+        interval = null;
+      }
       setDownloadProgress(100);
-      
-      // Pequeno delay para o usuário ver o 100%
-      await new Promise(r => setTimeout(r, 300));
+      await new Promise((resolve) => setTimeout(resolve, 250));
 
       const a = window.document.createElement("a");
       a.href = res.url;
       a.download = res.fileName;
-      a.rel = "noopener";
+      a.rel = "noopener noreferrer";
+      document.body.appendChild(a);
       a.click();
-      toast.success(`${res.channelName} v${res.version}: download iniciado.`);
+      a.remove();
+      toast.success(`MSK Agente v${res.version}: download iniciado.`);
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error((e as Error).message || "Não foi possível baixar o MSK Agente agora.");
     } finally {
+      if (interval) clearInterval(interval);
       setDownloading(false);
       setDownloadProgress(0);
     }
@@ -100,6 +114,7 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
     };
   }, []);
 
+  const downloadLabel = downloading ? `${downloadProgress}%` : "Baixar MSK Agente";
 
   if (mobileMenuOnly) {
     return (
@@ -120,22 +135,20 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                   </Button>
                 </SheetTrigger>
               </div>
-              
+
               <div className="flex flex-col gap-2 mb-4 border-b border-border/50 pb-4">
                 {signedIn ? (
-                  <>
-                    <Link 
-                      to="/painel" 
-                      className="flex items-center gap-2 font-bold text-primary p-2"
-                      onClick={() => document.body.click()}
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      Meu Painel
-                    </Link>
-                  </>
+                  <Link
+                    to="/painel"
+                    className="flex items-center gap-2 font-bold text-primary p-2"
+                    onClick={() => document.body.click()}
+                  >
+                    <LayoutDashboard className="h-4 w-4" />
+                    Meu Painel
+                  </Link>
                 ) : (
-                  <Link 
-                    to="/auth" 
+                  <Link
+                    to="/auth"
                     className="flex items-center gap-2 font-bold text-primary p-2"
                     onClick={() => document.body.click()}
                   >
@@ -145,26 +158,27 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
               </div>
 
               {NAV.map((item) => (
-                <Link 
-                  key={item.to} 
-                  to={item.to} 
+                <Link
+                  key={item.to}
+                  to={item.to}
                   className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
                   onClick={() => document.body.click()}
                 >
                   {item.label}
                 </Link>
               ))}
-              
-              <Button 
-                variant="neon" 
+
+              <Button
+                variant="neon"
                 className="mt-4 w-full h-12 rounded-xl"
+                disabled={downloading}
                 onClick={() => {
-                  downloadExtension();
+                  void downloadExtension();
                   document.body.click();
                 }}
               >
-                <Download className="mr-2 h-4 w-4" />
-                Baixar Extensão
+                {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                {downloadLabel}
               </Button>
             </nav>
           </SheetContent>
@@ -190,28 +204,19 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
           <Button
             variant="neonOutline"
             size="sm"
-            className="hidden sm:inline-flex min-w-[140px] relative overflow-hidden"
-            onClick={downloadExtension}
+            className="hidden sm:inline-flex min-w-[160px] relative overflow-hidden"
+            onClick={() => void downloadExtension()}
             disabled={downloading}
           >
             {downloading && (
-              <div 
-                className="absolute inset-0 bg-primary/20 transition-all duration-300"
+              <div
+                className="absolute inset-y-0 left-0 bg-primary/20 transition-all duration-300"
                 style={{ width: `${downloadProgress}%` }}
               />
             )}
             <span className="relative z-10 flex items-center">
-              {downloading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {downloadProgress}%
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Baixar Extensão Grátis
-                </>
-              )}
+              {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              {downloadLabel}
             </span>
           </Button>
           {signedIn && <NotificationBell />}
@@ -251,8 +256,8 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                 <div className="flex flex-col gap-2 mb-4 border-b border-border/50 pb-4">
                   {signedIn ? (
                     <>
-                      <Link 
-                        to="/painel" 
+                      <Link
+                        to="/painel"
                         className="flex items-center gap-2 font-bold text-primary p-2"
                         onClick={() => document.body.click()}
                       >
@@ -260,8 +265,8 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                         Meu Painel
                       </Link>
                       {isAdmin ? (
-                        <Link 
-                          to="/admin" 
+                        <Link
+                          to="/admin"
                           className="flex items-center gap-2 font-bold text-cyan-400 p-2"
                           onClick={() => document.body.click()}
                         >
@@ -269,11 +274,10 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                           Admin
                         </Link>
                       ) : null}
-
                     </>
                   ) : (
-                    <Link 
-                      to="/auth" 
+                    <Link
+                      to="/auth"
                       className="flex items-center gap-2 font-bold text-primary p-2"
                       onClick={() => document.body.click()}
                     >
@@ -283,26 +287,27 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                 </div>
 
                 {NAV.map((item) => (
-                  <Link 
-                    key={item.to} 
-                    to={item.to} 
+                  <Link
+                    key={item.to}
+                    to={item.to}
                     className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
                     onClick={() => document.body.click()}
                   >
                     {item.label}
                   </Link>
                 ))}
-                
-                <Button 
-                  variant="neon" 
+
+                <Button
+                  variant="neon"
                   className="mt-4 w-full h-12 rounded-xl"
+                  disabled={downloading}
                   onClick={() => {
-                    downloadExtension();
+                    void downloadExtension();
                     document.body.click();
                   }}
                 >
-                  <Download className="mr-2 h-4 w-4" />
-                  Baixar Extensão Grátis
+                  {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  {downloadLabel}
                 </Button>
               </nav>
             </SheetContent>
