@@ -77,23 +77,20 @@ async function applyRemoteState(control) {
 
 async function deliverMessage(command) {
   const tabs = await lovableTabs();
-  let delivered = 0;
-  for (const tab of tabs) {
-    if (!tab.id) continue;
-    const result = await chrome.tabs.sendMessage(tab.id, {
-      type: "MSK_REMOTE_MESSAGE",
-      command: {
-        id: command.id,
-        type: command.type,
-        title: command.title || "Mensagem da MSK",
-        message: command.message || "",
-        severity: command.severity || "info",
-        created_at: command.created_at || null,
-      },
-    }).then(() => true).catch(() => false);
-    if (result) delivered += 1;
-  }
-  return delivered;
+  const target = tabs.find((tab) => tab.active && tab.id) || tabs.find((tab) => tab.id);
+  if (!target?.id) return 0;
+  const delivered = await chrome.tabs.sendMessage(target.id, {
+    type: "MSK_REMOTE_MESSAGE",
+    command: {
+      id: command.id,
+      type: command.type,
+      title: command.title || "Mensagem da MSK",
+      message: command.message || "",
+      severity: command.severity || "info",
+      created_at: command.created_at || null,
+    },
+  }).then(() => true).catch(() => false);
+  return delivered ? 1 : 0;
 }
 
 async function acknowledge(id) {
