@@ -13,7 +13,7 @@ import {
 } from "@/lib/notification-prefs.functions";
 import { NOTIFICATION_GROUPS } from "@/lib/notification-keys";
 import { enablePushNotifications, pushPermission } from "@/lib/push-client";
-
+import { AdminEmailBroadcast } from "@/components/msk/admin-email-broadcast";
 
 /**
  * Painel de notificações. `scope="user"` edita as preferências pessoais;
@@ -130,6 +130,8 @@ export function NotificationSettings({ scope = "user" }: { scope?: "user" | "adm
           })}
         </div>
       )}
+
+      {isAdmin && <AdminEmailBroadcast />}
 
       {isAdmin && (
         <p className="text-xs text-muted-foreground">
