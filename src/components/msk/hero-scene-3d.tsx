@@ -32,26 +32,19 @@ function supportsWebGL() {
 export const HeroScene3D: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
-  const [mobile, setMobile] = useState(true);
   const [canWebGL, setCanWebGL] = useState(false);
 
   useEffect(() => {
-    const query = window.matchMedia?.("(max-width: 767px), (pointer: coarse)");
-    const sync = () => {
-      setMobile(query ? query.matches : window.innerWidth < 768);
-      setCanWebGL(supportsWebGL());
-    };
+    const sync = () => setCanWebGL(supportsWebGL());
     sync();
-    query?.addEventListener?.("change", sync);
     window.addEventListener("orientationchange", sync, { passive: true });
     return () => {
-      query?.removeEventListener?.("change", sync);
       window.removeEventListener("orientationchange", sync);
     };
   }, []);
 
   useEffect(() => {
-    if (mobile || !canWebGL || !containerRef.current) return undefined;
+    if (!canWebGL || !containerRef.current) return undefined;
 
     let renderer: THREE.WebGLRenderer | null = null;
     let frame = 0;
@@ -164,8 +157,8 @@ export const HeroScene3D: React.FC = () => {
       setFailed(true);
       return undefined;
     }
-  }, [mobile, canWebGL]);
+  }, [canWebGL]);
 
-  if (mobile || failed || !canWebGL) return <HeroFallback />;
+  if (failed || !canWebGL) return <HeroFallback />;
   return <div ref={containerRef} className="relative z-20 h-full min-h-[320px] w-full" aria-label="Visual 3D MSK" />;
 };
