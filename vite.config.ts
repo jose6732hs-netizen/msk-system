@@ -58,6 +58,33 @@ function adminCmsUploadAuthFix(): Plugin {
 }
 
 /**
+ * Evita ícone de imagem quebrada na página de ofertas. Um banner externo inválido
+ * é ocultado e mantém o fundo/gradiente do card; imagem inválida de plano cai para
+ * o card local embutido no bundle. Uploads válidos continuam sendo usados normalmente.
+ */
+function plansImageFallbackFix(): Plugin {
+  return {
+    name: "msk-plans-image-fallback-fix",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.replace(/\\/g, "/").includes("/src/routes/planos.tsx")) return null;
+
+      let next = code;
+      next = next.replace(
+        '            src={bannerUrl}\n            alt={`Banner ${title}`}\n            loading="lazy"\n            className="absolute inset-0 h-full w-full object-cover"',
+        '            src={bannerUrl}\n            alt={`Banner ${title}`}\n            loading="lazy"\n            className="absolute inset-0 h-full w-full object-cover"\n            onError={(event) => { event.currentTarget.style.display = "none"; }}',
+      );
+      next = next.replace(
+        '                    src={planImage(plan)}\n                    alt={plan.name}\n                    loading="lazy"\n                    className="h-full w-full object-cover"',
+        '                    src={planImage(plan)}\n                    alt={plan.name}\n                    loading="lazy"\n                    className="h-full w-full object-cover"\n                    onError={(event) => { if (!event.currentTarget.src.endsWith("/card-free.jpg")) event.currentTarget.src = cardFreeImg; }}',
+      );
+
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
+/**
  * Compatibilidade do editor CMS.
  *
  * O admin-editor antigo só renderiza preview para Hero e Parceiros. Nas demais
@@ -90,6 +117,13 @@ function adminLivePreviewFix(): Plugin {
       next = next.replace(
         "const getCms = useServerFn(getCmsContent);",
         "const getCms = useServerFn(getCmsEditorContent);",
+      );
+
+      // Publicar deve sempre persistir primeiro o estado visual atual do editor.
+      // Isso evita publicar um rascunho anterior logo após trocar uma imagem.
+      next = next.replace(
+        "      console.log('Publishing CMS content for key:', key, localSettings[key]);\n      await publishDraft({ data: { key } });",
+        "      await saveDraft({ data: { key, data: localSettings[key] } });\n      await publishDraft({ data: { key } });",
       );
 
       const previewStart = '          <div className="mt-16 h-full p-8 overflow-y-auto no-scrollbar pb-24">';
@@ -155,7 +189,13 @@ function adminAgentCenter(): Plugin {
 
 export default defineConfig({
   vite: {
-    plugins: [adminCmsUploadAuthFix(), adminLivePreviewFix(), adminAgentCenter(), mcpPlugin()],
+    plugins: [
+      adminCmsUploadAuthFix(),
+      plansImageFallbackFix(),
+      adminLivePreviewFix(),
+      adminAgentCenter(),
+      mcpPlugin(),
+    ],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(__dirname, "node_modules/entities/lib/decode.js"),
