@@ -138,6 +138,8 @@
   --sidebar-accent-foreground: oklch(0.98 0.01 260);
   --sidebar-border: oklch(0.65 0.28 320 / 16%);
   --sidebar-ring: oklch(0.65 0.28 320 / 50%);
+  --social-discord: oklch(0.55 0.22 270);
+  --social-youtube: oklch(0.63 0.26 25);
 }
 
 @theme inline {
@@ -147,6 +149,8 @@
   --color-cyan: var(--cyan);
   --color-deep-red: var(--deep-red);
   --color-surface: var(--surface);
+  --color-social-discord: var(--social-discord);
+  --color-social-youtube: var(--social-youtube);
 }
 
 @layer base {
