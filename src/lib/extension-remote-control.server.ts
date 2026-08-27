@@ -112,7 +112,7 @@ export async function handleExtensionRemoteControl(request: Request) {
     remoteState(identity),
     db
       .from("extension_remote_commands")
-      .select("id,command_type,title,message,severity,payload,status,created_at,expires_at,delivery_count")
+      .select("id,command_type,title,message,severity,payload,status,created_at,expires_at,delivered_at,delivery_count")
       .eq("user_id", identity.userId)
       .in("status", ["pending", "delivered"])
       .gt("expires_at", now)
@@ -159,6 +159,13 @@ async function profileMap(userIds: string[]) {
   return new Map((data ?? []).map((row: any) => [String(row.id), row]));
 }
 
+async function commandTargets(userId: string, installationId?: string | null) {
+  if (installationId) return [installationId];
+  const { data } = await db.from("extension_installations").select("installation_id").eq("user_id", userId).limit(100);
+  const ids = [...new Set((data ?? []).map((row: any) => String(row.installation_id)).filter(Boolean))];
+  return ids.length ? ids : [null];
+}
+
 export async function loadRemoteControlAdmin() {
   const [{ data: installations }, { data: controls }, { data: commands }] = await Promise.all([
     db.from("extension_installations").select("id,user_id,installation_id,version,browser,os,last_seen_at,last_activity_at").order("last_seen_at", { ascending: false }).limit(1000),
@@ -188,20 +195,22 @@ export async function loadRemoteControlAdmin() {
 }
 
 export async function sendRemoteMessage(input: { userId: string; installationId?: string | null; title: string; message: string; severity: z.infer<typeof severitySchema> }, adminUserId: string) {
-  const payload = {
+  const targets = await commandTargets(input.userId, input.installationId);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60_000).toISOString();
+  const rows = targets.map((target) => ({
     user_id: input.userId,
-    installation_id: input.installationId || null,
+    installation_id: target,
     command_type: "message",
     title: input.title.slice(0, 180),
     message: input.message.slice(0, 2000),
     severity: severitySchema.parse(input.severity),
     status: "pending",
     created_by: adminUserId,
-    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60_000).toISOString(),
-  };
-  const { data, error } = await db.from("extension_remote_commands").insert(payload).select("id,status,created_at").single();
+    expires_at: expiresAt,
+  }));
+  const { data, error } = await db.from("extension_remote_commands").insert(rows).select("id,status,installation_id,created_at");
   if (error) throw error;
-  return data;
+  return { ok: true, deliveries: data ?? [] };
 }
 
 export async function setRemoteBlock(input: { userId: string; blocked: boolean; reason?: string | null; message?: string | null }, adminUserId: string) {
@@ -221,9 +230,11 @@ export async function setRemoteBlock(input: { userId: string; blocked: boolean; 
     const { error } = await db.from("extension_remote_controls").insert({ user_id: input.userId, installation_id: null, ...patch });
     if (error) throw error;
   }
-  const { error: commandError } = await db.from("extension_remote_commands").insert({
+
+  const targets = await commandTargets(input.userId, null);
+  const rows = targets.map((target) => ({
     user_id: input.userId,
-    installation_id: null,
+    installation_id: target,
     command_type: input.blocked ? "block" : "unblock",
     title: input.blocked ? "Acesso bloqueado" : "Acesso liberado",
     message: input.blocked ? patch.block_message : "Seu acesso ao MSK Agente foi liberado novamente.",
@@ -231,9 +242,10 @@ export async function setRemoteBlock(input: { userId: string; blocked: boolean; 
     status: "pending",
     created_by: adminUserId,
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60_000).toISOString(),
-  });
+  }));
+  const { error: commandError } = await db.from("extension_remote_commands").insert(rows);
   if (commandError) throw commandError;
-  return { ok: true, blocked: input.blocked, updated_at: now };
+  return { ok: true, blocked: input.blocked, updated_at: now, targets: targets.length };
 }
 
 export async function isAgentUserRemotelyBlocked(userId: string) {
