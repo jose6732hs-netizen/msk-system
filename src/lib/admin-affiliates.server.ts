@@ -335,5 +335,13 @@ export async function approveAffiliateDocs(
     resourceId: affiliateId,
     metadata: { reason },
   });
+
+  if (approve) {
+    const { sendAffiliateApprovedEmail } = await import("./transactional-email.server");
+    await sendAffiliateApprovedEmail(affiliateId).catch((e) =>
+      console.error("[affiliate] e-mail de aprovação falhou:", e),
+    );
+  }
+
   return { ok: true };
 }
