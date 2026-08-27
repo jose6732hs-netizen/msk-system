@@ -162,7 +162,10 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === CONTROL_ALARM) void pollRemoteControl();
 });
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.mskLicense?.newValue) void pollRemoteControl();
+  if (area === "local" && changes.mskLicense?.newValue) {
+    if (globalThis.MSK_TELEMETRY?.heartbeat) void globalThis.MSK_TELEMETRY.heartbeat();
+    void pollRemoteControl();
+  }
 });
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "MSK_REMOTE_CONTROL_POLL") return;
