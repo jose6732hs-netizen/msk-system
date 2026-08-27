@@ -162,6 +162,7 @@ export const HeroScene3D: React.FC = () => {
       console.warn("[hero-3d] WebGL indisponível; usando fallback seguro.", error);
       renderer?.dispose();
       setFailed(true);
+      return undefined;
     }
   }, [mobile, canWebGL]);
 

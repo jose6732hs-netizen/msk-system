@@ -207,11 +207,11 @@ export function AdminAgentCenter() {
 
   async function publishRelease() {
     const version = releaseVersion.trim();
-    if (!version) return toast.error("Informe a versão.");
-    if (!releaseTitle.trim()) return toast.error("Informe o título da versão.");
+    if (!version) { toast.error("Informe a versão."); return undefined; }
+    if (!releaseTitle.trim()) { toast.error("Informe o título da versão."); return undefined; }
     const file = fileRef.current?.files?.[0] ?? null;
-    if (releaseStatus === "released" && !file) return toast.error("Selecione o ZIP oficial para publicar a versão.");
-    if (file && !/\.zip$/i.test(file.name)) return toast.error("O arquivo precisa ser .zip.");
+    if (releaseStatus === "released" && !file) { toast.error("Selecione o ZIP oficial para publicar a versão."); return undefined; }
+    if (file && !/\.zip$/i.test(file.name)) { toast.error("O arquivo precisa ser .zip."); return undefined; }
     setPublishing(true);
     try {
       let buildId: string | null = null;
