@@ -94,7 +94,7 @@ export async function loadAccount(supabase: Client, userId: string) {
     const { data } = await supabase
       .from("license_devices")
       .select("id,device_name,browser,os,first_seen,last_seen,status,extension_version")
-      .eq("license_id", license["id"])
+      .eq("license_id", (license as any)["id"])
       .eq("status", "active")
       .order("last_seen", { ascending: false });
     devices = data ?? [];

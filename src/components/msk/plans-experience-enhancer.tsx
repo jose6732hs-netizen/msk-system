@@ -2,11 +2,11 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 function pauseForInteraction(el: HTMLElement, ms = 7000) {
-  el.dataset.mskPauseUntil = String(Date.now() + ms);
+  el.dataset["mskPauseUntil"] = String(Date.now() + ms);
 }
 
 function paused(el: HTMLElement) {
-  return Number(el.dataset.mskPauseUntil ?? 0) > Date.now();
+  return Number(el.dataset["mskPauseUntil"] ?? 0) > Date.now();
 }
 
 function normalizeText(value: string | null | undefined) {
@@ -37,8 +37,8 @@ export function PlansExperienceEnhancer() {
     const sharedOffer = new URLSearchParams(window.location.search).get("offer")?.trim() ?? "";
 
     const bindInteraction = (el: HTMLElement) => {
-      if (el.dataset.mskInteractionBound === "1") return;
-      el.dataset.mskInteractionBound = "1";
+      if (el.dataset["mskInteractionBound"] === "1") return;
+      el.dataset["mskInteractionBound"] = "1";
       const pause = () => pauseForInteraction(el);
       el.addEventListener("pointerdown", pause, { passive: true });
       el.addEventListener("touchstart", pause, { passive: true });
@@ -117,8 +117,8 @@ export function PlansExperienceEnhancer() {
         }
       });
 
-      if (carousel.dataset.mskAutoPlay === "1") return;
-      carousel.dataset.mskAutoPlay = "1";
+      if (carousel.dataset["mskAutoPlay"] === "1") return;
+      carousel.dataset["mskAutoPlay"] = "1";
 
       const timer = window.setInterval(() => {
         if (!carousel.isConnected || document.hidden || paused(carousel)) return;
@@ -149,7 +149,7 @@ export function PlansExperienceEnhancer() {
       let carousel = wrapper.querySelector<HTMLElement>("[data-msk-agent-banner-carousel]");
       if (!carousel) {
         carousel = document.createElement("div");
-        carousel.dataset.mskAgentBannerCarousel = "1";
+        carousel.dataset["mskAgentBannerCarousel"] = "1";
         carousel.style.order = "2";
         carousel.style.display = "flex";
         carousel.style.width = "100%";
@@ -165,10 +165,10 @@ export function PlansExperienceEnhancer() {
         wrapper.appendChild(carousel);
       }
 
-      const currentSources = carousel.dataset.mskSources ?? "";
+      const currentSources = carousel.dataset["mskSources"] ?? "";
       const nextSources = sources.join("|");
       if (currentSources !== nextSources) {
-        carousel.dataset.mskSources = nextSources;
+        carousel.dataset["mskSources"] = nextSources;
         carousel.replaceChildren();
         sources.forEach((src, index) => {
           const slide = document.createElement("div");
@@ -195,8 +195,8 @@ export function PlansExperienceEnhancer() {
       }
 
       bindInteraction(carousel);
-      if (carousel.dataset.mskAutoPlay === "1" || sources.length <= 1) return;
-      carousel.dataset.mskAutoPlay = "1";
+      if (carousel.dataset["mskAutoPlay"] === "1" || sources.length <= 1) return;
+      carousel.dataset["mskAutoPlay"] = "1";
       const timer = window.setInterval(() => {
         if (!carousel!.isConnected || document.hidden || paused(carousel!)) return;
         const step = carousel!.clientWidth;
@@ -228,7 +228,7 @@ export function PlansExperienceEnhancer() {
       focusedSharedOffer = sharedPlan.slug;
       const safeSlug = sharedPlan.slug.replace(/[^a-zA-Z0-9_-]/g, "-");
       target.id = `oferta-${safeSlug}`;
-      target.dataset.mskSharedOffer = "1";
+      target.dataset["mskSharedOffer"] = "1";
       target.style.borderColor = "rgba(57,255,20,.95)";
       target.style.boxShadow = "0 0 0 2px rgba(57,255,20,.25), 0 0 55px rgba(57,255,20,.22)";
       target.style.transition = "border-color .25s ease, box-shadow .25s ease";

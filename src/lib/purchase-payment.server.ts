@@ -346,7 +346,7 @@ export async function generatePurchasePixForTransaction(userId: string, transact
     }
 
     const metadata = objectMeta(tx.metadata);
-    const rawLines = Array.isArray(metadata.line_items) ? metadata.line_items : [];
+    const rawLines = Array.isArray(metadata["line_items"]) ? metadata["line_items"] : [];
     let items = rawLines
       .map((line: any) => ({
         title: String(line?.name ?? "MSK SISTEM"),
@@ -371,7 +371,7 @@ export async function generatePurchasePixForTransaction(userId: string, transact
         document: { number: document, type: document.length === 14 ? "CNPJ" : "CPF" },
       },
       items,
-      splits: Array.isArray(tx.splits) ? tx.splits : [],
+      splits: (Array.isArray(tx.splits) ? tx.splits : []) as any[],
       metadata: { transactionId: tx.id },
     });
 

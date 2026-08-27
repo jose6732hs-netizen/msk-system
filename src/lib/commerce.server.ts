@@ -183,7 +183,7 @@ export async function issueStandaloneLicense(input: {
   const isLifetime = typeof frozenLifetime === "boolean" ? frozenLifetime : Boolean(plan.is_lifetime);
   const frozenDurationValue = nullableNumber(frozen?.["durationValue"]);
   const frozenDurationDays = nullableNumber(frozen?.["durationDays"]);
-  const frozenDurationUnit = frozen?.["durationUnit"] ? String(frozen.durationUnit) : null;
+  const frozenDurationUnit = frozen?.["durationUnit"] ? String(frozen["durationUnit"]) : null;
   const frozenMaxDevices = nullableNumber(frozen?.["maxDevices"]);
 
   const now = new Date();
@@ -256,8 +256,8 @@ export async function issueStandaloneLicense(input: {
         plan_max_devices_snapshot: maxDevices,
         plan_slug_snapshot: snapshotSlug,
         features_snapshot: snapshotFeatures,
-        ...(frozen?.["role"] ? { license_role: String(frozen.role) } : {}),
-        ...(frozen?.["origin"] ? { item_origin: String(frozen.origin) } : {}),
+        ...(frozen?.["role"] ? { license_role: String(frozen["role"]) } : {}),
+        ...(frozen?.["origin"] ? { item_origin: String(frozen["origin"]) } : {}),
         ...(snapshotSoldPrice !== null ? { item_unit_price: snapshotSoldPrice } : {}),
         ...(pendingDurationMs !== null ? { pending_duration_ms: pendingDurationMs } : {}),
         ...(input.extraMetadata ?? {}),

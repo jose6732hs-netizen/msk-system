@@ -337,7 +337,7 @@ export async function payTransactionWithCard(input: {
     const { recordPaymentEvent } = await import("@/lib/financial.server");
     await recordPaymentEvent({
       transactionId: tx.id,
-      externalId: result.transactionHash || undefined,
+      externalId: result.transactionHash || null,
       event: "CARD_SUBMITTED",
       status: internal,
       amount: amounts.baseAmount,

@@ -6,7 +6,7 @@ export const getAccount = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { loadAccount } = await import("./account.server");
-    return loadAccount(context.supabase as never, context.userId);
+    return loadAccount(context.supabase as never, context.userId) as Promise<any>;
   });
 
 export const getMyToken = createServerFn({ method: "POST" })

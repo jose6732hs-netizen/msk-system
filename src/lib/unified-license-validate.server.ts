@@ -3,7 +3,7 @@ import { handleAccountTokenValidation } from "./account-license-validate.server"
 async function responseCode(response: Response) {
   try {
     const body = (await response.clone().json()) as Record<string, unknown>;
-    return String(body?.code ?? body?.error ?? "").trim().toUpperCase();
+    return String(body?.["code"] ?? body?.["error"] ?? "").trim().toUpperCase();
   } catch {
     return "";
   }

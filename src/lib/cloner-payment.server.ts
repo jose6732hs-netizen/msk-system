@@ -42,7 +42,7 @@ async function registerCommission(input: {
 }) {
   if (!input.affiliateId) return;
   const { registerPendingCommission } = await import("./affiliate.server");
-  await registerPendingCommission(input);
+  await registerPendingCommission({ ...input, affiliateId: input.affiliateId });
 }
 
 export async function prepareClonerPaymentOrder(
@@ -225,7 +225,7 @@ export async function prepareSmartBundlePaymentOrder(
 }
 
 function lineItemsFromMetadata(metadata: Record<string, any>) {
-  const lines = Array.isArray(metadata.lines) ? metadata.lines : [];
+  const lines = Array.isArray(metadata["lines"]) ? metadata["lines"] : [];
   return lines
     .map((line: any) => ({
       title: String(line?.name ?? "MSK SISTEM"),
@@ -327,7 +327,7 @@ export async function generateClonerPixForTransaction(userId: string, transactio
         document: { number: document, type: document.length === 14 ? "CNPJ" : "CPF" },
       },
       items,
-      splits: Array.isArray(tx.splits) ? tx.splits : [],
+      splits: (Array.isArray(tx.splits) ? tx.splits : []) as any[],
       metadata: { transactionId: tx.id, product: CLONER_SLUG },
     });
 
