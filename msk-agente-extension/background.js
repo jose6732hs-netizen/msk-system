@@ -375,6 +375,17 @@ const mskProbeTab = async (id) => {
   }
   return null;
 };
+const mskProbeProject = async (id, deep = false) => {
+  const apiFound = await mskProbeApi(id);
+  if (!deep || (apiFound?.repo && apiFound?.db)) return apiFound;
+  const tabFound = await mskProbeTab(id);
+  if (!apiFound && !tabFound) return null;
+  return {
+    repo: apiFound?.repo || tabFound?.repo || "",
+    db: apiFound?.db || tabFound?.db || "",
+    source: apiFound && tabFound ? "api+tab" : (apiFound?.source || tabFound?.source || "none"),
+  };
+};
 const mskProjectProbes = new Map();
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!["MSK_PROBE_PROJECT", "MSK_CACHE_LINKS", "MSK_GET_LINKS"].includes(message?.type)) return;
@@ -382,13 +393,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const id = String(message.projectId || "").trim();
     if (!id) return sendResponse({ ok: false, error: "Projeto não identificado." });
     if (message.type === "MSK_CACHE_LINKS") return sendResponse({ ok: true, links: await mskWriteLinks(id, message.links || {}) });
-    if (message.type === "MSK_GET_LINKS") return sendResponse({ ok: true, links: await mskReadLinks(id) });
+    if (message.type === "MSK_GET_LINKS") {
+      const cached = await mskReadLinks(id);
+      const fresh = cached?.repo && Date.now() - Number(cached.detectedAt || 0) < 900000;
+      if (fresh) return sendResponse({ ok: true, links: cached, source: "cache" });
+      let probe = mskProjectProbes.get(id);
+      if (!probe) {
+        probe = mskProbeProject(id, true);
+        mskProjectProbes.set(id, probe);
+        probe.finally(() => mskProjectProbes.delete(id));
+      }
+      const found = await probe;
+      if (!found?.repo) return sendResponse({ ok: true, links: cached, source: "cache" });
+      const saved = await mskWriteLinks(id, { repo: found.repo || cached?.repo || "", db: found.db || cached?.db || "" });
+      return sendResponse({ ok: true, links: saved, source: found.source });
+    }
     const cached = await mskReadLinks(id);
     const fresh = cached?.repo && Date.now() - Number(cached.detectedAt || 0) < 900000;
     if (fresh && !message.force) return sendResponse({ ok: true, ...cached, source: "cache" });
     let probe = mskProjectProbes.get(id);
     if (!probe) {
-      probe = (async () => (await mskProbeApi(id)) || (message.deep ? await mskProbeTab(id) : null))();
+      probe = mskProbeProject(id, !!message.deep);
       mskProjectProbes.set(id, probe);
       probe.finally(() => mskProjectProbes.delete(id));
     }
