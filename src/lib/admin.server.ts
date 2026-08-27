@@ -236,13 +236,20 @@ export async function savePlan(plan: Record<string, any>) {
     payload["duration_days"] = validUnit === "days" ? Math.round(value) : null;
   }
 
+  let planId: string;
   if (payload["id"]) {
     const { id, ...rest } = payload;
     const { error } = await supabaseAdmin.from("plans").update(rest as never).eq("id", id);
     if (error) throw error;
-    return { ok: true, id };
+    planId = String(id);
+  } else {
+    const { data, error } = await supabaseAdmin.from("plans").insert(payload as never).select("id").single();
+    if (error) throw error;
+    planId = String(data.id);
   }
-  const { data, error } = await supabaseAdmin.from("plans").insert(payload as never).select("id").single();
-  if (error) throw error;
-  return { ok: true, id: data.id };
+
+  const { syncPrimaryPlanOffer } = await import("./plan-offer-sync.server");
+  await syncPrimaryPlanOffer(planId, payload);
+
+  return { ok: true, id: planId };
 }
