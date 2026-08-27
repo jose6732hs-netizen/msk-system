@@ -10,7 +10,7 @@ export const extensionAdminOverview = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { loadExtensionAdminCenter } = await import("./extension-admin.server");
-    return (await loadExtensionAdminCenter()) as unknown as Record<string, any>;
+    return (await loadExtensionAdminCenter()) as any;
   });
 
 export const extensionAdminResolveError = createServerFn({ method: "POST" })

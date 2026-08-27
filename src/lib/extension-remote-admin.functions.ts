@@ -11,7 +11,7 @@ export const extensionRemoteAdminOverview = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { loadRemoteControlAdmin } = await import("./extension-remote-control.server");
-    return (await loadRemoteControlAdmin()) as unknown as Record<string, any>;
+    return (await loadRemoteControlAdmin()) as any;
   });
 
 export const extensionRemoteAdminSendMessage = createServerFn({ method: "POST" })
