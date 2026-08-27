@@ -8,6 +8,7 @@ import {
   rateLimit,
 } from "./license.server";
 import { resolveLicenseSnapshot } from "./license-entitlements.server";
+import { resolveLicenseProductBinding, resolveProductIdentifier } from "./license-product.server";
 import { resolvePlanDuration } from "./plan-duration";
 
 export const validateSchema = z.object({
@@ -17,8 +18,8 @@ export const validateSchema = z.object({
   installation_id: z.string().min(8).max(128).optional(),
   deviceId: z.string().min(8).max(256).optional(),
   extension_version: z.string().max(32).optional(),
-  // Mantido apenas para telemetria/compatibilidade. A autorização NÃO confia
-  // neste campo: a ferramenta esperada é definida pelo endpoint do servidor.
+  // Compatibilidade/telemetria. Nos endpoints oficiais este valor é
+  // sobrescrito no servidor antes de chegar à validação.
   product: z.string().max(40).optional(),
 });
 
@@ -112,7 +113,7 @@ async function durationForLicense(license: LicenseRow) {
   return { milliseconds: resolved.milliseconds ?? null, lifetime: resolved.lifetime };
 }
 
-/** Lógica compartilhada por validate/heartbeat, com papel fixado pelo endpoint. */
+/** Lógica compartilhada por validate/heartbeat, com produto fixado pelo endpoint. */
 export async function handleValidation(
   request: Request,
   bucket: string,
@@ -158,7 +159,23 @@ export async function handleValidation(
   }
 
   const snapshot = resolveLicenseSnapshot(license);
-  if (snapshot.role !== expectedRole) {
+
+  // Produto é a fonte de verdade. Licenças antigas podem não ter product_id;
+  // nesse caso reconciliamos por transação/oferta/plano e persistimos o vínculo.
+  // A role continua existindo apenas como fallback para registros realmente
+  // legados que não possuem relação inequívoca com um produto.
+  const expectedProduct = await resolveProductIdentifier(parsed.data.product);
+  const productBinding = await resolveLicenseProductBinding({
+    licenseId: license.id,
+    planId: license.plan_id,
+    expectedProductIdentifier: parsed.data.product,
+  });
+  const productMismatch =
+    !!expectedProduct && !!productBinding.product && productBinding.product.id !== expectedProduct.id;
+  const roleMismatch =
+    (!expectedProduct || !productBinding.product) && snapshot.role !== expectedRole;
+
+  if (productMismatch || roleMismatch) {
     await logEvent({
       license_id: license.id,
       user_id: license.user_id,
@@ -167,6 +184,11 @@ export async function handleValidation(
         requested_role: expectedRole,
         license_role: snapshot.role,
         requested_product: parsed.data.product ?? null,
+        requested_product_id: expectedProduct?.id ?? null,
+        license_product_id: productBinding.product?.id ?? null,
+        license_product_slug: productBinding.product?.slug ?? null,
+        product_binding_source: productBinding.source,
+        product_binding_ambiguous: productBinding.ambiguous,
         license_slug: snapshot.slug,
       },
     });
@@ -342,6 +364,9 @@ export async function handleValidation(
     device_hash: deviceHash,
     metadata: {
       product: parsed.data.product ?? null,
+      product_id: productBinding.product?.id ?? null,
+      product_slug: productBinding.product?.slug ?? null,
+      product_binding_source: productBinding.source,
       expected_role: expectedRole,
       license_role: snapshot.role,
       extension_version: parsed.data.extension_version ?? null,
@@ -357,6 +382,9 @@ export async function handleValidation(
       status: license.status.toUpperCase(),
       plan: snapshot.slug,
       plan_name: snapshot.name,
+      product_id: productBinding.product?.id ?? null,
+      product_slug: productBinding.product?.slug ?? null,
+      product_name: productBinding.product?.name ?? null,
       expires_at: license.expires_at,
       activated_at: license.activated_at ?? null,
       max_devices: snapshot.maxDevices ?? license.max_devices,
