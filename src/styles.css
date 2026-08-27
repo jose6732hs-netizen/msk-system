@@ -149,6 +149,8 @@
   --color-cyan: var(--cyan);
   --color-deep-red: var(--deep-red);
   --color-surface: var(--surface);
+  --color-social-discord: var(--social-discord);
+  --color-social-youtube: var(--social-youtube);
 }
 
 @layer base {
