@@ -51,7 +51,7 @@ export const HeroScene3D: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (mobile || !canWebGL || !containerRef.current) return;
+    if (mobile || !canWebGL || !containerRef.current) return undefined;
 
     let renderer: THREE.WebGLRenderer | null = null;
     let frame = 0;
