@@ -96,8 +96,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content: "Assinaturas, licenças e dispositivos da extensão MSK SISTEM.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: "https://msksystem.online/social-image.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:image", content: "https://msksystem.online/social-image.png" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
