@@ -7,7 +7,7 @@ const FALLBACK_MESSAGE = "Olá! Preciso de suporte MSK SISTEM.";
 /**
  * Barra global de contingência do WhatsApp.
  * Permanece no topo, participa do fluxo da página e informa sua altura
- * ao cabeçalho sticky para que nenhum elemento fique sobreposto.
+ * ao cabeçalho desktop. No mobile, o cabeçalho permanece no fluxo normal.
  */
 export function WhatsappSupportButton() {
   const link = buildWhatsappLink(FALLBACK_NUMBER, FALLBACK_MESSAGE);
@@ -18,7 +18,12 @@ export function WhatsappSupportButton() {
 
     const banner = bannerRef.current;
     const root = document.documentElement;
+    const body = document.body;
     const previousBannerHeight = root.style.getPropertyValue("--msk-support-banner-height");
+
+    // Versões antigas reservavam espaço com padding-top no body. O banner agora
+    // já participa do fluxo, então esse resíduo precisa ser removido.
+    body.style.removeProperty("padding-top");
 
     const syncLayout = () => {
       const height = Math.ceil(banner.getBoundingClientRect().height);
@@ -48,9 +53,16 @@ export function WhatsappSupportButton() {
   return (
     <>
       <style>{`
-        header.sticky,
-        .mobile-top-bar {
-          top: var(--msk-support-banner-height, 0px) !important;
+        .msk-site-header {
+          position: relative;
+          top: auto;
+        }
+
+        @media (min-width: 1024px) {
+          .msk-site-header {
+            position: sticky;
+            top: var(--msk-support-banner-height, 0px);
+          }
         }
       `}</style>
 
