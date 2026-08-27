@@ -306,6 +306,52 @@ export async function handleAccountTokenValidation(
     }
   }
 
+  // Nunca confia apenas no campo status. O horário oficial de expires_at é
+  // autoridade: assim que passa, a validação fecha o acesso mesmo que nenhum
+  // cron/processo externo tenha atualizado a linha ainda.
+  const statusBeforeExpiry = String(license.status || "").toLowerCase();
+  const expiryMs = license.expires_at ? Date.parse(license.expires_at) : Number.NaN;
+  const administrativelyDisabled = [
+    "revoked",
+    "cancelled",
+    "canceled",
+    "suspended",
+    "blocked",
+  ].includes(statusBeforeExpiry);
+
+  if (!administrativelyDisabled && Number.isFinite(expiryMs) && expiryMs <= Date.now()) {
+    if (statusBeforeExpiry !== "expired") {
+      const { data: expiredRow, error: expiryError } = await supabaseAdmin
+        .from("licenses")
+        .update({ status: "expired" } as never)
+        .eq("id", license.id)
+        .eq("status", license.status)
+        .select("status")
+        .maybeSingle();
+
+      if (expiryError) {
+        // Falha fechada: mesmo que a persistência de status falhe, a requisição
+        // atual jamais deve liberar uma licença cujo expires_at já venceu.
+        license.status = "expired";
+      } else if (expiredRow) {
+        license.status = "expired";
+        await logEvent({
+          license_id: license.id,
+          user_id: license.user_id,
+          event_type: "expired_automatically",
+          metadata: { bucket, policy: "expires_at_authoritative", expected_role: expectedRole },
+        });
+      } else {
+        // Se o status mudou em paralelo (por exemplo, revogação pelo admin),
+        // preserva a decisão mais recente em vez de sobrescrevê-la.
+        const refreshed = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
+        license = refreshed ?? { ...license, status: "expired" };
+      }
+    } else {
+      license.status = "expired";
+    }
+  }
+
   const active = license.status === "active";
   const now = new Date().toISOString();
   await supabaseAdmin.from("licenses").update({ last_validation: now }).eq("id", license.id);
