@@ -174,8 +174,8 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
   }
 
   return (
-    <header className="sticky top-0 z-[50] border-b border-border/60 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5">
+    <header className="msk-site-header z-[50] w-full border-b border-border/60 bg-background/70 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-3 sm:px-5 md:px-6">
         <Link to="/">
           <MskLogo size={36} />
         </Link>
