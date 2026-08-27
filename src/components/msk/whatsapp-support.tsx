@@ -70,15 +70,15 @@ export function WhatsappSupportButton() {
         ref={bannerRef}
         role="status"
         aria-live="polite"
-        className="sticky inset-x-0 top-0 z-[110] w-full border-b border-red-400/30 bg-[#220809]/98 shadow-[0_10px_28px_-18px_rgba(239,68,68,0.75)] backdrop-blur-xl"
+        className="sticky inset-x-0 top-0 z-[110] w-full border-b border-emerald-400/40 bg-[#03150d]/98 shadow-[0_10px_30px_-16px_rgba(57,255,20,0.7)] backdrop-blur-xl"
       >
         <div className="mx-auto flex min-h-[88px] w-full max-w-7xl items-center gap-3 px-3 py-2.5 sm:px-5 md:min-h-[64px] md:gap-4 md:px-6 md:py-2">
           <div className="flex min-w-0 flex-1 items-center gap-3">
-            <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-red-300/30 bg-red-400/10 md:h-10 md:w-10">
-              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-red-300 shadow-[0_0_10px_rgba(252,165,165,0.85)]" />
+            <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#39ff14]/40 bg-[#39ff14]/10 shadow-[0_0_18px_rgba(57,255,20,0.18)] md:h-10 md:w-10">
+              <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-[#39ff14] shadow-[0_0_12px_rgba(57,255,20,0.95)]" />
               <svg
                 viewBox="0 0 24 24"
-                className="h-5 w-5 text-red-200"
+                className="h-5 w-5 text-[#7CFF67]"
                 fill="none"
                 stroke="currentColor"
                 strokeWidth="2"
@@ -94,11 +94,11 @@ export function WhatsappSupportButton() {
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-red-200 md:text-[11px]">
+                <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#7CFF67] md:text-[11px]">
                   Aviso de atendimento
                 </span>
-                <span className="hidden items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-red-300/90 sm:flex">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-300" />
+                <span className="hidden items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-[#39ff14]/90 sm:flex">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#39ff14] shadow-[0_0_8px_rgba(57,255,20,0.95)]" />
                   Canal alternativo ativo
                 </span>
               </div>
@@ -114,7 +114,7 @@ export function WhatsappSupportButton() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Falar no WhatsApp alternativo"
-            className="group inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#25D366] px-3 py-2 text-xs font-extrabold text-[#06150b] shadow-[0_8px_20px_-12px_rgba(37,211,102,0.9)] transition duration-200 hover:bg-[#45df7c] active:scale-[0.98] sm:px-4 sm:text-sm"
+            className="group inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-[#7CFF67]/30 bg-[#39ff14] px-3 py-2 text-xs font-extrabold text-[#031008] shadow-[0_0_22px_-8px_rgba(57,255,20,0.95)] transition duration-200 hover:bg-[#66ff4d] active:scale-[0.98] sm:px-4 sm:text-sm"
           >
             <svg viewBox="0 0 32 32" className="h-4.5 w-4.5 sm:h-5 sm:w-5" fill="currentColor" aria-hidden="true">
               <path d="M16.02 3.2c-7.06 0-12.8 5.73-12.8 12.79 0 2.25.6 4.45 1.73 6.39L3.2 28.8l6.6-1.72a12.77 12.77 0 0 0 6.22 1.59h.01c7.06 0 12.79-5.74 12.79-12.8 0-3.42-1.33-6.63-3.75-9.04a12.7 12.7 0 0 0-9.05-3.63Zm0 23.05h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.92 1.02 1.05-3.82-.25-.4a10.6 10.6 0 0 1-1.62-5.65c0-5.86 4.77-10.63 10.64-10.63 2.84 0 5.51 1.11 7.52 3.12a10.56 10.56 0 0 1 3.11 7.52c0 5.87-4.77 10.55-10.73 10.55Zm5.83-7.92c-.32-.16-1.89-.93-2.18-1.04-.29-.11-.5-.16-.71.16-.21.32-.82 1.04-1 1.25-.19.21-.37.24-.68.08-.32-.16-1.35-.5-2.57-1.58-.95-.85-1.59-1.9-1.78-2.22-.18-.32-.02-.49.14-.65.15-.14.32-.37.48-.56.16-.19.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.71-1.72-.98-2.35-.26-.62-.52-.53-.71-.54l-.61-.01c-.21 0-.56.08-.85.4-.29.32-1.11 1.09-1.11 2.65s1.14 3.08 1.3 3.29c.16.21 2.24 3.42 5.43 4.8.76.33 1.35.52 1.81.67.76.24 1.45.21 2 .13.61-.09 1.89-.77 2.15-1.52.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37Z" />
