@@ -310,10 +310,3 @@ body[data-scroll-locked] {
   margin-right: 0 !important;
   padding-right: 0 !important;
 }
-
-/* Título principal da página inicial: azul, sem alterar o restante da identidade visual. */
-main h1.bg-gradient-to-b.from-primary {
-  background: none !important;
-  color: #3b82f6 !important;
-  -webkit-text-fill-color: #3b82f6 !important;
-}
