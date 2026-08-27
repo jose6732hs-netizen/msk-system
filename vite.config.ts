@@ -79,9 +79,28 @@ function adminLivePreviewFix(): Plugin {
   };
 }
 
+/**
+ * Conecta a nova Central MSK Agente ao item já existente do Super Admin sem
+ * reescrever a rota administrativa inteira. O componente comercial antigo é
+ * importado pela própria Central e permanece disponível como aba interna.
+ */
+function adminAgentCenter(): Plugin {
+  return {
+    name: "msk-admin-agent-center",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.replace(/\\/g, "/").includes("/src/routes/_authenticated/admin.tsx")) return null;
+      const oldImport = 'import { AdminAgentTab } from "@/components/msk/admin-agent";';
+      const newImport = 'import { AdminAgentCenter as AdminAgentTab } from "@/components/msk/admin-agent-center";';
+      if (!code.includes(oldImport)) return null;
+      return { code: code.replace(oldImport, newImport), map: null };
+    },
+  };
+}
+
 export default defineConfig({
   vite: {
-    plugins: [adminLivePreviewFix(), mcpPlugin()],
+    plugins: [adminLivePreviewFix(), adminAgentCenter(), mcpPlugin()],
     resolve: {
       alias: {
         "entities/lib/decode.js": path.resolve(__dirname, "node_modules/entities/lib/decode.js"),
