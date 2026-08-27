@@ -82,6 +82,7 @@ export function AdminTokenGenerator({
   const users = usersData?.users ?? [];
 
   const [email, setEmail] = useState("");
+  const [emailOpen, setEmailOpen] = useState(false);
   const [standalone, setStandalone] = useState(false);
   const [planId, setPlanId] = useState("");
   const [maxDevices, setMaxDevices] = useState("");
@@ -106,6 +107,25 @@ export function AdminTokenGenerator({
   );
 
   const selectedDuration = selectedPlan ? safePlanDuration(selectedPlan) : "—";
+  const normalizedEmail = email.trim().toLowerCase();
+  const exactUser = useMemo(
+    () => users.find((u: any) => String(u.email ?? "").trim().toLowerCase() === normalizedEmail) ?? null,
+    [users, normalizedEmail],
+  );
+  const emailMatches = useMemo(() => {
+    const q = normalizedEmail;
+    const rows = users.map((u: any) => ({
+      ...u,
+      normalized: String(u.email ?? "").trim().toLowerCase(),
+      normalizedName: String(u.name ?? "").trim().toLowerCase(),
+    }));
+    if (!q) return rows.slice(0, 10);
+    const starts = rows.filter((u: any) => u.normalized.startsWith(q));
+    const others = rows.filter(
+      (u: any) => !u.normalized.startsWith(q) && (u.normalized.includes(q) || u.normalizedName.includes(q)),
+    );
+    return [...starts, ...others].slice(0, 10);
+  }, [users, normalizedEmail]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -114,7 +134,7 @@ export function AdminTokenGenerator({
       return;
     }
     if (!standalone && !email) {
-      toast.error("Selecione um usuário cadastrado.");
+      toast.error("Digite, cole ou selecione um usuário cadastrado.");
       return;
     }
 
@@ -130,7 +150,7 @@ export function AdminTokenGenerator({
     try {
       const res = await generateFn({
         data: {
-          ...(standalone ? { standalone: true } : { email }),
+          ...(standalone ? { standalone: true } : { email: normalizedEmail }),
           planId: selectedPlan.id,
           ...legacy,
           ...(maxDevices ? { maxDevices: Number(maxDevices) } : {}),
@@ -139,10 +159,11 @@ export function AdminTokenGenerator({
       });
       setIssued({
         token: res.token,
-        email: res.user.email ?? (standalone ? "Licença sem usuário" : email),
+        email: res.user.email ?? (standalone ? "Licença sem usuário" : normalizedEmail),
         licenseId: res.licenseId,
       });
       setCopied(false);
+      setEmailOpen(false);
       toast.success(`Licença ${res.durationLabel ?? selectedDuration} gerada corretamente.`);
     } catch (err) {
       toast.error((err as Error).message);
@@ -197,13 +218,16 @@ export function AdminTokenGenerator({
             checked={standalone}
             onChange={(e) => {
               setStandalone(e.target.checked);
-              if (e.target.checked) setEmail("");
+              if (e.target.checked) {
+                setEmail("");
+                setEmailOpen(false);
+              }
             }}
           />
           <span>
             Licença sem usuário vinculado
             <span className="block text-xs text-muted-foreground">
-              Use somente para QA/homologação. Para clientes, selecione uma conta cadastrada abaixo.
+              Use somente para QA/homologação. Para clientes, localize uma conta cadastrada abaixo.
             </span>
           </span>
         </label>
@@ -211,35 +235,62 @@ export function AdminTokenGenerator({
         {!standalone && (
           <div className="space-y-1.5 sm:col-span-2">
             <Label htmlFor="tk-email">E-mail do usuário</Label>
-            <Select value={email} onValueChange={setEmail}>
-              <SelectTrigger id="tk-email" className="h-11 w-full">
-                {usersLoading ? (
-                  <span className="flex items-center gap-2">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Carregando todos os usuários...
-                  </span>
-                ) : (
-                  <SelectValue placeholder="Selecione um e-mail cadastrado" />
-                )}
-              </SelectTrigger>
-              <SelectContent className="max-h-80">
-                {users.map((u: any) => (
-                  <SelectItem key={u.id} value={u.email}>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{u.email}</span>
-                      {u.name ? <span className="text-[10px] text-muted-foreground">{u.name}</span> : null}
+            <div className="relative">
+              <Input
+                id="tk-email"
+                type="email"
+                autoComplete="off"
+                spellCheck={false}
+                className="h-11 w-full pr-10"
+                placeholder={usersLoading ? "Carregando usuários..." : "Digite ou cole o e-mail do cliente"}
+                value={email}
+                onFocus={() => setEmailOpen(true)}
+                onBlur={() => window.setTimeout(() => setEmailOpen(false), 120)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailOpen(true);
+                }}
+              />
+              {usersLoading ? (
+                <Loader2 className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 animate-spin text-muted-foreground" />
+              ) : exactUser ? (
+                <Check className="pointer-events-none absolute right-3 top-3.5 h-4 w-4 text-primary" />
+              ) : null}
+
+              {emailOpen && !usersLoading ? (
+                <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[100] max-h-72 overflow-y-auto rounded-xl border border-border/80 bg-popover p-1 shadow-2xl">
+                  {emailMatches.length ? (
+                    emailMatches.map((u: any) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className="flex w-full flex-col rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus:bg-primary/10 focus:outline-none"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          setEmail(String(u.email ?? ""));
+                          setEmailOpen(false);
+                        }}
+                      >
+                        <span className="truncate text-sm font-medium">{u.email}</span>
+                        {u.name ? <span className="truncate text-[10px] text-muted-foreground">{u.name}</span> : null}
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                      Nenhuma conta encontrada com esse início de e-mail.
                     </div>
-                  </SelectItem>
-                ))}
-                {!usersLoading && users.length === 0 ? (
-                  <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                    Nenhum usuário com e-mail foi encontrado.
-                  </div>
-                ) : null}
-              </SelectContent>
-            </Select>
-            <p className="text-[11px] text-muted-foreground">
-              {users.length} conta(s) com e-mail encontradas, incluindo cadastros via Google/Apple.
-            </p>
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+              <span>{users.length} conta(s) com e-mail encontradas, incluindo Google/Apple.</span>
+              {normalizedEmail ? (
+                <span className={exactUser ? "font-bold text-primary" : "text-amber-400"}>
+                  {exactUser ? `Conta encontrada${exactUser.name ? ` · ${exactUser.name}` : ""}` : "Continue digitando ou escolha uma sugestão"}
+                </span>
+              ) : null}
+            </div>
           </div>
         )}
 
