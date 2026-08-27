@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { preflight } from "@/lib/license.server";
 import { handleValidation } from "@/lib/license-validate.server";
 
+const EXTENSION_PRODUCT_SLUG = "extensao-msk";
+
 async function asMskCopyRequest(request: Request) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const headers = new Headers(request.headers);
@@ -10,7 +12,8 @@ async function asMskCopyRequest(request: Request) {
   return new Request(request.url, {
     method: "POST",
     headers,
-    body: JSON.stringify({ ...body, product: "msk-copy" }),
+    // O produto é definido no servidor. Não confiar no valor enviado pela extensão.
+    body: JSON.stringify({ ...body, product: EXTENSION_PRODUCT_SLUG }),
   });
 }
 
