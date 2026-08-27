@@ -155,7 +155,7 @@ export async function getEmailBroadcastOverview() {
 }
 
 export async function sendWhatsappOutageBroadcast(
-  input: { newWhatsapp: string; subject?: string },
+  input: { newWhatsapp: string; subject?: string | undefined },
   actorId: string,
 ) {
   const db = supabaseAdmin as any;
