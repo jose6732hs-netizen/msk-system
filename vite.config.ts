@@ -93,7 +93,7 @@ function adminAgentCenter(): Plugin {
 
       let next = code;
       const oldImport = 'import { AdminAgentTab } from "@/components/msk/admin-agent";';
-      const newImport = 'import { AdminAgentCenter as AdminAgentTab } from "@/components/msk/admin-agent-center";';
+      const newImport = 'import { AdminAgentCenterLive as AdminAgentTab } from "@/components/msk/admin-agent-center-live";';
       if (next.includes(oldImport)) next = next.replace(oldImport, newImport);
 
       // Remove o atalho antigo escondido dentro de Licenças e cria uma seção
