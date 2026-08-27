@@ -525,7 +525,7 @@ export async function handleExtensionHeartbeat(request: Request) {
       preview_url: parsed.data.preview_url,
       publish_status: parsed.data.publish_status,
       last_commit_sha: parsed.data.last_commit_sha,
-    });
+    } as any);
     return extensionJson(request, { ok: true, server_time: new Date().toISOString(), heartbeat_interval_seconds: 300 });
   } catch {
     return extensionJson(request, { ok: false, code: "HEARTBEAT_UNAVAILABLE", message: "Não foi possível atualizar o status agora." }, 503);
