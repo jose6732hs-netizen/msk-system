@@ -29,6 +29,46 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
   const [downloading, setDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
 
+  useEffect(() => {
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (viewport) {
+      viewport.setAttribute(
+        "content",
+        "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+      );
+    }
+
+    if (!document.getElementById("msk-app-navigation-stability")) {
+      const style = document.createElement("style");
+      style.id = "msk-app-navigation-stability";
+      style.textContent = `
+        html {
+          -webkit-text-size-adjust: 100%;
+          text-size-adjust: 100%;
+          overscroll-behavior-x: none;
+        }
+        html, body {
+          width: 100%;
+          max-width: 100%;
+          overflow-x: clip;
+        }
+        body {
+          min-height: 100dvh;
+          -webkit-overflow-scrolling: touch;
+        }
+        button, a, input, select, textarea, [role="button"] {
+          touch-action: manipulation;
+        }
+        @media (max-width: 1023px) {
+          input, select, textarea {
+            font-size: 16px !important;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   /** Topo e painel usam a mesma fonte: o build oficial publicado no canal `msk-agente`. */
   async function downloadExtension() {
     if (downloading) return;
@@ -125,8 +165,8 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
               <Menu className="h-6 w-6 text-primary" />
             </Button>
           </SheetTrigger>
-          <SheetContent className="w-full sm:w-64 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh]">
-            <nav className="mt-8 flex flex-col gap-4 text-sm px-6">
+          <SheetContent className="w-full sm:w-64 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh] overscroll-contain">
+            <nav className="mt-8 flex h-[calc(100dvh-2rem)] flex-col gap-4 overflow-y-auto px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
               <div className="flex items-center justify-between mb-8">
                 <MskLogo size={32} />
                 <SheetTrigger asChild>
@@ -188,132 +228,142 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
   }
 
   return (
-    <header className="msk-site-header z-[50] w-full border-b border-border/60 bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-3 sm:px-5 md:px-6">
-        <Link to="/">
-          <MskLogo size={36} />
-        </Link>
-        <nav className="hidden items-center gap-7 text-sm text-muted-foreground lg:flex">
-          {NAV.map((item) => (
-            <Link key={item.to} to={item.to} className="transition-colors hover:text-primary">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <Button
-            variant="neonOutline"
-            size="sm"
-            className="hidden sm:inline-flex min-w-[160px] relative overflow-hidden"
-            onClick={() => void downloadExtension()}
-            disabled={downloading}
-          >
-            {downloading && (
-              <div
-                className="absolute inset-y-0 left-0 bg-primary/20 transition-all duration-300"
-                style={{ width: `${downloadProgress}%` }}
-              />
-            )}
-            <span className="relative z-10 flex items-center">
-              {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-              {downloadLabel}
-            </span>
-          </Button>
-          {signedIn && <NotificationBell />}
-          <CartSheet signedIn={signedIn} />
-          {signedIn ? (
-            <Button asChild variant="neon" size="sm" className="hidden lg:flex">
-              <Link to="/painel">Painel</Link>
+    <>
+      <header
+        className="msk-site-header fixed inset-x-0 top-0 z-[120] w-full border-b border-border/60 bg-background/90 backdrop-blur-2xl supports-[backdrop-filter]:bg-background/75"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-3 sm:px-5 md:px-6">
+          <Link to="/">
+            <MskLogo size={36} />
+          </Link>
+          <nav className="hidden items-center gap-7 text-sm text-muted-foreground lg:flex">
+            {NAV.map((item) => (
+              <Link key={item.to} to={item.to} className="transition-colors hover:text-primary">
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <Button
+              variant="neonOutline"
+              size="sm"
+              className="hidden sm:inline-flex min-w-[160px] relative overflow-hidden"
+              onClick={() => void downloadExtension()}
+              disabled={downloading}
+            >
+              {downloading && (
+                <div
+                  className="absolute inset-y-0 left-0 bg-primary/20 transition-all duration-300"
+                  style={{ width: `${downloadProgress}%` }}
+                />
+              )}
+              <span className="relative z-10 flex items-center">
+                {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                {downloadLabel}
+              </span>
             </Button>
-          ) : (
-            <div className="hidden lg:flex items-center gap-1.5 sm:gap-2">
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/auth">Entrar</Link>
+            {signedIn && <NotificationBell />}
+            <CartSheet signedIn={signedIn} />
+            {signedIn ? (
+              <Button asChild variant="neon" size="sm" className="hidden lg:flex">
+                <Link to="/painel">Painel</Link>
               </Button>
-              <Button asChild variant="neon" size="sm">
-                <Link to="/planos">Começar agora</Link>
-              </Button>
-            </div>
-          )}
+            ) : (
+              <div className="hidden lg:flex items-center gap-1.5 sm:gap-2">
+                <Button asChild variant="ghost" size="sm">
+                  <Link to="/auth">Entrar</Link>
+                </Button>
+                <Button asChild variant="neon" size="sm">
+                  <Link to="/planos">Começar agora</Link>
+                </Button>
+              </div>
+            )}
 
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" className="lg:hidden h-10 w-10 p-0 border border-white/10 rounded-xl hover:bg-white/5" aria-label="Menu">
-                <Menu className="h-6 w-6 text-primary" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:w-64 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh]">
-              <nav className="mt-8 flex flex-col gap-4 text-sm px-6">
-                <div className="flex items-center justify-between mb-8">
-                  <MskLogo size={32} />
-                  <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-10 w-10 border border-white/10 rounded-xl">
-                      <X className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                </div>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="lg:hidden h-10 w-10 p-0 border border-white/10 rounded-xl hover:bg-white/5" aria-label="Menu">
+                  <Menu className="h-6 w-6 text-primary" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-full sm:w-72 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh] overscroll-contain">
+                <nav className="flex h-full flex-col gap-4 overflow-y-auto px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(2rem+env(safe-area-inset-top,0px))]">
+                  <div className="flex items-center justify-between mb-8">
+                    <MskLogo size={32} />
+                    <SheetTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-10 w-10 border border-white/10 rounded-xl">
+                        <X className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                  </div>
 
-                <div className="flex flex-col gap-2 mb-4 border-b border-border/50 pb-4">
-                  {signedIn ? (
-                    <>
+                  <div className="flex flex-col gap-2 mb-4 border-b border-border/50 pb-4">
+                    {signedIn ? (
+                      <>
+                        <Link
+                          to="/painel"
+                          className="flex items-center gap-2 font-bold text-primary p-2"
+                          onClick={() => document.body.click()}
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                          Meu Painel
+                        </Link>
+                        {isAdmin ? (
+                          <Link
+                            to="/admin"
+                            className="flex items-center gap-2 font-bold text-cyan-400 p-2"
+                            onClick={() => document.body.click()}
+                          >
+                            <ShieldCheck className="h-4 w-4" />
+                            Admin
+                          </Link>
+                        ) : null}
+                      </>
+                    ) : (
                       <Link
-                        to="/painel"
+                        to="/auth"
                         className="flex items-center gap-2 font-bold text-primary p-2"
                         onClick={() => document.body.click()}
                       >
-                        <LayoutDashboard className="h-4 w-4" />
-                        Meu Painel
+                        Entrar / Cadastrar
                       </Link>
-                      {isAdmin ? (
-                        <Link
-                          to="/admin"
-                          className="flex items-center gap-2 font-bold text-cyan-400 p-2"
-                          onClick={() => document.body.click()}
-                        >
-                          <ShieldCheck className="h-4 w-4" />
-                          Admin
-                        </Link>
-                      ) : null}
-                    </>
-                  ) : (
+                    )}
+                  </div>
+
+                  {NAV.map((item) => (
                     <Link
-                      to="/auth"
-                      className="flex items-center gap-2 font-bold text-primary p-2"
+                      key={item.to}
+                      to={item.to}
+                      className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
                       onClick={() => document.body.click()}
                     >
-                      Entrar / Cadastrar
+                      {item.label}
                     </Link>
-                  )}
-                </div>
+                  ))}
 
-                {NAV.map((item) => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
-                    onClick={() => document.body.click()}
+                  <Button
+                    variant="neon"
+                    className="mt-4 w-full h-12 rounded-xl"
+                    disabled={downloading}
+                    onClick={() => {
+                      void downloadExtension();
+                      document.body.click();
+                    }}
                   >
-                    {item.label}
-                  </Link>
-                ))}
-
-                <Button
-                  variant="neon"
-                  className="mt-4 w-full h-12 rounded-xl"
-                  disabled={downloading}
-                  onClick={() => {
-                    void downloadExtension();
-                    document.body.click();
-                  }}
-                >
-                  {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                  {downloadLabel}
-                </Button>
-              </nav>
-            </SheetContent>
-          </Sheet>
+                    {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    {downloadLabel}
+                  </Button>
+                </nav>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      <div
+        aria-hidden="true"
+        className="w-full shrink-0"
+        style={{ height: "calc(4rem + env(safe-area-inset-top, 0px))" }}
+      />
+    </>
   );
 }
