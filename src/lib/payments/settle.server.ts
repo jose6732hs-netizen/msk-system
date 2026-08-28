@@ -19,6 +19,15 @@ function numberOrNull(value: unknown) {
   return Number.isFinite(n) ? n : null;
 }
 
+type DeliveryMethod = "panel" | "email" | "panel_email" | "email_link";
+
+type DeliveryConfig = {
+  method: DeliveryMethod;
+  link: string;
+  instructions: string;
+  explicit: boolean;
+};
+
 type DeliveryLine = {
   planId: string;
   name?: string | undefined;
@@ -29,6 +38,21 @@ type DeliveryLine = {
   origin?: string | undefined;
   snapshot?: Record<string, unknown> | undefined;
 };
+
+function deliveryConfig(line: DeliveryLine): DeliveryConfig {
+  const features = asMeta(line.snapshot?.["features"]);
+  const raw = asMeta(features["delivery"]);
+  const requested = String(raw["method"] ?? "panel_email");
+  const method: DeliveryMethod = ["panel", "email", "panel_email", "email_link"].includes(requested)
+    ? (requested as DeliveryMethod)
+    : "panel_email";
+  return {
+    method,
+    link: String(raw["link"] ?? "").trim(),
+    instructions: String(raw["instructions"] ?? "").trim(),
+    explicit: Object.keys(raw).length > 0,
+  };
+}
 
 function deliveryLines(metadata: Record<string, unknown>, planId: string | null): DeliveryLine[] {
   const out: DeliveryLine[] = [];
@@ -103,6 +127,7 @@ async function ensureTransactionLicenses(tx: {
     const role = line.role ?? licenseRoleFromSlug(line.slug);
     const purpose = licensePurpose({ slug: line.slug ?? null, role });
     const snapshotMaxDevices = numberOrNull(line.snapshot?.["maxDevices"]);
+    const delivery = deliveryConfig(line);
 
     for (let i = 0; i < missing; i += 1) {
       try {
@@ -121,6 +146,9 @@ async function ensureTransactionLicenses(tx: {
             item_unit_price: line.unitPrice ?? null,
             item_index: (existing?.length ?? 0) + i + 1,
             item_quantity: line.quantity,
+            delivery_method: delivery.method,
+            delivery_link: delivery.link || null,
+            delivery_instructions: delivery.instructions || null,
           },
         });
       } catch (e) {
@@ -139,6 +167,8 @@ export async function finalizePaidTransaction(transactionId: string) {
   if (!tx) return;
 
   const metadata = asMeta(tx.metadata);
+  const lines = deliveryLines(metadata, (tx as { plan_id?: string | null }).plan_id ?? null);
+  const configuredDelivery = lines.map((line) => ({ line, delivery: deliveryConfig(line) }));
 
   console.info("[settle] entregando licenças do pedido", tx.identifier);
   await ensureTransactionLicenses({
@@ -151,10 +181,37 @@ export async function finalizePaidTransaction(transactionId: string) {
   if (metadata["settled_notified"] === true) return;
 
   if (tx.user_id) {
-    const { sendPurchaseApprovedEmail } = await import("@/lib/transactional-email.server");
-    await sendPurchaseApprovedEmail(tx.id).catch((e) =>
-      console.error("[settle] e-mail de compra aprovada falhou:", e),
-    );
+    const hasExplicitDelivery = configuredDelivery.some((item) => item.delivery.explicit);
+    const shouldSendStandardEmail =
+      !hasExplicitDelivery ||
+      configuredDelivery.some(
+        (item) => item.delivery.method === "email" || item.delivery.method === "panel_email",
+      );
+
+    if (shouldSendStandardEmail) {
+      const { sendPurchaseApprovedEmail } = await import("@/lib/transactional-email.server");
+      await sendPurchaseApprovedEmail(tx.id).catch((e) =>
+        console.error("[settle] e-mail de compra aprovada falhou:", e),
+      );
+    }
+
+    const linkDeliveries = configuredDelivery
+      .filter((item) => item.delivery.method === "email_link")
+      .map((item) => ({
+        label: item.line.name ?? "Oferta MSK",
+        link: item.delivery.link,
+        instructions: item.delivery.instructions || null,
+      }))
+      .filter((item) => /^https?:\/\//i.test(item.link));
+
+    if (linkDeliveries.length) {
+      const { sendOfferLinkDeliveryEmail } = await import("@/lib/offer-delivery-email.server");
+      await sendOfferLinkDeliveryEmail({
+        transactionId: tx.id,
+        userId: tx.user_id,
+        items: linkDeliveries,
+      }).catch((e) => console.error("[settle] e-mail com link da oferta falhou:", e));
+    }
   }
 
   const cardChargedTotal = numberOrNull(metadata["card_charged_total"]);
