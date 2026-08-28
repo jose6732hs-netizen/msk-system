@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AffiliateRequestCard } from "@/components/msk/affiliate-request-card";
+import { FilterChips } from "@/components/msk/filter-chips";
 
 export const Route = createFileRoute("/parceiro/")({
   component: AffiliateDashboard,
@@ -36,6 +37,8 @@ function AffiliateDashboard() {
   const fetchOverview = useServerFn(affiliateOverview);
   const [isWalletOpen, setIsWalletOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [activityFilter, setActivityFilter] = useState("all");
+  const [referralFilter, setReferralFilter] = useState("all");
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["affiliate-overview"],
@@ -121,6 +124,18 @@ function AffiliateDashboard() {
 
 
   const { stats, affiliate, goal, sales } = data;
+  const referrals = data.referrals ?? [];
+  const filteredSales = sales.filter((sale: any) => {
+    if (activityFilter === "all") return true;
+    if (activityFilter === "paid") return sale.status === "PAID";
+    if (activityFilter === "pending") return sale.status === "PENDING";
+    return sale.status !== "PAID" && sale.status !== "PENDING";
+  });
+  const filteredReferrals = referrals.filter((ref: any) => {
+    if (referralFilter === "all") return true;
+    if (referralFilter === "customers") return ref.status === "customer";
+    return ref.status !== "customer";
+  });
 
   return (
     <div className="min-h-screen bg-[#050505] text-white selection:bg-primary selection:text-white flex flex-col overflow-hidden">
@@ -199,16 +214,28 @@ function AffiliateDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                {/* Main Activity */}
                <div className="lg:col-span-2 space-y-8">
-                  <section className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8">
-                    <div className="flex items-center justify-between mb-8">
+                  <section className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-5 sm:p-8">
+                    <div className="flex items-center justify-between mb-5 sm:mb-6">
                       <h3 className="text-xl font-bold flex items-center gap-2">
                         <Clock className="text-white/20" size={20} /> Últimas Atividades
                       </h3>
-                      <Button variant="link" className="text-primary p-0 h-auto font-bold text-sm">Ver todas</Button>
+                      <span className="hidden sm:inline-flex rounded-full border border-primary/15 bg-primary/[0.06] px-3 py-1 text-[9px] font-black uppercase tracking-[.16em] text-primary">Filtro inteligente</span>
                     </div>
+
+                    <FilterChips
+                      className="mb-6"
+                      value={activityFilter}
+                      onChange={setActivityFilter}
+                      chips={[
+                        { id: "all", label: "Todas", count: sales.length },
+                        { id: "paid", label: "Aprovadas", count: sales.filter((sale: any) => sale.status === "PAID").length },
+                        { id: "pending", label: "Pendentes", count: sales.filter((sale: any) => sale.status === "PENDING").length },
+                        { id: "expired", label: "Expiradas", count: sales.filter((sale: any) => sale.status !== "PAID" && sale.status !== "PENDING").length },
+                      ]}
+                    />
                     
                     <div className="space-y-4">
-                      {sales.length > 0 ? sales.map((sale: any) => (
+                      {filteredSales.length > 0 ? filteredSales.map((sale: any) => (
                         <div key={sale.id} className="group p-5 bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 rounded-2xl transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                            <div className="flex items-center gap-4 min-w-0">
                               <div className={cn(
@@ -250,7 +277,7 @@ function AffiliateDashboard() {
                         </div>
                       )) : (
                         <div className="py-20 text-center">
-                           <p className="text-white/20 font-medium">Nenhuma venda registrada recentemente.</p>
+                           <p className="text-white/20 font-medium">Nenhuma atividade encontrada neste filtro.</p>
                         </div>
                       )}
                     </div>
@@ -312,20 +339,31 @@ function AffiliateDashboard() {
 
             {/* Referrals Section */}
             <section id="referrals" className="scroll-mt-32">
-              <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8">
-                <div className="flex items-center justify-between mb-8">
+              <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-5 sm:p-8">
+                <div className="flex items-center justify-between mb-5 sm:mb-6">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <Users className="text-white/20" size={20} /> Suas Indicações
                   </h3>
                   <div className="bg-primary/10 text-primary px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider">
-                    Total: {data.referrals?.length || 0}
+                    Total: {referrals.length}
                   </div>
                 </div>
+
+                <FilterChips
+                  className="mb-6"
+                  value={referralFilter}
+                  onChange={setReferralFilter}
+                  chips={[
+                    { id: "all", label: "Todas", count: referrals.length },
+                    { id: "customers", label: "Clientes", count: referrals.filter((ref: any) => ref.status === "customer").length },
+                    { id: "signups", label: "Cadastros", count: referrals.filter((ref: any) => ref.status !== "customer").length },
+                  ]}
+                />
                 
                 <div className="space-y-4">
-                  {data.referrals && data.referrals.length > 0 ? (
+                  {filteredReferrals.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {data.referrals.map((ref: any) => (
+                      {filteredReferrals.map((ref: any) => (
                         <div key={ref.id} className="p-4 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
@@ -347,7 +385,7 @@ function AffiliateDashboard() {
                     </div>
                   ) : (
                     <div className="py-12 text-center">
-                       <p className="text-white/20 font-medium">Nenhuma indicação cadastrada ainda.</p>
+                       <p className="text-white/20 font-medium">Nenhuma indicação encontrada neste filtro.</p>
                     </div>
                   )}
                 </div>
