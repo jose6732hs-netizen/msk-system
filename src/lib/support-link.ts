@@ -28,5 +28,5 @@ export function useSupportLink(message?: string) {
   });
 
   const config = (data as Record<string, any> | undefined)?.["config"] ?? {};
-  return buildWhatsappLink(config.support_whatsapp || config.support_url, message);
+  return buildWhatsappLink(config.support_url || config.support_whatsapp, message);
 }
