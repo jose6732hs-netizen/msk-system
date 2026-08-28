@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { encryptToken, generateLicenseToken, hashToken, logEvent, maskToken } from "./license.server";
 import { logAudit } from "./audit.server";
 import { computeExpiry, createInvoice } from "./financial.server";
+import { licenseRoleFromSlug } from "./license-purpose";
 
 function objectMeta(value: unknown): Record<string, any> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -92,7 +93,13 @@ export async function ensureAffiliate(userId: string) {
   const commissions = await getSetting<{ affiliate: number }>("commissions", { affiliate: 30 });
   const { data, error } = await supabaseAdmin
     .from("affiliates")
-    .insert({ user_id: userId, code: randomCode("AF"), commission_rate: commissions.affiliate, status: "pending", verification_status: "PENDING" })
+    .insert({
+      user_id: userId,
+      code: randomCode("AF"),
+      commission_rate: commissions.affiliate,
+      status: "pending",
+      verification_status: "PENDING",
+    })
     .select("*")
     .single();
   if (error) throw error;
@@ -185,6 +192,9 @@ export async function issueStandaloneLicense(input: {
   const frozenDurationDays = nullableNumber(frozen?.["durationDays"]);
   const frozenDurationUnit = frozen?.["durationUnit"] ? String(frozen["durationUnit"]) : null;
   const frozenMaxDevices = nullableNumber(frozen?.["maxDevices"]);
+  const snapshotName = frozen?.["name"] ?? plan.name;
+  const snapshotSlug = String(frozen?.["slug"] ?? plan.slug ?? "");
+  const snapshotRole = String(frozen?.["role"] ?? licenseRoleFromSlug(snapshotSlug));
 
   const now = new Date();
   let expires: string | null = null;
@@ -199,7 +209,13 @@ export async function issueStandaloneLicense(input: {
     const rawUnit = String(
       frozenDurationUnit ?? (frozenDurationDays !== null ? "days" : (plan as any).duration_unit || "days"),
     ).toLowerCase();
-    const unit = ({ minute: "minutes", hour: "hours", day: "days", week: "weeks", month: "months" } as Record<string, string>)[rawUnit] ?? rawUnit;
+    const unit = ({
+      minute: "minutes",
+      hour: "hours",
+      day: "days",
+      week: "weeks",
+      month: "months",
+    } as Record<string, string>)[rawUnit] ?? rawUnit;
     const value =
       frozenDurationValue ??
       frozenDurationDays ??
@@ -209,12 +225,11 @@ export async function issueStandaloneLicense(input: {
     expires = computeExpiry(unit, value, now);
   }
 
-  const isInstant = input.type === "trial" || input.type === "test";
+  // Produtos de entrega digital (ex.: ChatGPT Plus) começam a validade assim que o pagamento é aprovado.
+  const isInstant = input.type === "trial" || input.type === "test" || snapshotRole === "delivery";
   const pendingDurationMs = !isInstant && expires ? new Date(expires).getTime() - now.getTime() : null;
   if (pendingDurationMs !== null) expires = null;
 
-  const snapshotName = frozen?.["name"] ?? plan.name;
-  const snapshotSlug = frozen?.["slug"] ?? plan.slug;
   const snapshotSoldPrice = nullableNumber(frozen?.["soldPrice"]) ?? Number(plan.price);
   const snapshotListPrice = nullableNumber(frozen?.["listPrice"]) ?? Number(plan.price);
   const snapshotCurrency = String(frozen?.["currency"] ?? plan.currency ?? "BRL");
@@ -224,6 +239,12 @@ export async function issueStandaloneLicense(input: {
   const snapshotDurationUnit = frozenDurationUnit ?? (plan as any).duration_unit ?? null;
   const snapshotFeatures = Object.keys(frozenFeatures).length ? frozenFeatures : objectMeta(plan.features);
   const maxDevices = input.maxDevices ?? frozenMaxDevices ?? nullableNumber(plan.max_devices);
+  const delivery = objectMeta(snapshotFeatures["delivery"]);
+  const deliveryMethod = ["panel", "email", "panel_email", "email_link"].includes(String(delivery["method"]))
+    ? String(delivery["method"])
+    : "panel_email";
+  const deliveryLink = String(delivery["link"] ?? "").trim();
+  const deliveryInstructions = String(delivery["instructions"] ?? "").trim();
 
   const token = generateLicenseToken();
   const { data, error } = await supabaseAdmin
@@ -256,7 +277,10 @@ export async function issueStandaloneLicense(input: {
         plan_max_devices_snapshot: maxDevices,
         plan_slug_snapshot: snapshotSlug,
         features_snapshot: snapshotFeatures,
-        ...(frozen?.["role"] ? { license_role: String(frozen["role"]) } : {}),
+        license_role: snapshotRole,
+        delivery_method: deliveryMethod,
+        delivery_link: deliveryLink,
+        delivery_instructions: deliveryInstructions,
         ...(frozen?.["origin"] ? { item_origin: String(frozen["origin"]) } : {}),
         ...(snapshotSoldPrice !== null ? { item_unit_price: snapshotSoldPrice } : {}),
         ...(pendingDurationMs !== null ? { pending_duration_ms: pendingDurationMs } : {}),
@@ -295,7 +319,7 @@ export async function grantTrial(input: { userId: string; planId?: string | null
   if (used >= cfg.max_per_user) throw new Error("Você já utilizou o teste gratuito disponível.");
   const last = previous?.[0]?.created_at;
   if (last && Date.now() - new Date(last).getTime() < cfg.cooldown_hours * 3600000) {
-    throw new Error("Aguarde o período de espera para solicitar um novo teste.");
+    throw new Error("Aguarde o período de espera para solicitar um novo teste gratuito.");
   }
 
   let planId = input.planId ?? null;
@@ -341,11 +365,55 @@ export async function grantTrial(input: { userId: string; planId?: string | null
     license_id: result.licenseId,
     expires_at: new Date(Date.now() + cfg.duration_minutes * 60000).toISOString(),
   } as never);
-  await logAudit({ userId: input.userId, action: "trial.granted", resource: "licenses", resourceId: result.licenseId });
+  await logAudit({
+    userId: input.userId,
+    action: "trial.granted",
+    resource: "licenses",
+    resourceId: result.licenseId,
+  });
   return result;
 }
 
-/** Processa uma transação paga: comissões, saldo de revenda e licença. */
+async function finalizeIssuedLicense(input: {
+  userId: string;
+  transactionId: string;
+  planId: string;
+  quantity: number;
+  source: "purchase" | "subscription";
+  issued: { licenseId: string; token: string };
+}) {
+  const { signData } = await import("./license.server");
+  const signature = await signData(
+    JSON.stringify({
+      licenseId: input.issued.licenseId,
+      token: input.issued.token,
+      userId: input.userId,
+    }),
+  );
+  const { data: licenseSnapshot } = await supabaseAdmin
+    .from("licenses")
+    .select("metadata,expires_at")
+    .eq("id", input.issued.licenseId)
+    .maybeSingle();
+  await supabaseAdmin
+    .from("licenses")
+    .update({
+      metadata: { ...((licenseSnapshot?.metadata as Record<string, unknown> | null) ?? {}), signature },
+    } as any)
+    .eq("id", input.issued.licenseId);
+
+  await supabaseAdmin.from("token_allowances").insert({
+    user_id: input.userId,
+    plan_id: input.planId,
+    transaction_id: input.transactionId,
+    source: input.source,
+    total: Math.max(1, input.quantity),
+    used: 1,
+    period_end: licenseSnapshot?.expires_at ?? null,
+  } as never);
+}
+
+/** Processa uma transação paga: comissões, saldo de revenda e todas as entregas do carrinho. */
 export async function settlePaidTransaction(transactionId: string) {
   const { data: tx } = await supabaseAdmin
     .from("transactions")
@@ -419,52 +487,58 @@ export async function settlePaidTransaction(transactionId: string) {
   }
 
   let licenseId: string | null = null;
-  if (tx.user_id && tx.plan_id && (tx.purpose === "purchase" || tx.purpose === "subscription")) {
-    const issued = await issueStandaloneLicense({
-      userId: tx.user_id,
-      planId: tx.plan_id,
-      type: tx.purpose === "subscription" ? "subscription" : "paid",
-      transactionId: tx.id,
-      resellerId: tx.reseller_id,
-    });
-    licenseId = issued.licenseId;
+  if (tx.user_id && (tx.purpose === "purchase" || tx.purpose === "subscription")) {
+    const source = tx.purpose === "subscription" ? "subscription" : "purchase";
+    const metadata = objectMeta(tx.metadata);
+    const lines = Array.isArray(metadata["line_items"]) ? metadata["line_items"] : [];
 
-    const { signData } = await import("./license.server");
-    const signature = await signData(JSON.stringify({
-      licenseId: issued.licenseId,
-      token: issued.token,
-      userId: tx.user_id,
-    }));
-    const { data: licenseSnapshot } = await supabaseAdmin
-      .from("licenses")
-      .select("metadata")
-      .eq("id", issued.licenseId)
-      .maybeSingle();
-    await supabaseAdmin
-      .from("licenses")
-      .update({
-        metadata: { ...((licenseSnapshot?.metadata as Record<string, unknown> | null) ?? {}), signature },
-      } as any)
-      .eq("id", issued.licenseId);
-
-    const quantity = Math.max(
-      1,
-      Number((tx.metadata as Record<string, unknown> | null)?.["quantity"] ?? 1) || 1,
-    );
-    const { data: issuedLicense } = await supabaseAdmin
-      .from("licenses")
-      .select("expires_at")
-      .eq("id", issued.licenseId)
-      .maybeSingle();
-    await supabaseAdmin.from("token_allowances").insert({
-      user_id: tx.user_id,
-      plan_id: tx.plan_id,
-      transaction_id: tx.id,
-      source: tx.purpose === "subscription" ? "subscription" : "purchase",
-      total: quantity,
-      used: 1,
-      period_end: issuedLicense?.expires_at ?? null,
-    } as never);
+    if (lines.length) {
+      // Carrinho/checkout combinado: cada produto pago recebe sua própria licença/entrega.
+      for (const rawLine of lines) {
+        const line = objectMeta(rawLine);
+        const planId = String(line["planId"] ?? line["plan_id"] ?? "");
+        if (!planId) continue;
+        const quantity = Math.max(1, Number(line["quantity"] ?? 1) || 1);
+        const issued = await issueStandaloneLicense({
+          userId: tx.user_id,
+          planId,
+          type: source,
+          transactionId: tx.id,
+          resellerId: tx.reseller_id,
+          extraMetadata: {
+            item_label: String(line["name"] ?? "Produto MSK"),
+            item_origin: String(line["origin"] ?? "cart"),
+          },
+        });
+        if (!licenseId) licenseId = issued.licenseId;
+        await finalizeIssuedLicense({
+          userId: tx.user_id,
+          transactionId: tx.id,
+          planId,
+          quantity,
+          source,
+          issued,
+        });
+      }
+    } else if (tx.plan_id) {
+      const quantity = Math.max(1, Number(metadata["quantity"] ?? 1) || 1);
+      const issued = await issueStandaloneLicense({
+        userId: tx.user_id,
+        planId: tx.plan_id,
+        type: source,
+        transactionId: tx.id,
+        resellerId: tx.reseller_id,
+      });
+      licenseId = issued.licenseId;
+      await finalizeIssuedLicense({
+        userId: tx.user_id,
+        transactionId: tx.id,
+        planId: tx.plan_id,
+        quantity,
+        source,
+        issued,
+      });
+    }
 
     if (tx.subscription_id) {
       await supabaseAdmin
@@ -481,7 +555,7 @@ export async function settlePaidTransaction(transactionId: string) {
         userId: tx.user_id,
         type: "pix_approved",
         title: "Pagamento Confirmado",
-        body: `Seu pagamento de R$ ${chargedAmount.toFixed(2)} foi processado com sucesso. Aproveite seu acesso!`,
+        body: `Seu pagamento de R$ ${chargedAmount.toFixed(2)} foi processado com sucesso. Sua entrega já está no painel.`,
         link: "/painel",
         transactionId: tx.id,
       });
