@@ -6,7 +6,7 @@ const BATCH_SIZE = 100;
 const DEFAULT_SUBJECT = "Aviso importante: novo canal de atendimento MSK SISTEM";
 const DEFAULT_COMPOSER_SUBJECT = "Comunicado importante — MSK SISTEM";
 
-type EligibleProfile = { id: string; email: string; name: string | null };
+type EligibleProfile = { id: string; email: string; name: string | null; profileId: string | null };
 type CampaignRow = {
   id: string;
   campaign_key: string;
@@ -141,10 +141,13 @@ async function loadEligibleProfiles(): Promise<EligibleProfile[]> {
   const adminIds = new Set((adminRoles ?? []).map((row: any) => String(row.user_id)));
 
   const profileNames = new Map<string, string>();
+  const profileIds = new Set<string>();
   const { data: profileRows, error: profileError } = await db.from("profiles").select("id,name").limit(5000);
   if (profileError) throw profileError;
   for (const row of profileRows ?? []) {
-    if (row.name) profileNames.set(String(row.id), String(row.name));
+    const id = String(row.id);
+    profileIds.add(id);
+    if (row.name) profileNames.set(id, String(row.name));
   }
 
   const dedup = new Map<string, EligibleProfile>();
@@ -154,16 +157,18 @@ async function loadEligibleProfiles(): Promise<EligibleProfile[]> {
     const users = data.users ?? [];
 
     for (const user of users) {
-      if (adminIds.has(String(user.id))) continue;
+      const userId = String(user.id);
+      if (adminIds.has(userId)) continue;
       const email = normalizeEmail(user.email);
       if (!email || dedup.has(email)) continue;
 
       const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
       const fallbackName = metadata["name"] || metadata["full_name"] || metadata["display_name"];
       dedup.set(email, {
-        id: String(user.id),
+        id: userId,
+        profileId: profileIds.has(userId) ? userId : null,
         email,
-        name: profileNames.get(String(user.id)) ?? (fallbackName ? String(fallbackName) : null),
+        name: profileNames.get(userId) ?? (fallbackName ? String(fallbackName) : null),
       });
     }
 
@@ -247,7 +252,7 @@ async function runCampaign(args: {
 
   const recipientRows = args.targets.map((target) => ({
     campaign_id: campaign!.id,
-    profile_id: target.id,
+    profile_id: target.profileId,
     email: target.email,
   }));
   for (let i = 0; i < recipientRows.length; i += 500) {
@@ -279,7 +284,7 @@ async function runCampaign(args: {
       .in("id", ids);
 
     const payload = chunk.map((row: any) => {
-      const target = targetByEmail.get(String(row.email)) ?? { id: "", email: String(row.email), name: null };
+      const target = targetByEmail.get(String(row.email)) ?? { id: "", email: String(row.email), name: null, profileId: null };
       const body = args.body(target);
       return { from: config.fromEmail, to: [row.email], subject: args.subject, html: body.html, text: body.text };
     });
@@ -425,7 +430,7 @@ export async function sendCustomEmailCampaign(
     title: input.title.trim().slice(0, 140),
     message: input.message.trim().slice(0, 6000),
     audience: input.audience,
-    recipientProfileId: input.audience === "single" ? input.profileId ?? null : null,
+    recipientProfileId: input.audience === "single" ? targets[0]?.profileId ?? null : null,
     targets,
     actorId,
     auditAction: "email.custom_campaign",
