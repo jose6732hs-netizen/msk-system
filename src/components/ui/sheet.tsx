@@ -58,6 +58,7 @@ const SheetContent = React.forwardRef<
   const hideDefaultClose =
     className?.includes("[&>button]:hidden") ||
     className?.includes("sm:w-64 z-[200]") ||
+    className?.includes("sm:w-72 z-[200]") ||
     false;
 
   return (
