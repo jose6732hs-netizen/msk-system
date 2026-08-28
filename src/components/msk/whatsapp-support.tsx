@@ -12,10 +12,14 @@ export function WhatsappSupportButton() {
   useEffect(() => {
     if (!link) return;
 
+    const root = document.documentElement;
     const previousPaddingTop = document.body.style.paddingTop;
+    const previousSupportOffset = root.style.getPropertyValue("--msk-support-banner-height");
     const syncTopOffset = () => {
       const bannerHeight = bannerRef.current?.getBoundingClientRect().height ?? 0;
-      document.body.style.paddingTop = bannerHeight > 0 ? `${Math.ceil(bannerHeight)}px` : "0px";
+      const offset = bannerHeight > 0 ? `${Math.ceil(bannerHeight)}px` : "0px";
+      document.body.style.paddingTop = offset;
+      root.style.setProperty("--msk-support-banner-height", offset);
     };
 
     syncTopOffset();
@@ -32,6 +36,11 @@ export function WhatsappSupportButton() {
       observer?.disconnect();
       window.removeEventListener("resize", syncTopOffset);
       document.body.style.paddingTop = previousPaddingTop;
+      if (previousSupportOffset) {
+        root.style.setProperty("--msk-support-banner-height", previousSupportOffset);
+      } else {
+        root.style.removeProperty("--msk-support-banner-height");
+      }
     };
   }, [link]);
 
