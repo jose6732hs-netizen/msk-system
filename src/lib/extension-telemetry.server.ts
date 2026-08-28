@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { findLicenseByToken, rateLimit } from "./license.server";
+import { findLicenseByToken, rateLimit, isTrustedExtensionOrigin } from "./license.server";
 
 const db = supabaseAdmin as any;
 const REDACTED = "[REDACTED]";
