@@ -36,6 +36,39 @@ function bearer(request: Request) {
   return header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
 }
 
+function activeLicense(row: any) {
+  if (!row || String(row.status) !== "active") return false;
+  const now = Date.now();
+  if (row.starts_at && Date.parse(row.starts_at) > now) return false;
+  if (row.expires_at && Date.parse(row.expires_at) <= now) return false;
+  return true;
+}
+
+async function resolveLicense(request: Request) {
+  const token = bearer(request);
+  if (!token) return null;
+
+  // Contrato atual: a extensão envia o token da licença diretamente.
+  const direct = (await findLicenseByToken(token)) as any;
+  if (activeLicense(direct)) return direct;
+
+  // Compatibilidade com versões que ainda enviam o JWT da conta MSK,
+  // igual ao endpoint de heartbeat. Assim o canal remoto continua
+  // entregando mensagens sem exigir reinstalação imediata da extensão.
+  const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+  if (userError || !userData.user) return null;
+
+  const { data: licenses } = await db
+    .from("licenses")
+    .select("id,user_id,status,starts_at,expires_at,created_at")
+    .eq("user_id", userData.user.id)
+    .eq("status", "active")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  return (licenses ?? []).find(activeLicense) ?? null;
+}
+
 type Identity = { userId: string; licenseId: string; installationId: string; version: string };
 
 async function authenticate(request: Request): Promise<{ identity?: Identity; response?: Response }> {
@@ -47,12 +80,8 @@ async function authenticate(request: Request): Promise<{ identity?: Identity; re
   const token = bearer(request);
   if (!token) return { response: json(request, { ok: false, code: "AUTH_REQUIRED", message: "Conecte sua licença MSK novamente." }, 401) };
 
-  const license = (await findLicenseByToken(token)) as any;
+  const license = await resolveLicense(request);
   if (!license) return { response: json(request, { ok: false, code: "LICENSE_INVALID", message: "Sua licença não pôde ser confirmada." }, 401) };
-  const expiresAt = license.expires_at ? Date.parse(license.expires_at) : null;
-  if (String(license.status) !== "active" || (expiresAt && expiresAt <= Date.now())) {
-    return { response: json(request, { ok: false, code: "LICENSE_EXPIRED", message: "Sua licença não está ativa." }, 403) };
-  }
 
   const { data: existing } = await db.from("extension_installations").select("user_id").eq("installation_id", installationId).maybeSingle();
   if (existing?.user_id && String(existing.user_id) !== String(license.user_id)) {
