@@ -43,12 +43,19 @@ export function resolveLicenseSnapshot(row: any): LicenseSnapshot {
   const slug = String(metadata["plan_slug_snapshot"] ?? plan?.slug ?? "").trim() || null;
   const explicitRole = String(metadata["license_role"] ?? "").trim();
   let role: LicenseRole;
-  if (explicitRole === "agent" || explicitRole === "cloner" || explicitRole === "extension") {
+  if (
+    explicitRole === "agent" ||
+    explicitRole === "cloner" ||
+    explicitRole === "extension" ||
+    explicitRole === "delivery"
+  ) {
     role = explicitRole;
   } else if (features["agent"] === true || features["product_type"] === "agent") {
     role = "agent";
   } else if (features["page_cloner"] === true || features["product_type"] === "cloner") {
     role = "cloner";
+  } else if (features["product_type"] === "delivery" || features["digital_delivery"] === true) {
+    role = "delivery";
   } else {
     role = licenseRoleFromSlug(slug);
   }
