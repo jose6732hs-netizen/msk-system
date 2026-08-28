@@ -181,5 +181,54 @@ function installProductImageRecovery() {
   );
 }
 
+/**
+ * No mobile o checkout convive com o header e com a navegação fixa inferior.
+ * Mantém cabeçalho/total acessíveis e deixa apenas a lista de produtos rolar.
+ */
+function installMobileCheckoutNavigationFix() {
+  if (typeof document === "undefined") return;
+  const styleId = "msk-mobile-checkout-navigation-fix";
+  if (document.getElementById(styleId)) return;
+
+  const style = document.createElement("style");
+  style.id = styleId;
+  style.textContent = `
+    @media (max-width: 767px) {
+      #checkout-cart {
+        display: flex !important;
+        flex-direction: column !important;
+        max-height: calc(100dvh - 7.25rem - env(safe-area-inset-bottom, 0px)) !important;
+        overflow: hidden !important;
+        scroll-margin-top: 4.25rem;
+        scroll-margin-bottom: 4.75rem;
+      }
+
+      #checkout-cart > :first-child,
+      #checkout-cart > :last-child {
+        flex: 0 0 auto;
+      }
+
+      #checkout-cart > :nth-child(2) {
+        min-height: 0 !important;
+        max-height: none !important;
+        flex: 1 1 auto !important;
+        overflow-y: auto !important;
+        overscroll-behavior-y: contain;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        scrollbar-gutter: stable;
+      }
+
+      #checkout-cart > :last-child {
+        position: relative;
+        z-index: 3;
+        box-shadow: 0 -14px 32px rgba(0, 0, 0, .48);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 installProductImageRecovery();
+installMobileCheckoutNavigationFix();
 void installChatGptArtworkSync();
