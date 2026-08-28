@@ -288,22 +288,38 @@ export function allowedOrigins(): string[] {
     .filter(Boolean);
 }
 
+/**
+ * Qualquer extensão instalada (o ID muda por instalação em modo desenvolvedor)
+ * e os content scripts rodando dentro do Lovable precisam ser aceitos, além das
+ * origens explicitamente configuradas em `EXTENSION_ORIGIN`.
+ */
+export function isTrustedExtensionOrigin(origin: string): boolean {
+  if (!origin) return false;
+  if (origin.startsWith("chrome-extension://")) return true;
+  if (origin.startsWith("moz-extension://")) return true;
+  if (origin.startsWith("safari-web-extension://")) return true;
+  if (origin === "https://lovable.dev" || origin.endsWith(".lovable.dev")) return true;
+  if (origin.endsWith(".lovable.app") || origin.endsWith(".lovableproject.com")) return true;
+  if (origin === "https://msksystem.online" || origin === "https://www.msksystem.online") return true;
+  return allowedOrigins().includes(origin);
+}
+
 export function allowedOrigin(request?: Request): string {
-  const list = allowedOrigins();
-  if (list.length === 0) return "*";
-  const origin = request?.headers.get("origin") ?? "";
-  if (origin && list.includes(origin)) return origin;
-  return list[0]!;
+  const origin = request?.headers.get("origin")?.trim() ?? "";
+  if (!origin) return "*";
+  if (isTrustedExtensionOrigin(origin)) return origin;
+  return allowedOrigins()[0] ?? "*";
 }
 
 export function corsHeaders(request?: Request): Record<string, string> {
   return {
     "access-control-allow-origin": allowedOrigin(request),
-    "access-control-allow-headers": "content-type, authorization",
+    "access-control-allow-headers": "content-type, authorization, x-msk-installation-id, x-msk-extension-version",
     "access-control-allow-methods": "POST, GET, OPTIONS",
     vary: "Origin",
   };
 }
+
 
 export function jsonResponse(body: unknown, status = 200, request?: Request) {
   return new Response(JSON.stringify(body), {

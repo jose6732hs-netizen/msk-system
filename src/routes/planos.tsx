@@ -9,11 +9,12 @@ import {
   Plus,
   Share2,
   ShoppingCart,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -122,8 +123,37 @@ function OfferCarouselSection({
   onAdd,
   onShare,
 }: OfferCarouselSectionProps) {
-  if (!plans.length) return null;
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+  const interactionUntil = useRef(0);
   const carouselId = `${sectionId}-carousel`;
+
+  useEffect(() => {
+    if (plans.length <= 1) return;
+    const timer = window.setInterval(() => {
+      const el = carouselRef.current;
+      if (!el || document.hidden || Date.now() < interactionUntil.current) return;
+      const card = el.querySelector<HTMLElement>("[data-plan-card]");
+      const step = card?.offsetWidth ? card.offsetWidth + 16 : Math.min(346, el.clientWidth * 0.86);
+      const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - step * 0.6;
+      el.scrollTo({ left: nearEnd ? 0 : el.scrollLeft + step, behavior: "smooth" });
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, [plans.length]);
+
+  if (!plans.length) return null;
+
+  const markInteraction = () => {
+    interactionUntil.current = Date.now() + 7000;
+  };
+
+  const scrollByCard = (direction: 1 | -1) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    markInteraction();
+    const card = el.querySelector<HTMLElement>("[data-plan-card]");
+    const step = card?.offsetWidth ? card.offsetWidth + 16 : 346;
+    el.scrollBy({ left: direction * step, behavior: "smooth" });
+  };
 
   return (
     <section id={sectionId} className="mt-14 min-w-0 scroll-mt-24 overflow-hidden sm:mt-16">
@@ -158,9 +188,7 @@ function OfferCarouselSection({
             type="button"
             aria-label={`Ofertas anteriores de ${title}`}
             className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/85 text-primary shadow-xl"
-            onClick={() =>
-              document.getElementById(carouselId)?.scrollBy({ left: -360, behavior: "smooth" })
-            }
+            onClick={() => scrollByCard(-1)}
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -168,9 +196,7 @@ function OfferCarouselSection({
             type="button"
             aria-label={`Próximas ofertas de ${title}`}
             className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/85 text-primary shadow-xl"
-            onClick={() =>
-              document.getElementById(carouselId)?.scrollBy({ left: 360, behavior: "smooth" })
-            }
+            onClick={() => scrollByCard(1)}
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -178,13 +204,20 @@ function OfferCarouselSection({
 
         <div
           id={carouselId}
-          className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-8"
+          ref={carouselRef}
+          onPointerDown={markInteraction}
+          onTouchStart={markInteraction}
+          onWheel={markInteraction}
+          onScroll={markInteraction}
+          style={{ touchAction: "pan-x pan-y" }}
+          className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-8"
         >
           {plans.map((plan: any) => {
             const highlighted = String(plan.slug ?? "") === highlightSlug;
             const isFree = Number(plan.price) === 0;
             return (
               <article
+                data-plan-card
                 key={plan.id}
                 className={`relative flex w-[82vw] max-w-[330px] shrink-0 snap-center flex-col overflow-hidden rounded-[2rem] border bg-[#0A0A0A] sm:w-[45vw] lg:w-[310px] ${
                   highlighted
@@ -260,6 +293,88 @@ function OfferCarouselSection({
           })}
         </div>
       </div>
+    </section>
+  );
+}
+
+/**
+ * Oferta "Conta ChatGPT 30 dias" — card pronto, porém DESATIVADO.
+ * Sem preço por enquanto; a imagem é definida no Super Admin pelo slot
+ * `plans_chatgpt_card`. Para ativar, troque `CHATGPT_OFFER_ENABLED` para true.
+ */
+const CHATGPT_OFFER_ENABLED = false;
+
+function ChatGptOfferSection({ imageUrl }: { imageUrl: string }) {
+  if (!CHATGPT_OFFER_ENABLED) {
+    // Card visível como "em breve" apenas na vitrine, sem checkout.
+  }
+
+  return (
+    <section id="conta-chatgpt" className="mt-10 min-w-0 scroll-mt-24 sm:mt-12">
+      <article className="relative grid min-w-0 gap-0 overflow-hidden rounded-[2rem] border border-emerald-400/25 bg-[#0A0A0A] shadow-[0_0_70px_rgba(16,185,129,.08)] md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden bg-black/60 p-3">
+          {imageUrl ? (
+            <img src={imageUrl} alt="Conta ChatGPT 30 dias" loading="lazy" className="max-h-[280px] w-full object-contain" />
+          ) : (
+            <div className="grid h-full w-full min-h-[190px] place-items-center rounded-[1.4rem] border border-dashed border-emerald-400/25 text-center">
+              <div className="px-6">
+                <Sparkles className="mx-auto h-7 w-7 text-emerald-400" />
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[.2em] text-emerald-300">
+                  Imagem em breve
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Envie a arte pelo painel Super Admin
+                </p>
+              </div>
+            </div>
+          )}
+          <span className="absolute left-3 top-3 rounded-full bg-emerald-400 px-2.5 py-1 text-[8px] font-black uppercase text-black">
+            Em breve
+          </span>
+        </div>
+
+        <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
+          <p className="text-[9px] font-black uppercase tracking-[.24em] text-emerald-400 sm:text-[10px]">
+            Oferta exclusiva MSK
+          </p>
+          <h2 className="mt-2 break-words text-2xl font-black uppercase tracking-tight text-white sm:text-4xl">
+            Conta ChatGPT · 30 dias
+          </h2>
+          <p className="mt-3 max-w-xl text-xs font-medium leading-relaxed text-white/65 sm:text-sm">
+            Acesso completo a uma conta ChatGPT por 30 dias, entregue junto com sua licença MSK.
+            Ideal para acelerar prompts, correções e criação de projetos no Lovable.
+          </p>
+
+          <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+            {[
+              "Conta liberada por 30 dias corridos",
+              "Entrega automática após o pagamento",
+              "Suporte MSK durante todo o período",
+              "Funciona junto com a Extensão MSK",
+            ].map((item) => (
+              <li key={item} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+                <span className="mt-0.5 rounded-full bg-emerald-400 p-0.5 text-black">
+                  <Check className="h-2.5 w-2.5" />
+                </span>
+                <span className="min-w-0 break-words">{item}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="rounded-2xl border border-white/10 bg-white/[.03] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white/60">
+              Valor em breve
+            </span>
+            <Button
+              type="button"
+              disabled
+              className="min-h-14 flex-1 whitespace-normal rounded-2xl bg-white/10 px-5 text-[10px] font-black uppercase leading-tight text-white/50 sm:flex-none sm:text-xs"
+            >
+              Oferta desativada · em breve
+            </Button>
+          </div>
+        </div>
+      </article>
     </section>
   );
 }
@@ -672,6 +787,7 @@ function PlanosPage() {
   const extensionBanner = resolveSiteImage(cmsSettings, "plans_extension_banner");
   const clonerBanner = resolveSiteImage(cmsSettings, "plans_cloner_banner");
   const agentBanner = resolveSiteImage(cmsSettings, "plans_agent_banner");
+  const chatgptCard = resolveSiteImage(cmsSettings, "plans_chatgpt_card");
   const offersLoading = isLoading || clonerLoading || agentLoading;
 
   return (
@@ -780,6 +896,8 @@ function PlanosPage() {
           ) : null}
         </header>
 
+        <ChatGptOfferSection imageUrl={chatgptCard} />
+
         {offersLoading ? (
           <div className="mt-16 flex justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -787,13 +905,13 @@ function PlanosPage() {
         ) : (
           <>
             <OfferCarouselSection
-              sectionId="extensao-msk"
-              eyebrow="Extensão principal"
-              title="Extensão MSK"
-              description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
-              bannerUrl={extensionBanner}
-              plans={plans ?? []}
-              highlightSlug="monthly"
+              sectionId="msk-agente"
+              eyebrow="Assistente do projeto"
+              title="MSK Agente"
+              description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
+              bannerUrl={agentBanner}
+              plans={agentPlans ?? []}
+              highlightSlug="msk-agent-2"
               loadingPlan={loadingPlan}
               onAdd={(plan) => void addToCart(plan)}
               onShare={(plan) => void sharePlan(plan)}
@@ -813,19 +931,20 @@ function PlanosPage() {
             />
 
             <OfferCarouselSection
-              sectionId="msk-agente"
-              eyebrow="Assistente do projeto"
-              title="MSK Agente"
-              description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
-              bannerUrl={agentBanner}
-              plans={agentPlans ?? []}
-              highlightSlug="msk-agent-2"
+              sectionId="extensao-msk"
+              eyebrow="Extensão principal"
+              title="Extensão MSK"
+              description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
+              bannerUrl={extensionBanner}
+              plans={plans ?? []}
+              highlightSlug="monthly"
               loadingPlan={loadingPlan}
               onAdd={(plan) => void addToCart(plan)}
               onShare={(plan) => void sharePlan(plan)}
             />
           </>
         )}
+
       </main>
       <SiteFooter />
 

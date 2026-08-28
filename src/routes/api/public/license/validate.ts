@@ -53,9 +53,9 @@ async function registerAgentInstallation(
     const result = (await validationResponse.clone().json().catch(() => null)) as any;
     if (!result?.valid || String(result?.license?.role || "") !== "agent") return;
 
-    const installationId = String(body.installation_id ?? body.device_fingerprint ?? "").trim();
-    const version = String(body.extension_version ?? body.version ?? "unknown").trim();
-    const token = String(body.token ?? "").trim();
+    const installationId = String(body["installation_id"] ?? body["device_fingerprint"] ?? "").trim();
+    const version = String(body["extension_version"] ?? body["version"] ?? "unknown").trim();
+    const token = String(body["token"] ?? "").trim();
     if (!INSTALLATION_RE.test(installationId) || !VERSION_RE.test(version) || !token) return;
 
     const license = (await findLicenseByToken(token)) as any;

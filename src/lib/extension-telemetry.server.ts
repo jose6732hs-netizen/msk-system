@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { findLicenseByToken, rateLimit } from "./license.server";
+import { findLicenseByToken, rateLimit, isTrustedExtensionOrigin } from "./license.server";
 
 const db = supabaseAdmin as any;
 const REDACTED = "[REDACTED]";
@@ -153,18 +153,18 @@ function sanitizeMetadata(value: Record<string, unknown>) {
 
 export function extensionCorsHeaders(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
-  const allowed =
-    origin.startsWith("chrome-extension://") ||
-    origin.startsWith("moz-extension://") ||
-    origin === "https://msksystem.online";
+  // Extensões instaladas (ID muda por instalação) e content scripts rodando
+  // dentro do Lovable precisam ser aceitos, senão nenhuma extensão conecta.
+  const allowed = origin ? isTrustedExtensionOrigin(origin) : false;
   return {
-    ...(allowed ? { "access-control-allow-origin": origin } : {}),
+    ...(allowed ? { "access-control-allow-origin": origin } : { "access-control-allow-origin": "*" }),
     "access-control-allow-headers": "content-type, authorization, x-msk-installation-id, x-msk-extension-version",
     "access-control-allow-methods": "POST, GET, OPTIONS",
     "access-control-max-age": "86400",
     vary: "Origin",
   };
 }
+
 
 export function extensionPreflight(request: Request) {
   return new Response(null, { status: 204, headers: extensionCorsHeaders(request) });

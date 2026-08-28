@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { extensionPreflight } from "@/lib/extension-telemetry.server";
+import { extensionPreflight, extensionCorsHeaders } from "@/lib/extension-telemetry.server";
 import { findLicenseByToken } from "@/lib/license.server";
 
 const db = supabaseAdmin as any;
@@ -10,19 +10,9 @@ const VERSION_RE = /^[0-9A-Za-z.+_-]{1,64}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 function cors(request: Request) {
-  const origin = request.headers.get("origin")?.trim() ?? "";
-  const allowed =
-    origin.startsWith("chrome-extension://") ||
-    origin.startsWith("moz-extension://") ||
-    origin === "https://msksystem.online";
-  return {
-    ...(allowed ? { "access-control-allow-origin": origin } : {}),
-    "access-control-allow-headers": "content-type, authorization, x-msk-installation-id, x-msk-extension-version",
-    "access-control-allow-methods": "POST, GET, OPTIONS",
-    "access-control-max-age": "86400",
-    vary: "Origin",
-  };
+  return extensionCorsHeaders(request);
 }
+
 
 function json(request: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -80,16 +70,16 @@ async function handleCompatibleHeartbeat(request: Request) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return json(request, { ok: false, code: "INVALID_HEARTBEAT", message: "Heartbeat inválido." }, 400);
 
-  const installationId = String(body.installation_id ?? "").trim();
+  const installationId = String(body["installation_id"] ?? "").trim();
   // Aceita o contrato novo (`version`) e o legado (`extension_version`).
-  const version = String(body.version ?? body.extension_version ?? "").trim();
+  const version = String(body["version"] ?? body["extension_version"] ?? "").trim();
   if (!INSTALLATION_RE.test(installationId) || !VERSION_RE.test(version)) {
     return json(request, { ok: false, code: "INVALID_HEARTBEAT", message: "Identificação ou versão inválida." }, 400);
   }
 
-  const repositoryRaw = cleanText(body.repository, 300);
+  const repositoryRaw = cleanText(body["repository"], 300);
   const repository = repositoryRaw && REPOSITORY_RE.test(repositoryRaw) ? repositoryRaw : null;
-  const providerRaw = cleanText(body.provider, 40);
+  const providerRaw = cleanText(body["provider"], 40);
   const provider = providerRaw && PROVIDERS.has(providerRaw) ? providerRaw : null;
   const license = await resolveLicense(request);
   if (!license) {
@@ -114,13 +104,13 @@ async function handleCompatibleHeartbeat(request: Request) {
   const installationPatch = {
     license_id: license.id,
     version,
-    browser: cleanText(body.browser, 120),
-    os: cleanText(body.os, 120),
+    browser: cleanText(body["browser"], 120),
+    os: cleanText(body["os"], 120),
     last_seen_at: now,
     last_activity_at: now,
     metadata: {
       source: "extension_heartbeat",
-      compatibility: body.version ? "canonical" : "legacy_extension_version",
+      compatibility: body["version"] ? "canonical" : "legacy_extension_version",
     },
   };
 
@@ -140,7 +130,7 @@ async function handleCompatibleHeartbeat(request: Request) {
     if (error) return json(request, { ok: false, code: "HEARTBEAT_STORE_FAILED", message: "Não foi possível registrar a instalação." }, 503);
   }
 
-  const projectId = cleanText(body.project_id, 180);
+  const projectId = cleanText(body["project_id"], 180);
   if (projectId) {
     const { data: project } = await db
       .from("extension_projects")
@@ -151,19 +141,19 @@ async function handleCompatibleHeartbeat(request: Request) {
       .maybeSingle();
 
     const projectPatch = {
-      project_name: cleanText(body.project_name, 180),
+      project_name: cleanText(body["project_name"], 180),
       repository,
       provider,
-      branch: cleanText(body.branch, 180),
-      github_status: ["unknown", "connected", "disconnected", "connecting", "error"].includes(String(body.github_status ?? ""))
-        ? String(body.github_status)
+      branch: cleanText(body["branch"], 180),
+      github_status: ["unknown", "connected", "disconnected", "connecting", "error"].includes(String(body["github_status"] ?? ""))
+        ? String(body["github_status"])
         : "unknown",
-      workspace_url: cleanText(body.workspace_url, 1000),
-      preview_url: cleanText(body.preview_url, 1000),
-      publish_status: ["draft", "published", "unknown"].includes(String(body.publish_status ?? ""))
-        ? String(body.publish_status)
+      workspace_url: cleanText(body["workspace_url"], 1000),
+      preview_url: cleanText(body["preview_url"], 1000),
+      publish_status: ["draft", "published", "unknown"].includes(String(body["publish_status"] ?? ""))
+        ? String(body["publish_status"])
         : "unknown",
-      last_commit_sha: cleanText(body.last_commit_sha, 80),
+      last_commit_sha: cleanText(body["last_commit_sha"], 80),
       last_activity_at: now,
       updated_at: now,
     };
