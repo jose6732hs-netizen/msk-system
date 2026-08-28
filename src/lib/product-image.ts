@@ -56,7 +56,7 @@ export function normalizeProductImage(imageValue?: unknown, slugValue?: unknown)
 
 /**
  * Recupera somente imagens de produto que realmente falharam no navegador.
- * Preserva a arte original de cada oferta e só aplica o fallback correspondente ao produto.
+ * Preserva a arte original de cada oferta e aplica o mesmo fallback do produto em qualquer rota/carrinho.
  */
 function installProductImageRecovery() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
@@ -78,14 +78,20 @@ function installProductImageRecovery() {
         !!target.closest("[data-msk-product-image]") ||
         !!target.closest('[data-msk-security-role="checkout-scroll"]');
       const temporarySource = source.startsWith("blob:") || source.includes("/__l5e/assets-v1/");
-
-      if ((!insideProductUi && !temporarySource) || target.dataset.mskFallbackApplied === "1") return;
-
       const fallback = productImageFallback(target.dataset.productSlug || target.alt);
+      const recognizedProduct = fallback !== "/favicon.png";
+
+      if (
+        (!insideProductUi && !temporarySource && !recognizedProduct) ||
+        target.dataset.mskFallbackApplied === "1"
+      ) {
+        return;
+      }
       if (!fallback || source === fallback) return;
 
-      // Fora das áreas de produto, nunca troque uma imagem desconhecida pelo favicon.
-      if (!insideProductUi && fallback === "/favicon.png") return;
+      // Imagens reconhecidas de produto usam o mesmo fallback em qualquer rota,
+      // impedindo que o carrinho troque a arte por um banner genérico.
+      if (!insideProductUi && !temporarySource && !recognizedProduct) return;
 
       target.dataset.mskFallbackApplied = "1";
       event.stopImmediatePropagation();
