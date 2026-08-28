@@ -26,7 +26,6 @@ import { SmartPixModal, type SmartPixState } from "@/components/msk/smart-pix-mo
 import { getClonerProduct, getSmartOffer } from "@/lib/cloner.functions";
 import { getCmsContent } from "@/lib/cms.functions";
 import { resolveSiteImage } from "@/lib/site-images";
-import { normalizeProductImage, productImageFallback } from "@/lib/product-image";
 import {
   generatePurchasePixPayment,
   preparePurchasePayment,
@@ -70,9 +69,9 @@ function isChatGptSlug(value: unknown) {
 }
 
 function planImage(plan?: any) {
-  const slug = String(plan?.slug ?? "");
-  const candidate = String(plan?.image_url ?? "").trim() || PLAN_IMAGES[slug] || bannerOfferAsset.url;
-  return normalizeProductImage(candidate, slug || plan?.name);
+  const uploaded = String(plan?.image_url ?? "").trim();
+  if (uploaded) return uploaded;
+  return PLAN_IMAGES[String(plan?.slug ?? "")] || bannerOfferAsset.url;
 }
 
 type CartItem = {
@@ -245,14 +244,12 @@ function OfferCarouselSection({
               >
                 <div className="relative flex h-48 w-full items-center justify-center overflow-hidden bg-black/60 p-2 sm:h-56 sm:p-3">
                   <img
-                    data-msk-product-image
-                    data-product-slug={plan.slug}
                     src={planImage(plan)}
                     alt={plan.name}
                     loading="lazy"
                     onError={(event) => {
                       event.currentTarget.onerror = null;
-                      event.currentTarget.src = productImageFallback(plan.slug || plan.name);
+                      event.currentTarget.src = bannerOfferAsset.url;
                     }}
                     className="max-h-full max-w-full object-contain"
                   />
@@ -343,14 +340,12 @@ function ChatGptOfferSection({
         <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden bg-black/60 p-3">
           {image ? (
             <img
-              data-msk-product-image
-              data-product-slug={plan.slug}
               src={image}
               alt={plan.name || "ChatGPT Plus 30 dias"}
               loading="lazy"
               onError={(event) => {
                 event.currentTarget.onerror = null;
-                event.currentTarget.src = productImageFallback(plan.slug || plan.name);
+                event.currentTarget.src = imageUrl || bannerOfferAsset.url;
               }}
               className="max-h-[280px] w-full object-contain"
             />
@@ -462,23 +457,18 @@ function PlanosPage() {
     }
     const items = cart.map((item) => ({
       planId: item.planId,
-      slug: item.slug,
       name: item.planName,
       quantity: item.quantity,
       price: item.price,
-      imageUrl: normalizeProductImage(item.imageUrl, item.slug || item.planName),
+      imageUrl: item.imageUrl ?? null,
     }));
     if (offerEligible && offerAccepted && inlineOffer?.companion) {
       items.push({
         planId: inlineOffer.companion.id,
-        slug: inlineOffer.companion.slug ?? null,
         name: inlineOffer.companion.name,
         quantity: 1,
         price: Number(inlineOffer.companion.discountedPrice ?? 0),
-        imageUrl: normalizeProductImage(
-          smartOfferImage(inlineOffer.companion),
-          inlineOffer.companion.slug || inlineOffer.companion.name,
-        ),
+        imageUrl: smartOfferImage(inlineOffer.companion),
       });
     }
     saveCartSnapshot({
@@ -929,15 +919,11 @@ function PlanosPage() {
                     <div className="relative flex items-start gap-3">
                       <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-blue-300/15 bg-black/35 p-1.5">
                         <img
-                          data-msk-product-image
-                          data-product-slug={recommendationPlan.slug}
                           src={planImage(recommendationPlan)}
                           alt={recommendationPlan.name}
                           onError={(event) => {
                             event.currentTarget.onerror = null;
-                            event.currentTarget.src = productImageFallback(
-                              recommendationPlan.slug || recommendationPlan.name,
-                            );
+                            event.currentTarget.src = chatgptCard || bannerOfferAsset.url;
                           }}
                           className="h-full w-full object-contain"
                         />
@@ -1173,19 +1159,16 @@ function CartRow({
   onPay: () => void;
 }) {
   const singleOnly = isChatGptSlug(item.slug);
-  const image = normalizeProductImage(item.imageUrl, item.slug || item.planName);
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-black/25 p-3.5">
       <div className="flex min-w-0 gap-3">
         <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-black/50 p-1.5">
           <img
-            data-msk-product-image
-            data-product-slug={item.slug}
-            src={image}
+            src={item.imageUrl || bannerOfferAsset.url}
             alt={item.planName}
             onError={(event) => {
               event.currentTarget.onerror = null;
-              event.currentTarget.src = productImageFallback(item.slug || item.planName);
+              event.currentTarget.src = bannerOfferAsset.url;
             }}
             className="h-full w-full object-contain"
           />
