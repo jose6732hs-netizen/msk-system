@@ -11,10 +11,13 @@ import {
   Image as ImageIcon,
   Layers3,
   Loader2,
+  Mail,
+  MonitorSmartphone,
   Plus,
   RefreshCw,
   Save,
   Search,
+  Send,
   Settings2,
   Sparkles,
   Upload,
@@ -58,6 +61,58 @@ function durationText(value: number, unit: string) {
   return `${value} ${singular ? pair[0] : pair[1]}`;
 }
 
+type DeliveryMethod = "panel" | "email" | "panel_email" | "email_link";
+
+const DELIVERY_OPTIONS: { value: DeliveryMethod; label: string; hint: string }[] = [
+  {
+    value: "panel",
+    label: "Mostrar no painel",
+    hint: "A entrega fica destacada dentro da licença no painel do cliente.",
+  },
+  {
+    value: "email",
+    label: "Enviar por e-mail",
+    hint: "Após a aprovação, o cliente recebe o e-mail operacional da compra.",
+  },
+  {
+    value: "panel_email",
+    label: "Painel + e-mail",
+    hint: "Mostra no painel e também envia a confirmação por e-mail.",
+  },
+  {
+    value: "email_link",
+    label: "Enviar link por e-mail",
+    hint: "Dispara um e-mail específico com o link configurado nesta oferta.",
+  },
+];
+
+function normalizeDeliveryMethod(value: unknown): DeliveryMethod {
+  const raw = String(value ?? "panel_email");
+  return DELIVERY_OPTIONS.some((option) => option.value === raw)
+    ? (raw as DeliveryMethod)
+    : "panel_email";
+}
+
+function deliveryLabel(value: unknown) {
+  return DELIVERY_OPTIONS.find((option) => option.value === normalizeDeliveryMethod(value))?.label ?? "Painel + e-mail";
+}
+
+function objectValue(value: unknown): Record<string, any> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, any>)
+    : {};
+}
+
+function deliveryFromPlan(plan: Record<string, any>) {
+  const features = objectValue(plan["features"]);
+  const delivery = objectValue(features["delivery"]);
+  return {
+    method: normalizeDeliveryMethod(delivery["method"]),
+    link: String(delivery["link"] ?? ""),
+    instructions: String(delivery["instructions"] ?? ""),
+  };
+}
+
 type PlanForm = {
   id?: string;
   slug: string;
@@ -76,6 +131,9 @@ type PlanForm = {
   image_url: string;
   affiliate_commission_rate?: number;
   affiliate_commission_fixed?: number;
+  delivery_method: DeliveryMethod;
+  delivery_link: string;
+  delivery_instructions: string;
 };
 
 const EMPTY: PlanForm = {
@@ -95,6 +153,9 @@ const EMPTY: PlanForm = {
   image_url: "",
   affiliate_commission_rate: 0,
   affiliate_commission_fixed: 0,
+  delivery_method: "panel_email",
+  delivery_link: "",
+  delivery_instructions: "",
 };
 
 type CollectionKey = "chatgpt" | "agent" | "cloner" | "extension" | "other";
@@ -124,7 +185,6 @@ function collectionIcon(key: CollectionKey) {
   return Layers3;
 }
 
-/** Gestão das ofertas: coleções publicadas no site + assinaturas ativas. */
 export function AdminSubscriptionsTab({
   plans,
   subscriptions,
@@ -140,6 +200,9 @@ export function AdminSubscriptionsTab({
   const [editing, setEditing] = useState<PlanForm | null>(null);
   const [chatgptOpen, setChatgptOpen] = useState(false);
   const [chatgptImage, setChatgptImage] = useState("");
+  const [chatgptDeliveryMethod, setChatgptDeliveryMethod] = useState<DeliveryMethod>("panel_email");
+  const [chatgptDeliveryLink, setChatgptDeliveryLink] = useState("");
+  const [chatgptDeliveryInstructions, setChatgptDeliveryInstructions] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -153,6 +216,12 @@ export function AdminSubscriptionsTab({
   useEffect(() => {
     const image = cmsQuery.data?.site_images?.plans_chatgpt_card;
     if (typeof image === "string") setChatgptImage(image);
+
+    const special = objectValue(cmsQuery.data?.special_offer_chatgpt);
+    const delivery = objectValue(special["delivery"]);
+    setChatgptDeliveryMethod(normalizeDeliveryMethod(delivery["method"]));
+    setChatgptDeliveryLink(String(delivery["link"] ?? ""));
+    setChatgptDeliveryInstructions(String(delivery["instructions"] ?? ""));
   }, [cmsQuery.data]);
 
   const normalizedSearch = search.trim().toLowerCase();
@@ -211,11 +280,39 @@ export function AdminSubscriptionsTab({
     ];
   }, [visiblePlans]);
 
-  async function publishSiteImages(nextImages: Record<string, unknown>) {
-    await saveCmsFn({ data: { key: "site_images", data: nextImages } });
-    await publishCmsFn({ data: { key: "site_images" } });
+  async function publishCmsValue(key: string, data: Record<string, unknown>) {
+    await saveCmsFn({ data: { key, data } });
+    await publishCmsFn({ data: { key } });
     await qc.invalidateQueries({ queryKey: ["cms-editor-content"] });
     await qc.invalidateQueries({ queryKey: ["cms-content"] });
+  }
+
+  async function publishSiteImages(nextImages: Record<string, unknown>) {
+    await publishCmsValue("site_images", nextImages);
+  }
+
+  async function saveChatGptDelivery() {
+    if (chatgptDeliveryMethod === "email_link" && !/^https?:\/\//i.test(chatgptDeliveryLink.trim())) {
+      toast.error("Informe um link http(s) para o envio por e-mail.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const current = objectValue(cmsQuery.data?.special_offer_chatgpt);
+      await publishCmsValue("special_offer_chatgpt", {
+        ...current,
+        delivery: {
+          method: chatgptDeliveryMethod,
+          link: chatgptDeliveryLink.trim(),
+          instructions: chatgptDeliveryInstructions.trim(),
+        },
+      });
+      toast.success("Método de envio da oferta ChatGPT salvo.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function pickAndUploadPlan(planId?: string) {
@@ -225,7 +322,6 @@ export function AdminSubscriptionsTab({
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-
       const uploadKey = planId || "new-plan";
       setUploading(uploadKey);
       try {
@@ -290,6 +386,7 @@ export function AdminSubscriptionsTab({
     setChatgptOpen(false);
     const unit = normalizeDurationUnit(plan["duration_unit"] ?? "days");
     const value = Number(plan["duration_value"] ?? plan["duration_days"] ?? 30);
+    const delivery = deliveryFromPlan(plan);
     setEditing({
       id: plan["id"],
       slug: plan["slug"] ?? "",
@@ -308,10 +405,18 @@ export function AdminSubscriptionsTab({
       image_url: plan["image_url"] ?? "",
       affiliate_commission_rate: plan["affiliate_commission_rate"] ?? 0,
       affiliate_commission_fixed: plan["affiliate_commission_fixed"] ?? 0,
+      delivery_method: delivery.method,
+      delivery_link: delivery.link,
+      delivery_instructions: delivery.instructions,
     });
   }
 
   async function save(form: PlanForm) {
+    if (form.delivery_method === "email_link" && !/^https?:\/\//i.test(form.delivery_link.trim())) {
+      toast.error("Informe um link http(s) para o método Enviar link por e-mail.");
+      return;
+    }
+
     setBusy(true);
     try {
       const rawPrice = String(form.price).trim();
@@ -326,6 +431,8 @@ export function AdminSubscriptionsTab({
       await saveFn({
         data: {
           ...form,
+          delivery_link: form.delivery_link.trim(),
+          delivery_instructions: form.delivery_instructions.trim(),
           price: normalizedPrice,
           duration_unit: unit,
           duration_value: value,
@@ -357,12 +464,12 @@ export function AdminSubscriptionsTab({
             </div>
             <h2 className="mt-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">Planos & Ofertas</h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Edite cada coleção separadamente, com preço, validade, imagem, comissão, ordem e publicação em um único lugar.
+              Edite cada coleção separadamente, incluindo o método automático de entrega depois da compra.
             </p>
             <div className="mt-4 flex flex-wrap gap-2 text-[0.65rem] font-black uppercase tracking-wider">
               <span className="rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5">{plans.length} ofertas</span>
               <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[.08] px-3 py-1.5 text-emerald-300">{activeCount} publicadas</span>
-              <span className="rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5">4 coleções</span>
+              <span className="rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5">Entrega por oferta</span>
             </div>
           </div>
 
@@ -394,12 +501,13 @@ export function AdminSubscriptionsTab({
         collection={{
           key: "chatgpt",
           eyebrow: "Oferta especial",
-          title: "Conta ChatGPT · 30 dias",
-          description: "Card independente da vitrine. Hoje está configurado como oferta em breve, sem checkout ativo.",
+          title: "ChatGPT · 30 dias Plus",
+          description: "Oferta exclusiva MSK de ChatGPT Plus por 30 dias. Hoje permanece em breve, sem checkout ativo.",
           plans: [],
         }}
         special
         specialImage={chatgptImage}
+        specialDelivery={chatgptDeliveryMethod}
         onSpecialEdit={() => {
           setEditing(null);
           setChatgptOpen((value) => !value);
@@ -407,12 +515,15 @@ export function AdminSubscriptionsTab({
       />
 
       {chatgptOpen ? (
-        <section className="overflow-hidden rounded-[1.75rem] border border-emerald-400/25 bg-emerald-400/[.035]">
-          <div className="flex items-start justify-between gap-4 border-b border-emerald-400/15 px-5 py-4 sm:px-6">
+        <section className="overflow-hidden rounded-[1.75rem] border border-blue-400/25 bg-blue-400/[.035]">
+          <div className="flex items-start justify-between gap-4 border-b border-blue-400/15 px-5 py-4 sm:px-6">
             <div>
-              <p className="text-[0.6rem] font-black uppercase tracking-[.2em] text-emerald-300">Editor da oferta especial</p>
-              <h3 className="mt-1 text-lg font-black uppercase">ChatGPT · 30 dias</h3>
-              <p className="mt-1 text-xs text-muted-foreground">A copy e o estado “Em breve” continuam preservados; aqui você controla a arte exibida na vitrine.</p>
+              <p className="text-[0.6rem] font-black uppercase tracking-[.2em] text-blue-300">Editor da oferta especial</p>
+              <h3 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black uppercase">
+                ChatGPT · 30 dias
+                <span className="rounded-full bg-blue-500 px-2.5 py-1 text-[0.6rem] font-black normal-case tracking-normal text-white shadow-lg shadow-blue-500/20">Plus</span>
+              </h3>
+              <p className="mt-1 text-xs text-muted-foreground">A oferta continua “Em breve”, mas a arte e o método de entrega já ficam preparados no painel.</p>
             </div>
             <button type="button" className="rounded-xl p-2 text-muted-foreground hover:bg-white/5 hover:text-white" onClick={() => setChatgptOpen(false)}>
               <X className="h-4 w-4" />
@@ -421,7 +532,7 @@ export function AdminSubscriptionsTab({
           <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)]">
             <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/40">
               {chatgptImage ? (
-                <img src={chatgptImage} alt="Oferta ChatGPT 30 dias" className="h-full w-full object-contain" />
+                <img src={chatgptImage} alt="Oferta ChatGPT Plus 30 dias" className="h-full w-full object-contain" />
               ) : (
                 <div className="grid h-full place-items-center text-center">
                   <div>
@@ -431,19 +542,21 @@ export function AdminSubscriptionsTab({
                 </div>
               )}
               {uploading === "chatgpt" ? (
-                <div className="absolute inset-0 grid place-items-center bg-black/70"><RefreshCw className="h-6 w-6 animate-spin text-emerald-300" /></div>
+                <div className="absolute inset-0 grid place-items-center bg-black/70"><RefreshCw className="h-6 w-6 animate-spin text-blue-300" /></div>
               ) : null}
             </div>
+
             <div className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <InfoBox label="Nome exibido" value="Conta ChatGPT · 30 dias" />
+                <InfoBox label="Nome exibido" value="ChatGPT · 30 dias Plus" />
                 <InfoBox label="Status da vitrine" value="Em breve · checkout desativado" />
                 <InfoBox label="Duração" value="30 dias corridos" />
-                <InfoBox label="Coleção" value="Oferta especial MSK" />
+                <InfoBox label="Coleção" value="Oferta exclusiva MSK" />
               </div>
+
               <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                 <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Imagem do card</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Envie ou substitua a arte que aparece na seção ChatGPT da página de planos.</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Envie ou substitua a arte que aparece na seção ChatGPT Plus da página de planos.</p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button variant="neonOutline" disabled={uploading === "chatgpt"} onClick={() => void pickAndUploadChatGpt()}>
                     <Upload className="mr-2 h-4 w-4" /> {chatgptImage ? "Substituir imagem" : "Enviar imagem"}
@@ -451,6 +564,20 @@ export function AdminSubscriptionsTab({
                   {chatgptImage ? <Button variant="ghost" disabled={busy} onClick={() => void removeChatGptImage()}>Remover imagem</Button> : null}
                 </div>
               </div>
+
+              <DeliveryEditor
+                method={chatgptDeliveryMethod}
+                link={chatgptDeliveryLink}
+                instructions={chatgptDeliveryInstructions}
+                onMethod={setChatgptDeliveryMethod}
+                onLink={setChatgptDeliveryLink}
+                onInstructions={setChatgptDeliveryInstructions}
+              />
+
+              <Button variant="neon" disabled={busy} onClick={() => void saveChatGptDelivery()}>
+                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Salvar método de envio
+              </Button>
             </div>
           </div>
         </section>
@@ -505,12 +632,14 @@ function OfferCollection({
   collection,
   special = false,
   specialImage = "",
+  specialDelivery = "panel_email",
   onEdit,
   onSpecialEdit,
 }: {
   collection: Collection;
   special?: boolean;
   specialImage?: string;
+  specialDelivery?: DeliveryMethod;
   onEdit?: (plan: Record<string, any>) => void;
   onSpecialEdit?: () => void;
 }) {
@@ -534,19 +663,20 @@ function OfferCollection({
       {special ? (
         <button type="button" onClick={onSpecialEdit} className="grid w-full gap-4 p-4 text-left transition hover:bg-white/[.025] sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center sm:p-5">
           <div className="h-20 w-full overflow-hidden rounded-xl border border-white/10 bg-black/40 sm:w-[92px]">
-            {specialImage ? <img src={specialImage} alt="ChatGPT 30 dias" className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center"><ImageIcon className="h-6 w-6 text-muted-foreground/30" /></div>}
+            {specialImage ? <img src={specialImage} alt="ChatGPT Plus 30 dias" className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center"><ImageIcon className="h-6 w-6 text-muted-foreground/30" /></div>}
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-black uppercase">Conta ChatGPT · 30 dias</p>
+              <p className="font-black uppercase">ChatGPT · 30 dias</p>
+              <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[0.55rem] font-black normal-case text-white">Plus</span>
               <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[0.55rem] font-black uppercase text-amber-300">Em breve</span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">A oferta agora aparece dentro da Central de Ofertas. Clique para editar a arte exibida na vitrine.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Método de envio: {deliveryLabel(specialDelivery)}.</p>
           </div>
-          <span className="text-[0.6rem] font-black uppercase tracking-widest text-emerald-300">Editar oferta →</span>
+          <span className="text-[0.6rem] font-black uppercase tracking-widest text-blue-300">Editar oferta →</span>
         </button>
       ) : collection.plans.length ? (
-        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3 sm:p-5">
+        <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3">
           {collection.plans.map((plan) => (
             <PlanCard key={plan["id"]} plan={plan} onClick={() => onEdit?.(plan)} />
           ))}
@@ -559,6 +689,7 @@ function OfferCollection({
 }
 
 function PlanCard({ plan, onClick }: { plan: Record<string, any>; onClick: () => void }) {
+  const delivery = deliveryFromPlan(plan);
   return (
     <button type="button" onClick={onClick} className="group overflow-hidden rounded-2xl border border-white/10 bg-[#080808] text-left transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_50px_-30px_rgba(57,255,20,.35)]">
       <div className="flex min-h-24 gap-3 p-4">
@@ -581,9 +712,14 @@ function PlanCard({ plan, onClick }: { plan: Record<string, any>; onClick: () =>
           </p>
         </div>
       </div>
-      <div className="flex items-center justify-between border-t border-white/5 px-4 py-2.5 text-[0.55rem] font-black uppercase tracking-wider text-muted-foreground">
-        <span>Ordem {Number(plan["sort_order"] ?? 0)}</span>
-        <span className="text-primary opacity-70 transition group-hover:opacity-100">Editar →</span>
+      <div className="border-t border-white/5 px-4 py-2.5">
+        <div className="flex items-center justify-between gap-3 text-[0.55rem] font-black uppercase tracking-wider text-muted-foreground">
+          <span>Ordem {Number(plan["sort_order"] ?? 0)}</span>
+          <span className="text-primary opacity-70 transition group-hover:opacity-100">Editar →</span>
+        </div>
+        <div className="mt-1.5 flex items-center gap-1.5 text-[0.58rem] font-bold text-white/45">
+          <Send className="h-3 w-3" /> {deliveryLabel(delivery.method)}
+        </div>
       </div>
     </button>
   );
@@ -612,7 +748,7 @@ function PlanEditor({
         <div>
           <p className="text-[0.6rem] font-black uppercase tracking-[.2em] text-primary">Editor profissional</p>
           <h3 className="mt-1 text-lg font-black uppercase">{editing.id ? `Editar · ${editing.name}` : "Criar nova oferta"}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">Campos separados por contexto para você alterar somente o que precisa.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Preço, acesso, publicação e entrega pós-compra no mesmo editor.</p>
         </div>
         <button type="button" onClick={onCancel} className="rounded-xl p-2 text-muted-foreground hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
       </div>
@@ -676,6 +812,15 @@ function PlanEditor({
             <p className="mt-3 text-xs text-muted-foreground">{editing.is_lifetime ? "Licença sem expiração." : `A licença será gerada com ${durationText(editing.duration_value || 1, editing.duration_unit)}.`}</p>
           </EditorGroup>
 
+          <DeliveryEditor
+            method={editing.delivery_method}
+            link={editing.delivery_link}
+            instructions={editing.delivery_instructions}
+            onMethod={(delivery_method) => setEditing({ ...editing, delivery_method })}
+            onLink={(delivery_link) => setEditing({ ...editing, delivery_link })}
+            onInstructions={(delivery_instructions) => setEditing({ ...editing, delivery_instructions })}
+          />
+
           <EditorGroup title="Publicação" description="Controle se a oferta aparece no site.">
             <div className="flex flex-wrap gap-5">
               <label className="flex items-center gap-2 text-xs font-bold uppercase"><Switch checked={editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} />{editing.active ? <Eye className="h-4 w-4 text-emerald-300" /> : <EyeOff className="h-4 w-4" />} No site</label>
@@ -694,6 +839,9 @@ function PlanEditor({
             <p className="mt-3 truncate text-sm font-black">{editing.name || "Nome da oferta"}</p>
             <p className="mt-1 text-2xl font-black text-primary">{brl(Number(String(editing.price).replace(/\./g, "").replace(",", ".")) || 0)}</p>
             <p className="text-xs text-muted-foreground">{editing.is_lifetime ? "Vitalício" : durationText(editing.duration_value || 1, editing.duration_unit)}</p>
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[.025] px-3 py-2 text-[0.65rem] font-bold text-white/55">
+              <Send className="mr-1.5 inline h-3 w-3" /> {deliveryLabel(editing.delivery_method)}
+            </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="neonOutline" className="flex-1" disabled={uploading === (editing.id || "new-plan")} onClick={onUpload}><Upload className="mr-2 h-4 w-4" /> {editing.image_url ? "Trocar arte" : "Enviar arte"}</Button>
               {editing.image_url ? <Button variant="ghost" onClick={() => setEditing({ ...editing, image_url: "" })}>Remover</Button> : null}
@@ -702,7 +850,7 @@ function PlanEditor({
           </div>
 
           <div className="rounded-2xl border border-primary/20 bg-primary/[.04] p-4">
-            <div className="flex items-start gap-2"><BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div><p className="text-xs font-black uppercase">Publicação segura</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Salvar atualiza somente esta oferta e preserva as demais coleções.</p></div></div>
+            <div className="flex items-start gap-2"><BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div><p className="text-xs font-black uppercase">Entrega automática</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Após a aprovação, o fluxo usa exatamente o método configurado nesta oferta.</p></div></div>
           </div>
         </aside>
       </div>
@@ -712,6 +860,58 @@ function PlanEditor({
         <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
       </div>
     </section>
+  );
+}
+
+function DeliveryEditor({
+  method,
+  link,
+  instructions,
+  onMethod,
+  onLink,
+  onInstructions,
+}: {
+  method: DeliveryMethod;
+  link: string;
+  instructions: string;
+  onMethod: (value: DeliveryMethod) => void;
+  onLink: (value: string) => void;
+  onInstructions: (value: string) => void;
+}) {
+  const selected = DELIVERY_OPTIONS.find((option) => option.value === method) ?? DELIVERY_OPTIONS[2]!;
+  return (
+    <EditorGroup title="Método de envio" description="Define o que acontece automaticamente quando o pagamento desta oferta é aprovado.">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {DELIVERY_OPTIONS.map((option) => {
+          const active = option.value === method;
+          const Icon = option.value === "panel" ? MonitorSmartphone : option.value === "panel_email" ? Send : Mail;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onMethod(option.value)}
+              className={`rounded-2xl border p-4 text-left transition ${active ? "border-primary/50 bg-primary/[.08]" : "border-white/10 bg-black/20 hover:border-white/20"}`}
+            >
+              <div className="flex items-center gap-2">
+                <Icon className={`h-4 w-4 ${active ? "text-primary" : "text-muted-foreground"}`} />
+                <p className="text-xs font-black uppercase">{option.label}</p>
+              </div>
+              <p className="mt-2 text-[0.68rem] leading-relaxed text-muted-foreground">{option.hint}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <Field label={method === "email_link" ? "Link de entrega (obrigatório)" : "Link de entrega (opcional)"}>
+          <Input value={link} onChange={(e) => onLink(e.target.value)} placeholder="https://..." />
+        </Field>
+        <Field label="Instruções para o cliente">
+          <Input value={instructions} onChange={(e) => onInstructions(e.target.value)} placeholder="Ex.: clique no link e acesse sua conta" />
+        </Field>
+      </div>
+      <p className="mt-3 text-xs text-muted-foreground">Selecionado: <strong className="text-foreground">{selected.label}</strong>. {selected.hint}</p>
+    </EditorGroup>
   );
 }
 
