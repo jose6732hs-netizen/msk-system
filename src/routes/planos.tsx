@@ -896,6 +896,8 @@ function PlanosPage() {
           ) : null}
         </header>
 
+        <ChatGptOfferSection imageUrl={chatgptCard} />
+
         {offersLoading ? (
           <div className="mt-16 flex justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -903,13 +905,13 @@ function PlanosPage() {
         ) : (
           <>
             <OfferCarouselSection
-              sectionId="extensao-msk"
-              eyebrow="Extensão principal"
-              title="Extensão MSK"
-              description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
-              bannerUrl={extensionBanner}
-              plans={plans ?? []}
-              highlightSlug="monthly"
+              sectionId="msk-agente"
+              eyebrow="Assistente do projeto"
+              title="MSK Agente"
+              description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
+              bannerUrl={agentBanner}
+              plans={agentPlans ?? []}
+              highlightSlug="msk-agent-2"
               loadingPlan={loadingPlan}
               onAdd={(plan) => void addToCart(plan)}
               onShare={(plan) => void sharePlan(plan)}
@@ -929,19 +931,20 @@ function PlanosPage() {
             />
 
             <OfferCarouselSection
-              sectionId="msk-agente"
-              eyebrow="Assistente do projeto"
-              title="MSK Agente"
-              description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
-              bannerUrl={agentBanner}
-              plans={agentPlans ?? []}
-              highlightSlug="msk-agent-2"
+              sectionId="extensao-msk"
+              eyebrow="Extensão principal"
+              title="Extensão MSK"
+              description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
+              bannerUrl={extensionBanner}
+              plans={plans ?? []}
+              highlightSlug="monthly"
               loadingPlan={loadingPlan}
               onAdd={(plan) => void addToCart(plan)}
               onShare={(plan) => void sharePlan(plan)}
             />
           </>
         )}
+
       </main>
       <SiteFooter />
 
