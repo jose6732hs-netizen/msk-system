@@ -52,13 +52,25 @@ const PLAN_IMAGES: Record<string, string> = {
   quarterly: cardTrimestralImg,
 };
 
+const DEFAULT_CART_RECOMMENDATION = {
+  enabled: true,
+  product_slug: "chatgpt-plus-30d",
+  eyebrow: "Recomendado para seu projeto",
+  title: "Leve o ChatGPT Plus para acelerar seu site",
+  description:
+    "Crie banners, refine copies e acelere ajustes do projeto com os recursos do ChatGPT Plus. Uma opção complementar para produzir com mais agilidade e manter tudo no mesmo fluxo.",
+  note: "Oferta opcional. Adicione agora e pague junto no mesmo PIX ou cartão.",
+  button_label: "Adicionar ChatGPT Plus",
+};
+
 function isChatGptSlug(value: unknown) {
   const slug = String(value ?? "").toLowerCase();
   return slug.startsWith("chatgpt") || slug.startsWith("chat-gpt") || slug.startsWith("gpt-plus");
 }
 
 function planImage(plan?: any) {
-  if (plan?.image_url) return plan.image_url;
+  const uploaded = String(plan?.image_url ?? "").trim();
+  if (uploaded) return uploaded;
   return PLAN_IMAGES[String(plan?.slug ?? "")] || bannerOfferAsset.url;
 }
 
@@ -230,14 +242,18 @@ function OfferCarouselSection({
                     : "border-white/10"
                 }`}
               >
-                <div className="relative h-48 w-full overflow-hidden sm:h-56">
+                <div className="relative flex h-48 w-full items-center justify-center overflow-hidden bg-black/60 p-2 sm:h-56 sm:p-3">
                   <img
                     src={planImage(plan)}
                     alt={plan.name}
                     loading="lazy"
-                    className="h-full w-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.onerror = null;
+                      event.currentTarget.src = bannerOfferAsset.url;
+                    }}
+                    className="max-h-full max-w-full object-contain"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#0A0A0A] via-transparent to-transparent" />
+                  <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0A0A0A]/80 via-transparent to-transparent" />
                   <span className="absolute right-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[8px] font-black uppercase text-black">
                     {highlighted ? "Mais popular" : isFree ? "Teste" : "Oferta"}
                   </span>
@@ -316,14 +332,23 @@ function ChatGptOfferSection({
   onShare: (plan: any) => void;
 }) {
   if (!plan || Number(plan.price ?? 0) <= 0) return null;
-  const image = plan.image_url || imageUrl;
+  const image = planImage(plan) || imageUrl;
 
   return (
     <section id="conta-chatgpt" className="mt-10 min-w-0 scroll-mt-24 sm:mt-12">
       <article className="relative grid min-w-0 gap-0 overflow-hidden rounded-[2rem] border border-blue-400/25 bg-[#0A0A0A] shadow-[0_0_70px_rgba(59,130,246,.08)] md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden bg-black/60 p-3">
           {image ? (
-            <img src={image} alt={plan.name || "ChatGPT Plus 30 dias"} loading="lazy" className="max-h-[280px] w-full object-contain" />
+            <img
+              src={image}
+              alt={plan.name || "ChatGPT Plus 30 dias"}
+              loading="lazy"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = imageUrl || bannerOfferAsset.url;
+              }}
+              className="max-h-[280px] w-full object-contain"
+            />
           ) : (
             <div className="grid h-full w-full min-h-[190px] place-items-center rounded-[1.4rem] border border-dashed border-blue-400/25 text-center">
               <Sparkles className="h-8 w-8 text-blue-300" />
@@ -525,13 +550,27 @@ function PlanosPage() {
     },
   });
 
-  const hasAgentInCart = cart.some((item) => String(item.slug ?? "").startsWith("msk-agent"));
-  const hasChatGptInCart = cart.some((item) => isChatGptSlug(item.slug));
-  const showChatGptUpsell =
-    hasAgentInCart &&
-    !hasChatGptInCart &&
-    !!chatgptPlan &&
-    Number(chatgptPlan.price ?? 0) > 0;
+  const recommendationSettings = {
+    ...DEFAULT_CART_RECOMMENDATION,
+    ...((cmsSettings as any)?.cart_recommendation || {}),
+  };
+  const recommendationSlug = String(recommendationSettings.product_slug ?? "").trim();
+  const activeOffers = [
+    ...(plans ?? []),
+    ...(clonerPlans ?? []),
+    ...(agentPlans ?? []),
+    ...(chatgptPlan ? [chatgptPlan] : []),
+  ];
+  const recommendationPlan =
+    activeOffers.find((plan: any) => String(plan.slug ?? "") === recommendationSlug) ??
+    chatgptPlan ??
+    null;
+  const showCartRecommendation =
+    recommendationSettings.enabled !== false &&
+    cart.length > 0 &&
+    !!recommendationPlan &&
+    Number(recommendationPlan.price ?? 0) > 0 &&
+    !cart.some((item) => item.planId === recommendationPlan.id);
 
   async function loadCheckoutOffer(plan: any) {
     const cadence = ["daily", "weekly", "monthly"].includes(String(plan.slug));
@@ -849,7 +888,7 @@ function PlanosPage() {
           {cart.length > 0 ? (
             <div
               id="checkout-cart"
-              className="w-full min-w-0 scroll-mt-24 overflow-hidden rounded-[1.5rem] border border-primary/20 bg-[#0F0F0F] shadow-2xl lg:max-w-[470px]"
+              className="w-full min-w-0 scroll-mt-24 overflow-hidden rounded-[1.5rem] border border-primary/20 bg-[#0F0F0F] shadow-2xl lg:max-w-[500px]"
             >
               <div className="flex min-w-0 items-center justify-between gap-3 border-b border-primary/20 bg-primary/10 px-4 py-3">
                 <div className="flex min-w-0 items-center gap-2">
@@ -874,37 +913,54 @@ function PlanosPage() {
                   />
                 ))}
 
-                {showChatGptUpsell && chatgptPlan ? (
-                  <div className="relative overflow-hidden rounded-[1.35rem] border border-blue-400/35 bg-gradient-to-br from-blue-500/15 via-violet-500/10 to-black/20 p-4 shadow-[0_18px_60px_-35px_rgba(59,130,246,.8)]">
+                {showCartRecommendation && recommendationPlan ? (
+                  <div className="relative overflow-hidden rounded-[1.35rem] border border-blue-400/35 bg-gradient-to-br from-blue-500/15 via-sky-400/5 to-black/20 p-4 shadow-[0_18px_60px_-35px_rgba(59,130,246,.8)]">
                     <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
-                    <div className="relative">
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-blue-300" />
-                        <span className="text-[9px] font-black uppercase tracking-[.2em] text-blue-300">Antes de finalizar</span>
+                    <div className="relative flex items-start gap-3">
+                      <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-blue-300/15 bg-black/35 p-1.5">
+                        <img
+                          src={planImage(recommendationPlan)}
+                          alt={recommendationPlan.name}
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = chatgptCard || bannerOfferAsset.url;
+                          }}
+                          className="h-full w-full object-contain"
+                        />
                       </div>
-                      <h3 className="mt-2 text-lg font-black uppercase leading-tight text-white">
-                        Turbine seu MSK Agente com ChatGPT Plus
-                      </h3>
-                      <p className="mt-2 text-[11px] font-medium leading-relaxed text-white/70">
-                        Não interrompa o ritmo dos seus projetos. Adicione o Plus agora para trabalhar mais rápido, ter mais liberdade na criação de imagens e usar tudo junto com o MSK Agente sem consumir os créditos do MSK.
-                      </p>
-                      <div className="mt-3 rounded-xl border border-blue-400/15 bg-black/25 px-3 py-2 text-[10px] font-bold text-white/65">
-                        Opcional, mas é a combinação completa: adicione agora e pague os dois produtos no mesmo PIX ou cartão.
-                      </div>
-                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Adicionar por</p>
-                          <p className="text-xl font-black text-blue-300">{formatPrice(Number(chatgptPlan.price), chatgptPlan.currency)}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 shrink-0 text-blue-300" />
+                          <span className="text-[9px] font-black uppercase tracking-[.2em] text-blue-300">
+                            {recommendationSettings.eyebrow}
+                          </span>
                         </div>
-                        <Button
-                          type="button"
-                          className="min-h-12 flex-1 rounded-xl bg-blue-500 px-4 text-[10px] font-black uppercase text-white hover:bg-blue-400 sm:flex-none"
-                          onClick={() => void addToCart(chatgptPlan)}
-                          disabled={loadingPlan !== null}
-                        >
-                          Sim, quero o Plus agora
-                        </Button>
+                        <h3 className="mt-2 text-base font-black uppercase leading-tight text-white sm:text-lg">
+                          {recommendationSettings.title}
+                        </h3>
                       </div>
+                    </div>
+                    <p className="relative mt-3 text-[11px] font-medium leading-relaxed text-white/72">
+                      {recommendationSettings.description}
+                    </p>
+                    <div className="relative mt-3 rounded-xl border border-blue-400/15 bg-black/25 px-3 py-2 text-[10px] font-bold text-white/65">
+                      {recommendationSettings.note}
+                    </div>
+                    <div className="relative mt-4 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Adicionar por</p>
+                        <p className="text-xl font-black text-blue-300">
+                          {formatPrice(Number(recommendationPlan.price), recommendationPlan.currency)}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        className="min-h-12 flex-1 rounded-xl bg-blue-500 px-4 text-[10px] font-black uppercase text-white hover:bg-blue-400 sm:flex-none"
+                        onClick={() => void addToCart(recommendationPlan)}
+                        disabled={loadingPlan !== null}
+                      >
+                        {recommendationSettings.button_label}
+                      </Button>
                     </div>
                   </div>
                 ) : null}
@@ -1106,15 +1162,17 @@ function CartRow({
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-black/25 p-3.5">
       <div className="flex min-w-0 gap-3">
-        {item.imageUrl ? (
-          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10">
-            <img
-              src={item.imageUrl}
-              alt={item.planName}
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ) : null}
+        <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-black/50 p-1.5">
+          <img
+            src={item.imageUrl || bannerOfferAsset.url}
+            alt={item.planName}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = bannerOfferAsset.url;
+            }}
+            className="h-full w-full object-contain"
+          />
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-start justify-between gap-2">
             <div className="min-w-0">
