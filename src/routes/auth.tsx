@@ -17,7 +17,7 @@ import { getVisitorId, readAffiliateRef } from "@/lib/urls";
 
 const searchSchema = z.object({ 
   next: z.string().optional(),
-  mode: z.enum(["login", "signup", "reset", "verify"]).optional()
+  mode: z.enum(["login", "signup", "reset", "verify", "new-password"]).optional()
 });
 
 type IconProps = { className?: string };
@@ -88,7 +88,7 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-type Mode = "login" | "signup" | "reset" | "verify";
+type Mode = "login" | "signup" | "reset" | "verify" | "new-password";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -96,6 +96,7 @@ function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -112,6 +113,14 @@ function AuthPage() {
     }
   }, [search.next, search.mode]);
 
+  useEffect(() => {
+    const { data } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("new-password");
+      }
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
 
   async function resendVerification() {
     if (!email) return;
@@ -142,6 +151,8 @@ function AuthPage() {
   }
 
   useEffect(() => {
+    if (mode === "new-password" || search.mode === "new-password") return;
+
     supabase.auth.getSession().then(async ({ data }) => {
       if (data.session) {
         if (search.next?.includes('parceiro')) {
@@ -156,12 +167,38 @@ function AuthPage() {
         navigate({ to: search.next || "/painel" });
       }
     });
-  }, [navigate, mode, search.next]);
+  }, [navigate, mode, search.next, search.mode]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
+      if (mode === "new-password") {
+        if (password !== confirmPassword) {
+          throw new Error("As senhas não conferem.");
+        }
+        if (password.length < 8 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+          throw new Error("Use pelo menos 8 caracteres, com letra maiúscula, minúscula e número.");
+        }
+
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!sessionData.session) {
+          throw new Error("Este link de redefinição é inválido ou expirou. Solicite um novo link.");
+        }
+
+        const { error } = await supabase.auth.updateUser({ password });
+        if (error) throw error;
+
+        await supabase.auth.signOut();
+        setPassword("");
+        setConfirmPassword("");
+        window.history.replaceState({}, "", "/auth?mode=login");
+        setMode("login");
+        toast.success("Senha redefinida com segurança. Entre novamente com a nova senha.");
+        return;
+      }
+
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -193,10 +230,10 @@ function AuthPage() {
         toast.success("Verifique seu e-mail para confirmar o cadastro.");
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/painel`,
+          redirectTo: `${window.location.origin}/auth?mode=new-password`,
         });
         if (error) throw error;
-        toast.success("Enviamos um link de recuperação para o seu e-mail.");
+        toast.success("Enviamos um link seguro de recuperação para o seu e-mail.");
         setMode("login");
       }
     } catch (err) {
@@ -262,10 +299,16 @@ function AuthPage() {
                   ? "Criar sua conta de parceiro"
                   : mode === "verify"
                     ? "Confirme seu cadastro"
-                    : "Recuperar senha"}
+                    : mode === "new-password"
+                      ? "Defina sua nova senha"
+                      : "Recuperar senha"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground animate-in fade-in duration-700">
-              {mode === "signup" ? "Comece a lucrar com IA agora mesmo." : "Acesse seu token, assinatura e dispositivos."}
+              {mode === "signup"
+                ? "Comece a lucrar com IA agora mesmo."
+                : mode === "new-password"
+                  ? "Crie uma senha forte para proteger sua conta."
+                  : "Acesse seu token, assinatura e dispositivos."}
             </p>
 
             {mode === "verify" ? (
@@ -329,20 +372,22 @@ function AuthPage() {
                       </div>
                     </>
                   )}
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email">E-mail</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
+                  {mode !== "new-password" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="email">E-mail</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        autoComplete="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
                   {mode !== "reset" && (
                     <div className="space-y-1.5">
-                      <Label htmlFor="password">Senha</Label>
+                      <Label htmlFor="password">{mode === "new-password" ? "Nova senha" : "Senha"}</Label>
                       <div className="relative">
                         <Input
                           id="password"
@@ -365,6 +410,23 @@ function AuthPage() {
                       </div>
                     </div>
                   )}
+                  {mode === "new-password" && (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+                      <Input
+                        id="confirm-password"
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="new-password"
+                        minLength={8}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                      />
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        Mínimo de 8 caracteres, com letra maiúscula, minúscula e número.
+                      </p>
+                    </div>
+                  )}
                   <Button type="submit" variant="neon" className="w-full" disabled={loading}>
                     {loading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -372,33 +434,39 @@ function AuthPage() {
                       "Entrar"
                     ) : mode === "signup" ? (
                       "Criar conta"
+                    ) : mode === "new-password" ? (
+                      "Salvar nova senha"
                     ) : (
                       "Enviar link"
                     )}
                   </Button>
                 </form>
 
-                <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground animate-in fade-in duration-1000">
-                  <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
-                </div>
+                {mode !== "new-password" && (
+                  <>
+                    <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground animate-in fade-in duration-1000">
+                      <span className="h-px flex-1 bg-border" /> ou <span className="h-px flex-1 bg-border" />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-700">
-                  {PROVIDERS.map((p) => (
-                    <Button
-                      key={p.id}
-                      variant="glass"
-                      className="justify-center gap-2"
-                      onClick={() => social(p.id)}
-                    >
-                      <p.Icon className="h-4 w-4 shrink-0" />
-                      <span>{p.label}</span>
-                    </Button>
-                  ))}
-                </div>
+                    <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-bottom-2 duration-700">
+                      {PROVIDERS.map((p) => (
+                        <Button
+                          key={p.id}
+                          variant="glass"
+                          className="justify-center gap-2"
+                          onClick={() => social(p.id)}
+                        >
+                          <p.Icon className="h-4 w-4 shrink-0" />
+                          <span>{p.label}</span>
+                        </Button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
-            {mode !== "verify" && (
+            {mode !== "verify" && mode !== "new-password" && (
               <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground animate-in fade-in duration-1000">
                 {mode !== "login" ? (
                   <button className="hover:text-primary" onClick={() => setMode("login")}>
