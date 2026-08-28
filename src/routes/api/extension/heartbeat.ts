@@ -10,19 +10,9 @@ const VERSION_RE = /^[0-9A-Za-z.+_-]{1,64}$/;
 const REPOSITORY_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
 
 function cors(request: Request) {
-  const origin = request.headers.get("origin")?.trim() ?? "";
-  const allowed =
-    origin.startsWith("chrome-extension://") ||
-    origin.startsWith("moz-extension://") ||
-    origin === "https://msksystem.online";
-  return {
-    ...(allowed ? { "access-control-allow-origin": origin } : {}),
-    "access-control-allow-headers": "content-type, authorization, x-msk-installation-id, x-msk-extension-version",
-    "access-control-allow-methods": "POST, GET, OPTIONS",
-    "access-control-max-age": "86400",
-    vary: "Origin",
-  };
+  return extensionCorsHeaders(request);
 }
+
 
 function json(request: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
