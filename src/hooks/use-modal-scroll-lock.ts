@@ -36,7 +36,7 @@ function ensureCheckoutSecurityArtworkStyles() {
     }
 
     [data-msk-checkout-stage="choose"] [data-msk-security-role="method-bar"]::before {
-      width: min(100%, 560px);
+      width: min(100%, 420px);
       aspect-ratio: 420 / 130;
       margin: 0 auto 12px;
       background-image: url("/images/checkout-method-security.webp");
@@ -44,7 +44,7 @@ function ensureCheckoutSecurityArtworkStyles() {
     }
 
     [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::before {
-      width: min(calc(100% - 24px), 680px);
+      width: min(calc(100% - 24px), 420px);
       aspect-ratio: 420 / 131;
       margin: 16px auto 0;
       background-image: url("/images/checkout-pix-security.webp");
@@ -68,7 +68,7 @@ function ensureCheckoutSecurityArtworkStyles() {
       }
 
       [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::before {
-        width: calc(100% - 16px);
+        width: min(calc(100% - 16px), 420px);
         margin-top: 10px;
       }
 
