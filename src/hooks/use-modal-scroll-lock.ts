@@ -16,6 +16,107 @@ type ScrollSnapshot = {
 let lockCount = 0;
 let snapshot: ScrollSnapshot | null = null;
 
+const CHECKOUT_SECURITY_STYLE_ID = "msk-checkout-security-artwork";
+
+function ensureCheckoutSecurityArtworkStyles() {
+  if (typeof document === "undefined" || document.getElementById(CHECKOUT_SECURITY_STYLE_ID)) return;
+
+  const style = document.createElement("style");
+  style.id = CHECKOUT_SECURITY_STYLE_ID;
+  style.textContent = `
+    [data-msk-checkout-stage="choose"] [data-msk-security-role="method-bar"]::before,
+    [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::before,
+    [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::after {
+      content: "";
+      display: block;
+      box-sizing: border-box;
+      background-repeat: no-repeat;
+      background-position: center;
+      pointer-events: none;
+    }
+
+    [data-msk-checkout-stage="choose"] [data-msk-security-role="method-bar"]::before {
+      width: min(100%, 560px);
+      aspect-ratio: 420 / 130;
+      margin: 0 auto 12px;
+      background-image: url("/images/checkout-method-security.webp");
+      background-size: contain;
+    }
+
+    [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::before {
+      width: min(calc(100% - 24px), 680px);
+      aspect-ratio: 420 / 131;
+      margin: 16px auto 0;
+      background-image: url("/images/checkout-pix-security.webp");
+      background-size: contain;
+    }
+
+    [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::after {
+      width: min(calc(100% - 24px), 680px);
+      aspect-ratio: 2.08 / 1;
+      margin: 12px auto 4px;
+      background-image:
+        url("/images/checkout-payment-safe.webp"),
+        url("/images/checkout-data-protected.webp");
+      background-size: 48% auto, 48% auto;
+      background-position: left center, right center;
+    }
+
+    @media (max-width: 640px) {
+      [data-msk-checkout-stage="choose"] [data-msk-security-role="method-bar"]::before {
+        margin-bottom: 10px;
+      }
+
+      [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::before {
+        width: calc(100% - 16px);
+        margin-top: 10px;
+      }
+
+      [data-msk-checkout-stage="pix"] [data-msk-security-role="checkout-scroll"]::after {
+        width: calc(100% - 16px);
+        margin-top: 8px;
+        background-size: 49% auto, 49% auto;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function findCheckoutRoot() {
+  if (typeof document === "undefined") return null;
+
+  const label = Array.from(document.querySelectorAll("p")).find(
+    (element) => element.textContent?.trim().toLowerCase() === "checkout seguro",
+  );
+  const header = label?.closest("header");
+  const root = header?.parentElement;
+  const methodBar = header?.nextElementSibling as HTMLElement | null;
+  const scroll = methodBar?.nextElementSibling as HTMLElement | null;
+
+  if (!(root instanceof HTMLElement) || !methodBar || !scroll) return null;
+  return { root, methodBar, scroll };
+}
+
+function syncCheckoutSecurityArtwork() {
+  const checkout = findCheckoutRoot();
+  if (!checkout) return null;
+
+  ensureCheckoutSecurityArtworkStyles();
+  const { root, methodBar, scroll } = checkout;
+  methodBar.dataset.mskSecurityRole = "method-bar";
+  scroll.dataset.mskSecurityRole = "checkout-scroll";
+
+  const methodButtons = Array.from(methodBar.querySelectorAll("button"));
+  const cardSelected = methodButtons[1]?.classList.contains("bg-primary") ?? false;
+  const pixGenerated = Boolean(
+    scroll.querySelector('[aria-label="Copiar código PIX"], [aria-label="Código PIX copiado"]'),
+  );
+  const paid = scroll.textContent?.includes("Pagamento confirmado") ?? false;
+
+  root.dataset.mskCheckoutStage = paid ? "paid" : cardSelected ? "card" : pixGenerated ? "pix" : "choose";
+  return root;
+}
+
 function lockDocumentScroll() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
   lockCount += 1;
@@ -80,6 +181,33 @@ export function useModalScrollLock(active = true) {
   useEffect(() => {
     if (!active) return undefined;
     lockDocumentScroll();
-    return () => unlockDocumentScroll();
+
+    const checkoutRoot = syncCheckoutSecurityArtwork();
+    let observer: MutationObserver | null = null;
+    let frame = 0;
+
+    if (checkoutRoot) {
+      const syncAfterRender = () => {
+        if (frame) window.cancelAnimationFrame(frame);
+        frame = window.requestAnimationFrame(() => {
+          frame = 0;
+          syncCheckoutSecurityArtwork();
+        });
+      };
+
+      observer = new MutationObserver(syncAfterRender);
+      observer.observe(checkoutRoot, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        attributeFilter: ["class", "aria-label"],
+      });
+    }
+
+    return () => {
+      observer?.disconnect();
+      if (frame) window.cancelAnimationFrame(frame);
+      unlockDocumentScroll();
+    };
   }, [active]);
 }
