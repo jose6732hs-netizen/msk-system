@@ -3,6 +3,48 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
 
+declare global {
+  interface Window {
+    __mskCmsUploadFetchPatched?: boolean;
+  }
+}
+
+// O editor envia imagens por fetch/FormData direto para a rota de upload.
+// Diferente de useServerFn, fetch() não inclui automaticamente o Bearer da sessão,
+// então a rota respondia UNAUTHORIZED mesmo com o admin logado. Centralizamos aqui
+// a inclusão segura do token para todos os uploads do CMS (site, banners e ofertas).
+if (typeof window !== "undefined" && !window.__mskCmsUploadFetchPatched) {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const rawUrl =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+    const target = new URL(rawUrl, window.location.origin);
+    const isCmsUpload =
+      target.origin === window.location.origin && target.pathname === "/api/public/cms/upload";
+
+    if (!isCmsUpload) return nativeFetch(input, init);
+
+    const { supabase } = await import("@/integrations/supabase/client");
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error("Sessão expirada. Entre novamente para enviar imagens.");
+    }
+
+    const requestHeaders =
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined;
+    const headers = new Headers(init?.headers ?? requestHeaders);
+    headers.set("Authorization", `Bearer ${session.access_token}`);
+    return nativeFetch(input, { ...init, headers });
+  };
+  window.__mskCmsUploadFetchPatched = true;
+}
+
 async function readPublishedWith(client: any) {
   return client.from("app_settings").select("*");
 }
