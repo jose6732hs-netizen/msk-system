@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { FilterChips } from "@/components/msk/filter-chips";
+import { AdminAgentControlCenter } from "@/components/msk/admin-agent-control-center";
 import { agentAdminOverview } from "@/lib/agent-admin.functions";
 import { adminSavePlan } from "@/lib/admin.functions";
 import {
@@ -110,7 +111,7 @@ export function AdminAgentTab() {
           publish: true,
         },
       });
-      toast.success("ZIP do MSK Agente publicado. Ele será liberado após o pagamento aprovado.");
+      toast.success("ZIP do MSK Agente publicado. Ele será liberado após o pagamento aprovado da oferta do MSK Agente.");
       setNotes("");
       if (fileRef.current) fileRef.current.value = "";
       qc.invalidateQueries({ queryKey: ["agent-admin"] });
@@ -137,9 +138,11 @@ export function AdminAgentTab() {
         </div>
         <div>
           <h3 className="text-sm font-black uppercase tracking-widest">MSK Agente</h3>
-          <p className="text-xs text-muted-foreground">Ofertas, compras e entrega do arquivo do assistente.</p>
+          <p className="text-xs text-muted-foreground">Ofertas, compras, mensagens para a extensão e entrega do arquivo do assistente.</p>
         </div>
       </div>
+
+      <AdminAgentControlCenter />
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
