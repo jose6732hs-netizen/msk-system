@@ -49,7 +49,7 @@ export function normalizeProductImage(imageValue?: unknown, slugValue?: unknown)
 
 /**
  * Recupera somente imagens de produto que realmente falharam no navegador.
- * Não sobrescreve mais os cards do MSK Agente: cada oferta preserva sua arte própria.
+ * Preserva artes válidas e só corrige assets temporários do Lovable quando eles quebram.
  */
 function installProductImageRecovery() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
@@ -64,16 +64,21 @@ function installProductImageRecovery() {
       const target = event.target;
       if (!(target instanceof HTMLImageElement)) return;
 
+      const source = String(target.getAttribute("src") ?? "");
       const insideProductUi =
         !!target.closest("#checkout-cart") ||
         !!target.closest("[data-plan-card]") ||
         !!target.closest("[data-msk-product-image]") ||
         !!target.closest('[data-msk-security-role="checkout-scroll"]');
-      if (!insideProductUi || target.dataset.mskFallbackApplied === "1") return;
+      const temporarySource = source.startsWith("blob:") || source.includes("/__l5e/assets-v1/");
 
-      const source = String(target.getAttribute("src") ?? "");
+      if ((!insideProductUi && !temporarySource) || target.dataset.mskFallbackApplied === "1") return;
+
       const fallback = productImageFallback(target.dataset.productSlug || target.alt);
       if (!fallback || source === fallback) return;
+
+      // Fora das áreas de produto, nunca troque uma imagem desconhecida pelo favicon.
+      if (!insideProductUi && fallback === "/favicon.png") return;
 
       target.dataset.mskFallbackApplied = "1";
       event.stopImmediatePropagation();
