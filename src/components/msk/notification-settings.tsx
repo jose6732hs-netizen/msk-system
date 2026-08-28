@@ -14,6 +14,7 @@ import {
 import { NOTIFICATION_GROUPS } from "@/lib/notification-keys";
 import { enablePushNotifications, pushPermission } from "@/lib/push-client";
 import { AdminEmailBroadcast } from "@/components/msk/admin-email-broadcast";
+import { AdminAgentControlCenter } from "@/components/msk/admin-agent-control-center";
 
 /**
  * Painel de notificações. `scope="user"` edita as preferências pessoais;
@@ -129,6 +130,18 @@ export function NotificationSettings({ scope = "user" }: { scope?: "user" | "adm
             );
           })}
         </div>
+      )}
+
+      {isAdmin && (
+        <section className="space-y-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest">Mensagens para a extensão</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Envie avisos diretamente para instalações do MSK Agente e acompanhe entrega e confirmação.
+            </p>
+          </div>
+          <AdminAgentControlCenter />
+        </section>
       )}
 
       {isAdmin && <AdminEmailBroadcast />}
