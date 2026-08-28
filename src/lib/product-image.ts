@@ -37,8 +37,8 @@ export function normalizeProductImage(imageValue?: unknown, slugValue?: unknown)
   const fallback = productImageFallback(slugValue);
   if (!value) return fallback;
 
-  // URLs temporárias do editor Lovable e blobs locais não sobrevivem no site publicado.
-  if (value.startsWith("blob:") || value.startsWith("/__l5e/assets-v1/")) return fallback;
+  // Blob local não sobrevive fora da aba atual. URLs de assets do próprio projeto são preservadas.
+  if (value.startsWith("blob:")) return fallback;
 
   if (/^https?:\/\//i.test(value) || value.startsWith("data:image/") || value.startsWith("/")) {
     return value;
