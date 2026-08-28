@@ -18,7 +18,8 @@ import {
   Trash2,
   Trophy,
   MessageCircle,
-  Phone
+  Phone,
+  ShoppingCart
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +28,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent, saveCmsDraft, publishCmsDraft, getCmsHistory, uploadCmsAsset } from "@/lib/cms.functions";
+import { supabase } from "@/integrations/supabase/client";
 import {
   SITE_IMAGE_SLOTS,
   SITE_IMAGE_GROUPS,
@@ -37,6 +39,17 @@ import { ChevronUp, ChevronDown } from "lucide-react";
 import { TutorialsManager } from "@/components/msk/tutorials-manager";
 
 type BannerItem = { url: string; alt?: string; active?: boolean; order?: number };
+
+const DEFAULT_CART_RECOMMENDATION = {
+  enabled: true,
+  product_slug: "chatgpt-plus-30d",
+  eyebrow: "Recomendado para seu projeto",
+  title: "Leve o ChatGPT Plus para acelerar seu site",
+  description:
+    "Crie banners, refine copies e acelere ajustes do projeto com os recursos do ChatGPT Plus. Uma opção complementar para produzir com mais agilidade e manter tudo no mesmo fluxo.",
+  note: "Oferta opcional. Adicione agora e pague junto no mesmo PIX ou cartão.",
+  button_label: "Adicionar ChatGPT Plus",
+};
 
 async function pickAndUpload(opts: {
   accept: string;
@@ -221,7 +234,7 @@ function BannerManager(props: {
 }
 
 
-type Section = 'hero' | 'banners' | 'panel' | 'images' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards' | 'splits' | 'recovery';
+type Section = 'hero' | 'banners' | 'panel' | 'images' | 'cart_offer' | 'partners' | 'features' | 'copy' | 'branding' | 'tutorials' | 'awards' | 'splits' | 'recovery';
 
 export function AdminEditorTab() {
   const qc = useQueryClient();
@@ -245,6 +258,20 @@ export function AdminEditorTab() {
   const { data: history } = useQuery({
     queryKey: ["cms-history"],
     queryFn: () => getHistory(),
+  });
+
+  const { data: activePlans = [] } = useQuery({
+    queryKey: ["admin-editor", "active-plans"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plans")
+        .select("id,name,slug,price,currency,image_url,duration_label")
+        .eq("active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+    staleTime: 60_000,
   });
 
   const initialSettings = useMemo(() => settings || {}, [settings]);
@@ -297,9 +324,18 @@ export function AdminEditorTab() {
     return <div className="flex h-64 items-center justify-center"><RefreshCw className="h-6 w-6 animate-spin text-primary" /></div>;
   }
 
+  const recommendationSettings = {
+    ...DEFAULT_CART_RECOMMENDATION,
+    ...((localSettings as any).cart_recommendation || {}),
+  };
+  const selectedCartPlan = activePlans.find(
+    (plan: any) => String(plan.slug ?? "") === String(recommendationSettings.product_slug ?? ""),
+  );
+
   const SECTIONS: { id: Section; label: string; icon: any; desc: string }[] = [
     { id: 'hero', label: 'Hero / Textos', icon: Monitor, desc: 'Título, subtítulo e CTA' },
     { id: 'images', label: 'Imagens do Site', icon: ImageIcon, desc: 'Todas as imagens editáveis' },
+    { id: 'cart_offer', label: 'Oferta do Carrinho', icon: ShoppingCart, desc: 'Produto e copy recomendados' },
     { id: 'banners', label: 'Banners Landing', icon: Layout, desc: 'Ordenar e ativar' },
     { id: 'panel', label: 'Banners Painel', icon: Users, desc: 'Exclusivos dos tenants' },
     { id: 'splits', label: 'Configurações de Split', icon: Palette, desc: 'Configurações financeiras' },
@@ -312,12 +348,12 @@ export function AdminEditorTab() {
   ];
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
+    <div className="flex flex-col gap-5 lg:flex-row lg:items-start xl:gap-7">
       {/* Steps Sidebar */}
-      <aside className="lg:w-64 lg:shrink-0">
+      <aside className="lg:w-56 lg:shrink-0 xl:w-60">
         <div className="glass sticky top-6 rounded-3xl border border-white/5 p-3">
           <p className="px-3 py-2 text-[0.55rem] font-black uppercase tracking-[0.2em] text-primary/70">Etapas do site</p>
-          <nav className="flex gap-2 overflow-x-auto no-scrollbar lg:flex-col lg:overflow-visible">
+          <nav className="flex gap-2 overflow-x-auto no-scrollbar lg:max-h-[calc(100vh-110px)] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:pr-1">
             {SECTIONS.map((item) => (
               <button
                 key={item.id}
@@ -339,7 +375,7 @@ export function AdminEditorTab() {
         </div>
       </aside>
 
-      <div className="grid min-w-0 flex-1 grid-cols-1 gap-8 xl:grid-cols-2">
+      <div className="grid min-w-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.25fr)_minmax(320px,.75fr)] 2xl:grid-cols-[minmax(0,1.35fr)_minmax(400px,.65fr)] xl:gap-8">
       {/* Editor Panel */}
       <div className="min-w-0 space-y-6">
         <div className="flex items-center justify-between">
@@ -357,7 +393,7 @@ export function AdminEditorTab() {
           </Button>
         </div>
 
-        <div className="glass rounded-3xl p-6 space-y-6">
+        <div className="glass rounded-3xl p-4 sm:p-5 xl:p-6 space-y-6">
 
           
           {activeSection === 'hero' && (
@@ -387,7 +423,7 @@ export function AdminEditorTab() {
                   className="bg-background/50 min-h-[100px]"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <label className="text-[0.65rem] font-black uppercase tracking-widest text-muted-foreground">Texto CTA</label>
                   <Input 
@@ -445,48 +481,63 @@ export function AdminEditorTab() {
           )}
 
           {activeSection === 'images' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center gap-3">
                 <div className="h-8 w-1 bg-primary rounded-full" />
                 <div>
                   <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Todas as Imagens do Site</h4>
-                  <p className="text-[0.6rem] font-bold text-muted-foreground">Visualize e substitua qualquer imagem usada na plataforma</p>
+                  <p className="text-[0.6rem] font-bold text-muted-foreground">Cards compactos por área: veja a imagem, origem e troque sem perder o layout.</p>
                 </div>
               </div>
 
               {SITE_IMAGE_GROUPS.map((group) => (
-                <div key={group} className="space-y-3">
+                <div key={group} className="space-y-3 rounded-2xl border border-white/5 bg-black/10 p-3 sm:p-4">
                   <p className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-primary/70">{group}</p>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
                     {SITE_IMAGE_SLOTS.filter((s) => s.group === group).map((slot) => {
                       const current = (localSettings as any).site_images?.[slot.key] ?? slot.defaultUrl;
+                      const customized = current && current !== slot.defaultUrl;
                       return (
-                        <div key={slot.key} className="glass space-y-3 rounded-2xl border border-white/5 p-3 transition-all hover:border-primary/30">
-                          <div className="flex items-center gap-3">
-                            <div className="grid h-16 w-24 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-black/40">
+                        <div key={slot.key} className="glass min-w-0 space-y-2.5 rounded-2xl border border-white/5 p-3 transition-all hover:border-primary/30">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="grid h-14 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-black/40 p-1">
                               {current ? (
-                                <img src={current} alt={slot.label} className="h-full w-full object-contain" />
+                                <img
+                                  src={current}
+                                  alt={slot.label}
+                                  onError={(event) => {
+                                    event.currentTarget.style.opacity = '0.2';
+                                  }}
+                                  className="h-full w-full object-contain"
+                                />
                               ) : (
                                 <ImageIcon className="h-5 w-5 text-muted-foreground/30" />
                               )}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-[0.65rem] font-black uppercase tracking-widest">{slot.label}</p>
-                              <p className="truncate text-[0.55rem] font-bold text-muted-foreground">{slot.hint}</p>
+                              <div className="flex min-w-0 items-center gap-2">
+                                <p className="truncate text-[0.62rem] font-black uppercase tracking-wider">{slot.label}</p>
+                                <span className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.45rem] font-black uppercase ${customized ? 'bg-primary/10 text-primary' : 'bg-white/5 text-muted-foreground'}`}>
+                                  {customized ? 'Personalizada' : 'Padrão'}
+                                </span>
+                              </div>
+                              <p className="mt-1 truncate text-[0.53rem] font-bold text-muted-foreground" title={slot.hint}>{slot.hint}</p>
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="grid grid-cols-[minmax(0,1fr)_36px_36px] gap-2">
                             <Input
                               value={current}
                               placeholder="URL da imagem"
+                              title={current}
                               onChange={(e) => updateSetting('site_images', slot.key, e.target.value)}
-                              className="h-9 text-[0.65rem]"
+                              className="h-9 min-w-0 text-[0.62rem]"
                             />
                             <Button
                               size="icon"
                               variant="neonOutline"
                               className="h-9 w-9 shrink-0"
                               disabled={uploading === slot.key}
+                              title="Enviar nova imagem"
                               onClick={() => pickAndUpload({
                                 accept: 'image/*',
                                 key: slot.key,
@@ -520,6 +571,128 @@ export function AdminEditorTab() {
                 </Button>
                 <Button onClick={() => handlePublish('site_images')} variant="neon" className="flex-1 font-black">
                   <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar Imagens
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'cart_offer' && (
+            <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-1 rounded-full bg-blue-400" />
+                <div>
+                  <h4 className="text-[0.7rem] font-black uppercase tracking-widest text-foreground">Oferta Recomendada no Carrinho</h4>
+                  <p className="text-[0.6rem] font-bold text-muted-foreground">Escolha qual oferta aparece depois que o cliente adiciona um produto e edite toda a copy.</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="space-y-4 rounded-2xl border border-white/5 bg-black/15 p-4">
+                  <label className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[.02] px-3 py-3">
+                    <span>
+                      <span className="block text-[0.62rem] font-black uppercase">Recomendação ativa</span>
+                      <span className="mt-0.5 block text-[0.52rem] font-bold text-muted-foreground">Mostra somente se o produto recomendado ainda não estiver no carrinho.</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={recommendationSettings.enabled !== false}
+                      onChange={(e) => updateSetting('cart_recommendation', 'enabled', e.target.checked)}
+                      className="h-5 w-5 shrink-0 accent-primary"
+                    />
+                  </label>
+
+                  <div className="space-y-2">
+                    <label className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Oferta recomendada</label>
+                    <select
+                      value={recommendationSettings.product_slug}
+                      onChange={(e) => updateSetting('cart_recommendation', 'product_slug', e.target.value)}
+                      className="h-10 w-full rounded-xl border border-white/10 bg-background/70 px-3 text-xs font-bold outline-none focus:border-primary/50"
+                    >
+                      {!activePlans.length ? <option value={recommendationSettings.product_slug}>Carregando ofertas...</option> : null}
+                      {activePlans.map((plan: any) => (
+                        <option key={plan.id} value={plan.slug}>{plan.name} · {Number(plan.price ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: plan.currency || 'BRL' })}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Chamada curta</label>
+                    <Input
+                      value={recommendationSettings.eyebrow}
+                      onChange={(e) => updateSetting('cart_recommendation', 'eyebrow', e.target.value)}
+                      placeholder={DEFAULT_CART_RECOMMENDATION.eyebrow}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Título</label>
+                    <Input
+                      value={recommendationSettings.title}
+                      onChange={(e) => updateSetting('cart_recommendation', 'title', e.target.value)}
+                      placeholder={DEFAULT_CART_RECOMMENDATION.title}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4 rounded-2xl border border-white/5 bg-black/15 p-4">
+                  <div className="space-y-2">
+                    <label className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Texto de benefício</label>
+                    <Textarea
+                      rows={4}
+                      value={recommendationSettings.description}
+                      onChange={(e) => updateSetting('cart_recommendation', 'description', e.target.value)}
+                      placeholder={DEFAULT_CART_RECOMMENDATION.description}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Observação abaixo da copy</label>
+                    <Textarea
+                      rows={3}
+                      value={recommendationSettings.note}
+                      onChange={(e) => updateSetting('cart_recommendation', 'note', e.target.value)}
+                      placeholder={DEFAULT_CART_RECOMMENDATION.note}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Texto do botão</label>
+                    <Input
+                      value={recommendationSettings.button_label}
+                      onChange={(e) => updateSetting('cart_recommendation', 'button_label', e.target.value)}
+                      placeholder={DEFAULT_CART_RECOMMENDATION.button_label}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-blue-400/20 bg-blue-500/[.06] p-4">
+                <p className="text-[0.55rem] font-black uppercase tracking-[0.18em] text-blue-300">Resumo do que o cliente verá</p>
+                <div className="mt-3 flex min-w-0 items-start gap-3">
+                  <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-black/40 p-1.5">
+                    {selectedCartPlan?.image_url ? (
+                      <img src={selectedCartPlan.image_url} alt={selectedCartPlan.name} className="h-full w-full object-contain" />
+                    ) : (
+                      <ShoppingCart className="h-5 w-5 text-blue-300" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[0.55rem] font-black uppercase tracking-wider text-blue-300">{recommendationSettings.eyebrow}</p>
+                    <p className="mt-1 break-words text-sm font-black uppercase leading-tight">{recommendationSettings.title}</p>
+                    <p className="mt-2 line-clamp-2 text-[0.62rem] leading-relaxed text-muted-foreground">{recommendationSettings.description}</p>
+                    {selectedCartPlan ? (
+                      <p className="mt-2 text-xs font-black text-blue-300">{selectedCartPlan.name} · {Number(selectedCartPlan.price ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: selectedCartPlan.currency || 'BRL' })}</p>
+                    ) : (
+                      <p className="mt-2 text-[0.58rem] font-bold text-amber-300">Selecione uma oferta ativa para a recomendação aparecer no carrinho.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button onClick={() => handleSave('cart_recommendation')} variant="neonOutline" className="flex-1 font-black">
+                  <Save className="mr-2 h-4 w-4" /> Salvar Rascunho
+                </Button>
+                <Button onClick={() => handlePublish('cart_recommendation')} variant="neon" className="flex-1 font-black">
+                  <CheckCircle2 className="mr-2 h-4 w-4" /> Publicar no Carrinho
                 </Button>
               </div>
             </div>
@@ -1006,12 +1179,12 @@ export function AdminEditorTab() {
         </div>
 
         {/* History / Audit */}
-        <div className="glass rounded-3xl p-6">
+        <div className="glass rounded-3xl p-5 xl:p-6">
           <div className="flex items-center gap-2 mb-4">
             <History className="h-4 w-4 text-primary" />
             <h4 className="text-[0.7rem] font-black uppercase tracking-widest">Histórico de Alterações</h4>
           </div>
-          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
+          <div className="space-y-3 max-h-[240px] overflow-y-auto pr-2 no-scrollbar">
             {history?.map((h: any) => (
               <div key={h.id} className="flex items-start justify-between rounded-2xl border border-border/40 bg-background/40 p-3">
                 <div>
@@ -1026,7 +1199,7 @@ export function AdminEditorTab() {
       </div>
 
       {/* Live Preview Panel */}
-      <div className="hidden lg:block space-y-6">
+      <div className="hidden space-y-6 lg:sticky lg:top-6 lg:block lg:self-start">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-500">
             <Eye className="h-5 w-5" />
@@ -1037,7 +1210,7 @@ export function AdminEditorTab() {
           </div>
         </div>
 
-        <div className="relative aspect-[9/10] w-full overflow-hidden rounded-3xl border border-border/60 bg-[#0A0A0A] shadow-2xl">
+        <div className="relative aspect-[9/10] max-h-[calc(100vh-120px)] w-full overflow-hidden rounded-3xl border border-border/60 bg-[#0A0A0A] shadow-2xl">
           <div className="absolute top-4 left-4 right-4 z-10 flex h-8 items-center justify-between rounded-full bg-card/50 px-4 backdrop-blur-md border border-white/5">
              <div className="flex gap-1">
                 <div className="h-2 w-2 rounded-full bg-destructive/50" />
@@ -1047,7 +1220,7 @@ export function AdminEditorTab() {
              <p className="text-[0.5rem] font-mono text-muted-foreground">https://msk.extension/preview</p>
           </div>
           
-          <div className="mt-16 h-full p-8 overflow-y-auto no-scrollbar pb-24">
+          <div className="mt-16 h-full p-6 xl:p-8 overflow-y-auto no-scrollbar pb-24">
              {/* Mock de Seções no Preview */}
              {activeSection === 'hero' && (
                <div className="space-y-6">
@@ -1074,6 +1247,28 @@ export function AdminEditorTab() {
                         <div className="h-2 w-1/2 bg-white/10 rounded" />
                      </div>
                   </div>
+               </div>
+             )}
+
+             {activeSection === 'cart_offer' && (
+               <div className="space-y-4 pt-8">
+                 <div className="rounded-3xl border border-blue-400/25 bg-blue-500/[.07] p-5">
+                   <div className="flex items-center gap-2 text-blue-300">
+                     <ShoppingCart className="h-4 w-4" />
+                     <p className="text-[0.55rem] font-black uppercase tracking-[.18em]">{recommendationSettings.eyebrow}</p>
+                   </div>
+                   <div className="mt-4 flex gap-3">
+                     <div className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-black/50 p-1.5">
+                       {selectedCartPlan?.image_url ? <img src={selectedCartPlan.image_url} className="h-full w-full object-contain" /> : <ShoppingCart className="h-5 w-5 text-blue-300" />}
+                     </div>
+                     <div className="min-w-0">
+                       <h2 className="text-base font-black uppercase leading-tight">{recommendationSettings.title}</h2>
+                       <p className="mt-2 text-[0.62rem] leading-relaxed text-muted-foreground">{recommendationSettings.description}</p>
+                     </div>
+                   </div>
+                   <div className="mt-4 rounded-xl border border-white/10 bg-black/25 p-3 text-[0.58rem] text-muted-foreground">{recommendationSettings.note}</div>
+                   <Button className="mt-4 w-full bg-blue-500 text-[0.65rem] font-black uppercase text-white hover:bg-blue-400">{recommendationSettings.button_label}</Button>
+                 </div>
                </div>
              )}
 
