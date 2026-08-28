@@ -1,3 +1,8 @@
+import cardFreeImg from "@/assets/card-free.jpg";
+import cardSemanalImg from "@/assets/card-semanal.jpg";
+import cardMensalImg from "@/assets/card-mensal.jpg";
+import cardTrimestralImg from "@/assets/card-trimestral.jpg";
+
 export function productImageFallback(slugValue?: unknown) {
   const slug = String(slugValue ?? "")
     .trim()
@@ -8,7 +13,7 @@ export function productImageFallback(slugValue?: unknown) {
     if (/^msk-agent(?:e)?-3(?:-|$)/.test(slug)) return "/agent-offers/agent-3.jpg";
     if (/^msk-agent(?:e)?-2(?:-|$)/.test(slug)) return "/agent-offers/agent-2.jpg";
     if (/^msk-agent(?:e)?-1(?:-|$)/.test(slug)) return "/agent-offers/agent-1.jpg";
-    return "/msk-agent-banner-oficial-2.svg";
+    return "/agent-offers/agent-2.jpg";
   }
 
   if (slug.startsWith("page-cloner") || slug.includes("clonagem") || slug.includes("clonador")) {
@@ -16,6 +21,13 @@ export function productImageFallback(slugValue?: unknown) {
     if (slug.includes("week") || slug.includes("semanal")) return "/cloner-offers/cloner-weekly.webp";
     return "/cloner-offers/cloner-daily.webp";
   }
+
+  if (slug === "free-test" || slug.includes("teste-gratis") || slug.includes("teste-gratuito")) {
+    return cardFreeImg;
+  }
+  if (slug === "weekly" || slug.includes("semanal")) return cardSemanalImg;
+  if (slug === "monthly" || slug.includes("mensal")) return cardMensalImg;
+  if (slug === "quarterly" || slug.includes("trimestral")) return cardTrimestralImg;
 
   return "/favicon.png";
 }
@@ -35,32 +47,40 @@ export function normalizeProductImage(imageValue?: unknown, slugValue?: unknown)
   return fallback;
 }
 
-const AGENT_OFFER_IMAGE = "/msk-agent-banner-oficial-2.svg";
-
-function applyAgentOfferArtwork(root: ParentNode = document) {
-  const images = root.querySelectorAll<HTMLImageElement>("#msk-agente [data-plan-card] img");
-  images.forEach((image) => {
-    if (image.getAttribute("src") === AGENT_OFFER_IMAGE) return;
-    image.src = AGENT_OFFER_IMAGE;
-  });
-}
-
-function installAgentOfferArtwork() {
+/**
+ * Recupera somente imagens de produto que realmente falharam no navegador.
+ * Não sobrescreve mais os cards do MSK Agente: cada oferta preserva sua arte própria.
+ */
+function installProductImageRecovery() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
-  const marker = "__mskAgentOfferArtworkInstalled";
+  const marker = "__mskProductImageRecoveryInstalled";
   const globalWindow = window as typeof window & Record<string, unknown>;
   if (globalWindow[marker]) return;
   globalWindow[marker] = true;
 
-  const refresh = () => applyAgentOfferArtwork(document);
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", refresh, { once: true });
-  } else {
-    window.requestAnimationFrame(refresh);
-  }
+  window.addEventListener(
+    "error",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLImageElement)) return;
 
-  const observer = new MutationObserver(() => refresh());
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+      const insideProductUi =
+        !!target.closest("#checkout-cart") ||
+        !!target.closest("[data-plan-card]") ||
+        !!target.closest("[data-msk-product-image]") ||
+        !!target.closest('[data-msk-security-role="checkout-scroll"]');
+      if (!insideProductUi || target.dataset.mskFallbackApplied === "1") return;
+
+      const source = String(target.getAttribute("src") ?? "");
+      const fallback = productImageFallback(target.dataset.productSlug || target.alt);
+      if (!fallback || source === fallback) return;
+
+      target.dataset.mskFallbackApplied = "1";
+      event.stopImmediatePropagation();
+      target.src = fallback;
+    },
+    true,
+  );
 }
 
-installAgentOfferArtwork();
+installProductImageRecovery();
