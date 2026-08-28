@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { extensionPreflight } from "@/lib/extension-telemetry.server";
+import { extensionPreflight, extensionCorsHeaders } from "@/lib/extension-telemetry.server";
 import { findLicenseByToken } from "@/lib/license.server";
 
 const db = supabaseAdmin as any;
