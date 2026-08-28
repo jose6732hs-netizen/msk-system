@@ -990,6 +990,56 @@ export type Database = {
         }
         Relationships: []
       }
+      extension_alerts: {
+        Row: {
+          acknowledged: boolean
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          alert_type: string
+          created_at: string
+          id: string
+          incident_id: string | null
+          message: string | null
+          metadata: Json
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type: string
+          created_at?: string
+          id?: string
+          incident_id?: string | null
+          message?: string | null
+          metadata?: Json
+          severity?: string
+          title: string
+        }
+        Update: {
+          acknowledged?: boolean
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          alert_type?: string
+          created_at?: string
+          id?: string
+          incident_id?: string | null
+          message?: string | null
+          metadata?: Json
+          severity?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extension_alerts_incident_id_fkey"
+            columns: ["incident_id"]
+            isOneToOne: false
+            referencedRelation: "extension_incidents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       extension_branding: {
         Row: {
           changelog: string | null
@@ -1139,6 +1189,441 @@ export type Database = {
           slug?: string
           updated_at?: string | null
           version?: string | null
+        }
+        Relationships: []
+      }
+      extension_error_catalog: {
+        Row: {
+          created_at: string
+          error_code: string
+          id: string
+          recovery_action: string | null
+          severity: string
+          title: string
+          user_message: string
+        }
+        Insert: {
+          created_at?: string
+          error_code: string
+          id?: string
+          recovery_action?: string | null
+          severity?: string
+          title: string
+          user_message: string
+        }
+        Update: {
+          created_at?: string
+          error_code?: string
+          id?: string
+          recovery_action?: string | null
+          severity?: string
+          title?: string
+          user_message?: string
+        }
+        Relationships: []
+      }
+      extension_errors: {
+        Row: {
+          action: string | null
+          browser: string | null
+          created_at: string
+          error_code: string
+          error_id: string
+          extension_version: string | null
+          id: string
+          installation_id: string
+          metadata: Json
+          project_id: string | null
+          provider: string | null
+          repository: string | null
+          resolved: boolean
+          resolved_at: string | null
+          severity: string
+          stack_summary: string | null
+          technical_message: string | null
+          title: string | null
+          user_id: string
+          user_message: string | null
+        }
+        Insert: {
+          action?: string | null
+          browser?: string | null
+          created_at?: string
+          error_code: string
+          error_id?: string
+          extension_version?: string | null
+          id?: string
+          installation_id: string
+          metadata?: Json
+          project_id?: string | null
+          provider?: string | null
+          repository?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          severity?: string
+          stack_summary?: string | null
+          technical_message?: string | null
+          title?: string | null
+          user_id: string
+          user_message?: string | null
+        }
+        Update: {
+          action?: string | null
+          browser?: string | null
+          created_at?: string
+          error_code?: string
+          error_id?: string
+          extension_version?: string | null
+          id?: string
+          installation_id?: string
+          metadata?: Json
+          project_id?: string | null
+          provider?: string | null
+          repository?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          severity?: string
+          stack_summary?: string | null
+          technical_message?: string | null
+          title?: string | null
+          user_id?: string
+          user_message?: string | null
+        }
+        Relationships: []
+      }
+      extension_events: {
+        Row: {
+          action: string
+          created_at: string
+          duration_ms: number | null
+          event_id: string
+          extension_version: string | null
+          id: string
+          installation_id: string
+          metadata: Json
+          project_id: string | null
+          provider: string | null
+          repository: string | null
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          duration_ms?: number | null
+          event_id?: string
+          extension_version?: string | null
+          id?: string
+          installation_id: string
+          metadata?: Json
+          project_id?: string | null
+          provider?: string | null
+          repository?: string | null
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          duration_ms?: number | null
+          event_id?: string
+          extension_version?: string | null
+          id?: string
+          installation_id?: string
+          metadata?: Json
+          project_id?: string | null
+          provider?: string | null
+          repository?: string | null
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      extension_incidents: {
+        Row: {
+          affected_installations: number
+          affected_users: number
+          created_at: string
+          dominant_browser: string | null
+          dominant_version: string | null
+          error_code: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          metadata: Json
+          resolved_at: string | null
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          affected_installations?: number
+          affected_users?: number
+          created_at?: string
+          dominant_browser?: string | null
+          dominant_version?: string | null
+          error_code: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          metadata?: Json
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          affected_installations?: number
+          affected_users?: number
+          created_at?: string
+          dominant_browser?: string | null
+          dominant_version?: string | null
+          error_code?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          metadata?: Json
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      extension_installations: {
+        Row: {
+          browser: string | null
+          created_at: string
+          id: string
+          installation_id: string
+          last_activity_at: string | null
+          last_seen_at: string | null
+          license_id: string | null
+          metadata: Json
+          os: string | null
+          user_id: string
+          version: string | null
+        }
+        Insert: {
+          browser?: string | null
+          created_at?: string
+          id?: string
+          installation_id: string
+          last_activity_at?: string | null
+          last_seen_at?: string | null
+          license_id?: string | null
+          metadata?: Json
+          os?: string | null
+          user_id: string
+          version?: string | null
+        }
+        Update: {
+          browser?: string | null
+          created_at?: string
+          id?: string
+          installation_id?: string
+          last_activity_at?: string | null
+          last_seen_at?: string | null
+          license_id?: string | null
+          metadata?: Json
+          os?: string | null
+          user_id?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
+      extension_projects: {
+        Row: {
+          branch: string | null
+          created_at: string
+          github_status: string | null
+          id: string
+          installation_id: string
+          last_activity_at: string | null
+          last_commit_sha: string | null
+          lovable_project_id: string
+          preview_url: string | null
+          project_name: string | null
+          provider: string | null
+          publish_status: string | null
+          repository: string | null
+          updated_at: string
+          user_id: string
+          workspace_url: string | null
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          github_status?: string | null
+          id?: string
+          installation_id: string
+          last_activity_at?: string | null
+          last_commit_sha?: string | null
+          lovable_project_id: string
+          preview_url?: string | null
+          project_name?: string | null
+          provider?: string | null
+          publish_status?: string | null
+          repository?: string | null
+          updated_at?: string
+          user_id: string
+          workspace_url?: string | null
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          github_status?: string | null
+          id?: string
+          installation_id?: string
+          last_activity_at?: string | null
+          last_commit_sha?: string | null
+          lovable_project_id?: string
+          preview_url?: string | null
+          project_name?: string | null
+          provider?: string | null
+          publish_status?: string | null
+          repository?: string | null
+          updated_at?: string
+          user_id?: string
+          workspace_url?: string | null
+        }
+        Relationships: []
+      }
+      extension_releases: {
+        Row: {
+          build_id: string | null
+          changelog: string | null
+          created_at: string
+          download_url: string | null
+          id: string
+          mandatory: boolean
+          minimum_version: string | null
+          released_at: string | null
+          status: string
+          title: string | null
+          updated_at: string
+          updated_by: string | null
+          version: string
+        }
+        Insert: {
+          build_id?: string | null
+          changelog?: string | null
+          created_at?: string
+          download_url?: string | null
+          id?: string
+          mandatory?: boolean
+          minimum_version?: string | null
+          released_at?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version: string
+        }
+        Update: {
+          build_id?: string | null
+          changelog?: string | null
+          created_at?: string
+          download_url?: string | null
+          id?: string
+          mandatory?: boolean
+          minimum_version?: string | null
+          released_at?: string | null
+          status?: string
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          version?: string
+        }
+        Relationships: []
+      }
+      extension_remote_commands: {
+        Row: {
+          acknowledged_at: string | null
+          command_type: string
+          created_at: string
+          created_by: string | null
+          delivered_at: string | null
+          delivery_count: number
+          expires_at: string | null
+          id: string
+          installation_id: string | null
+          message: string | null
+          payload: Json
+          severity: string
+          status: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          command_type: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          delivery_count?: number
+          expires_at?: string | null
+          id?: string
+          installation_id?: string | null
+          message?: string | null
+          payload?: Json
+          severity?: string
+          status?: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          command_type?: string
+          created_at?: string
+          created_by?: string | null
+          delivered_at?: string | null
+          delivery_count?: number
+          expires_at?: string | null
+          id?: string
+          installation_id?: string | null
+          message?: string | null
+          payload?: Json
+          severity?: string
+          status?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      extension_remote_controls: {
+        Row: {
+          block_message: string | null
+          block_reason: string | null
+          blocked: boolean
+          created_at: string
+          id: string
+          installation_id: string | null
+          updated_at: string
+          updated_by: string | null
+          user_id: string
+        }
+        Insert: {
+          block_message?: string | null
+          block_reason?: string | null
+          blocked?: boolean
+          created_at?: string
+          id?: string
+          installation_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id: string
+        }
+        Update: {
+          block_message?: string | null
+          block_reason?: string | null
+          blocked?: boolean
+          created_at?: string
+          id?: string
+          installation_id?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          user_id?: string
         }
         Relationships: []
       }
