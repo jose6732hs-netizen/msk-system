@@ -273,6 +273,41 @@ body {
   }
 }
 
+@media (max-width: 639px) {
+  /* No banner do MSK Agente, a arte precisa aparecer inteira no mobile. */
+  #msk-agente > div:first-child {
+    display: grid;
+    min-height: 0;
+    overflow: hidden;
+    background: #080808;
+  }
+
+  #msk-agente > div:first-child > img {
+    position: relative;
+    inset: auto;
+    grid-area: 1 / 1;
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+    background: #000;
+  }
+
+  #msk-agente > div:first-child > div:first-of-type {
+    display: none;
+  }
+
+  #msk-agente > div:first-child > div:nth-of-type(2) {
+    position: relative;
+    grid-area: 2 / 1;
+    min-height: 0;
+    align-items: flex-start;
+    padding: 1rem 1.25rem 1.25rem;
+    background: linear-gradient(180deg, #080808 0%, #050505 100%);
+  }
+}
+
 @media (max-width: 430px) {
   [class~="p-12"],
   [class~="p-10"] {
