@@ -77,6 +77,57 @@ export type SmartPixState = {
   subtitle?: string | null;
 };
 
+type CheckoutItem = {
+  planId?: string;
+  name: string;
+  slug?: string;
+  quantity: number;
+  unitPrice: number;
+  imageUrl?: string | null;
+};
+
+function OrderSummary({ items }: { items: CheckoutItem[] }) {
+  if (!items.length) return null;
+
+  return (
+    <section className="mx-3 mt-4 overflow-hidden rounded-2xl border border-white/10 bg-white/[.025] sm:mx-7 sm:mt-5">
+      <div className="border-b border-white/10 px-4 py-3 sm:px-5">
+        <p className="text-[9px] font-black uppercase tracking-[.2em] text-primary">Resumo da compra</p>
+        <p className="mt-1 text-xs text-muted-foreground">Confira os produtos antes de concluir o pagamento.</p>
+      </div>
+      <div className="divide-y divide-white/10">
+        {items.map((item, index) => (
+          <div key={`${item.planId ?? item.slug ?? item.name}-${index}`} className="flex min-w-0 items-center gap-3 p-3 sm:p-4">
+            <div className="grid h-16 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-white/10 bg-black/50 p-1.5 sm:h-20 sm:w-24">
+              <img
+                src={item.imageUrl || "/favicon.png"}
+                alt={item.name}
+                className="max-h-full max-w-full object-contain"
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = "/favicon.png";
+                }}
+              />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="break-words text-sm font-black text-white">{item.name}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-wide text-white/45">
+                Quantidade: {item.quantity}
+              </p>
+            </div>
+            <div className="shrink-0 text-right">
+              <p className="text-sm font-black text-primary">{brl(item.unitPrice * item.quantity)}</p>
+              {item.quantity > 1 ? (
+                <p className="mt-1 text-[9px] text-white/40">{brl(item.unitPrice)} cada</p>
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function SmartPixModal({
   pix,
   onClose,
@@ -98,6 +149,7 @@ export function SmartPixModal({
   const [generatingPix, setGeneratingPix] = useState(false);
   const [pixError, setPixError] = useState<string | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
+  const [orderItems, setOrderItems] = useState<CheckoutItem[]>([]);
   const supportLink = useSupportLink("Olá! Tive um problema ao tentar gerar o PIX da minha compra. Podem me ajudar?");
 
   useModalScrollLock(true);
@@ -116,6 +168,7 @@ export function SmartPixModal({
   useEffect(() => {
     setMethod("pix");
     setStatus("PENDING");
+    setOrderItems([]);
   }, [pix.transactionId]);
 
   useEffect(() => {
@@ -150,7 +203,6 @@ export function SmartPixModal({
 
   useEffect(() => {
     if (status === "PAID") return;
-    if (method === "pix" && !pix.pixCode) return;
 
     let alive = true;
     const terminal = new Set(["PAID", "REFUNDED", "CHARGED_BACK", "CANCELED", "EXPIRED"]);
@@ -161,6 +213,8 @@ export function SmartPixModal({
         const result = await checkTransaction({ data: { transactionId: pix.transactionId } });
         const next = String(result.status ?? "PENDING").toUpperCase();
         if (!alive) return;
+        const items = Array.isArray((result as any).items) ? ((result as any).items as CheckoutItem[]) : [];
+        if (items.length) setOrderItems(items);
         setStatus(next);
         if (next === "PAID") {
           toast.success("Pagamento confirmado. Seus acessos estão sendo liberados.");
@@ -294,6 +348,8 @@ export function SmartPixModal({
           className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain pb-[max(1rem,env(safe-area-inset-bottom))] [overscroll-behavior:contain] [touch-action:pan-y]"
           style={{ WebkitOverflowScrolling: "touch" }}
         >
+          <OrderSummary items={orderItems} />
+
           {method === "card" && status !== "PAID" ? (
             <div className="space-y-4 p-3 sm:p-7">
               <div className="grid gap-3 sm:grid-cols-3">
