@@ -27,6 +27,21 @@ export const planSchema = z
     image_url: z.string().max(4000).default("").optional(),
     affiliate_commission_rate: z.number().min(0).max(100).default(0),
     affiliate_commission_fixed: z.number().min(0).default(0),
+    delivery_method: z.enum(["panel", "email", "panel_email", "email_link"]).default("panel_email"),
+    delivery_link: z.string().max(4000).default(""),
+    delivery_instructions: z.string().max(1000).default(""),
+  })
+  .superRefine((p, ctx) => {
+    if (p.delivery_method === "email_link") {
+      const link = p.delivery_link.trim();
+      if (!/^https?:\/\//i.test(link)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["delivery_link"],
+          message: "Informe um link http(s) para o método Enviar link por e-mail.",
+        });
+      }
+    }
   })
   .transform((p) => {
     const base = (p.slug ?? "")
