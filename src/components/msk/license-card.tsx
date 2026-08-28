@@ -5,8 +5,10 @@ import {
   CheckCircle2,
   Clock,
   Copy,
+  ExternalLink,
   Eye,
   Loader2,
+  PackageCheck,
   RefreshCw,
   Rocket,
   ShieldCheck,
@@ -90,6 +92,10 @@ export function LicenseCard({
         : Boolean(license?.plans?.is_lifetime),
   };
   const itemLabel = metadata["item_label"] as string | undefined;
+  const deliveryMethod = String(metadata["delivery_method"] ?? "panel_email");
+  const deliveryLink = String(metadata["delivery_link"] ?? "").trim();
+  const deliveryInstructions = String(metadata["delivery_instructions"] ?? "").trim();
+  const showPanelDelivery = deliveryMethod === "panel" || deliveryMethod === "panel_email";
   const awaitingActivation = license.status === "inactive" && !license.expires_at;
   const status = timeLeft?.isExpired ? "expired" : license.status;
   const currency = String(license?.purchase?.currency ?? plan?.currency ?? "BRL");
@@ -275,6 +281,33 @@ export function LicenseCard({
             </div>
           </div>
         )}
+
+        {showPanelDelivery ? (
+          <div className="mt-8 overflow-hidden rounded-2xl border border-blue-400/25 bg-blue-400/[.055]">
+            <div className="flex items-start gap-3 p-5 sm:p-6">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-500/15 text-blue-300">
+                <PackageCheck className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-[.18em] text-blue-300">Entrega da oferta</p>
+                <h4 className="mt-1 text-base font-black text-white">{itemLabel || plan?.name || "Conteúdo liberado"}</h4>
+                <p className="mt-1 text-xs leading-relaxed text-white/55">
+                  {deliveryInstructions || "Esta oferta foi configurada para disponibilizar a entrega diretamente no seu painel."}
+                </p>
+                {deliveryLink ? (
+                  <a
+                    href={deliveryLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-500 px-4 py-2 text-[10px] font-black uppercase text-white transition hover:bg-blue-400"
+                  >
+                    Abrir entrega <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-5">
           <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Token de Ativação</p>
