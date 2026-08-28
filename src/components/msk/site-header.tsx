@@ -156,6 +156,28 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
 
   const downloadLabel = downloading ? `${downloadProgress}%` : "Baixar MSK Agente";
 
+  const navLink = (item: (typeof NAV)[number], className: string, onClick?: () => void) => {
+    if (item.to === "/parceiro" && !signedIn) {
+      return (
+        <Link
+          key={item.to}
+          to="/auth"
+          search={{ next: "/parceiro", mode: "signup" }}
+          className={className}
+          onClick={onClick}
+        >
+          {item.label}
+        </Link>
+      );
+    }
+
+    return (
+      <Link key={item.to} to={item.to} className={className} onClick={onClick}>
+        {item.label}
+      </Link>
+    );
+  };
+
   if (mobileMenuOnly) {
     return (
       <div className="flex items-center">
@@ -197,16 +219,9 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                 )}
               </div>
 
-              {NAV.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
-                  onClick={() => document.body.click()}
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {NAV.map((item) =>
+                navLink(item, "hover:text-primary p-2 text-base font-medium border-b border-white/5", () => document.body.click()),
+              )}
 
               <Button
                 variant="neon"
@@ -238,11 +253,7 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
             <MskLogo size={36} />
           </Link>
           <nav className="hidden items-center gap-7 text-sm text-muted-foreground lg:flex">
-            {NAV.map((item) => (
-              <Link key={item.to} to={item.to} className="transition-colors hover:text-primary">
-                {item.label}
-              </Link>
-            ))}
+            {NAV.map((item) => navLink(item, "transition-colors hover:text-primary"))}
           </nav>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <Button
@@ -330,16 +341,9 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                     )}
                   </div>
 
-                  {NAV.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      className="hover:text-primary p-2 text-base font-medium border-b border-white/5"
-                      onClick={() => document.body.click()}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
+                  {NAV.map((item) =>
+                    navLink(item, "hover:text-primary p-2 text-base font-medium border-b border-white/5", () => document.body.click()),
+                  )}
 
                   <Button
                     variant="neon"
