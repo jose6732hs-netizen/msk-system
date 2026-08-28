@@ -2,9 +2,9 @@ export function productImageFallback(slugValue?: unknown) {
   const slug = String(slugValue ?? "").toLowerCase();
 
   if (slug.startsWith("msk-agent")) {
-    if (slug.includes("3")) return "/agent-offers/agent-3.jpg";
-    if (slug.includes("2")) return "/agent-offers/agent-2.jpg";
-    if (slug.includes("1")) return "/agent-offers/agent-1.jpg";
+    if (/^msk-agent-3(?:-|$)/.test(slug)) return "/agent-offers/agent-3.jpg";
+    if (/^msk-agent-2(?:-|$)/.test(slug)) return "/agent-offers/agent-2.jpg";
+    if (/^msk-agent-1(?:-|$)/.test(slug)) return "/agent-offers/agent-1.jpg";
     return "/msk-agente-banner.svg";
   }
 
