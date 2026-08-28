@@ -134,6 +134,21 @@ function Index() {
           </motion.div>
         </div>
 
+        <motion.section
+          {...fadeInUp}
+          id="msk-agente-destaque"
+          aria-label="Destaque MSK Agente"
+          className="relative z-20 mx-auto mt-12 w-full max-w-6xl overflow-hidden rounded-[2rem] border border-fuchsia-400/25 bg-black/60 shadow-[0_24px_90px_-35px_rgba(217,70,239,.65)] sm:mt-16"
+        >
+          <Link to="/planos" preload="intent" className="block w-full">
+            <img
+              src="/msk-agent-banner-oficial-1.svg"
+              alt="MSK Agente — método oficial Lovable"
+              className="block h-auto w-full object-contain"
+            />
+          </Link>
+        </motion.section>
+
 
         <div className="max-w-4xl mx-auto w-full mt-20 text-left space-y-20 relative z-20">
             {/* Partners Section Teaser */}
