@@ -123,8 +123,37 @@ function OfferCarouselSection({
   onAdd,
   onShare,
 }: OfferCarouselSectionProps) {
-  if (!plans.length) return null;
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+  const interactionUntil = useRef(0);
   const carouselId = `${sectionId}-carousel`;
+
+  useEffect(() => {
+    if (plans.length <= 1) return;
+    const timer = window.setInterval(() => {
+      const el = carouselRef.current;
+      if (!el || document.hidden || Date.now() < interactionUntil.current) return;
+      const card = el.querySelector<HTMLElement>("[data-plan-card]");
+      const step = card?.offsetWidth ? card.offsetWidth + 16 : Math.min(346, el.clientWidth * 0.86);
+      const nearEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - step * 0.6;
+      el.scrollTo({ left: nearEnd ? 0 : el.scrollLeft + step, behavior: "smooth" });
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, [plans.length]);
+
+  if (!plans.length) return null;
+
+  const markInteraction = () => {
+    interactionUntil.current = Date.now() + 7000;
+  };
+
+  const scrollByCard = (direction: 1 | -1) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    markInteraction();
+    const card = el.querySelector<HTMLElement>("[data-plan-card]");
+    const step = card?.offsetWidth ? card.offsetWidth + 16 : 346;
+    el.scrollBy({ left: direction * step, behavior: "smooth" });
+  };
 
   return (
     <section id={sectionId} className="mt-14 min-w-0 scroll-mt-24 overflow-hidden sm:mt-16">
@@ -159,9 +188,7 @@ function OfferCarouselSection({
             type="button"
             aria-label={`Ofertas anteriores de ${title}`}
             className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/85 text-primary shadow-xl"
-            onClick={() =>
-              document.getElementById(carouselId)?.scrollBy({ left: -360, behavior: "smooth" })
-            }
+            onClick={() => scrollByCard(-1)}
           >
             <ChevronLeft className="h-6 w-6" />
           </button>
@@ -169,9 +196,7 @@ function OfferCarouselSection({
             type="button"
             aria-label={`Próximas ofertas de ${title}`}
             className="pointer-events-auto grid h-12 w-12 place-items-center rounded-full border border-primary/30 bg-black/85 text-primary shadow-xl"
-            onClick={() =>
-              document.getElementById(carouselId)?.scrollBy({ left: 360, behavior: "smooth" })
-            }
+            onClick={() => scrollByCard(1)}
           >
             <ChevronRight className="h-6 w-6" />
           </button>
@@ -179,13 +204,20 @@ function OfferCarouselSection({
 
         <div
           id={carouselId}
-          className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto scroll-smooth pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-8"
+          ref={carouselRef}
+          onPointerDown={markInteraction}
+          onTouchStart={markInteraction}
+          onWheel={markInteraction}
+          onScroll={markInteraction}
+          style={{ touchAction: "pan-x pan-y" }}
+          className="flex min-w-0 snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain scroll-smooth pb-8 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-8"
         >
           {plans.map((plan: any) => {
             const highlighted = String(plan.slug ?? "") === highlightSlug;
             const isFree = Number(plan.price) === 0;
             return (
               <article
+                data-plan-card
                 key={plan.id}
                 className={`relative flex w-[82vw] max-w-[330px] shrink-0 snap-center flex-col overflow-hidden rounded-[2rem] border bg-[#0A0A0A] sm:w-[45vw] lg:w-[310px] ${
                   highlighted
