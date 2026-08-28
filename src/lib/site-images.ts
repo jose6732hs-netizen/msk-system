@@ -48,6 +48,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   { key: "plans_extension_banner", label: "Banner — Extensão MSK", group: "Ofertas / Planos", hint: "Banner acima das ofertas da extensão principal", defaultUrl: bannerOffer.url },
   { key: "plans_cloner_banner", label: "Banner — Clonagem", group: "Ofertas / Planos", hint: "Banner acima das ofertas do Clonador MSK", defaultUrl: bannerCheap.url },
   { key: "plans_agent_banner", label: "Banner — MSK Agente", group: "Ofertas / Planos", hint: "Banner acima das ofertas do MSK Agente", defaultUrl: "/msk-agente-banner.svg" },
+  { key: "plans_chatgpt_card", label: "Card — Conta ChatGPT 30 dias", group: "Ofertas / Planos", hint: "Imagem do card da oferta de conta ChatGPT (em breve)", defaultUrl: "" },
   { key: "offer_banner", label: "Banner de oferta", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerOffer.url },
   { key: "offer_cheap", label: "Banner promocional", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerCheap.url },
   { key: "offer_ilimited", label: "Banner ilimitado", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerIlimited.url },
