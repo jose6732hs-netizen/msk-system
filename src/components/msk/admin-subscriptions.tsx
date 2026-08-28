@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { adminSavePlan } from "@/lib/admin.functions";
-import { getCmsEditorContent, publishCmsDraft, saveCmsDraft } from "@/lib/cms.functions";
+import { getCmsEditorContent } from "@/lib/cms.functions";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -67,7 +67,7 @@ const DELIVERY_OPTIONS: { value: DeliveryMethod; label: string; hint: string }[]
   {
     value: "panel",
     label: "Mostrar no painel",
-    hint: "A entrega fica destacada dentro da licença no painel do cliente.",
+    hint: "A entrega fica destacada no painel do cliente assim que o pagamento for aprovado.",
   },
   {
     value: "email",
@@ -77,7 +77,7 @@ const DELIVERY_OPTIONS: { value: DeliveryMethod; label: string; hint: string }[]
   {
     value: "panel_email",
     label: "Painel + e-mail",
-    hint: "Mostra no painel e também envia a confirmação por e-mail.",
+    hint: "Mostra os dados no painel e também envia a confirmação por e-mail.",
   },
   {
     value: "email_link",
@@ -170,6 +170,7 @@ type Collection = {
 
 function collectionKeyFor(plan: Record<string, any>): CollectionKey {
   const slug = String(plan["slug"] ?? "").toLowerCase();
+  if (slug.startsWith("chatgpt") || slug.startsWith("chat-gpt") || slug.startsWith("gpt-plus")) return "chatgpt";
   if (slug.startsWith("msk-agent")) return "agent";
   if (slug.startsWith("page-cloner")) return "cloner";
   if (["free-test", "daily", "weekly", "monthly", "quarterly", "yearly", "lifetime"].includes(slug)) {
@@ -195,10 +196,7 @@ export function AdminSubscriptionsTab({
   const qc = useQueryClient();
   const saveFn = useServerFn(adminSavePlan);
   const getCmsFn = useServerFn(getCmsEditorContent);
-  const saveCmsFn = useServerFn(saveCmsDraft);
-  const publishCmsFn = useServerFn(publishCmsDraft);
   const [editing, setEditing] = useState<PlanForm | null>(null);
-  const [chatgptOpen, setChatgptOpen] = useState(false);
   const [chatgptImage, setChatgptImage] = useState("");
   const [chatgptDeliveryMethod, setChatgptDeliveryMethod] = useState<DeliveryMethod>("panel_email");
   const [chatgptDeliveryLink, setChatgptDeliveryLink] = useState("");
@@ -217,12 +215,18 @@ export function AdminSubscriptionsTab({
     const image = cmsQuery.data?.site_images?.plans_chatgpt_card;
     if (typeof image === "string") setChatgptImage(image);
 
+    // Aproveita a configuração antiga da oferta especial como valor inicial na primeira migração.
     const special = objectValue(cmsQuery.data?.special_offer_chatgpt);
     const delivery = objectValue(special["delivery"]);
     setChatgptDeliveryMethod(normalizeDeliveryMethod(delivery["method"]));
     setChatgptDeliveryLink(String(delivery["link"] ?? ""));
     setChatgptDeliveryInstructions(String(delivery["instructions"] ?? ""));
   }, [cmsQuery.data]);
+
+  const chatgptPlan = useMemo(
+    () => plans.find((plan) => collectionKeyFor(plan) === "chatgpt") ?? null,
+    [plans],
+  );
 
   const normalizedSearch = search.trim().toLowerCase();
   const visiblePlans = useMemo(
@@ -243,7 +247,10 @@ export function AdminSubscriptionsTab({
       extension: [],
       other: [],
     };
-    visiblePlans.forEach((plan) => grouped[collectionKeyFor(plan) as keyof typeof grouped].push(plan));
+    visiblePlans.forEach((plan) => {
+      const key = collectionKeyFor(plan);
+      if (key !== "chatgpt") grouped[key].push(plan);
+    });
     return [
       {
         key: "agent",
@@ -280,41 +287,6 @@ export function AdminSubscriptionsTab({
     ];
   }, [visiblePlans]);
 
-  async function publishCmsValue(key: string, data: Record<string, unknown>) {
-    await saveCmsFn({ data: { key, data } });
-    await publishCmsFn({ data: { key } });
-    await qc.invalidateQueries({ queryKey: ["cms-editor-content"] });
-    await qc.invalidateQueries({ queryKey: ["cms-content"] });
-  }
-
-  async function publishSiteImages(nextImages: Record<string, unknown>) {
-    await publishCmsValue("site_images", nextImages);
-  }
-
-  async function saveChatGptDelivery() {
-    if (chatgptDeliveryMethod === "email_link" && !/^https?:\/\//i.test(chatgptDeliveryLink.trim())) {
-      toast.error("Informe um link http(s) para o envio por e-mail.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const current = objectValue(cmsQuery.data?.special_offer_chatgpt);
-      await publishCmsValue("special_offer_chatgpt", {
-        ...current,
-        delivery: {
-          method: chatgptDeliveryMethod,
-          link: chatgptDeliveryLink.trim(),
-          instructions: chatgptDeliveryInstructions.trim(),
-        },
-      });
-      toast.success("Método de envio da oferta ChatGPT salvo.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function pickAndUploadPlan(planId?: string) {
     const input = document.createElement("input");
     input.type = "file";
@@ -341,49 +313,7 @@ export function AdminSubscriptionsTab({
     input.click();
   }
 
-  async function pickAndUploadChatGpt() {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      setUploading("chatgpt");
-      try {
-        const fd = new FormData();
-        fd.append("file", file);
-        fd.append("key", "plans-chatgpt-card");
-        const res = await fetch("/api/public/cms/upload", { method: "POST", body: fd }).then((r) => r.json());
-        if (!res.url) throw new Error(res.error || "Upload falhou");
-        const current = (cmsQuery.data?.site_images ?? {}) as Record<string, unknown>;
-        await publishSiteImages({ ...current, plans_chatgpt_card: res.url });
-        setChatgptImage(res.url);
-        toast.success("Imagem da oferta ChatGPT publicada.");
-      } catch (err) {
-        toast.error("Erro no upload: " + (err as Error).message);
-      } finally {
-        setUploading(null);
-      }
-    };
-    input.click();
-  }
-
-  async function removeChatGptImage() {
-    setBusy(true);
-    try {
-      const current = (cmsQuery.data?.site_images ?? {}) as Record<string, unknown>;
-      await publishSiteImages({ ...current, plans_chatgpt_card: "" });
-      setChatgptImage("");
-      toast.success("Imagem removida da oferta ChatGPT.");
-    } catch (e) {
-      toast.error((e as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function edit(plan: Record<string, any>) {
-    setChatgptOpen(false);
     const unit = normalizeDurationUnit(plan["duration_unit"] ?? "days");
     const value = Number(plan["duration_value"] ?? plan["duration_days"] ?? 30);
     const delivery = deliveryFromPlan(plan);
@@ -408,6 +338,29 @@ export function AdminSubscriptionsTab({
       delivery_method: delivery.method,
       delivery_link: delivery.link,
       delivery_instructions: delivery.instructions,
+    });
+  }
+
+  function editChatGptOffer() {
+    if (chatgptPlan) {
+      edit(chatgptPlan);
+      return;
+    }
+    setEditing({
+      ...EMPTY,
+      slug: "chatgpt-plus-30d",
+      name: "ChatGPT Plus · 30 dias",
+      description: "ChatGPT Plus por 30 dias com entrega configurável após a confirmação do pagamento.",
+      price: "0,00",
+      duration_label: "30 dias",
+      duration_unit: "days",
+      duration_value: 30,
+      duration_days: 30,
+      max_devices: 1,
+      image_url: chatgptImage,
+      delivery_method: chatgptDeliveryMethod,
+      delivery_link: chatgptDeliveryLink,
+      delivery_instructions: chatgptDeliveryInstructions,
     });
   }
 
@@ -442,6 +395,7 @@ export function AdminSubscriptionsTab({
       });
       await qc.invalidateQueries({ queryKey: ["admin-overview"] });
       await qc.invalidateQueries({ queryKey: ["admin-token-plans"] });
+      await qc.invalidateQueries({ queryKey: ["plans"] });
       toast.success(form.id ? "Oferta atualizada" : "Oferta criada e publicada no site");
       setEditing(null);
     } catch (e) {
@@ -464,7 +418,7 @@ export function AdminSubscriptionsTab({
             </div>
             <h2 className="mt-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">Planos & Ofertas</h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              Edite cada coleção separadamente, incluindo o método automático de entrega depois da compra.
+              Edite preço, período, publicação e a entrega automática de cada oferta no mesmo lugar.
             </p>
             <div className="mt-4 flex flex-wrap gap-2 text-[0.65rem] font-black uppercase tracking-wider">
               <span className="rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5">{plans.length} ofertas</span>
@@ -483,14 +437,7 @@ export function AdminSubscriptionsTab({
                 className="pl-9"
               />
             </div>
-            <Button
-              variant="neon"
-              className="shrink-0"
-              onClick={() => {
-                setChatgptOpen(false);
-                setEditing({ ...EMPTY });
-              }}
-            >
+            <Button variant="neon" className="shrink-0" onClick={() => setEditing({ ...EMPTY })}>
               <Plus className="mr-2 h-4 w-4" /> Nova oferta
             </Button>
           </div>
@@ -500,88 +447,16 @@ export function AdminSubscriptionsTab({
       <OfferCollection
         collection={{
           key: "chatgpt",
-          eyebrow: "Oferta especial",
+          eyebrow: "Oferta adicional",
           title: "ChatGPT · 30 dias Plus",
-          description: "Oferta exclusiva MSK de ChatGPT Plus por 30 dias. Hoje permanece em breve, sem checkout ativo.",
-          plans: [],
+          description: "Edite preço, validade, arte e entrega. Publicada, a oferta entra no carrinho e no checkout normal.",
+          plans: chatgptPlan ? [chatgptPlan] : [],
         }}
         special
-        specialImage={chatgptImage}
-        specialDelivery={chatgptDeliveryMethod}
-        onSpecialEdit={() => {
-          setEditing(null);
-          setChatgptOpen((value) => !value);
-        }}
+        specialImage={chatgptPlan?.["image_url"] || chatgptImage}
+        specialDelivery={chatgptPlan ? deliveryFromPlan(chatgptPlan).method : chatgptDeliveryMethod}
+        onSpecialEdit={editChatGptOffer}
       />
-
-      {chatgptOpen ? (
-        <section className="overflow-hidden rounded-[1.75rem] border border-blue-400/25 bg-blue-400/[.035]">
-          <div className="flex items-start justify-between gap-4 border-b border-blue-400/15 px-5 py-4 sm:px-6">
-            <div>
-              <p className="text-[0.6rem] font-black uppercase tracking-[.2em] text-blue-300">Editor da oferta especial</p>
-              <h3 className="mt-1 flex flex-wrap items-center gap-2 text-lg font-black uppercase">
-                ChatGPT · 30 dias
-                <span className="rounded-full bg-blue-500 px-2.5 py-1 text-[0.6rem] font-black normal-case tracking-normal text-white shadow-lg shadow-blue-500/20">Plus</span>
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">A oferta continua “Em breve”, mas a arte e o método de entrega já ficam preparados no painel.</p>
-            </div>
-            <button type="button" className="rounded-xl p-2 text-muted-foreground hover:bg-white/5 hover:text-white" onClick={() => setChatgptOpen(false)}>
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-              {chatgptImage ? (
-                <img src={chatgptImage} alt="Oferta ChatGPT Plus 30 dias" className="h-full w-full object-contain" />
-              ) : (
-                <div className="grid h-full place-items-center text-center">
-                  <div>
-                    <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground/30" />
-                    <p className="mt-2 text-[0.65rem] font-black uppercase text-muted-foreground">Sem arte personalizada</p>
-                  </div>
-                </div>
-              )}
-              {uploading === "chatgpt" ? (
-                <div className="absolute inset-0 grid place-items-center bg-black/70"><RefreshCw className="h-6 w-6 animate-spin text-blue-300" /></div>
-              ) : null}
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <InfoBox label="Nome exibido" value="ChatGPT · 30 dias Plus" />
-                <InfoBox label="Status da vitrine" value="Em breve · checkout desativado" />
-                <InfoBox label="Duração" value="30 dias corridos" />
-                <InfoBox label="Coleção" value="Oferta exclusiva MSK" />
-              </div>
-
-              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Imagem do card</p>
-                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Envie ou substitua a arte que aparece na seção ChatGPT Plus da página de planos.</p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button variant="neonOutline" disabled={uploading === "chatgpt"} onClick={() => void pickAndUploadChatGpt()}>
-                    <Upload className="mr-2 h-4 w-4" /> {chatgptImage ? "Substituir imagem" : "Enviar imagem"}
-                  </Button>
-                  {chatgptImage ? <Button variant="ghost" disabled={busy} onClick={() => void removeChatGptImage()}>Remover imagem</Button> : null}
-                </div>
-              </div>
-
-              <DeliveryEditor
-                method={chatgptDeliveryMethod}
-                link={chatgptDeliveryLink}
-                instructions={chatgptDeliveryInstructions}
-                onMethod={setChatgptDeliveryMethod}
-                onLink={setChatgptDeliveryLink}
-                onInstructions={setChatgptDeliveryInstructions}
-              />
-
-              <Button variant="neon" disabled={busy} onClick={() => void saveChatGptDelivery()}>
-                {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Salvar método de envio
-              </Button>
-            </div>
-          </div>
-        </section>
-      ) : null}
 
       {collections.map((collection) => (
         <OfferCollection key={collection.key} collection={collection} onEdit={edit} />
@@ -644,6 +519,8 @@ function OfferCollection({
   onSpecialEdit?: () => void;
 }) {
   const Icon = collectionIcon(collection.key);
+  const specialPlan = special ? collection.plans[0] : null;
+  const specialPublished = !!specialPlan && specialPlan["active"] !== false && Number(specialPlan["price"] ?? 0) > 0;
   return (
     <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/20">
       <div className="flex flex-col gap-3 border-b border-white/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
@@ -667,13 +544,18 @@ function OfferCollection({
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-black uppercase">ChatGPT · 30 dias</p>
+              <p className="font-black uppercase">{specialPlan?.["name"] || "ChatGPT · 30 dias"}</p>
               <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[0.55rem] font-black normal-case text-white">Plus</span>
-              <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[0.55rem] font-black uppercase text-amber-300">Em breve</span>
+              <span className={`rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase ${specialPublished ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300"}`}>
+                {specialPublished ? "Publicado" : specialPlan ? "Oculto / sem preço" : "Configurar"}
+              </span>
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">Método de envio: {deliveryLabel(specialDelivery)}.</p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>{specialPlan ? brl(specialPlan["price"]) : "Defina o valor"}</span>
+              <span>Método de envio: {deliveryLabel(specialDelivery)}</span>
+            </div>
           </div>
-          <span className="text-[0.6rem] font-black uppercase tracking-widest text-blue-300">Editar oferta →</span>
+          <span className="text-[0.6rem] font-black uppercase tracking-widest text-blue-300">{specialPlan ? "Editar oferta →" : "Configurar oferta →"}</span>
         </button>
       ) : collection.plans.length ? (
         <div className="grid gap-3 p-4 sm:p-5 md:grid-cols-2 xl:grid-cols-3">
@@ -880,7 +762,7 @@ function DeliveryEditor({
 }) {
   const selected = DELIVERY_OPTIONS.find((option) => option.value === method) ?? DELIVERY_OPTIONS[2]!;
   return (
-    <EditorGroup title="Método de envio" description="Define o que acontece automaticamente quando o pagamento desta oferta é aprovado.">
+    <EditorGroup title="Método de envio" description="Define exatamente o que aparece/é enviado quando o pagamento desta oferta é aprovado.">
       <div className="grid gap-3 sm:grid-cols-2">
         {DELIVERY_OPTIONS.map((option) => {
           const active = option.value === method;
@@ -906,21 +788,26 @@ function DeliveryEditor({
         <Field label={method === "email_link" ? "Link de entrega (obrigatório)" : "Link de entrega (opcional)"}>
           <Input value={link} onChange={(e) => onLink(e.target.value)} placeholder="https://..." />
         </Field>
-        <Field label="Instruções para o cliente">
-          <Input value={instructions} onChange={(e) => onInstructions(e.target.value)} placeholder="Ex.: clique no link e acesse sua conta" />
+        <Field label="Entrega / mensagem para o cliente">
+          <textarea
+            value={instructions}
+            onChange={(e) => onInstructions(e.target.value)}
+            rows={5}
+            className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+            placeholder={"Email: cliente@exemplo.com\nSenha: sua-senha\nInstruções adicionais..."}
+          />
         </Field>
       </div>
-      <p className="mt-3 text-xs text-muted-foreground">Selecionado: <strong className="text-foreground">{selected.label}</strong>. {selected.hint}</p>
+      <p className="mt-3 text-xs text-muted-foreground">
+        Para dados copiáveis no painel, use uma linha por campo no formato <strong className="text-foreground">Email: valor</strong>, <strong className="text-foreground">Senha: valor</strong> ou <strong className="text-foreground">Login: valor</strong>.
+      </p>
+      <p className="mt-2 text-xs text-muted-foreground">Selecionado: <strong className="text-foreground">{selected.label}</strong>. {selected.hint}</p>
     </EditorGroup>
   );
 }
 
 function EditorGroup({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
   return <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5"><div className="mb-4"><p className="text-xs font-black uppercase">{title}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</div>;
-}
-
-function InfoBox({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl border border-white/10 bg-black/20 p-3"><p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground">{label}</p><p className="mt-1 text-xs font-bold">{value}</p></div>;
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
