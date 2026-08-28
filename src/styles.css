@@ -89,6 +89,7 @@
 }
 
 :root {
+  --msk-support-banner-height: 0px;
   --radius: 0.9rem;
   --background: oklch(0.06 0.01 260);
   --foreground: oklch(0.98 0.01 260);
@@ -257,8 +258,13 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+.msk-site-header {
+  top: var(--msk-support-banner-height) !important;
+}
+
 .mobile-top-bar {
   @apply lg:hidden sticky top-0 z-[60] flex items-center justify-between px-5 h-16 bg-background/80 backdrop-blur-xl border-b border-white/5;
+  top: var(--msk-support-banner-height);
 }
 
 html,
