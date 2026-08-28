@@ -1,4 +1,6 @@
 /** Traqueamento local (client-side) de páginas, ofertas, produtos e carrinhos abandonados. */
+import { normalizeProductImage } from "./product-image";
+
 export type TrackEvent = {
   id: string;
   type:
@@ -79,6 +81,7 @@ export function clearEvents() {
 export type AbandonedCartItem = {
   /** Plano correspondente — permite ir direto para o pagamento pelo carrinho. */
   planId?: string | null;
+  slug?: string | null;
   name: string;
   quantity: number;
   price: number;
@@ -91,6 +94,17 @@ export type AbandonedCart = {
   items: AbandonedCartItem[];
 };
 
+function stabilizeCart(cart: AbandonedCart | null) {
+  if (!cart) return null;
+  return {
+    ...cart,
+    items: cart.items.map((item) => ({
+      ...item,
+      imageUrl: normalizeProductImage(item.imageUrl, item.slug ?? item.name),
+    })),
+  } satisfies AbandonedCart;
+}
+
 function cartCount(cart: AbandonedCart | null) {
   return (cart?.items ?? []).reduce((sum, item) => sum + Math.max(0, Number(item.quantity ?? 0)), 0);
 }
@@ -98,28 +112,29 @@ function cartCount(cart: AbandonedCart | null) {
 export function saveCartSnapshot(cart: AbandonedCart | null) {
   if (!isBrowser()) return;
   const previous = readCartSnapshot();
+  const stableCart = stabilizeCart(cart);
   const previousCount = cartCount(previous);
-  const nextCount = cartCount(cart);
+  const nextCount = cartCount(stableCart);
 
-  if (!cart || cart.items.length === 0) {
+  if (!stableCart || stableCart.items.length === 0) {
     localStorage.removeItem(CART_KEY);
   } else {
-    localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    localStorage.setItem(CART_KEY, JSON.stringify(stableCart));
   }
 
   const addedItem =
     nextCount > previousCount
-      ? cart?.items.find((item) => {
+      ? stableCart?.items.find((item) => {
           const before = previous?.items.find((old) => old.name === item.name)?.quantity ?? 0;
           return Number(item.quantity ?? 0) > Number(before);
-        }) ?? cart?.items.at(-1) ?? null
+        }) ?? stableCart?.items.at(-1) ?? null
       : null;
 
   window.dispatchEvent(new CustomEvent("msk:track"));
   window.dispatchEvent(
     new CustomEvent("msk:cart-change", {
       detail: {
-        cart,
+        cart: stableCart,
         count: nextCount,
         previousCount,
         added: nextCount > previousCount,
@@ -133,7 +148,9 @@ export function readCartSnapshot(): AbandonedCart | null {
   if (!isBrowser()) return null;
   try {
     const raw = localStorage.getItem(CART_KEY);
-    return raw ? (JSON.parse(raw) as AbandonedCart) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AbandonedCart;
+    return stabilizeCart(parsed);
   } catch {
     return null;
   }
