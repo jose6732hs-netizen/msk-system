@@ -15,6 +15,31 @@ import path from "node:path";
 Object.assign(process.env, loadEnv(process.env["NODE_ENV"] || "development", process.cwd(), ""));
 
 /**
+ * O teste gratuito e recorrente: dura 15 minutos e pode ser solicitado novamente
+ * depois do cooldown configurado (24h). O histórico continua registrado para
+ * auditoria, mas não existe mais teto permanente de "uma vez por usuário".
+ * IP, device_hash e installation_id não participam da decisão de elegibilidade.
+ */
+function recurringTrialCooldownFix(): Plugin {
+  return {
+    name: "msk-recurring-trial-cooldown-fix",
+    enforce: "pre",
+    transform(code, id) {
+      if (!id.replace(/\\/g, "/").includes("/src/lib/commerce.server.ts")) return null;
+
+      const permanentLimit = [
+        "  const used = previous?.length ?? 0;",
+        '  if (used >= cfg.max_per_user) throw new Error("Você já utilizou o teste gratuito disponível.");',
+        "",
+      ].join("\n");
+
+      const next = code.replace(permanentLimit, "");
+      return next === code ? null : { code: next, map: null };
+    },
+  };
+}
+
+/**
  * Todos os uploads do CMS passam por uma rota protegida que exige o JWT da
  * sessão de Admin/Super Admin. Os componentes antigos enviavam apenas o FormData,
  * então a API respondia 401 e nenhuma imagem de plano/banner era persistida.
@@ -190,6 +215,7 @@ function adminAgentCenter(): Plugin {
 export default defineConfig({
   vite: {
     plugins: [
+      recurringTrialCooldownFix(),
       adminCmsUploadAuthFix(),
       plansImageFallbackFix(),
       adminLivePreviewFix(),
