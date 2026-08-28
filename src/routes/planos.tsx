@@ -298,7 +298,7 @@ function OfferCarouselSection({
 }
 
 /**
- * Oferta "Conta ChatGPT 30 dias" — card pronto, porém DESATIVADO.
+ * Oferta "ChatGPT Plus 30 dias" — card pronto, porém DESATIVADO.
  * Sem preço por enquanto; a imagem é definida no Super Admin pelo slot
  * `plans_chatgpt_card`. Para ativar, troque `CHATGPT_OFFER_ENABLED` para true.
  */
@@ -314,7 +314,7 @@ function ChatGptOfferSection({ imageUrl }: { imageUrl: string }) {
       <article className="relative grid min-w-0 gap-0 overflow-hidden rounded-[2rem] border border-emerald-400/25 bg-[#0A0A0A] shadow-[0_0_70px_rgba(16,185,129,.08)] md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden bg-black/60 p-3">
           {imageUrl ? (
-            <img src={imageUrl} alt="Conta ChatGPT 30 dias" loading="lazy" className="max-h-[280px] w-full object-contain" />
+            <img src={imageUrl} alt="ChatGPT Plus 30 dias" loading="lazy" className="max-h-[280px] w-full object-contain" />
           ) : (
             <div className="grid h-full w-full min-h-[190px] place-items-center rounded-[1.4rem] border border-dashed border-emerald-400/25 text-center">
               <div className="px-6">
@@ -337,20 +337,25 @@ function ChatGptOfferSection({ imageUrl }: { imageUrl: string }) {
           <p className="text-[9px] font-black uppercase tracking-[.24em] text-emerald-400 sm:text-[10px]">
             Oferta exclusiva MSK
           </p>
-          <h2 className="mt-2 break-words text-2xl font-black uppercase tracking-tight text-white sm:text-4xl">
-            Conta ChatGPT · 30 dias
-          </h2>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <h2 className="break-words text-2xl font-black uppercase tracking-tight text-white sm:text-4xl">
+              ChatGPT · 30 dias
+            </h2>
+            <span className="inline-flex items-center rounded-full bg-[#1687ff] px-3 py-1 text-[10px] font-black normal-case tracking-normal text-white shadow-[0_0_24px_rgba(22,135,255,.28)] sm:text-xs">
+              Plus
+            </span>
+          </div>
           <p className="mt-3 max-w-xl text-xs font-medium leading-relaxed text-white/65 sm:text-sm">
-            Acesso completo a uma conta ChatGPT por 30 dias, entregue junto com sua licença MSK.
+            Acesso ao ChatGPT Plus por 30 dias, preparado especialmente para usar junto com o ecossistema MSK.
             Ideal para acelerar prompts, correções e criação de projetos no Lovable.
           </p>
 
           <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
             {[
-              "Conta liberada por 30 dias corridos",
-              "Entrega automática após o pagamento",
+              "ChatGPT Plus por 30 dias corridos",
+              "Entrega automática conforme a oferta",
               "Suporte MSK durante todo o período",
-              "Funciona junto com a Extensão MSK",
+              "Pronto para usar com Lovable e MSK",
             ].map((item) => (
               <li key={item} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
                 <span className="mt-0.5 rounded-full bg-emerald-400 p-0.5 text-black">
