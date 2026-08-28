@@ -136,24 +136,37 @@ export function AffiliateHeader({
             </SheetTrigger>
             <SheetContent
               side="bottom"
-              className="z-[150] h-[100dvh] max-h-[100dvh] border-none bg-background/98 p-0 backdrop-blur-3xl focus:outline-none [&>button]:hidden"
+              className="z-[150] h-[100dvh] max-h-[100dvh] border-none bg-[#050608]/98 p-0 backdrop-blur-3xl focus:outline-none [&>button]:hidden"
             >
-              <div className="flex h-full flex-col overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
-                <div className="mb-4 flex items-center justify-between gap-3 px-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:px-6 sm:pt-6">
-                  <span className="min-w-0 break-words text-base font-black uppercase tracking-widest text-primary sm:text-lg">
+              <div className="relative flex h-full flex-col overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))]">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute left-1/2 top-16 h-48 w-72 -translate-x-1/2 rounded-full bg-primary/10 blur-[80px]"
+                />
+                <div className="relative z-10 mb-4 flex items-center justify-between gap-3 px-4 pt-[calc(1rem+env(safe-area-inset-top,0px))] sm:px-6 sm:pt-6">
+                  <span className="min-w-0 break-words bg-gradient-to-r from-primary via-primary to-white bg-clip-text text-base font-black uppercase tracking-[0.18em] text-transparent drop-shadow-[0_0_12px_hsl(var(--primary)/0.3)] sm:text-lg">
                     MSK AFILIADOS
                   </span>
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white sm:h-12 sm:w-12"
+                    className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/[0.06] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.07),0_0_18px_hsl(var(--primary)/0.08)] transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary sm:h-12 sm:w-12"
                     aria-label="Fechar menu"
                   >
                     <X className="h-5 w-5 sm:h-6 sm:w-6" />
                   </button>
                 </div>
-                <div className="mx-auto mb-5 h-1 w-12 shrink-0 rounded-full bg-white/15" />
-                <nav className="flex flex-col gap-2 px-4 sm:px-6">
+                <div className="relative z-10 mx-auto mb-5 h-px w-28 shrink-0 bg-gradient-to-r from-transparent via-primary/80 to-transparent shadow-[0_0_12px_hsl(var(--primary)/0.75)]" />
+                <nav className="relative z-10 mx-4 flex flex-col gap-2 overflow-hidden rounded-[2rem] border border-primary/20 bg-[linear-gradient(145deg,hsl(var(--background)/0.86),hsl(var(--background)/0.48))] p-2 shadow-[0_24px_60px_-38px_hsl(var(--primary)/0.9),inset_0_1px_0_rgba(255,255,255,0.06),inset_0_0_34px_hsl(var(--primary)/0.06)] backdrop-blur-2xl sm:mx-6">
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary/80 to-transparent shadow-[0_0_14px_hsl(var(--primary)/0.8)]"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-10 bottom-0 h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent"
+                  />
+
                   {affiliateRoutes.map((route) =>
                     route.action ? (
                       <button
@@ -167,10 +180,18 @@ export function AffiliateHeader({
                           }
                           setOpen(false);
                         }}
-                        className="flex min-h-14 w-full min-w-0 items-center gap-3 rounded-2xl bg-white/5 p-4 text-left text-base font-bold transition-colors active:bg-white/10 sm:gap-4 sm:p-5 sm:text-lg"
+                        className="group relative isolate flex min-h-14 w-full min-w-0 items-center gap-3 overflow-hidden rounded-2xl border border-white/[0.06] bg-white/[0.025] p-4 text-left text-base font-bold text-white/80 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition-all duration-300 hover:-translate-y-px hover:border-primary/30 hover:bg-primary/[0.07] hover:text-white hover:shadow-[0_0_22px_hsl(var(--primary)/0.13),inset_0_1px_0_rgba(255,255,255,0.07)] active:translate-y-0 sm:gap-4 sm:p-5 sm:text-lg"
                       >
-                        <route.icon size={20} className="shrink-0 text-primary" />
-                        <span className="min-w-0 break-words">{route.label}</span>
+                        <span
+                          aria-hidden="true"
+                          className="pointer-events-none absolute inset-y-3 left-0 w-px bg-gradient-to-b from-transparent via-primary/70 to-transparent opacity-70 shadow-[0_0_10px_hsl(var(--primary)/0.75)] transition-opacity group-hover:opacity-100"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className="pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-primary/10 opacity-0 blur-3xl transition-opacity group-hover:opacity-100"
+                        />
+                        <route.icon size={20} className="relative z-10 shrink-0 text-primary drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]" />
+                        <span className="relative z-10 min-w-0 break-words">{route.label}</span>
                       </button>
                     ) : (
                       <Link
@@ -178,16 +199,37 @@ export function AffiliateHeader({
                         to={route.to}
                         {...(route.hash ? { hash: route.hash } : {})}
                         className={cn(
-                          "flex min-h-14 min-w-0 items-center gap-3 rounded-2xl bg-white/5 p-4 text-base font-bold transition-colors active:bg-white/10 sm:gap-4 sm:p-5 sm:text-lg",
-                          pathname === route.to && "border border-primary/20 bg-primary/5 text-primary",
+                          "group relative isolate flex min-h-14 min-w-0 items-center gap-3 overflow-hidden rounded-2xl border p-4 text-base font-bold shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition-all duration-300 hover:-translate-y-px active:translate-y-0 sm:gap-4 sm:p-5 sm:text-lg",
+                          pathname === route.to
+                            ? "border-primary/50 bg-[linear-gradient(135deg,hsl(var(--primary)/0.16),hsl(var(--primary)/0.055))] text-primary shadow-[0_0_26px_hsl(var(--primary)/0.18),inset_0_1px_0_hsl(var(--primary)/0.2)]"
+                            : "border-white/[0.06] bg-white/[0.025] text-white/70 hover:border-primary/28 hover:bg-primary/[0.06] hover:text-white hover:shadow-[0_0_22px_hsl(var(--primary)/0.12),inset_0_1px_0_rgba(255,255,255,0.07)]",
                         )}
                         onClick={() => setOpen(false)}
                       >
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "pointer-events-none absolute inset-y-3 left-0 w-px bg-gradient-to-b from-transparent via-primary to-transparent shadow-[0_0_11px_hsl(var(--primary)/0.78)] transition-opacity",
+                            pathname === route.to ? "opacity-100" : "opacity-35 group-hover:opacity-90",
+                          )}
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "pointer-events-none absolute -right-8 -top-10 h-24 w-24 rounded-full bg-primary/10 blur-3xl transition-opacity",
+                            pathname === route.to ? "opacity-100" : "opacity-0 group-hover:opacity-90",
+                          )}
+                        />
                         <route.icon
                           size={20}
-                          className={cn("shrink-0", pathname === route.to ? "text-primary" : "text-white/40")}
+                          className={cn(
+                            "relative z-10 shrink-0 transition-all",
+                            pathname === route.to
+                              ? "text-primary drop-shadow-[0_0_9px_hsl(var(--primary)/0.65)]"
+                              : "text-white/40 group-hover:text-primary group-hover:drop-shadow-[0_0_8px_hsl(var(--primary)/0.4)]",
+                          )}
                         />
-                        <span className="min-w-0 break-words">{route.label}</span>
+                        <span className="relative z-10 min-w-0 break-words">{route.label}</span>
                       </Link>
                     ),
                   )}
