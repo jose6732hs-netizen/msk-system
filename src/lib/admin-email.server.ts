@@ -140,23 +140,34 @@ async function loadEligibleProfiles(): Promise<EligibleProfile[]> {
   if (roleError) throw roleError;
   const adminIds = new Set((adminRoles ?? []).map((row: any) => String(row.user_id)));
 
+  const profileNames = new Map<string, string>();
+  const { data: profileRows, error: profileError } = await db.from("profiles").select("id,name").limit(5000);
+  if (profileError) throw profileError;
+  for (const row of profileRows ?? []) {
+    if (row.name) profileNames.set(String(row.id), String(row.name));
+  }
+
   const dedup = new Map<string, EligibleProfile>();
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await db
-      .from("profiles")
-      .select("id,name,email")
-      .not("email", "is", null)
-      .range(from, from + 999);
+  for (let page = 1; ; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) throw error;
-    const rows = data ?? [];
-    for (const row of rows) {
-      if (adminIds.has(String(row.id))) continue;
-      const email = normalizeEmail(row.email);
-      if (email && !dedup.has(email)) {
-        dedup.set(email, { id: String(row.id), email, name: row.name ? String(row.name) : null });
-      }
+    const users = data.users ?? [];
+
+    for (const user of users) {
+      if (adminIds.has(String(user.id))) continue;
+      const email = normalizeEmail(user.email);
+      if (!email || dedup.has(email)) continue;
+
+      const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+      const fallbackName = metadata["name"] || metadata["full_name"] || metadata["display_name"];
+      dedup.set(email, {
+        id: String(user.id),
+        email,
+        name: profileNames.get(String(user.id)) ?? (fallbackName ? String(fallbackName) : null),
+      });
     }
-    if (rows.length < 1000) break;
+
+    if (users.length < 1000) break;
   }
 
   return [...dedup.values()].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, "pt-BR"));
