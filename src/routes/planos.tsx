@@ -52,6 +52,11 @@ const PLAN_IMAGES: Record<string, string> = {
   quarterly: cardTrimestralImg,
 };
 
+function isChatGptSlug(value: unknown) {
+  const slug = String(value ?? "").toLowerCase();
+  return slug.startsWith("chatgpt") || slug.startsWith("chat-gpt") || slug.startsWith("gpt-plus");
+}
+
 function planImage(plan?: any) {
   if (plan?.image_url) return plan.image_url;
   return PLAN_IMAGES[String(plan?.slug ?? "")] || bannerOfferAsset.url;
@@ -297,68 +302,63 @@ function OfferCarouselSection({
   );
 }
 
-/**
- * Oferta "ChatGPT Plus 30 dias" — card pronto, porém DESATIVADO.
- * Sem preço por enquanto; a imagem é definida no Super Admin pelo slot
- * `plans_chatgpt_card`. Para ativar, troque `CHATGPT_OFFER_ENABLED` para true.
- */
-const CHATGPT_OFFER_ENABLED = false;
-
-function ChatGptOfferSection({ imageUrl }: { imageUrl: string }) {
-  if (!CHATGPT_OFFER_ENABLED) {
-    // Card visível como "em breve" apenas na vitrine, sem checkout.
-  }
+function ChatGptOfferSection({
+  imageUrl,
+  plan,
+  loadingPlan,
+  onAdd,
+  onShare,
+}: {
+  imageUrl: string;
+  plan: any | null | undefined;
+  loadingPlan: string | null;
+  onAdd: (plan: any) => void;
+  onShare: (plan: any) => void;
+}) {
+  if (!plan || Number(plan.price ?? 0) <= 0) return null;
+  const image = plan.image_url || imageUrl;
 
   return (
     <section id="conta-chatgpt" className="mt-10 min-w-0 scroll-mt-24 sm:mt-12">
-      <article className="relative grid min-w-0 gap-0 overflow-hidden rounded-[2rem] border border-emerald-400/25 bg-[#0A0A0A] shadow-[0_0_70px_rgba(16,185,129,.08)] md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+      <article className="relative grid min-w-0 gap-0 overflow-hidden rounded-[2rem] border border-blue-400/25 bg-[#0A0A0A] shadow-[0_0_70px_rgba(59,130,246,.08)] md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
         <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden bg-black/60 p-3">
-          {imageUrl ? (
-            <img src={imageUrl} alt="ChatGPT Plus 30 dias" loading="lazy" className="max-h-[280px] w-full object-contain" />
+          {image ? (
+            <img src={image} alt={plan.name || "ChatGPT Plus 30 dias"} loading="lazy" className="max-h-[280px] w-full object-contain" />
           ) : (
-            <div className="grid h-full w-full min-h-[190px] place-items-center rounded-[1.4rem] border border-dashed border-emerald-400/25 text-center">
-              <div className="px-6">
-                <Sparkles className="mx-auto h-7 w-7 text-emerald-400" />
-                <p className="mt-3 text-[10px] font-black uppercase tracking-[.2em] text-emerald-300">
-                  Imagem em breve
-                </p>
-                <p className="mt-1 text-[10px] text-muted-foreground">
-                  Envie a arte pelo painel Super Admin
-                </p>
-              </div>
+            <div className="grid h-full w-full min-h-[190px] place-items-center rounded-[1.4rem] border border-dashed border-blue-400/25 text-center">
+              <Sparkles className="h-8 w-8 text-blue-300" />
             </div>
           )}
-          <span className="absolute left-3 top-3 rounded-full bg-emerald-400 px-2.5 py-1 text-[8px] font-black uppercase text-black">
-            Em breve
+          <span className="absolute left-3 top-3 rounded-full bg-blue-500 px-2.5 py-1 text-[8px] font-black uppercase text-white">
+            Oferta disponível
           </span>
         </div>
 
         <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
-          <p className="text-[9px] font-black uppercase tracking-[.24em] text-emerald-400 sm:text-[10px]">
-            Oferta exclusiva MSK
+          <p className="text-[9px] font-black uppercase tracking-[.24em] text-blue-300 sm:text-[10px]">
+            Oferta adicional MSK
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-3">
             <h2 className="break-words text-2xl font-black uppercase tracking-tight text-white sm:text-4xl">
-              ChatGPT · 30 dias
+              {plan.name || "ChatGPT · 30 dias"}
             </h2>
             <span className="inline-flex items-center rounded-full bg-[#1687ff] px-3 py-1 text-[10px] font-black normal-case tracking-normal text-white shadow-[0_0_24px_rgba(22,135,255,.28)] sm:text-xs">
               Plus
             </span>
           </div>
           <p className="mt-3 max-w-xl text-xs font-medium leading-relaxed text-white/65 sm:text-sm">
-            Acesso ao ChatGPT Plus por 30 dias, preparado especialmente para usar junto com o ecossistema MSK.
-            Ideal para acelerar prompts, correções e criação de projetos no Lovable.
+            {plan.description || "Adicione o ChatGPT Plus ao seu fluxo MSK e mantenha seus projetos, prompts e criação de imagens em um só ritmo."}
           </p>
 
           <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
             {[
-              "ChatGPT Plus por 30 dias corridos",
-              "Entrega automática conforme a oferta",
-              "Suporte MSK durante todo o período",
-              "Pronto para usar com Lovable e MSK",
+              `${plan.duration_label || "30 dias"} de acesso`,
+              "Entrega liberada após confirmação",
+              "Combina com MSK Agente e Lovable",
+              "Pagamento no mesmo checkout MSK",
             ].map((item) => (
               <li key={item} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
-                <span className="mt-0.5 rounded-full bg-emerald-400 p-0.5 text-black">
+                <span className="mt-0.5 rounded-full bg-blue-400 p-0.5 text-black">
                   <Check className="h-2.5 w-2.5" />
                 </span>
                 <span className="min-w-0 break-words">{item}</span>
@@ -367,15 +367,19 @@ function ChatGptOfferSection({ imageUrl }: { imageUrl: string }) {
           </ul>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
-            <span className="rounded-2xl border border-white/10 bg-white/[.03] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white/60">
-              Valor em breve
+            <span className="text-3xl font-black text-white">
+              {formatPrice(Number(plan.price), plan.currency)}
             </span>
             <Button
               type="button"
-              disabled
-              className="min-h-14 flex-1 whitespace-normal rounded-2xl bg-white/10 px-5 text-[10px] font-black uppercase leading-tight text-white/50 sm:flex-none sm:text-xs"
+              className="min-h-14 flex-1 whitespace-normal rounded-2xl bg-blue-500 px-5 text-[10px] font-black uppercase leading-tight text-white hover:bg-blue-400 sm:flex-none sm:text-xs"
+              disabled={loadingPlan === plan.id}
+              onClick={() => onAdd(plan)}
             >
-              Oferta desativada · em breve
+              {loadingPlan === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Adicionar ao carrinho"}
+            </Button>
+            <Button type="button" variant="ghost" className="min-h-14 rounded-2xl border border-white/10" onClick={() => onShare(plan)}>
+              <Share2 className="mr-2 h-4 w-4" /> Compartilhar
             </Button>
           </div>
         </div>
@@ -471,7 +475,8 @@ function PlanosPage() {
       return (data ?? []).filter(
         (plan: any) =>
           !String(plan.slug ?? "").startsWith("page-cloner") &&
-          !String(plan.slug ?? "").startsWith("msk-agent"),
+          !String(plan.slug ?? "").startsWith("msk-agent") &&
+          !isChatGptSlug(plan.slug),
       );
     },
   });
@@ -505,6 +510,28 @@ function PlanosPage() {
       return data ?? [];
     },
   });
+
+  const { data: chatgptPlan, isLoading: chatgptLoading } = useQuery({
+    queryKey: ["plans", "chatgpt-plus"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("active", true)
+        .order("sort_order");
+      if (error) throw error;
+      return (data ?? []).find((plan: any) => isChatGptSlug(plan.slug)) ?? null;
+    },
+  });
+
+  const hasAgentInCart = cart.some((item) => String(item.slug ?? "").startsWith("msk-agent"));
+  const hasChatGptInCart = cart.some((item) => isChatGptSlug(item.slug));
+  const showChatGptUpsell =
+    hasAgentInCart &&
+    !hasChatGptInCart &&
+    !!chatgptPlan &&
+    Number(chatgptPlan.price ?? 0) > 0;
 
   async function loadCheckoutOffer(plan: any) {
     const cadence = ["daily", "weekly", "monthly"].includes(String(plan.slug));
@@ -562,6 +589,7 @@ function PlanosPage() {
 
   async function addToCart(plan: any) {
     const isFree = Number(plan.price) === 0;
+    const singleOnly = isChatGptSlug(plan.slug);
     if (loadingPlan === plan.id) return;
     track("offer_view", { label: plan.name, value: Number(plan.price) });
 
@@ -573,6 +601,7 @@ function PlanosPage() {
     setCart((current) => {
       const existing = current.find((item) => item.planId === plan.id);
       if (existing) {
+        if (singleOnly) return current;
         return current.map((item) =>
           item.planId === plan.id
             ? { ...item, quantity: Math.min(20, item.quantity + 1) }
@@ -592,9 +621,15 @@ function PlanosPage() {
       ];
     });
     track("add_to_cart", { label: plan.name, value: Number(plan.price) });
-    toast.success(`${plan.name} adicionado ao carrinho`);
+    toast.success(existingCartMessage(plan, singleOnly));
     revealCheckout();
-    if (!inlineOffer) await loadCheckoutOffer(plan);
+    if (!inlineOffer && !singleOnly) await loadCheckoutOffer(plan);
+  }
+
+  function existingCartMessage(plan: any, singleOnly: boolean) {
+    const exists = cart.some((item) => item.planId === plan.id);
+    if (exists && singleOnly) return `${plan.name} já está no carrinho`;
+    return `${plan.name} adicionado ao carrinho`;
   }
 
   function removeFromCart(planId: string) {
@@ -611,7 +646,9 @@ function PlanosPage() {
     setCart((current) =>
       current.map((item) =>
         item.planId === planId
-          ? { ...item, quantity: Math.max(1, Math.min(20, item.quantity + delta)) }
+          ? isChatGptSlug(item.slug)
+            ? { ...item, quantity: 1 }
+            : { ...item, quantity: Math.max(1, Math.min(20, item.quantity + delta)) }
           : item,
       ),
     );
@@ -793,7 +830,7 @@ function PlanosPage() {
   const clonerBanner = resolveSiteImage(cmsSettings, "plans_cloner_banner");
   const agentBanner = resolveSiteImage(cmsSettings, "plans_agent_banner");
   const chatgptCard = resolveSiteImage(cmsSettings, "plans_chatgpt_card");
-  const offersLoading = isLoading || clonerLoading || agentLoading;
+  const offersLoading = isLoading || clonerLoading || agentLoading || chatgptLoading;
 
   return (
     <div className="min-h-screen overflow-x-hidden">
@@ -830,12 +867,47 @@ function PlanosPage() {
                   <CartRow
                     key={item.planId}
                     item={item}
-                    busy={loadingPlan === item.planId}
+                    busy={loadingPlan === item.planId || loadingPlan === "checkout-bulk"}
                     onQty={(delta) => updateQuantity(item.planId, delta)}
                     onRemove={() => removeFromCart(item.planId)}
-                    onPay={() => void payItem(item)}
+                    onPay={() => void (cart.length > 1 ? checkoutCart() : payItem(item))}
                   />
                 ))}
+
+                {showChatGptUpsell && chatgptPlan ? (
+                  <div className="relative overflow-hidden rounded-[1.35rem] border border-blue-400/35 bg-gradient-to-br from-blue-500/15 via-violet-500/10 to-black/20 p-4 shadow-[0_18px_60px_-35px_rgba(59,130,246,.8)]">
+                    <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-blue-500/20 blur-3xl" />
+                    <div className="relative">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-blue-300" />
+                        <span className="text-[9px] font-black uppercase tracking-[.2em] text-blue-300">Antes de finalizar</span>
+                      </div>
+                      <h3 className="mt-2 text-lg font-black uppercase leading-tight text-white">
+                        Turbine seu MSK Agente com ChatGPT Plus
+                      </h3>
+                      <p className="mt-2 text-[11px] font-medium leading-relaxed text-white/70">
+                        Não interrompa o ritmo dos seus projetos. Adicione o Plus agora para trabalhar mais rápido, ter mais liberdade na criação de imagens e usar tudo junto com o MSK Agente sem consumir os créditos do MSK.
+                      </p>
+                      <div className="mt-3 rounded-xl border border-blue-400/15 bg-black/25 px-3 py-2 text-[10px] font-bold text-white/65">
+                        Opcional, mas é a combinação completa: adicione agora e pague os dois produtos no mesmo PIX ou cartão.
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-white/40">Adicionar por</p>
+                          <p className="text-xl font-black text-blue-300">{formatPrice(Number(chatgptPlan.price), chatgptPlan.currency)}</p>
+                        </div>
+                        <Button
+                          type="button"
+                          className="min-h-12 flex-1 rounded-xl bg-blue-500 px-4 text-[10px] font-black uppercase text-white hover:bg-blue-400 sm:flex-none"
+                          onClick={() => void addToCart(chatgptPlan)}
+                          disabled={loadingPlan !== null}
+                        >
+                          Sim, quero o Plus agora
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
 
                 {offerLoading && cart.length === 1 ? (
                   <div className="flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[.025] p-5 text-xs text-muted-foreground">
@@ -901,7 +973,13 @@ function PlanosPage() {
           ) : null}
         </header>
 
-        <ChatGptOfferSection imageUrl={chatgptCard} />
+        <ChatGptOfferSection
+          imageUrl={chatgptCard}
+          plan={chatgptPlan}
+          loadingPlan={loadingPlan}
+          onAdd={(plan) => void addToCart(plan)}
+          onShare={(plan) => void sharePlan(plan)}
+        />
 
         {offersLoading ? (
           <div className="mt-16 flex justify-center">
@@ -949,7 +1027,6 @@ function PlanosPage() {
             />
           </>
         )}
-
       </main>
       <SiteFooter />
 
@@ -1025,6 +1102,7 @@ function CartRow({
   onRemove: () => void;
   onPay: () => void;
 }) {
+  const singleOnly = isChatGptSlug(item.slug);
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-black/25 p-3.5">
       <div className="flex min-w-0 gap-3">
@@ -1054,25 +1132,31 @@ function CartRow({
             </button>
           </div>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center rounded-lg border border-white/10 bg-black/30 p-1">
-              <button
-                type="button"
-                onClick={() => onQty(-1)}
-                disabled={item.quantity <= 1}
-                className="p-1 disabled:opacity-30"
-              >
-                <Minus className="h-3 w-3" />
-              </button>
-              <span className="w-7 text-center text-[10px] font-black">{item.quantity}</span>
-              <button
-                type="button"
-                onClick={() => onQty(1)}
-                disabled={item.quantity >= 20}
-                className="p-1 disabled:opacity-30"
-              >
-                <Plus className="h-3 w-3" />
-              </button>
-            </div>
+            {singleOnly ? (
+              <span className="rounded-lg border border-blue-400/15 bg-blue-400/[.05] px-2.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-blue-300">
+                1 acesso por pedido
+              </span>
+            ) : (
+              <div className="flex items-center rounded-lg border border-white/10 bg-black/30 p-1">
+                <button
+                  type="button"
+                  onClick={() => onQty(-1)}
+                  disabled={item.quantity <= 1}
+                  className="p-1 disabled:opacity-30"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+                <span className="w-7 text-center text-[10px] font-black">{item.quantity}</span>
+                <button
+                  type="button"
+                  onClick={() => onQty(1)}
+                  disabled={item.quantity >= 20}
+                  className="p-1 disabled:opacity-30"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
