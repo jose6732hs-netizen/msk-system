@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
+import "@/lib/product-image";
 
 const STALE_CHUNK_KEY = "msk_chunk_reload";
 
