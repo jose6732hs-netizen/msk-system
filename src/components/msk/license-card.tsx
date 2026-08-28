@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { purposeForLicense } from "@/lib/license-purpose";
+import { normalizeProductImage, productImageFallback } from "@/lib/product-image";
 
 interface LicenseCardProps {
   license: any;
@@ -97,6 +98,8 @@ export function LicenseCard({
   const isDigitalDelivery = purpose.role === "delivery";
   const plan = license?.resolved_plan ?? {
     name: metadata["plan_name_snapshot"] ?? license?.plans?.name ?? null,
+    slug: metadata["plan_slug_snapshot"] ?? license?.plans?.slug ?? null,
+    imageUrl: metadata["plan_image_snapshot"] ?? license?.plans?.image_url ?? null,
     price: metadata["item_unit_price"] ?? metadata["plan_price_snapshot"] ?? license?.plans?.price ?? null,
     currency: metadata["plan_currency_snapshot"] ?? license?.plans?.currency ?? "BRL",
     durationLabel: metadata["plan_duration_label_snapshot"] ?? license?.plans?.duration_label ?? null,
@@ -106,6 +109,11 @@ export function LicenseCard({
         ? metadata["plan_is_lifetime_snapshot"]
         : Boolean(license?.plans?.is_lifetime),
   };
+  const productSlug = String(plan?.slug ?? metadata["plan_slug_snapshot"] ?? license?.plans?.slug ?? "");
+  const productImage = normalizeProductImage(
+    plan?.imageUrl ?? plan?.image_url ?? metadata["plan_image_snapshot"] ?? license?.plans?.image_url,
+    productSlug,
+  );
   const itemLabel = metadata["item_label"] as string | undefined;
   const deliveryMethod = String(metadata["delivery_method"] ?? "panel_email");
   const deliveryLink = String(metadata["delivery_link"] ?? "").trim();
@@ -168,24 +176,35 @@ export function LicenseCard({
 
       <div className="relative z-10 p-8 sm:p-10">
         <div className="mb-10 flex flex-col items-start justify-between gap-6 sm:flex-row">
-          <div className="flex items-center gap-4">
-            <div
-              className={cn(
-                "flex h-16 w-16 items-center justify-center rounded-[1.5rem] shadow-lg",
-                status === "active"
-                  ? "bg-primary/20 text-primary shadow-primary/20"
-                  : status === "expired"
-                    ? "bg-red-500/20 text-red-500 shadow-red-500/20"
-                    : "bg-amber-500/20 text-amber-500 shadow-amber-500/20",
-              )}
-            >
-              {status === "active" ? (
-                <ShieldCheck size={32} />
-              ) : status === "expired" ? (
-                <AlertCircle size={32} />
-              ) : (
-                <Clock size={32} />
-              )}
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="relative grid h-20 w-24 shrink-0 place-items-center overflow-hidden rounded-[1.5rem] border border-white/10 bg-black/40 p-1.5 shadow-lg">
+              <img
+                src={productImage}
+                alt={plan?.name || itemLabel || purpose.label}
+                className="max-h-full max-w-full rounded-xl object-contain"
+                onError={(event) => {
+                  event.currentTarget.onerror = null;
+                  event.currentTarget.src = productImageFallback(productSlug);
+                }}
+              />
+              <div
+                className={cn(
+                  "absolute bottom-1.5 right-1.5 grid h-7 w-7 place-items-center rounded-full border border-black/60 shadow-lg",
+                  status === "active"
+                    ? "bg-primary text-black"
+                    : status === "expired"
+                      ? "bg-red-500 text-white"
+                      : "bg-amber-500 text-black",
+                )}
+              >
+                {status === "active" ? (
+                  <ShieldCheck size={15} />
+                ) : status === "expired" ? (
+                  <AlertCircle size={15} />
+                ) : (
+                  <Clock size={15} />
+                )}
+              </div>
             </div>
             <div className="min-w-0">
               <div className="mb-1 flex flex-wrap items-center gap-2">
