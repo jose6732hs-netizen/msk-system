@@ -297,6 +297,88 @@ function OfferCarouselSection({
   );
 }
 
+/**
+ * Oferta "Conta ChatGPT 30 dias" — card pronto, porém DESATIVADO.
+ * Sem preço por enquanto; a imagem é definida no Super Admin pelo slot
+ * `plans_chatgpt_card`. Para ativar, troque `CHATGPT_OFFER_ENABLED` para true.
+ */
+const CHATGPT_OFFER_ENABLED = false;
+
+function ChatGptOfferSection({ imageUrl }: { imageUrl: string }) {
+  if (!CHATGPT_OFFER_ENABLED) {
+    // Card visível como "em breve" apenas na vitrine, sem checkout.
+  }
+
+  return (
+    <section id="conta-chatgpt" className="mt-10 min-w-0 scroll-mt-24 sm:mt-12">
+      <article className="relative grid min-w-0 gap-0 overflow-hidden rounded-[2rem] border border-emerald-400/25 bg-[#0A0A0A] shadow-[0_0_70px_rgba(16,185,129,.08)] md:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <div className="relative flex min-h-[190px] items-center justify-center overflow-hidden bg-black/60 p-3">
+          {imageUrl ? (
+            <img src={imageUrl} alt="Conta ChatGPT 30 dias" loading="lazy" className="max-h-[280px] w-full object-contain" />
+          ) : (
+            <div className="grid h-full w-full min-h-[190px] place-items-center rounded-[1.4rem] border border-dashed border-emerald-400/25 text-center">
+              <div className="px-6">
+                <Sparkles className="mx-auto h-7 w-7 text-emerald-400" />
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[.2em] text-emerald-300">
+                  Imagem em breve
+                </p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Envie a arte pelo painel Super Admin
+                </p>
+              </div>
+            </div>
+          )}
+          <span className="absolute left-3 top-3 rounded-full bg-emerald-400 px-2.5 py-1 text-[8px] font-black uppercase text-black">
+            Em breve
+          </span>
+        </div>
+
+        <div className="flex min-w-0 flex-col justify-center p-6 sm:p-8">
+          <p className="text-[9px] font-black uppercase tracking-[.24em] text-emerald-400 sm:text-[10px]">
+            Oferta exclusiva MSK
+          </p>
+          <h2 className="mt-2 break-words text-2xl font-black uppercase tracking-tight text-white sm:text-4xl">
+            Conta ChatGPT · 30 dias
+          </h2>
+          <p className="mt-3 max-w-xl text-xs font-medium leading-relaxed text-white/65 sm:text-sm">
+            Acesso completo a uma conta ChatGPT por 30 dias, entregue junto com sua licença MSK.
+            Ideal para acelerar prompts, correções e criação de projetos no Lovable.
+          </p>
+
+          <ul className="mt-5 grid gap-2.5 sm:grid-cols-2">
+            {[
+              "Conta liberada por 30 dias corridos",
+              "Entrega automática após o pagamento",
+              "Suporte MSK durante todo o período",
+              "Funciona junto com a Extensão MSK",
+            ].map((item) => (
+              <li key={item} className="flex min-w-0 items-start gap-2 text-[11px] leading-relaxed text-muted-foreground">
+                <span className="mt-0.5 rounded-full bg-emerald-400 p-0.5 text-black">
+                  <Check className="h-2.5 w-2.5" />
+                </span>
+                <span className="min-w-0 break-words">{item}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="rounded-2xl border border-white/10 bg-white/[.03] px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white/60">
+              Valor em breve
+            </span>
+            <Button
+              type="button"
+              disabled
+              className="min-h-14 flex-1 whitespace-normal rounded-2xl bg-white/10 px-5 text-[10px] font-black uppercase leading-tight text-white/50 sm:flex-none sm:text-xs"
+            >
+              Oferta desativada · em breve
+            </Button>
+          </div>
+        </div>
+      </article>
+    </section>
+  );
+}
+
 function PlanosPage() {
   const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
@@ -705,6 +787,7 @@ function PlanosPage() {
   const extensionBanner = resolveSiteImage(cmsSettings, "plans_extension_banner");
   const clonerBanner = resolveSiteImage(cmsSettings, "plans_cloner_banner");
   const agentBanner = resolveSiteImage(cmsSettings, "plans_agent_banner");
+  const chatgptCard = resolveSiteImage(cmsSettings, "plans_chatgpt_card");
   const offersLoading = isLoading || clonerLoading || agentLoading;
 
   return (
