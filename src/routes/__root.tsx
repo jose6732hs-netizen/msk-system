@@ -82,7 +82,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
       { title: "MSK SISTEM — Sua Plataforma de Licenciamento" },
       {
         name: "description",
@@ -329,7 +329,7 @@ function MobileNavigation() {
 
   return (
     <div
-      className="hidden fixed inset-x-0 bottom-0 z-[120] w-full max-w-full"
+      className="fixed inset-x-0 bottom-0 z-[120] w-full max-w-full lg:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       {/* Fade para o conteúdo não colar na barra */}
@@ -374,10 +374,10 @@ function MobileNavigation() {
           </SheetTrigger>
           <SheetContent
             side="bottom"
-            className="h-[100dvh] max-h-screen border-none bg-background/95 p-0 backdrop-blur-3xl focus:outline-none [&>button]:hidden"
+            className="h-[100dvh] max-h-screen overscroll-contain border-none bg-background/95 p-0 backdrop-blur-3xl focus:outline-none [&>button]:hidden"
           >
-            <div className="flex h-full flex-col overflow-y-auto pb-10">
-              <div className="flex items-center justify-between px-6 pt-6 mb-4">
+            <div className="flex h-full flex-col overflow-y-auto pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
+              <div className="flex items-center justify-between px-6 pt-[calc(1.5rem+env(safe-area-inset-top,0px))] mb-4">
                 <MskLogo size={32} />
                 <button 
                   onClick={() => setOpen(false)}
