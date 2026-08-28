@@ -56,6 +56,8 @@ import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/publ
 import { Route as ApiPublicWebhooksAtomopayRouteImport } from './routes/api/public/webhooks/atomopay'
 import { Route as ApiPublicWebhooksPaymentRouteImport } from './routes/api/public/webhooks/payment'
 import { Route as ApiPublicWebhooksSigilopayRouteImport } from './routes/api/public/webhooks/sigilopay'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as ApiPublicAgentLicenseHeartbeatRouteImport } from './routes/api/public/agent/license/heartbeat'
 import { Route as ApiPublicAgentLicenseValidateRouteImport } from './routes/api/public/agent/license/validate'
@@ -312,6 +314,16 @@ const ApiPublicWebhooksSigilopayRoute =
     path: '/api/public/webhooks/sigilopay',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailTransactionalPreviewRoute =
   LovableEmailTransactionalPreviewRouteImport.update({
     id: '/lovable/email/transactional/preview',
@@ -396,6 +408,8 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
   '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
@@ -450,6 +464,8 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
   '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
@@ -506,6 +522,8 @@ export interface FileRoutesById {
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
   '/api/public/webhooks/sigilopay': typeof ApiPublicWebhooksSigilopayRoute
+  '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
+  '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
   '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
@@ -562,6 +580,8 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
     | '/api/public/agent/license/heartbeat'
     | '/api/public/agent/license/validate'
@@ -616,6 +636,8 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
     | '/api/public/agent/license/heartbeat'
     | '/api/public/agent/license/validate'
@@ -671,6 +693,8 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
     | '/api/public/webhooks/sigilopay'
+    | '/lovable/email/auth/preview'
+    | '/lovable/email/auth/webhook'
     | '/lovable/email/transactional/preview'
     | '/api/public/agent/license/heartbeat'
     | '/api/public/agent/license/validate'
@@ -721,6 +745,8 @@ export interface RootRouteChildren {
   ApiPublicWebhooksAtomopayRoute: typeof ApiPublicWebhooksAtomopayRoute
   ApiPublicWebhooksPaymentRoute: typeof ApiPublicWebhooksPaymentRoute
   ApiPublicWebhooksSigilopayRoute: typeof ApiPublicWebhooksSigilopayRoute
+  LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
+  LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   ApiPublicAgentLicenseHeartbeatRoute: typeof ApiPublicAgentLicenseHeartbeatRoute
   ApiPublicAgentLicenseValidateRoute: typeof ApiPublicAgentLicenseValidateRoute
@@ -1060,6 +1086,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksSigilopayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/transactional/preview': {
       id: '/lovable/email/transactional/preview'
       path: '/lovable/email/transactional/preview'
@@ -1179,6 +1219,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksAtomopayRoute: ApiPublicWebhooksAtomopayRoute,
   ApiPublicWebhooksPaymentRoute: ApiPublicWebhooksPaymentRoute,
   ApiPublicWebhooksSigilopayRoute: ApiPublicWebhooksSigilopayRoute,
+  LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
+  LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   ApiPublicAgentLicenseHeartbeatRoute: ApiPublicAgentLicenseHeartbeatRoute,
   ApiPublicAgentLicenseValidateRoute: ApiPublicAgentLicenseValidateRoute,
