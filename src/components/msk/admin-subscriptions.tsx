@@ -1,14 +1,32 @@
-import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, Plus, Save, Zap } from "lucide-react";
+import {
+  BadgeCheck,
+  Bot,
+  Copy,
+  Eye,
+  EyeOff,
+  Image as ImageIcon,
+  Layers3,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Save,
+  Search,
+  Settings2,
+  Sparkles,
+  Upload,
+  X,
+  Zap,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { adminSavePlan } from "@/lib/admin.functions";
-import { Upload, RefreshCw, Image as ImageIcon } from "lucide-react";
+import { getCmsEditorContent, publishCmsDraft, saveCmsDraft } from "@/lib/cms.functions";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -79,7 +97,34 @@ const EMPTY: PlanForm = {
   affiliate_commission_fixed: 0,
 };
 
-/** Gestão das assinaturas: planos publicados no site + assinaturas ativas. */
+type CollectionKey = "chatgpt" | "agent" | "cloner" | "extension" | "other";
+
+type Collection = {
+  key: CollectionKey;
+  eyebrow: string;
+  title: string;
+  description: string;
+  plans: Record<string, any>[];
+};
+
+function collectionKeyFor(plan: Record<string, any>): CollectionKey {
+  const slug = String(plan["slug"] ?? "").toLowerCase();
+  if (slug.startsWith("msk-agent")) return "agent";
+  if (slug.startsWith("page-cloner")) return "cloner";
+  if (["free-test", "daily", "weekly", "monthly", "quarterly", "yearly", "lifetime"].includes(slug)) {
+    return "extension";
+  }
+  return "other";
+}
+
+function collectionIcon(key: CollectionKey) {
+  if (key === "chatgpt") return Sparkles;
+  if (key === "agent") return Bot;
+  if (key === "cloner") return Copy;
+  return Layers3;
+}
+
+/** Gestão das ofertas: coleções publicadas no site + assinaturas ativas. */
 export function AdminSubscriptionsTab({
   plans,
   subscriptions,
@@ -89,11 +134,91 @@ export function AdminSubscriptionsTab({
 }) {
   const qc = useQueryClient();
   const saveFn = useServerFn(adminSavePlan);
+  const getCmsFn = useServerFn(getCmsEditorContent);
+  const saveCmsFn = useServerFn(saveCmsDraft);
+  const publishCmsFn = useServerFn(publishCmsDraft);
   const [editing, setEditing] = useState<PlanForm | null>(null);
+  const [chatgptOpen, setChatgptOpen] = useState(false);
+  const [chatgptImage, setChatgptImage] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
 
-  async function pickAndUpload(planId?: string) {
+  const cmsQuery = useQuery({
+    queryKey: ["cms-editor-content", "offers"],
+    queryFn: () => getCmsFn(),
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    const image = cmsQuery.data?.site_images?.plans_chatgpt_card;
+    if (typeof image === "string") setChatgptImage(image);
+  }, [cmsQuery.data]);
+
+  const normalizedSearch = search.trim().toLowerCase();
+  const visiblePlans = useMemo(
+    () =>
+      plans.filter((plan) => {
+        if (!normalizedSearch) return true;
+        return [plan["name"], plan["slug"], plan["description"]]
+          .map((value) => String(value ?? "").toLowerCase())
+          .some((value) => value.includes(normalizedSearch));
+      }),
+    [plans, normalizedSearch],
+  );
+
+  const collections = useMemo<Collection[]>(() => {
+    const grouped: Record<Exclude<CollectionKey, "chatgpt">, Record<string, any>[]> = {
+      agent: [],
+      cloner: [],
+      extension: [],
+      other: [],
+    };
+    visiblePlans.forEach((plan) => grouped[collectionKeyFor(plan) as keyof typeof grouped].push(plan));
+    return [
+      {
+        key: "agent",
+        eyebrow: "Assistente",
+        title: "MSK Agente",
+        description: "Ofertas e períodos do agente técnico.",
+        plans: grouped.agent,
+      },
+      {
+        key: "cloner",
+        eyebrow: "Ferramenta",
+        title: "Clonagem MSK",
+        description: "Licenças e ofertas do clonador de páginas.",
+        plans: grouped.cloner,
+      },
+      {
+        key: "extension",
+        eyebrow: "Produto principal",
+        title: "Extensão MSK",
+        description: "Teste grátis, planos pagos e licença principal.",
+        plans: grouped.extension,
+      },
+      ...(grouped.other.length
+        ? [
+            {
+              key: "other" as const,
+              eyebrow: "Outras ofertas",
+              title: "Outros produtos",
+              description: "Ofertas que não pertencem às coleções principais.",
+              plans: grouped.other,
+            },
+          ]
+        : []),
+    ];
+  }, [visiblePlans]);
+
+  async function publishSiteImages(nextImages: Record<string, unknown>) {
+    await saveCmsFn({ data: { key: "site_images", data: nextImages } });
+    await publishCmsFn({ data: { key: "site_images" } });
+    await qc.invalidateQueries({ queryKey: ["cms-editor-content"] });
+    await qc.invalidateQueries({ queryKey: ["cms-content"] });
+  }
+
+  async function pickAndUploadPlan(planId?: string) {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/*";
@@ -107,16 +232,10 @@ export function AdminSubscriptionsTab({
         const fd = new FormData();
         fd.append("file", file);
         fd.append("key", `plan-offer-${uploadKey}`);
-
-        const res = await fetch("/api/public/cms/upload", {
-          method: "POST",
-          body: fd,
-        }).then((r) => r.json());
-
+        const res = await fetch("/api/public/cms/upload", { method: "POST", body: fd }).then((r) => r.json());
         if (!res.url) throw new Error(res.error || "Upload falhou");
-
         if (editing) setEditing({ ...editing, image_url: res.url });
-        toast.success("Imagem carregada!");
+        toast.success("Imagem carregada. Salve a oferta para publicar.");
       } catch (err) {
         toast.error("Erro no upload: " + (err as Error).message);
       } finally {
@@ -126,7 +245,49 @@ export function AdminSubscriptionsTab({
     input.click();
   }
 
+  async function pickAndUploadChatGpt() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      setUploading("chatgpt");
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+        fd.append("key", "plans-chatgpt-card");
+        const res = await fetch("/api/public/cms/upload", { method: "POST", body: fd }).then((r) => r.json());
+        if (!res.url) throw new Error(res.error || "Upload falhou");
+        const current = (cmsQuery.data?.site_images ?? {}) as Record<string, unknown>;
+        await publishSiteImages({ ...current, plans_chatgpt_card: res.url });
+        setChatgptImage(res.url);
+        toast.success("Imagem da oferta ChatGPT publicada.");
+      } catch (err) {
+        toast.error("Erro no upload: " + (err as Error).message);
+      } finally {
+        setUploading(null);
+      }
+    };
+    input.click();
+  }
+
+  async function removeChatGptImage() {
+    setBusy(true);
+    try {
+      const current = (cmsQuery.data?.site_images ?? {}) as Record<string, unknown>;
+      await publishSiteImages({ ...current, plans_chatgpt_card: "" });
+      setChatgptImage("");
+      toast.success("Imagem removida da oferta ChatGPT.");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function edit(plan: Record<string, any>) {
+    setChatgptOpen(false);
     const unit = normalizeDurationUnit(plan["duration_unit"] ?? "days");
     const value = Number(plan["duration_value"] ?? plan["duration_days"] ?? 30);
     setEditing({
@@ -174,7 +335,7 @@ export function AdminSubscriptionsTab({
       });
       await qc.invalidateQueries({ queryKey: ["admin-overview"] });
       await qc.invalidateQueries({ queryKey: ["admin-token-plans"] });
-      toast.success(form.id ? "Plano atualizado" : "Plano criado e publicado no site");
+      toast.success(form.id ? "Oferta atualizada" : "Oferta criada e publicada no site");
       setEditing(null);
     } catch (e) {
       toast.error((e as Error).message);
@@ -183,359 +344,385 @@ export function AdminSubscriptionsTab({
     }
   }
 
-  return (
-    <div className="space-y-8">
-      <section>
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 sm:flex sm:justify-between">
-          <div className="min-w-0">
-            <h4 className="text-[0.7rem] font-black uppercase tracking-widest">Planos do site</h4>
-            <p className="text-xs text-muted-foreground">
-              Tudo que aparece na página de planos. Edite preço, validade e visibilidade.
-            </p>
-          </div>
-          <Button variant="neon" className="shrink-0" onClick={() => setEditing({ ...EMPTY })}>
-            <Plus className="mr-2 h-4 w-4" /> Novo plano
-          </Button>
-        </div>
+  const activeCount = plans.filter((plan) => plan["active"] !== false).length;
 
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {plans.map((p) => (
-            <button
-              key={p["id"]}
-              type="button"
-              onClick={() => edit(p)}
-              className="rounded-2xl border border-border/50 bg-black/20 p-4 text-left transition hover:border-primary/40"
+  return (
+    <div className="space-y-6">
+      <section className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-primary/[.08] via-black/20 to-black/30 p-5 sm:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-2xl">
+            <div className="flex items-center gap-2 text-primary">
+              <Settings2 className="h-4 w-4" />
+              <p className="text-[0.65rem] font-black uppercase tracking-[.22em]">Central de ofertas</p>
+            </div>
+            <h2 className="mt-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">Planos & Ofertas</h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+              Edite cada coleção separadamente, com preço, validade, imagem, comissão, ordem e publicação em um único lugar.
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2 text-[0.65rem] font-black uppercase tracking-wider">
+              <span className="rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5">{plans.length} ofertas</span>
+              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/[.08] px-3 py-1.5 text-emerald-300">{activeCount} publicadas</span>
+              <span className="rounded-full border border-white/10 bg-white/[.04] px-3 py-1.5">4 coleções</span>
+            </div>
+          </div>
+
+          <div className="flex w-full flex-col gap-2 sm:flex-row xl:w-auto">
+            <div className="relative min-w-0 flex-1 xl:w-72">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar oferta ou slug..."
+                className="pl-9"
+              />
+            </div>
+            <Button
+              variant="neon"
+              className="shrink-0"
+              onClick={() => {
+                setChatgptOpen(false);
+                setEditing({ ...EMPTY });
+              }}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-black">{p["name"]}</p>
-                  <p className="truncate text-[0.65rem] uppercase tracking-widest text-muted-foreground">
-                    {p["slug"]}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6rem] font-black uppercase ${
-                    p["active"] !== false
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-muted/30 text-muted-foreground"
-                  }`}
-                >
-                  {p["active"] !== false ? "No site" : "Oculto"}
-                </span>
-              </div>
-              <p className="mt-3 text-xl font-black text-primary">{brl(p["price"])}</p>
-              <p className="text-xs text-muted-foreground">
-                {p["is_lifetime"]
-                  ? "Vitalício"
-                  : p["duration_label"] || durationText(Number(p["duration_value"] ?? 1), p["duration_unit"])}{" "}
-                · {p["max_devices"]} dispositivo(s)
-              </p>
-            </button>
-          ))}
-          {!plans.length && <p className="text-sm text-muted-foreground">Nenhum plano cadastrado ainda.</p>}
+              <Plus className="mr-2 h-4 w-4" /> Nova oferta
+            </Button>
+          </div>
         </div>
       </section>
 
-      {editing && (
-        <section className="glass rounded-2xl border border-primary/30 p-5">
-          <h4 className="text-[0.7rem] font-black uppercase tracking-widest">
-            {editing.id ? "Editar plano" : "Criar plano"}
-          </h4>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <Field label="Nome">
-              <Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
-            </Field>
+      <OfferCollection
+        collection={{
+          key: "chatgpt",
+          eyebrow: "Oferta especial",
+          title: "Conta ChatGPT · 30 dias",
+          description: "Card independente da vitrine. Hoje está configurado como oferta em breve, sem checkout ativo.",
+          plans: [],
+        }}
+        special
+        specialImage={chatgptImage}
+        onSpecialEdit={() => {
+          setEditing(null);
+          setChatgptOpen((value) => !value);
+        }}
+      />
 
-            <Field label="Preço (R$)">
-              <Input
-                inputMode="decimal"
-                placeholder="5,90"
-                value={editing.price}
-                onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^\d,.]/g, "") })}
-              />
-            </Field>
-
-            <Field label="Comissão Afiliado (%)">
-              <Input
-                inputMode="decimal"
-                value={String(editing.affiliate_commission_rate ?? 0)}
-                onChange={(e) =>
-                  setEditing({ ...editing, affiliate_commission_rate: Number(e.target.value || 0) })
-                }
-              />
-            </Field>
-
-            <Field label="Moeda">
-              <Input
-                value={editing.currency || "BRL"}
-                onChange={(e) => setEditing({ ...editing, currency: e.target.value.toUpperCase() })}
-              />
-            </Field>
-
-            <Field label="Descrição">
-              <Input
-                value={editing.description}
-                onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-              />
-            </Field>
-
-            <Field label="Validade">
-              <div className="mb-2 flex flex-wrap gap-2">
-                {([
-                  { key: "days", label: "Paga / dias" },
-                  { key: "free", label: "FREE · 15 min" },
-                  { key: "lifetime", label: "Vitalício" },
-                ] as const).map((opt) => {
-                  const current = editing.is_lifetime
-                    ? "lifetime"
-                    : Number(String(editing.price).replace(",", ".")) === 0
-                      ? "free"
-                      : "days";
-
-                  return (
-                    <Button
-                      key={opt.key}
-                      type="button"
-                      size="sm"
-                      variant={current === opt.key ? "default" : "outline"}
-                      onClick={() => {
-                        if (opt.key === "lifetime") {
-                          setEditing({
-                            ...editing,
-                            is_lifetime: true,
-                            duration_days: null,
-                            duration_value: 1,
-                            duration_unit: "lifetime",
-                            duration_label: "Vitalício",
-                          });
-                          return;
-                        }
-
-                        if (opt.key === "free") {
-                          setEditing({
-                            ...editing,
-                            is_lifetime: false,
-                            price: 0,
-                            duration_days: null,
-                            duration_value: 15,
-                            duration_unit: "minutes",
-                            duration_label: "15 minutos",
-                          });
-                          return;
-                        }
-
-                        const value = editing.duration_unit === "days" ? editing.duration_value || 30 : 30;
-                        setEditing({
-                          ...editing,
-                          is_lifetime: false,
-                          duration_days: value,
-                          duration_value: value,
-                          duration_unit: "days",
-                          duration_label: durationText(value, "days"),
-                        });
-                      }}
-                    >
-                      {opt.label}
-                    </Button>
-                  );
-                })}
-              </div>
-
-              <div className="grid grid-cols-[minmax(0,1fr)_120px] gap-2">
-                <Input
-                  inputMode="numeric"
-                  type="number"
-                  min={1}
-                  disabled={editing.is_lifetime}
-                  placeholder={editing.is_lifetime ? "Vitalício" : "15"}
-                  value={editing.is_lifetime ? "" : String(editing.duration_value ?? "")}
-                  onChange={(e) => {
-                    const value = Math.max(1, Number(e.target.value || 1));
-                    const unit = normalizeDurationUnit(editing.duration_unit);
-                    setEditing({
-                      ...editing,
-                      duration_value: value,
-                      duration_days: unit === "days" ? value : null,
-                      duration_label: durationText(value, unit),
-                    });
-                  }}
-                />
-                <select
-                  disabled={editing.is_lifetime}
-                  value={normalizeDurationUnit(editing.duration_unit)}
-                  onChange={(e) => {
-                    const unit = normalizeDurationUnit(e.target.value);
-                    const value = Math.max(1, Number(editing.duration_value || 1));
-                    setEditing({
-                      ...editing,
-                      duration_unit: unit,
-                      duration_days: unit === "days" ? value : null,
-                      duration_label: durationText(value, unit),
-                    });
-                  }}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none disabled:opacity-50"
-                >
-                  <option value="minutes">Minutos</option>
-                  <option value="hours">Horas</option>
-                  <option value="days">Dias</option>
-                  <option value="weeks">Semanas</option>
-                  <option value="months">Meses</option>
-                </select>
-              </div>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                {editing.is_lifetime
-                  ? "Licença sem expiração."
-                  : `A licença será gerada com ${durationText(editing.duration_value || 1, editing.duration_unit)}.`}
-              </p>
-            </Field>
-
-            <Field label="Máx. dispositivos">
-              <Input
-                inputMode="numeric"
-                value={String(editing.max_devices)}
-                onChange={(e) => setEditing({ ...editing, max_devices: Number(e.target.value || 1) })}
-              />
-            </Field>
-
-            <Field label="Ordem">
-              <Input
-                inputMode="numeric"
-                value={String(editing.sort_order)}
-                onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value || 0) })}
-              />
-            </Field>
-
-            <div className="sm:col-span-2 lg:col-span-3">
-              <Field label="Imagem da Oferta (Upload)">
-                <div className="mt-2 flex items-center gap-4">
-                  <div className="relative h-32 w-48 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-                    {editing.image_url ? (
-                      <img src={editing.image_url} alt="Preview" className="h-full w-full object-contain" />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
-                      </div>
-                    )}
-                    {uploading === (editing.id || "new-plan") && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                        <RefreshCw className="h-6 w-6 animate-spin text-primary" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <div className="flex gap-2">
-                      <Button
-                        variant="neonOutline"
-                        className="gap-2"
-                        disabled={uploading === (editing.id || "new-plan")}
-                        onClick={() => void pickAndUpload(editing.id)}
-                      >
-                        <Upload className="h-4 w-4" />
-                        {editing.image_url ? "Substituir imagem" : "Enviar imagem"}
-                      </Button>
-                      {editing.image_url ? (
-                        <Button variant="ghost" className="text-xs" onClick={() => setEditing({ ...editing, image_url: "" })}>
-                          Remover
-                        </Button>
-                      ) : null}
-                    </div>
-                    <p className="text-[0.65rem] font-medium uppercase leading-relaxed text-muted-foreground">
-                      Recomendado: 1200x800px. A imagem aparecerá no carrossel de planos e no checkout.
-                    </p>
+      {chatgptOpen ? (
+        <section className="overflow-hidden rounded-[1.75rem] border border-emerald-400/25 bg-emerald-400/[.035]">
+          <div className="flex items-start justify-between gap-4 border-b border-emerald-400/15 px-5 py-4 sm:px-6">
+            <div>
+              <p className="text-[0.6rem] font-black uppercase tracking-[.2em] text-emerald-300">Editor da oferta especial</p>
+              <h3 className="mt-1 text-lg font-black uppercase">ChatGPT · 30 dias</h3>
+              <p className="mt-1 text-xs text-muted-foreground">A copy e o estado “Em breve” continuam preservados; aqui você controla a arte exibida na vitrine.</p>
+            </div>
+            <button type="button" className="rounded-xl p-2 text-muted-foreground hover:bg-white/5 hover:text-white" onClick={() => setChatgptOpen(false)}>
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+              {chatgptImage ? (
+                <img src={chatgptImage} alt="Oferta ChatGPT 30 dias" className="h-full w-full object-contain" />
+              ) : (
+                <div className="grid h-full place-items-center text-center">
+                  <div>
+                    <ImageIcon className="mx-auto h-8 w-8 text-muted-foreground/30" />
+                    <p className="mt-2 text-[0.65rem] font-black uppercase text-muted-foreground">Sem arte personalizada</p>
                   </div>
                 </div>
-              </Field>
+              )}
+              {uploading === "chatgpt" ? (
+                <div className="absolute inset-0 grid place-items-center bg-black/70"><RefreshCw className="h-6 w-6 animate-spin text-emerald-300" /></div>
+              ) : null}
             </div>
-
-            <div className="flex items-end gap-6">
-              <label className="flex items-center gap-2 text-xs font-bold uppercase">
-                <Switch
-                  checked={editing.is_lifetime}
-                  onCheckedChange={(v) =>
-                    setEditing(
-                      v
-                        ? {
-                            ...editing,
-                            is_lifetime: true,
-                            duration_unit: "lifetime",
-                            duration_value: 1,
-                            duration_days: null,
-                            duration_label: "Vitalício",
-                          }
-                        : {
-                            ...editing,
-                            is_lifetime: false,
-                            duration_unit: "days",
-                            duration_value: 30,
-                            duration_days: 30,
-                            duration_label: "30 dias",
-                          },
-                    )
-                  }
-                />
-                Vitalício
-              </label>
-              <label className="flex items-center gap-2 text-xs font-bold uppercase">
-                <Switch
-                  checked={editing.active}
-                  onCheckedChange={(v) => setEditing({ ...editing, active: v })}
-                />
-                No site
-              </label>
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <InfoBox label="Nome exibido" value="Conta ChatGPT · 30 dias" />
+                <InfoBox label="Status da vitrine" value="Em breve · checkout desativado" />
+                <InfoBox label="Duração" value="30 dias corridos" />
+                <InfoBox label="Coleção" value="Oferta especial MSK" />
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Imagem do card</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">Envie ou substitua a arte que aparece na seção ChatGPT da página de planos.</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button variant="neonOutline" disabled={uploading === "chatgpt"} onClick={() => void pickAndUploadChatGpt()}>
+                    <Upload className="mr-2 h-4 w-4" /> {chatgptImage ? "Substituir imagem" : "Enviar imagem"}
+                  </Button>
+                  {chatgptImage ? <Button variant="ghost" disabled={busy} onClick={() => void removeChatGptImage()}>Remover imagem</Button> : null}
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button variant="neon" disabled={busy || !editing.name} onClick={() => void save(editing)}>
-              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Salvar plano
-            </Button>
-            <Button variant="ghost" onClick={() => setEditing(null)}>
-              Cancelar
-            </Button>
           </div>
         </section>
-      )}
+      ) : null}
 
-      <section>
-        <h4 className="text-[0.7rem] font-black uppercase tracking-widest">Assinaturas ativas</h4>
+      {collections.map((collection) => (
+        <OfferCollection key={collection.key} collection={collection} onEdit={edit} />
+      ))}
+
+      {editing ? (
+        <PlanEditor
+          editing={editing}
+          busy={busy}
+          uploading={uploading}
+          setEditing={setEditing}
+          onUpload={() => void pickAndUploadPlan(editing.id)}
+          onSave={() => void save(editing)}
+          onCancel={() => setEditing(null)}
+        />
+      ) : null}
+
+      <section className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 sm:p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[0.6rem] font-black uppercase tracking-[.2em] text-muted-foreground">Pós-venda</p>
+            <h3 className="mt-1 text-base font-black uppercase">Assinaturas ativas</h3>
+          </div>
+          <span className="rounded-full border border-white/10 px-3 py-1 text-[0.65rem] font-black">{subscriptions.length}</span>
+        </div>
         <div className="mt-4 space-y-2">
           {subscriptions.map((s) => (
-            <div
-              key={s["id"]}
-              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 px-4 py-3 text-sm"
-            >
+            <div key={s["id"]} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 px-4 py-3 text-sm">
               <div className="min-w-0">
                 <p className="truncate font-medium">{s["profiles"]?.email ?? "—"}</p>
                 <p className="text-xs text-muted-foreground">
-                  {s["plans"]?.name ?? "—"} ·{" "}
-                  {s["current_period_end"]
-                    ? `renova em ${new Date(s["current_period_end"]).toLocaleDateString("pt-BR")}`
-                    : "sem renovação"}
+                  {s["plans"]?.name ?? "—"} · {s["current_period_end"] ? `renova em ${new Date(s["current_period_end"]).toLocaleDateString("pt-BR")}` : "sem renovação"}
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-muted/20 px-2.5 py-0.5 text-[0.6rem] font-black uppercase text-primary">
-                {s["status"]}
-              </span>
+              <span className="shrink-0 rounded-full bg-muted/20 px-2.5 py-0.5 text-[0.6rem] font-black uppercase text-primary">{s["status"]}</span>
             </div>
           ))}
-          {!subscriptions.length && (
-            <p className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Zap className="h-4 w-4" /> Nenhuma assinatura registrada ainda.
-            </p>
-          )}
+          {!subscriptions.length ? (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Zap className="h-4 w-4" /> Nenhuma assinatura registrada ainda.</p>
+          ) : null}
         </div>
       </section>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function OfferCollection({
+  collection,
+  special = false,
+  specialImage = "",
+  onEdit,
+  onSpecialEdit,
+}: {
+  collection: Collection;
+  special?: boolean;
+  specialImage?: string;
+  onEdit?: (plan: Record<string, any>) => void;
+  onSpecialEdit?: () => void;
+}) {
+  const Icon = collectionIcon(collection.key);
   return (
-    <div className="space-y-1">
-      <Label className="text-[0.6rem] font-bold uppercase text-muted-foreground">{label}</Label>
-      {children}
-    </div>
+    <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/20">
+      <div className="flex flex-col gap-3 border-b border-white/5 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-primary/20 bg-primary/[.08] text-primary"><Icon className="h-4 w-4" /></div>
+          <div className="min-w-0">
+            <p className="text-[0.55rem] font-black uppercase tracking-[.22em] text-primary">{collection.eyebrow}</p>
+            <h3 className="mt-0.5 truncate text-base font-black uppercase">{collection.title}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">{collection.description}</p>
+          </div>
+        </div>
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[.03] px-3 py-1 text-[0.6rem] font-black uppercase">
+          {special ? "Oferta especial" : `${collection.plans.length} ${collection.plans.length === 1 ? "oferta" : "ofertas"}`}
+        </span>
+      </div>
+
+      {special ? (
+        <button type="button" onClick={onSpecialEdit} className="grid w-full gap-4 p-4 text-left transition hover:bg-white/[.025] sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center sm:p-5">
+          <div className="h-20 w-full overflow-hidden rounded-xl border border-white/10 bg-black/40 sm:w-[92px]">
+            {specialImage ? <img src={specialImage} alt="ChatGPT 30 dias" className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center"><ImageIcon className="h-6 w-6 text-muted-foreground/30" /></div>}
+          </div>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="font-black uppercase">Conta ChatGPT · 30 dias</p>
+              <span className="rounded-full bg-amber-400/10 px-2 py-0.5 text-[0.55rem] font-black uppercase text-amber-300">Em breve</span>
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">A oferta agora aparece dentro da Central de Ofertas. Clique para editar a arte exibida na vitrine.</p>
+          </div>
+          <span className="text-[0.6rem] font-black uppercase tracking-widest text-emerald-300">Editar oferta →</span>
+        </button>
+      ) : collection.plans.length ? (
+        <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-3 sm:p-5">
+          {collection.plans.map((plan) => (
+            <PlanCard key={plan["id"]} plan={plan} onClick={() => onEdit?.(plan)} />
+          ))}
+        </div>
+      ) : (
+        <div className="p-5 text-sm text-muted-foreground">Nenhuma oferta nesta coleção com o filtro atual.</div>
+      )}
+    </section>
   );
+}
+
+function PlanCard({ plan, onClick }: { plan: Record<string, any>; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} className="group overflow-hidden rounded-2xl border border-white/10 bg-[#080808] text-left transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-[0_18px_50px_-30px_rgba(57,255,20,.35)]">
+      <div className="flex min-h-24 gap-3 p-4">
+        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[.03]">
+          {plan["image_url"] ? <img src={plan["image_url"]} alt={plan["name"]} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><ImageIcon className="h-5 w-5 text-muted-foreground/25" /></div>}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black">{plan["name"]}</p>
+              <p className="mt-0.5 truncate text-[0.55rem] font-bold uppercase tracking-widest text-muted-foreground">{plan["slug"]}</p>
+            </div>
+            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.5rem] font-black uppercase ${plan["active"] !== false ? "bg-emerald-500/15 text-emerald-300" : "bg-white/5 text-muted-foreground"}`}>
+              {plan["active"] !== false ? "Publicado" : "Oculto"}
+            </span>
+          </div>
+          <p className="mt-3 text-xl font-black text-primary">{brl(plan["price"])}</p>
+          <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
+            {plan["is_lifetime"] ? "Vitalício" : plan["duration_label"] || durationText(Number(plan["duration_value"] ?? 1), plan["duration_unit"])} · {plan["max_devices"]} disp.
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center justify-between border-t border-white/5 px-4 py-2.5 text-[0.55rem] font-black uppercase tracking-wider text-muted-foreground">
+        <span>Ordem {Number(plan["sort_order"] ?? 0)}</span>
+        <span className="text-primary opacity-70 transition group-hover:opacity-100">Editar →</span>
+      </div>
+    </button>
+  );
+}
+
+function PlanEditor({
+  editing,
+  busy,
+  uploading,
+  setEditing,
+  onUpload,
+  onSave,
+  onCancel,
+}: {
+  editing: PlanForm;
+  busy: boolean;
+  uploading: string | null;
+  setEditing: (value: PlanForm) => void;
+  onUpload: () => void;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <section className="overflow-hidden rounded-[1.75rem] border border-primary/25 bg-[#090909] shadow-2xl">
+      <div className="flex items-start justify-between gap-4 border-b border-white/10 bg-primary/[.035] px-5 py-4 sm:px-6">
+        <div>
+          <p className="text-[0.6rem] font-black uppercase tracking-[.2em] text-primary">Editor profissional</p>
+          <h3 className="mt-1 text-lg font-black uppercase">{editing.id ? `Editar · ${editing.name}` : "Criar nova oferta"}</h3>
+          <p className="mt-1 text-xs text-muted-foreground">Campos separados por contexto para você alterar somente o que precisa.</p>
+        </div>
+        <button type="button" onClick={onCancel} className="rounded-xl p-2 text-muted-foreground hover:bg-white/5 hover:text-white"><X className="h-4 w-4" /></button>
+      </div>
+
+      <div className="grid gap-5 p-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_310px]">
+        <div className="space-y-4">
+          <EditorGroup title="Identificação" description="Nome, slug e descrição vistos pelo cliente.">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Nome da oferta"><Input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} /></Field>
+              <Field label="Slug"><Input value={editing.slug} onChange={(e) => setEditing({ ...editing, slug: e.target.value.toLowerCase().replace(/\s+/g, "-") })} placeholder="ex: msk-agent-30d" /></Field>
+              <div className="md:col-span-2"><Field label="Descrição"><textarea value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={3} className="w-full resize-y rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" /></Field></div>
+            </div>
+          </EditorGroup>
+
+          <EditorGroup title="Comercial" description="Preço, moeda e comissão de afiliado.">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <Field label="Preço (R$)"><Input inputMode="decimal" placeholder="49,90" value={editing.price} onChange={(e) => setEditing({ ...editing, price: e.target.value.replace(/[^\d,.]/g, "") })} /></Field>
+              <Field label="Moeda"><Input value={editing.currency || "BRL"} onChange={(e) => setEditing({ ...editing, currency: e.target.value.toUpperCase() })} /></Field>
+              <Field label="Comissão afiliado (%)"><Input inputMode="decimal" value={String(editing.affiliate_commission_rate ?? 0)} onChange={(e) => setEditing({ ...editing, affiliate_commission_rate: Number(e.target.value || 0) })} /></Field>
+            </div>
+          </EditorGroup>
+
+          <EditorGroup title="Validade & acesso" description="Período da licença e quantidade de dispositivos.">
+            <div className="mb-3 flex flex-wrap gap-2">
+              {([
+                { key: "days", label: "Paga / dias" },
+                { key: "free", label: "FREE · 15 min" },
+                { key: "lifetime", label: "Vitalício" },
+              ] as const).map((opt) => {
+                const current = editing.is_lifetime ? "lifetime" : Number(String(editing.price).replace(",", ".")) === 0 ? "free" : "days";
+                return (
+                  <Button key={opt.key} type="button" size="sm" variant={current === opt.key ? "default" : "outline"} onClick={() => {
+                    if (opt.key === "lifetime") {
+                      setEditing({ ...editing, is_lifetime: true, duration_days: null, duration_value: 1, duration_unit: "lifetime", duration_label: "Vitalício" });
+                      return;
+                    }
+                    if (opt.key === "free") {
+                      setEditing({ ...editing, is_lifetime: false, price: 0, duration_days: null, duration_value: 15, duration_unit: "minutes", duration_label: "15 minutos" });
+                      return;
+                    }
+                    const value = editing.duration_unit === "days" ? editing.duration_value || 30 : 30;
+                    setEditing({ ...editing, is_lifetime: false, duration_days: value, duration_value: value, duration_unit: "days", duration_label: durationText(value, "days") });
+                  }}>{opt.label}</Button>
+                );
+              })}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Quantidade"><Input inputMode="numeric" type="number" min={1} disabled={editing.is_lifetime} value={editing.is_lifetime ? "" : String(editing.duration_value ?? "")} onChange={(e) => {
+                const value = Math.max(1, Number(e.target.value || 1));
+                const unit = normalizeDurationUnit(editing.duration_unit);
+                setEditing({ ...editing, duration_value: value, duration_days: unit === "days" ? value : null, duration_label: durationText(value, unit) });
+              }} /></Field>
+              <Field label="Unidade"><select disabled={editing.is_lifetime} value={normalizeDurationUnit(editing.duration_unit)} onChange={(e) => {
+                const unit = normalizeDurationUnit(e.target.value);
+                const value = Math.max(1, Number(editing.duration_value || 1));
+                setEditing({ ...editing, duration_unit: unit, duration_days: unit === "days" ? value : null, duration_label: durationText(value, unit) });
+              }} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm outline-none disabled:opacity-50"><option value="minutes">Minutos</option><option value="hours">Horas</option><option value="days">Dias</option><option value="weeks">Semanas</option><option value="months">Meses</option></select></Field>
+              <Field label="Máx. dispositivos"><Input inputMode="numeric" type="number" min={1} value={String(editing.max_devices)} onChange={(e) => setEditing({ ...editing, max_devices: Math.max(1, Number(e.target.value || 1)) })} /></Field>
+              <Field label="Ordem na coleção"><Input inputMode="numeric" type="number" value={String(editing.sort_order)} onChange={(e) => setEditing({ ...editing, sort_order: Number(e.target.value || 0) })} /></Field>
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">{editing.is_lifetime ? "Licença sem expiração." : `A licença será gerada com ${durationText(editing.duration_value || 1, editing.duration_unit)}.`}</p>
+          </EditorGroup>
+
+          <EditorGroup title="Publicação" description="Controle se a oferta aparece no site.">
+            <div className="flex flex-wrap gap-5">
+              <label className="flex items-center gap-2 text-xs font-bold uppercase"><Switch checked={editing.active} onCheckedChange={(v) => setEditing({ ...editing, active: v })} />{editing.active ? <Eye className="h-4 w-4 text-emerald-300" /> : <EyeOff className="h-4 w-4" />} No site</label>
+              <label className="flex items-center gap-2 text-xs font-bold uppercase"><Switch checked={editing.is_lifetime} onCheckedChange={(v) => setEditing(v ? { ...editing, is_lifetime: true, duration_unit: "lifetime", duration_value: 1, duration_days: null, duration_label: "Vitalício" } : { ...editing, is_lifetime: false, duration_unit: "days", duration_value: 30, duration_days: 30, duration_label: "30 dias" })} /> Vitalício</label>
+            </div>
+          </EditorGroup>
+        </div>
+
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+            <p className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Preview da oferta</p>
+            <div className="relative mt-3 aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-white/[.025]">
+              {editing.image_url ? <img src={editing.image_url} alt="Preview" className="h-full w-full object-contain" /> : <div className="grid h-full place-items-center"><ImageIcon className="h-8 w-8 text-muted-foreground/25" /></div>}
+              {uploading === (editing.id || "new-plan") ? <div className="absolute inset-0 grid place-items-center bg-black/70"><RefreshCw className="h-6 w-6 animate-spin text-primary" /></div> : null}
+            </div>
+            <p className="mt-3 truncate text-sm font-black">{editing.name || "Nome da oferta"}</p>
+            <p className="mt-1 text-2xl font-black text-primary">{brl(Number(String(editing.price).replace(/\./g, "").replace(",", ".")) || 0)}</p>
+            <p className="text-xs text-muted-foreground">{editing.is_lifetime ? "Vitalício" : durationText(editing.duration_value || 1, editing.duration_unit)}</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Button variant="neonOutline" className="flex-1" disabled={uploading === (editing.id || "new-plan")} onClick={onUpload}><Upload className="mr-2 h-4 w-4" /> {editing.image_url ? "Trocar arte" : "Enviar arte"}</Button>
+              {editing.image_url ? <Button variant="ghost" onClick={() => setEditing({ ...editing, image_url: "" })}>Remover</Button> : null}
+            </div>
+            <p className="mt-3 text-[0.6rem] leading-relaxed text-muted-foreground">Recomendado: 1200×800 px. A imagem aparece no card da oferta e no checkout.</p>
+          </div>
+
+          <div className="rounded-2xl border border-primary/20 bg-primary/[.04] p-4">
+            <div className="flex items-start gap-2"><BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" /><div><p className="text-xs font-black uppercase">Publicação segura</p><p className="mt-1 text-xs leading-relaxed text-muted-foreground">Salvar atualiza somente esta oferta e preserva as demais coleções.</p></div></div>
+          </div>
+        </aside>
+      </div>
+
+      <div className="flex flex-wrap gap-2 border-t border-white/10 bg-black/20 px-5 py-4 sm:px-6">
+        <Button variant="neon" disabled={busy || !editing.name || !editing.slug} onClick={onSave}>{busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} Salvar oferta</Button>
+        <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
+      </div>
+    </section>
+  );
+}
+
+function EditorGroup({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return <div className="rounded-2xl border border-white/10 bg-black/20 p-4 sm:p-5"><div className="mb-4"><p className="text-xs font-black uppercase">{title}</p><p className="mt-1 text-xs text-muted-foreground">{description}</p></div>{children}</div>;
+}
+
+function InfoBox({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border border-white/10 bg-black/20 p-3"><p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground">{label}</p><p className="mt-1 text-xs font-bold">{value}</p></div>;
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <div className="space-y-1.5"><Label className="text-[0.58rem] font-bold uppercase tracking-wider text-muted-foreground">{label}</Label>{children}</div>;
 }
