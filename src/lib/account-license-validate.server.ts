@@ -325,7 +325,7 @@ export async function handleAccountTokenValidation(
         .from("licenses")
         .update({ status: "expired" } as never)
         .eq("id", license.id)
-        .eq("status", license.status)
+        .eq("status", license.status as never)
         .select("status")
         .maybeSingle();
 
