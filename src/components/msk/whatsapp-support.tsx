@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useSupportLink } from "@/lib/support-link";
 
 /**
@@ -7,19 +7,29 @@ import { useSupportLink } from "@/lib/support-link";
  */
 export function WhatsappSupportButton() {
   const link = useSupportLink();
+  const bannerRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!link) return;
 
     const previousPaddingTop = document.body.style.paddingTop;
     const syncTopOffset = () => {
-      document.body.style.paddingTop = window.innerWidth >= 768 ? "64px" : "88px";
+      const bannerHeight = bannerRef.current?.getBoundingClientRect().height ?? 0;
+      document.body.style.paddingTop = bannerHeight > 0 ? `${Math.ceil(bannerHeight)}px` : "0px";
     };
 
     syncTopOffset();
     window.addEventListener("resize", syncTopOffset);
 
+    const observer =
+      typeof ResizeObserver !== "undefined" && bannerRef.current
+        ? new ResizeObserver(syncTopOffset)
+        : null;
+
+    if (bannerRef.current) observer?.observe(bannerRef.current);
+
     return () => {
+      observer?.disconnect();
       window.removeEventListener("resize", syncTopOffset);
       document.body.style.paddingTop = previousPaddingTop;
     };
@@ -30,12 +40,13 @@ export function WhatsappSupportButton() {
   return (
     <>
       <aside
+        ref={bannerRef}
         role="status"
         aria-live="polite"
         className="fixed inset-x-0 top-0 z-[110] border-b border-red-400/30 bg-[#220809]/98 shadow-[0_10px_28px_-18px_rgba(239,68,68,0.75)] backdrop-blur-xl"
       >
-        <div className="mx-auto flex min-h-[88px] w-full max-w-7xl items-center gap-3 px-3 py-2.5 sm:px-5 md:min-h-[64px] md:gap-4 md:px-6 md:py-2">
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-stretch gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3 sm:px-5 md:min-h-[64px] md:gap-4 md:px-6 md:py-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2.5 sm:items-center sm:gap-3">
             <span className="relative grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-red-300/30 bg-red-400/10 md:h-10 md:w-10">
               <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full bg-red-300 shadow-[0_0_10px_rgba(252,165,165,0.85)]" />
               <svg
@@ -65,7 +76,7 @@ export function WhatsappSupportButton() {
                 </span>
               </div>
 
-              <p className="mt-0.5 text-[12px] font-medium leading-snug text-white/92 sm:text-[13px] md:truncate md:text-sm">
+              <p className="mt-0.5 break-words text-[11px] font-medium leading-snug text-white/92 min-[380px]:text-[12px] sm:text-[13px] md:truncate md:text-sm">
                 Nosso WhatsApp principal caiu e está temporariamente indisponível devido à alta demanda de mensagens. Enquanto normalizamos o atendimento, use o canal de suporte abaixo.
               </p>
             </div>
@@ -76,13 +87,13 @@ export function WhatsappSupportButton() {
             target="_blank"
             rel="noopener noreferrer"
             aria-label="Falar com o suporte no WhatsApp"
-            className="group inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-[#25D366] px-3 py-2 text-xs font-extrabold text-[#06150b] shadow-[0_8px_20px_-12px_rgba(37,211,102,0.9)] transition duration-200 hover:bg-[#45df7c] active:scale-[0.98] sm:px-4 sm:text-sm"
+            className="group inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-3 py-2 text-xs font-extrabold text-[#06150b] shadow-[0_8px_20px_-12px_rgba(37,211,102,0.9)] transition duration-200 hover:bg-[#45df7c] active:scale-[0.98] sm:w-auto sm:shrink-0 sm:px-4 sm:text-sm"
           >
             <svg viewBox="0 0 32 32" className="h-4.5 w-4.5 sm:h-5 sm:w-5" fill="currentColor" aria-hidden="true">
               <path d="M16.02 3.2c-7.06 0-12.8 5.73-12.8 12.79 0 2.25.6 4.45 1.73 6.39L3.2 28.8l6.6-1.72a12.77 12.77 0 0 0 6.22 1.59h.01c7.06 0 12.79-5.74 12.79-12.8 0-3.42-1.33-6.63-3.75-9.04a12.7 12.7 0 0 0-9.05-3.63Zm0 23.05h-.01a10.6 10.6 0 0 1-5.4-1.48l-.39-.23-3.92 1.02 1.05-3.82-.25-.4a10.6 10.6 0 0 1-1.62-5.65c0-5.86 4.77-10.63 10.64-10.63 2.84 0 5.51 1.11 7.52 3.12a10.56 10.56 0 0 1 3.11 7.52c0 5.87-4.77 10.55-10.73 10.55Zm5.83-7.92c-.32-.16-1.89-.93-2.18-1.04-.29-.11-.5-.16-.71.16-.21.32-.82 1.04-1 1.25-.19.21-.37.24-.68.08-.32-.16-1.35-.5-2.57-1.58-.95-.85-1.59-1.9-1.78-2.22-.18-.32-.02-.49.14-.65.15-.14.32-.37.48-.56.16-.19.21-.32.32-.53.11-.21.05-.4-.03-.56-.08-.16-.71-1.72-.98-2.35-.26-.62-.52-.53-.71-.54l-.61-.01c-.21 0-.56.08-.85.4-.29.32-1.11 1.09-1.11 2.65s1.14 3.08 1.3 3.29c.16.21 2.24 3.42 5.43 4.8.76.33 1.35.52 1.81.67.76.24 1.45.21 2 .13.61-.09 1.89-.77 2.15-1.52.27-.75.27-1.39.19-1.52-.08-.13-.29-.21-.61-.37Z" />
             </svg>
             <span className="hidden sm:inline">Falar no suporte</span>
-            <span className="sm:hidden">Suporte</span>
+            <span className="sm:hidden">Abrir suporte no WhatsApp</span>
           </a>
         </div>
       </aside>
