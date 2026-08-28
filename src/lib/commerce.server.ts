@@ -488,7 +488,8 @@ export async function settlePaidTransaction(transactionId: string) {
 
   let licenseId: string | null = null;
   if (tx.user_id && (tx.purpose === "purchase" || tx.purpose === "subscription")) {
-    const source = tx.purpose === "subscription" ? "subscription" : "purchase";
+    const source: "purchase" | "subscription" = tx.purpose === "subscription" ? "subscription" : "purchase";
+    const licenseType = tx.purpose === "subscription" ? "subscription" : "paid";
     const metadata = objectMeta(tx.metadata);
     const lines = Array.isArray(metadata["line_items"]) ? metadata["line_items"] : [];
 
@@ -502,7 +503,7 @@ export async function settlePaidTransaction(transactionId: string) {
         const issued = await issueStandaloneLicense({
           userId: tx.user_id,
           planId,
-          type: source,
+          type: licenseType,
           transactionId: tx.id,
           resellerId: tx.reseller_id,
           extraMetadata: {
@@ -525,7 +526,7 @@ export async function settlePaidTransaction(transactionId: string) {
       const issued = await issueStandaloneLicense({
         userId: tx.user_id,
         planId: tx.plan_id,
-        type: source,
+        type: licenseType,
         transactionId: tx.id,
         resellerId: tx.reseller_id,
       });
