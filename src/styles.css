@@ -314,3 +314,9 @@ body[data-scroll-locked] {
   margin-right: 0 !important;
   padding-right: 0 !important;
 }
+
+/* Hero principal: destaque em laranja neon sem alterar o restante do tema. */
+h1[class~="mt-6"][class~="max-w-4xl"][class~="bg-gradient-to-b"][class~="from-primary"][class~="to-primary/40"][class~="bg-clip-text"][class~="text-transparent"] {
+  background-image: linear-gradient(180deg, #ffb000 0%, #ff7a00 55%, #ff4d00 100%);
+  filter: drop-shadow(0 0 12px rgba(255, 106, 0, 0.5));
+}
