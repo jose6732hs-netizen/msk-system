@@ -218,9 +218,50 @@ export async function runLicenseAction(
   return { ok: true };
 }
 
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 /** Salva plano sem converter minutos/horas em dias por engano. */
 export async function savePlan(plan: Record<string, any>) {
   const payload = { ...plan };
+
+  const deliveryMethod = ["panel", "email", "panel_email", "email_link"].includes(
+    String(payload["delivery_method"]),
+  )
+    ? String(payload["delivery_method"])
+    : "panel_email";
+  const deliveryLink = String(payload["delivery_link"] ?? "").trim();
+  const deliveryInstructions = String(payload["delivery_instructions"] ?? "").trim();
+  delete payload["delivery_method"];
+  delete payload["delivery_link"];
+  delete payload["delivery_instructions"];
+
+  if (deliveryMethod === "email_link" && !/^https?:\/\//i.test(deliveryLink)) {
+    throw new Error("Informe um link válido para a entrega por e-mail.");
+  }
+
+  let existingFeatures: Record<string, unknown> = {};
+  if (payload["id"]) {
+    const { data: current, error } = await supabaseAdmin
+      .from("plans")
+      .select("features")
+      .eq("id", payload["id"])
+      .maybeSingle();
+    if (error) throw error;
+    existingFeatures = objectValue(current?.features);
+  }
+  payload["features"] = {
+    ...existingFeatures,
+    delivery: {
+      method: deliveryMethod,
+      link: deliveryLink,
+      instructions: deliveryInstructions,
+    },
+  };
+
   if (payload["is_lifetime"]) {
     payload["duration_days"] = null;
     payload["duration_unit"] = "lifetime";
