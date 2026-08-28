@@ -71,17 +71,67 @@ async function resolveLicense(request: Request) {
 
 type Identity = { userId: string; licenseId: string; installationId: string; version: string };
 
-async function authenticate(request: Request): Promise<{ identity?: Identity; response?: Response }> {
-  const installationId = request.headers.get("x-msk-installation-id")?.trim() ?? "";
-  const version = request.headers.get("x-msk-extension-version")?.trim() ?? "";
-  if (!installationSchema.safeParse(installationId).success || !versionSchema.safeParse(version).success) {
-    return { response: json(request, { ok: false, code: "INVALID_EXTENSION_IDENTITY", message: "Identificação da extensão inválida." }, 400) };
+function identityHints(request: Request) {
+  const url = new URL(request.url);
+  const installationId = (
+    request.headers.get("x-msk-installation-id") ||
+    url.searchParams.get("installation_id") ||
+    url.searchParams.get("installationId") ||
+    ""
+  ).trim();
+  const version = (
+    request.headers.get("x-msk-extension-version") ||
+    url.searchParams.get("version") ||
+    url.searchParams.get("extension_version") ||
+    ""
+  ).trim();
+  return { installationId, version };
+}
+
+async function compatibleIdentity(request: Request, userId: string) {
+  const hinted = identityHints(request);
+  let installationId = hinted.installationId;
+  let version = hinted.version;
+
+  const installationValid = installationSchema.safeParse(installationId).success;
+  const versionValid = versionSchema.safeParse(version).success;
+  if (installationValid && versionValid) return { installationId, version };
+
+  // Versões legadas do MSK já fazem heartbeat, mas algumas não enviam os
+  // cabeçalhos novos no polling do canal remoto. Nesse caso usamos a última
+  // instalação registrada para o próprio usuário, sem aceitar identidade de
+  // outro usuário e sem exigir reinstalação da extensão.
+  const { data: installations } = await db
+    .from("extension_installations")
+    .select("installation_id,version,last_seen_at")
+    .eq("user_id", userId)
+    .order("last_seen_at", { ascending: false })
+    .limit(20);
+
+  const fallback = (installations ?? []).find((row: any) =>
+    installationSchema.safeParse(String(row.installation_id ?? "")).success,
+  );
+
+  if (!installationValid && fallback) installationId = String(fallback.installation_id);
+  if (!versionValid) {
+    const fallbackVersion = String(fallback?.version ?? "legacy");
+    version = versionSchema.safeParse(fallbackVersion).success ? fallbackVersion : "legacy";
   }
+
+  return { installationId, version };
+}
+
+async function authenticate(request: Request): Promise<{ identity?: Identity; response?: Response }> {
   const token = bearer(request);
   if (!token) return { response: json(request, { ok: false, code: "AUTH_REQUIRED", message: "Conecte sua licença MSK novamente." }, 401) };
 
   const license = await resolveLicense(request);
   if (!license) return { response: json(request, { ok: false, code: "LICENSE_INVALID", message: "Sua licença não pôde ser confirmada." }, 401) };
+
+  const { installationId, version } = await compatibleIdentity(request, String(license.user_id));
+  if (!installationSchema.safeParse(installationId).success || !versionSchema.safeParse(version).success) {
+    return { response: json(request, { ok: false, code: "INVALID_EXTENSION_IDENTITY", message: "Identificação da extensão inválida." }, 400) };
+  }
 
   const { data: existing } = await db.from("extension_installations").select("user_id").eq("installation_id", installationId).maybeSingle();
   if (existing?.user_id && String(existing.user_id) !== String(license.user_id)) {
@@ -253,7 +303,10 @@ export async function setRemoteBlock(input: { userId: string; blocked: boolean; 
     updated_at: now,
   };
   if (existing?.id) {
-    const { error } = await db.from("extension_remote_controls").update(patch).eq("id", existing.id);
+    const { error } = await db
+      .from("extension_remote_controls")
+      .update(patch)
+      .eq("id", existing.id);
     if (error) throw error;
   } else {
     const { error } = await db.from("extension_remote_controls").insert({ user_id: input.userId, installation_id: null, ...patch });
