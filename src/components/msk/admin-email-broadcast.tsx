@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -6,6 +6,7 @@ import {
   Eye,
   Loader2,
   Mail,
+  Search,
   Send,
   ShieldCheck,
   TriangleAlert,
@@ -42,6 +43,7 @@ export function AdminEmailBroadcast() {
   const sendFn = useServerFn(adminSendEmailCampaign);
   const [audience, setAudience] = useState<"all" | "single">("all");
   const [profileId, setProfileId] = useState("");
+  const [recipientSearch, setRecipientSearch] = useState("");
   const [subject, setSubject] = useState("Comunicado importante — MSK SISTEM");
   const [title, setTitle] = useState("Uma atualização importante para você");
   const [message, setMessage] = useState("");
@@ -53,8 +55,18 @@ export function AdminEmailBroadcast() {
     refetchInterval: 20_000,
   });
 
-  const selectedRecipient = data?.recipients?.find((recipient: any) => recipient.id === profileId);
-  const targetCount = audience === "all" ? data?.eligibleRecipients ?? 0 : profileId ? 1 : 0;
+  const recipients = data?.recipients ?? [];
+  const selectedRecipient = recipients.find((recipient: any) => recipient.id === profileId);
+  const filteredRecipients = useMemo(() => {
+    const term = recipientSearch.trim().toLowerCase();
+    if (!term) return recipients;
+    return recipients.filter((recipient: any) =>
+      [recipient.name, recipient.email]
+        .map((value) => String(value ?? "").toLowerCase())
+        .some((value) => value.includes(term)),
+    );
+  }, [recipients, recipientSearch]);
+  const targetCount = audience === "all" ? data?.eligibleRecipients ?? 0 : selectedRecipient ? 1 : 0;
   const canSend = !!data?.configured && targetCount > 0 && subject.trim().length >= 3 && title.trim().length >= 2 && message.trim().length >= 2;
 
   async function sendCampaign() {
@@ -62,7 +74,7 @@ export function AdminEmailBroadcast() {
       toast.error("O provedor de e-mail ainda não está pronto para disparos.");
       return;
     }
-    if (audience === "single" && !profileId) {
+    if (audience === "single" && !selectedRecipient) {
       toast.error("Selecione o cliente que deve receber o e-mail.");
       return;
     }
@@ -81,7 +93,7 @@ export function AdminEmailBroadcast() {
       const result = await sendFn({
         data: {
           audience,
-          profileId: audience === "single" ? profileId : undefined,
+          profileId: audience === "single" ? selectedRecipient?.id : undefined,
           subject,
           title,
           message,
@@ -173,21 +185,46 @@ export function AdminEmailBroadcast() {
               </div>
 
               {audience === "single" ? (
-                <label className="mt-3 block space-y-1.5">
+                <div className="mt-3 space-y-2">
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Selecionar cliente</span>
-                  <select
-                    value={profileId}
-                    onChange={(e) => setProfileId(e.target.value)}
-                    className="h-11 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-sm text-white outline-none focus:border-primary/50"
-                  >
-                    <option value="">Escolha um cliente…</option>
-                    {(data?.recipients ?? []).map((recipient: any) => (
-                      <option key={recipient.id} value={recipient.id}>
-                        {recipient.name ? `${recipient.name} — ` : ""}{recipient.email}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      value={recipientSearch}
+                      onChange={(e) => setRecipientSearch(e.target.value)}
+                      placeholder="Buscar por nome ou e-mail…"
+                      className="border-white/10 bg-black/30 pl-9"
+                    />
+                  </div>
+                  <div className="max-h-64 overflow-y-auto rounded-2xl border border-white/10 bg-black/25 p-2">
+                    {filteredRecipients.length ? (
+                      filteredRecipients.map((recipient: any) => {
+                        const active = recipient.id === profileId;
+                        return (
+                          <button
+                            key={recipient.id}
+                            type="button"
+                            onClick={() => setProfileId(recipient.id)}
+                            className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition ${active ? "bg-primary/15 ring-1 ring-primary/40" : "hover:bg-white/5"}`}
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-bold text-white">{recipient.name || "Cliente"}</p>
+                              <p className="truncate text-[10px] text-muted-foreground">{recipient.email}</p>
+                            </div>
+                            {active ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : null}
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="px-3 py-5 text-center text-xs text-muted-foreground">Nenhum cliente encontrado.</p>
+                    )}
+                  </div>
+                  {selectedRecipient ? (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2 text-[10px] text-muted-foreground">
+                      Selecionado: <strong className="text-white">{selectedRecipient.name || "Cliente"}</strong> · {selectedRecipient.email}
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
             </div>
 
