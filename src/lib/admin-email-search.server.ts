@@ -35,8 +35,8 @@ export async function searchEmailRecipients(query = "", limit = 100) {
   const adminIds = new Set((roles ?? []).map((row: any) => String(row.user_id)));
   const term = normalizeSearch(query);
 
-  const recipients: EmailRecipient[] = (profiles ?? [])
-    .map((row: any) => {
+  const recipients = (profiles ?? [])
+    .map((row: any): EmailRecipient | null => {
       const id = String(row.id ?? "");
       const email = normalizeEmail(row.email);
       if (!id || !email || adminIds.has(id)) return null;
@@ -45,15 +45,15 @@ export async function searchEmailRecipients(query = "", limit = 100) {
         profileId: id,
         email,
         name: row.name ? String(row.name) : null,
-      } satisfies EmailRecipient;
+      };
     })
-    .filter(Boolean)
-    .filter((recipient: any) => {
+    .filter((recipient: EmailRecipient | null): recipient is EmailRecipient => recipient !== null)
+    .filter((recipient: EmailRecipient) => {
       if (!term) return true;
       const haystack = normalizeSearch(`${recipient.name ?? ""} ${recipient.email}`);
       return haystack.includes(term);
     })
-    .sort((a: any, b: any) => (a.name || a.email).localeCompare(b.name || b.email, "pt-BR"));
+    .sort((a: EmailRecipient, b: EmailRecipient) => (a.name || a.email).localeCompare(b.name || b.email, "pt-BR"));
 
   const safeLimit = Math.max(1, Math.min(Number(limit) || 100, 500));
   return {
