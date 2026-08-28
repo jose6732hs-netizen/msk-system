@@ -1,16 +1,19 @@
 export function productImageFallback(slugValue?: unknown) {
-  const slug = String(slugValue ?? "").toLowerCase();
+  const slug = String(slugValue ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-");
 
-  if (slug.startsWith("msk-agent")) {
-    if (/^msk-agent-3(?:-|$)/.test(slug)) return "/agent-offers/agent-3.jpg";
-    if (/^msk-agent-2(?:-|$)/.test(slug)) return "/agent-offers/agent-2.jpg";
-    if (/^msk-agent-1(?:-|$)/.test(slug)) return "/agent-offers/agent-1.jpg";
+  if (slug.startsWith("msk-agent") || slug.startsWith("msk-agente")) {
+    if (/^msk-agent(?:e)?-3(?:-|$)/.test(slug)) return "/agent-offers/agent-3.jpg";
+    if (/^msk-agent(?:e)?-2(?:-|$)/.test(slug)) return "/agent-offers/agent-2.jpg";
+    if (/^msk-agent(?:e)?-1(?:-|$)/.test(slug)) return "/agent-offers/agent-1.jpg";
     return "/msk-agente-banner.svg";
   }
 
-  if (slug.startsWith("page-cloner")) {
-    if (slug.includes("month")) return "/cloner-offers/cloner-monthly.webp";
-    if (slug.includes("week")) return "/cloner-offers/cloner-weekly.webp";
+  if (slug.startsWith("page-cloner") || slug.includes("clonagem") || slug.includes("clonador")) {
+    if (slug.includes("month") || slug.includes("mensal")) return "/cloner-offers/cloner-monthly.webp";
+    if (slug.includes("week") || slug.includes("semanal")) return "/cloner-offers/cloner-weekly.webp";
     return "/cloner-offers/cloner-daily.webp";
   }
 
