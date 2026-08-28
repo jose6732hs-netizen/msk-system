@@ -64,7 +64,8 @@ const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 function imageForLine(line: { imageUrl?: string | null; slug: string }) {
-  if (line.imageUrl) return line.imageUrl;
+  const uploaded = String(line.imageUrl ?? "").trim();
+  if (uploaded) return uploaded;
   return PLAN_IMAGES[line.slug] ?? bannerOfferAsset.url;
 }
 
@@ -162,7 +163,11 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
       const img = document.createElement("img");
       img.src = item.imageUrl;
       img.alt = "";
-      Object.assign(img.style, { width: "100%", height: "100%", objectFit: "cover" });
+      img.onerror = () => {
+        img.onerror = null;
+        img.src = bannerOfferAsset.url;
+      };
+      Object.assign(img.style, { width: "100%", height: "100%", objectFit: "contain", padding: "4px" });
       flyer.appendChild(img);
     } else {
       const glyph = document.createElement("div");
@@ -462,11 +467,15 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     key={`${item.name}-${index}`}
                     className="flex min-w-0 gap-3 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3"
                   >
-                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black">
+                    <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-black p-1.5">
                       <img
-                        src={item.imageUrl || bannerOfferAsset.url}
+                        src={String(item.imageUrl ?? "").trim() || bannerOfferAsset.url}
                         alt={item.name}
-                        className="h-full w-full object-cover"
+                        onError={(event) => {
+                          event.currentTarget.onerror = null;
+                          event.currentTarget.src = bannerOfferAsset.url;
+                        }}
+                        className="h-full w-full object-contain"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -573,11 +582,15 @@ export function CartSheet({ signedIn }: { signedIn: boolean }) {
                     className="min-w-0 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0D0D0D] p-3 shadow-[0_18px_50px_-35px_rgba(0,0,0,.9)] sm:p-4"
                   >
                     <div className="flex min-w-0 gap-3">
-                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black sm:h-24 sm:w-24">
+                      <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-black p-1.5 sm:h-24 sm:w-24">
                         <img
                           src={imageForLine(line)}
                           alt={line.name}
-                          className="h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = bannerOfferAsset.url;
+                          }}
+                          className="h-full w-full object-contain"
                         />
                       </div>
 
