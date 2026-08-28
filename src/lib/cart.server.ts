@@ -1,5 +1,6 @@
 /** Carrinho persistente por usuário — fonte de verdade no banco. */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { normalizeProductImage } from "./product-image";
 
 export type CartLine = {
   id: string;
@@ -72,7 +73,7 @@ export async function loadCart(userId: string) {
         lineTotal: price * quantity,
         highlights: (plan["highlights"] ?? []) as string[],
         isLifetime: !!plan["is_lifetime"],
-        imageUrl: plan["image_url"] ?? null,
+        imageUrl: normalizeProductImage(plan["image_url"], plan["slug"]),
       };
     });
 
