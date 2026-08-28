@@ -13,7 +13,7 @@ import {
 } from "@/lib/notification-prefs.functions";
 import { NOTIFICATION_GROUPS } from "@/lib/notification-keys";
 import { enablePushNotifications, pushPermission } from "@/lib/push-client";
-import { AdminEmailBroadcast } from "@/components/msk/admin-email-broadcast";
+import { AdminEmailBroadcast } from "@/components/msk/admin-email-broadcast-v2";
 import { AdminAgentControlCenter } from "@/components/msk/admin-agent-control-center";
 
 /**
