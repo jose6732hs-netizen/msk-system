@@ -4,12 +4,17 @@ import { logAudit } from "./audit.server";
 const RESEND_BATCH_URL = "https://api.resend.com/emails/batch";
 const BATCH_SIZE = 100;
 const DEFAULT_SUBJECT = "Aviso importante: novo canal de atendimento MSK SISTEM";
+const DEFAULT_COMPOSER_SUBJECT = "Comunicado importante — MSK SISTEM";
 
-type EligibleProfile = { id: string; email: string };
+type EligibleProfile = { id: string; email: string; name: string | null };
 type CampaignRow = {
   id: string;
   campaign_key: string;
   subject: string;
+  title?: string | null;
+  message?: string | null;
+  audience?: string | null;
+  recipient_profile_id?: string | null;
   new_whatsapp: string;
   from_email: string | null;
   status: string;
@@ -57,49 +62,72 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#039;");
 }
 
-function whatsappLink(phone: string) {
-  const text = encodeURIComponent("Olá! Preciso de suporte MSK SISTEM.");
-  return `https://wa.me/${phone}?text=${text}`;
-}
+function customEmailBody(title: string, message: string, recipient?: EligibleProfile) {
+  const safeTitle = escapeHtml(title);
+  const safeMessage = escapeHtml(message).replace(/\n/g, "<br />");
+  const greeting = recipient?.name?.trim() ? `Olá, ${escapeHtml(recipient.name.trim())}.` : "Olá.";
 
-function emailBody(phone: string) {
-  const href = whatsappLink(phone);
-  const prettyPhone = phone.startsWith("55") && phone.length >= 12 ? `+${phone}` : phone;
   const html = `<!doctype html>
 <html lang="pt-BR">
   <body style="margin:0;background:#050806;font-family:Arial,Helvetica,sans-serif;color:#f4fff5">
     <div style="padding:32px 14px">
-      <div style="max-width:620px;margin:0 auto;border:1px solid #39ff1455;border-radius:22px;overflow:hidden;background:#07110a;box-shadow:0 0 36px #39ff141f">
-        <div style="padding:28px 28px 12px">
-          <div style="display:inline-block;padding:7px 12px;border:1px solid #39ff1466;border-radius:999px;color:#7cff67;font-size:11px;font-weight:800;letter-spacing:1.4px">AVISO IMPORTANTE</div>
-          <h1 style="margin:18px 0 12px;font-size:28px;line-height:1.08;color:#ffffff">Nosso WhatsApp principal está temporariamente indisponível.</h1>
-          <p style="margin:0;color:#d8e7db;font-size:15px;line-height:1.65">Devido ao alto volume de mensagens recebidas, nosso número principal ficou indisponível. Para que você continue recebendo atendimento normalmente, ativamos um canal alternativo.</p>
-        </div>
-        <div style="margin:18px 28px;padding:20px;border-radius:16px;background:#0b1d10;border:1px solid #39ff143d;text-align:center">
-          <div style="font-size:12px;color:#a7bdaa;text-transform:uppercase;letter-spacing:1.2px;font-weight:700">Novo número de suporte</div>
-          <div style="margin:8px 0 16px;font-size:24px;color:#7cff67;font-weight:900">${escapeHtml(prettyPhone)}</div>
-          <a href="${href}" style="display:inline-block;background:#39ff14;color:#041006;text-decoration:none;font-weight:900;padding:13px 20px;border-radius:11px">FALAR NO WHATSAPP</a>
-        </div>
-        <div style="padding:6px 28px 28px">
-          <p style="margin:0 0 8px;color:#ffffff;font-size:14px;font-weight:700">A extensão MSK SISTEM continua funcionando normalmente.</p>
-          <p style="margin:0;color:#8da391;font-size:12px;line-height:1.55">Você está recebendo este aviso porque possui cadastro na plataforma MSK SISTEM. Esta mensagem é operacional e foi enviada para informar a mudança temporária do canal de suporte.</p>
+      <div style="max-width:640px;margin:0 auto;border:1px solid #39ff1450;border-radius:24px;overflow:hidden;background:#07110a;box-shadow:0 0 42px #39ff1417">
+        <div style="height:4px;background:#39ff14"></div>
+        <div style="padding:30px">
+          <div style="display:inline-block;padding:7px 12px;border:1px solid #39ff1455;border-radius:999px;color:#7cff67;font-size:10px;font-weight:900;letter-spacing:1.5px">MSK SISTEM</div>
+          <p style="margin:20px 0 8px;color:#b9c8bc;font-size:14px">${greeting}</p>
+          <h1 style="margin:0;color:#ffffff;font-size:28px;line-height:1.15">${safeTitle}</h1>
+          <div style="margin-top:20px;color:#d8e7db;font-size:15px;line-height:1.75">${safeMessage}</div>
+          <div style="margin-top:28px;padding-top:18px;border-top:1px solid #ffffff14;color:#7f9283;font-size:11px;line-height:1.6">
+            Você está recebendo esta mensagem porque possui cadastro na plataforma MSK SISTEM.
+          </div>
         </div>
       </div>
     </div>
   </body>
 </html>`;
 
+  const text = ["MSK SISTEM", "", greeting, "", title, "", message, "", "Mensagem enviada pela plataforma MSK SISTEM."].join("\n");
+  return { html, text };
+}
+
+function whatsappLink(phone: string) {
+  const text = encodeURIComponent("Olá! Preciso de suporte MSK SISTEM.");
+  return `https://wa.me/${phone}?text=${text}`;
+}
+
+function outageEmailBody(phone: string) {
+  const href = whatsappLink(phone);
+  const prettyPhone = phone.startsWith("55") && phone.length >= 12 ? `+${phone}` : phone;
+  const html = `<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;background:#050806;font-family:Arial,Helvetica,sans-serif;color:#f4fff5">
+    <div style="padding:32px 14px">
+      <div style="max-width:620px;margin:0 auto;border:1px solid #39ff1455;border-radius:22px;overflow:hidden;background:#07110a">
+        <div style="padding:28px 28px 12px">
+          <div style="display:inline-block;padding:7px 12px;border:1px solid #39ff1466;border-radius:999px;color:#7cff67;font-size:11px;font-weight:800;letter-spacing:1.4px">AVISO IMPORTANTE</div>
+          <h1 style="margin:18px 0 12px;font-size:28px;line-height:1.08;color:#ffffff">Nosso WhatsApp principal está temporariamente indisponível.</h1>
+          <p style="margin:0;color:#d8e7db;font-size:15px;line-height:1.65">Ativamos um canal alternativo para manter seu atendimento funcionando normalmente.</p>
+        </div>
+        <div style="margin:18px 28px;padding:20px;border-radius:16px;background:#0b1d10;border:1px solid #39ff143d;text-align:center">
+          <div style="font-size:12px;color:#a7bdaa;text-transform:uppercase;letter-spacing:1.2px;font-weight:700">Novo número de suporte</div>
+          <div style="margin:8px 0 16px;font-size:24px;color:#7cff67;font-weight:900">${escapeHtml(prettyPhone)}</div>
+          <a href="${href}" style="display:inline-block;background:#39ff14;color:#041006;text-decoration:none;font-weight:900;padding:13px 20px;border-radius:11px">FALAR NO WHATSAPP</a>
+        </div>
+        <div style="padding:6px 28px 28px;color:#8da391;font-size:12px;line-height:1.55">A extensão MSK SISTEM continua funcionando normalmente.</div>
+      </div>
+    </div>
+  </body>
+</html>`;
   const text = [
     "AVISO IMPORTANTE — MSK SISTEM",
     "",
-    "Nosso WhatsApp principal está temporariamente indisponível devido ao alto volume de mensagens recebidas.",
+    "Nosso WhatsApp principal está temporariamente indisponível.",
     `Novo número de suporte: ${prettyPhone}`,
     `Fale conosco: ${href}`,
     "",
     "A extensão MSK SISTEM continua funcionando normalmente.",
-    "Você recebeu esta mensagem porque possui cadastro na plataforma MSK SISTEM.",
   ].join("\n");
-
   return { html, text };
 }
 
@@ -116,7 +144,7 @@ async function loadEligibleProfiles(): Promise<EligibleProfile[]> {
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db
       .from("profiles")
-      .select("id,email")
+      .select("id,name,email")
       .not("email", "is", null)
       .range(from, from + 999);
     if (error) throw error;
@@ -124,61 +152,42 @@ async function loadEligibleProfiles(): Promise<EligibleProfile[]> {
     for (const row of rows) {
       if (adminIds.has(String(row.id))) continue;
       const email = normalizeEmail(row.email);
-      if (email && !dedup.has(email)) dedup.set(email, { id: String(row.id), email });
+      if (email && !dedup.has(email)) {
+        dedup.set(email, { id: String(row.id), email, name: row.name ? String(row.name) : null });
+      }
     }
     if (rows.length < 1000) break;
   }
-  return [...dedup.values()].sort((a, b) => a.email.localeCompare(b.email));
+
+  return [...dedup.values()].sort((a, b) => (a.name || a.email).localeCompare(b.name || b.email, "pt-BR"));
 }
 
-export async function getEmailBroadcastOverview() {
+async function runCampaign(args: {
+  campaignKey: string;
+  subject: string;
+  title: string;
+  message: string;
+  audience: "all" | "single";
+  recipientProfileId?: string | null;
+  newWhatsapp?: string;
+  targets: EligibleProfile[];
+  actorId: string;
+  dedupeCompleted?: boolean;
+  auditAction: string;
+  body: (recipient: EligibleProfile) => { html: string; text: string };
+}) {
   const db = supabaseAdmin as any;
   const config = emailConfig();
-  const [recipients, campaignsResult] = await Promise.all([
-    loadEligibleProfiles(),
-    db
-      .from("email_campaigns")
-      .select("id,campaign_key,subject,new_whatsapp,from_email,status,target_count,sent_count,failed_count,error,created_at,completed_at")
-      .order("created_at", { ascending: false })
-      .limit(5),
-  ]);
-  if (campaignsResult.error) throw campaignsResult.error;
-  return {
-    provider: "Resend",
-    configured: !!config.apiKey && !!config.fromEmail,
-    hasApiKey: !!config.apiKey,
-    fromEmail: config.fromEmail ?? null,
-    eligibleRecipients: recipients.length,
-    campaigns: (campaignsResult.data ?? []) as CampaignRow[],
-    defaultSubject: DEFAULT_SUBJECT,
-  };
-}
-
-export async function sendWhatsappOutageBroadcast(
-  input: { newWhatsapp: string; subject?: string | undefined },
-  actorId: string,
-) {
-  const db = supabaseAdmin as any;
-  const config = emailConfig();
-  if (!config.apiKey) throw new Error("Configure RESEND_API_KEY nos secrets do servidor antes de enviar.");
-  if (!config.fromEmail) throw new Error("Configure MSK_EMAIL_FROM com o e-mail do seu domínio verificado antes de enviar.");
-
-  const phone = normalizePhone(input.newWhatsapp);
-  const subject = (input.subject || DEFAULT_SUBJECT).trim().slice(0, 160);
-  const campaignKey = `whatsapp-outage-v1:${phone}`;
-  const targets = await loadEligibleProfiles();
-  if (!targets.length) throw new Error("Nenhum cliente com e-mail válido foi encontrado.");
+  if (!config.apiKey) throw new Error("O provedor de e-mail ainda não está configurado no servidor.");
+  if (!config.fromEmail) throw new Error("O remetente verificado ainda não está configurado no servidor.");
+  if (!args.targets.length) throw new Error("Nenhum cliente com e-mail válido foi encontrado para este envio.");
 
   let campaign: CampaignRow | null = null;
-  const existing = await db
-    .from("email_campaigns")
-    .select("*")
-    .eq("campaign_key", campaignKey)
-    .maybeSingle();
+  const existing = await db.from("email_campaigns").select("*").eq("campaign_key", args.campaignKey).maybeSingle();
   if (existing.error) throw existing.error;
   campaign = existing.data as CampaignRow | null;
 
-  if (campaign?.status === "completed") {
+  if (args.dedupeCompleted && campaign?.status === "completed") {
     return {
       ok: true,
       alreadySent: true,
@@ -190,33 +199,34 @@ export async function sendWhatsappOutageBroadcast(
     };
   }
 
+  const campaignPayload = {
+    subject: args.subject,
+    title: args.title,
+    message: args.message,
+    audience: args.audience,
+    recipient_profile_id: args.recipientProfileId ?? null,
+    new_whatsapp: args.newWhatsapp ?? "",
+    from_email: config.fromEmail,
+    status: "sending",
+    target_count: args.targets.length,
+    error: null,
+    created_by: args.actorId,
+    started_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
   if (!campaign) {
     const created = await db
       .from("email_campaigns")
-      .insert({
-        campaign_key: campaignKey,
-        subject,
-        new_whatsapp: phone,
-        from_email: config.fromEmail,
-        status: "sending",
-        target_count: targets.length,
-        created_by: actorId,
-        started_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .insert({ campaign_key: args.campaignKey, ...campaignPayload })
       .select("*")
       .single();
-    if (created.error) {
-      const raced = await db.from("email_campaigns").select("*").eq("campaign_key", campaignKey).single();
-      if (raced.error) throw created.error;
-      campaign = raced.data as CampaignRow;
-    } else {
-      campaign = created.data as CampaignRow;
-    }
+    if (created.error) throw created.error;
+    campaign = created.data as CampaignRow;
   } else {
     const updated = await db
       .from("email_campaigns")
-      .update({ status: "sending", error: null, updated_at: new Date().toISOString() })
+      .update(campaignPayload)
       .eq("id", campaign.id)
       .select("*")
       .single();
@@ -224,7 +234,7 @@ export async function sendWhatsappOutageBroadcast(
     campaign = updated.data as CampaignRow;
   }
 
-  const recipientRows = targets.map((target) => ({
+  const recipientRows = args.targets.map((target) => ({
     campaign_id: campaign!.id,
     profile_id: target.id,
     email: target.email,
@@ -236,40 +246,32 @@ export async function sendWhatsappOutageBroadcast(
     if (error) throw error;
   }
 
-  await db
-    .from("email_campaigns")
-    .update({ target_count: targets.length, updated_at: new Date().toISOString() })
-    .eq("id", campaign.id);
-
   const recipientResult = await db
     .from("email_campaign_recipients")
     .select("id,email,status,campaign_id")
     .eq("campaign_id", campaign.id)
     .order("email", { ascending: true });
   if (recipientResult.error) throw recipientResult.error;
+
   const recipients = recipientResult.data ?? [];
-  const body = emailBody(phone);
+  const targetByEmail = new Map(args.targets.map((target) => [target.email, target]));
   const batchErrors: string[] = [];
 
   for (let offset = 0, batchIndex = 0; offset < recipients.length; offset += BATCH_SIZE, batchIndex++) {
-    const chunk = recipients.slice(offset, offset + BATCH_SIZE);
-    if (chunk.every((row: any) => row.status === "sent")) continue;
+    const chunk = recipients.slice(offset, offset + BATCH_SIZE).filter((row: any) => row.status !== "sent");
+    if (!chunk.length) continue;
 
-    const unsentIds = chunk.filter((row: any) => row.status !== "sent").map((row: any) => row.id);
-    if (unsentIds.length) {
-      await db
-        .from("email_campaign_recipients")
-        .update({ status: "sending", error: null, updated_at: new Date().toISOString() })
-        .in("id", unsentIds);
-    }
+    const ids = chunk.map((row: any) => row.id);
+    await db
+      .from("email_campaign_recipients")
+      .update({ status: "sending", error: null, updated_at: new Date().toISOString() })
+      .in("id", ids);
 
-    const payload = chunk.map((row: any) => ({
-      from: config.fromEmail,
-      to: [row.email],
-      subject,
-      html: body.html,
-      text: body.text,
-    }));
+    const payload = chunk.map((row: any) => {
+      const target = targetByEmail.get(String(row.email)) ?? { id: "", email: String(row.email), name: null };
+      const body = args.body(target);
+      return { from: config.fromEmail, to: [row.email], subject: args.subject, html: body.html, text: body.text };
+    });
 
     try {
       const response = await fetch(RESEND_BATCH_URL, {
@@ -277,7 +279,7 @@ export async function sendWhatsappOutageBroadcast(
         headers: {
           Authorization: `Bearer ${config.apiKey}`,
           "Content-Type": "application/json",
-          "Idempotency-Key": `msk-wa-${campaign.id}-${batchIndex}`,
+          "Idempotency-Key": `msk-email-${campaign.id}-${batchIndex}`,
         },
         body: JSON.stringify(payload),
       });
@@ -285,12 +287,10 @@ export async function sendWhatsappOutageBroadcast(
       if (!response.ok) {
         const message = String(responseBody?.message || responseBody?.name || `Resend HTTP ${response.status}`).slice(0, 500);
         batchErrors.push(message);
-        if (unsentIds.length) {
-          await db
-            .from("email_campaign_recipients")
-            .update({ status: "failed", error: message, updated_at: new Date().toISOString() })
-            .in("id", unsentIds);
-        }
+        await db
+          .from("email_campaign_recipients")
+          .update({ status: "failed", error: message, updated_at: new Date().toISOString() })
+          .in("id", ids);
         continue;
       }
 
@@ -311,12 +311,10 @@ export async function sendWhatsappOutageBroadcast(
     } catch (error) {
       const message = (error as Error).message.slice(0, 500);
       batchErrors.push(message);
-      if (unsentIds.length) {
-        await db
-          .from("email_campaign_recipients")
-          .update({ status: "failed", error: message, updated_at: new Date().toISOString() })
-          .in("id", unsentIds);
-      }
+      await db
+        .from("email_campaign_recipients")
+        .update({ status: "failed", error: message, updated_at: new Date().toISOString() })
+        .in("id", ids);
     }
   }
 
@@ -326,11 +324,11 @@ export async function sendWhatsappOutageBroadcast(
   ]);
   if (sentResult.error) throw sentResult.error;
   if (failedResult.error) throw failedResult.error;
+
   const sentCount = sentResult.count ?? 0;
   const failedCount = failedResult.count ?? 0;
-  const status = failedCount === 0 && sentCount >= targets.length ? "completed" : sentCount > 0 ? "partial" : "failed";
+  const status = failedCount === 0 && sentCount >= args.targets.length ? "completed" : sentCount > 0 ? "partial" : "failed";
   const errorSummary = batchErrors.length ? [...new Set(batchErrors)].join(" | ").slice(0, 1000) : null;
-  const completedAt = status === "completed" ? new Date().toISOString() : null;
 
   await db
     .from("email_campaigns")
@@ -339,28 +337,112 @@ export async function sendWhatsappOutageBroadcast(
       sent_count: sentCount,
       failed_count: failedCount,
       error: errorSummary,
-      completed_at: completedAt,
+      completed_at: status === "completed" ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", campaign.id);
 
   await logAudit({
-    userId: actorId,
-    action: "email.whatsapp_outage_broadcast",
+    userId: args.actorId,
+    action: args.auditAction,
     resource: "email_campaigns",
     resourceId: campaign.id,
     result: status === "failed" ? "failure" : "success",
-    metadata: { phone, targetCount: targets.length, sentCount, failedCount, provider: "resend" },
+    metadata: {
+      audience: args.audience,
+      targetCount: args.targets.length,
+      sentCount,
+      failedCount,
+      provider: "resend",
+    },
   });
 
   return {
     ok: status !== "failed",
     alreadySent: false,
     campaignId: campaign.id,
-    targetCount: targets.length,
+    targetCount: args.targets.length,
     sentCount,
     failedCount,
     status,
     error: errorSummary,
   };
+}
+
+export async function getEmailBroadcastOverview() {
+  const db = supabaseAdmin as any;
+  const config = emailConfig();
+  const [recipients, campaignsResult] = await Promise.all([
+    loadEligibleProfiles(),
+    db
+      .from("email_campaigns")
+      .select("id,campaign_key,subject,title,message,audience,recipient_profile_id,new_whatsapp,from_email,status,target_count,sent_count,failed_count,error,created_at,completed_at")
+      .order("created_at", { ascending: false })
+      .limit(12),
+  ]);
+  if (campaignsResult.error) throw campaignsResult.error;
+
+  return {
+    provider: "Resend",
+    configured: !!config.apiKey && !!config.fromEmail,
+    hasApiKey: !!config.apiKey,
+    fromEmail: config.fromEmail ?? null,
+    eligibleRecipients: recipients.length,
+    recipients: recipients.slice(0, 500),
+    campaigns: (campaignsResult.data ?? []) as CampaignRow[],
+    defaultSubject: DEFAULT_COMPOSER_SUBJECT,
+  };
+}
+
+export async function sendCustomEmailCampaign(
+  input: { audience: "all" | "single"; profileId?: string; subject: string; title: string; message: string },
+  actorId: string,
+) {
+  const allRecipients = await loadEligibleProfiles();
+  const targets = input.audience === "single"
+    ? allRecipients.filter((recipient) => recipient.id === input.profileId)
+    : allRecipients;
+
+  if (input.audience === "single" && !targets.length) {
+    throw new Error("Cliente selecionado não foi encontrado ou não possui e-mail válido.");
+  }
+
+  const campaignKey = `custom:${Date.now()}:${crypto.randomUUID().slice(0, 8)}`;
+  return runCampaign({
+    campaignKey,
+    subject: input.subject.trim().slice(0, 160),
+    title: input.title.trim().slice(0, 140),
+    message: input.message.trim().slice(0, 6000),
+    audience: input.audience,
+    recipientProfileId: input.audience === "single" ? input.profileId ?? null : null,
+    targets,
+    actorId,
+    auditAction: "email.custom_campaign",
+    body: (recipient) => customEmailBody(input.title.trim(), input.message.trim(), recipient),
+  });
+}
+
+export async function sendWhatsappOutageBroadcast(
+  input: { newWhatsapp: string; subject?: string | undefined },
+  actorId: string,
+) {
+  const phone = normalizePhone(input.newWhatsapp);
+  const subject = (input.subject || DEFAULT_SUBJECT).trim().slice(0, 160);
+  const targets = await loadEligibleProfiles();
+  const title = "Nosso WhatsApp principal está temporariamente indisponível.";
+  const message = `Novo número de suporte: ${phone}. A extensão MSK SISTEM continua funcionando normalmente.`;
+
+  return runCampaign({
+    campaignKey: `whatsapp-outage-v1:${phone}`,
+    subject,
+    title,
+    message,
+    audience: "all",
+    newWhatsapp: phone,
+    targets,
+    actorId,
+    dedupeCompleted: true,
+    auditAction: "email.whatsapp_outage_broadcast",
+    body: () => outageEmailBody(phone),
+  });
 }
