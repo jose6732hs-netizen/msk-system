@@ -1,3 +1,4 @@
+import { Money } from "@/components/msk/money";
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -132,8 +133,8 @@ function ResellerPage() {
       </header>
 
       <section className="mt-8 grid gap-4 sm:grid-cols-4">
-        <Stat icon={<Wallet className="h-4 w-4" />} label="Saldo" value={brl(r["available_balance"])} />
-        <Stat icon={<Wallet className="h-4 w-4" />} label="Depositado" value={brl(r["total_deposited"])} />
+        <Stat icon={<Wallet className="h-4 w-4" />} label="Saldo" value={<Money value={r["available_balance"]} />} />
+        <Stat icon={<Wallet className="h-4 w-4" />} label="Depositado" value={<Money value={r["total_deposited"]} />} />
         <Stat icon={<Crown className="h-4 w-4" />} label="Trials disponíveis" value={String(r["trials_available"])} />
         <Stat icon={<Crown className="h-4 w-4" />} label="Licenças" value={String(data.licenses.length)} />
       </section>
@@ -300,9 +301,9 @@ function ResellerPage() {
   );
 }
 
-function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
-    <div className="glass rounded-2xl p-5">
+    <div className="holo-card holo-rise rounded-2xl p-5">
       <div className="flex items-center gap-2 text-xs uppercase tracking-wide text-muted-foreground">
         {icon}
         {label}
