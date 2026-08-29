@@ -3,10 +3,6 @@ import cardSemanalImg from "@/assets/card-semanal.jpg";
 import cardMensalImg from "@/assets/card-mensal.jpg";
 import cardTrimestralImg from "@/assets/card-trimestral.jpg";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
-import agentBanner1 from "@/assets/msk-agent-banner-1.base64";
-import agentBanner2 from "@/assets/msk-agent-banner-2.base64";
-
-const AGENT_BANNER_IMAGES = [agentBanner1, agentBanner2] as const;
 
 function isChatGptProduct(value?: unknown) {
   const hint = String(value ?? "").trim().toLowerCase();
@@ -99,10 +95,10 @@ async function installChatGptArtworkSync() {
 
     const apply = (root: ParentNode = document) => {
       root.querySelectorAll<HTMLImageElement>("img").forEach((image) => {
-        const hint = image.dataset.productSlug || image.alt || "";
+        const hint = image.dataset['productSlug'] || image.alt || "";
         if (!isChatGptProduct(hint)) return;
         if (image.getAttribute("src") === canonical) return;
-        image.dataset.mskCanonicalProductImage = "1";
+        image.dataset['mskCanonicalProductImage'] = "1";
         image.src = canonical;
       });
     };
@@ -112,13 +108,13 @@ async function installChatGptArtworkSync() {
       for (const mutation of mutations) {
         if (mutation.type === "attributes" && mutation.target instanceof HTMLImageElement) {
           const image = mutation.target;
-          const hint = image.dataset.productSlug || image.alt || "";
+          const hint = image.dataset['productSlug'] || image.alt || "";
           if (isChatGptProduct(hint) && image.getAttribute("src") !== canonical) image.src = canonical;
           continue;
         }
         mutation.addedNodes.forEach((node) => {
           if (node instanceof HTMLImageElement) {
-            const hint = node.dataset.productSlug || node.alt || "";
+            const hint = node.dataset['productSlug'] || node.alt || "";
             if (isChatGptProduct(hint) && node.getAttribute("src") !== canonical) node.src = canonical;
           } else if (node instanceof Element) {
             apply(node);
@@ -151,7 +147,7 @@ function installProductImageRecovery() {
       const target = event.target;
       if (!(target instanceof HTMLImageElement)) return;
 
-      const productHint = String(target.dataset.productSlug || target.alt || "").toLowerCase();
+      const productHint = String(target.dataset['productSlug'] || target.alt || "").toLowerCase();
       if (isChatGptProduct(productHint)) {
         const canonical = cachedChatGptImage();
         if (canonical && target.getAttribute("src") !== canonical) target.src = canonical;
@@ -170,104 +166,19 @@ function installProductImageRecovery() {
 
       if (
         (!insideProductUi && !temporarySource && !recognizedProduct) ||
-        target.dataset.mskFallbackApplied === "1"
+        target.dataset['mskFallbackApplied'] === "1"
       ) {
         return;
       }
       if (!fallback || source === fallback) return;
       if (!insideProductUi && !temporarySource && !recognizedProduct) return;
 
-      target.dataset.mskFallbackApplied = "1";
+      target.dataset['mskFallbackApplied'] = "1";
       event.stopImmediatePropagation();
       target.src = fallback;
     },
     true,
   );
-}
-
-/**
- * Troca somente a arte do banner da seção MSK Agente pelas duas imagens enviadas.
- * O carrossel de cards abaixo da seção não é alterado.
- */
-function syncAgentBannerCarousel() {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-  const section = document.getElementById("msk-agente");
-  const frame = section?.querySelector<HTMLElement>(":scope > div");
-  if (!frame || frame.dataset.mskAgentBannerCarousel === "1") return;
-
-  frame.dataset.mskAgentBannerCarousel = "1";
-  const original = frame.querySelector<HTMLImageElement>(":scope > img");
-  const layer = document.createElement("div");
-  layer.setAttribute("aria-label", "Banners MSK Agente");
-  Object.assign(layer.style, {
-    position: "absolute",
-    inset: "0",
-    overflow: "hidden",
-    pointerEvents: "none",
-  });
-
-  let firstReady = false;
-  const images = AGENT_BANNER_IMAGES.map((src, index) => {
-    const image = document.createElement("img");
-    image.src = src;
-    image.alt = `MSK Agente banner ${index + 1}`;
-    image.decoding = "async";
-    Object.assign(image.style, {
-      position: "absolute",
-      inset: "0",
-      width: "100%",
-      height: "100%",
-      objectFit: "cover",
-      opacity: index === 0 ? "1" : "0",
-      transition: "opacity 700ms ease",
-    });
-
-    if (index === 0) {
-      image.addEventListener(
-        "load",
-        () => {
-          firstReady = true;
-          if (original) original.style.display = "none";
-        },
-        { once: true },
-      );
-    }
-
-    layer.appendChild(image);
-    return image;
-  });
-
-  frame.insertBefore(layer, frame.firstChild);
-  let active = 0;
-  const timer = window.setInterval(() => {
-    if (!frame.isConnected) {
-      window.clearInterval(timer);
-      return;
-    }
-    if (!firstReady) return;
-    active = (active + 1) % images.length;
-    images.forEach((image, index) => {
-      image.style.opacity = index === active ? "1" : "0";
-    });
-  }, 5000);
-}
-
-function installAgentBannerCarousel() {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-  const marker = "__mskAgentBannerCarouselInstalled";
-  const globalWindow = window as typeof window & Record<string, unknown>;
-  if (globalWindow[marker]) return;
-  globalWindow[marker] = true;
-
-  const refresh = () => window.requestAnimationFrame(syncAgentBannerCarousel);
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", refresh, { once: true });
-  } else {
-    refresh();
-  }
-
-  const observer = new MutationObserver(refresh);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
 }
 
 /**
@@ -319,6 +230,5 @@ function installMobileCheckoutNavigationFix() {
 }
 
 installProductImageRecovery();
-installAgentBannerCarousel();
 installMobileCheckoutNavigationFix();
 void installChatGptArtworkSync();

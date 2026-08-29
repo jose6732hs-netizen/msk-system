@@ -290,76 +290,8 @@ export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolea
                 </Button>
               </div>
             )}
+            {/* Menu mobile/tablet fica apenas na navegação inferior (rodapé). */}
 
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="lg:hidden h-10 w-10 p-0 border border-white/10 rounded-xl hover:bg-white/5" aria-label="Menu">
-                  <Menu className="h-6 w-6 text-primary" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-full sm:w-72 z-[200] bg-background/98 backdrop-blur-xl border-none p-0 focus:outline-none h-[100dvh] overscroll-contain">
-                <nav className="flex h-full flex-col gap-4 overflow-y-auto px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom,0px))] pt-[calc(2rem+env(safe-area-inset-top,0px))]">
-                  <div className="flex items-center justify-between mb-8">
-                    <MskLogo size={32} />
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-10 w-10 border border-white/10 rounded-xl">
-                        <X className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                  </div>
-
-                  <div className="flex flex-col gap-2 mb-4 border-b border-border/50 pb-4">
-                    {signedIn ? (
-                      <>
-                        <Link
-                          to="/painel"
-                          className="flex items-center gap-2 font-bold text-primary p-2"
-                          onClick={() => document.body.click()}
-                        >
-                          <LayoutDashboard className="h-4 w-4" />
-                          Meu Painel
-                        </Link>
-                        {isAdmin ? (
-                          <Link
-                            to="/admin"
-                            className="flex items-center gap-2 font-bold text-cyan-400 p-2"
-                            onClick={() => document.body.click()}
-                          >
-                            <ShieldCheck className="h-4 w-4" />
-                            Admin
-                          </Link>
-                        ) : null}
-                      </>
-                    ) : (
-                      <Link
-                        to="/auth"
-                        className="flex items-center gap-2 font-bold text-primary p-2"
-                        onClick={() => document.body.click()}
-                      >
-                        Entrar / Cadastrar
-                      </Link>
-                    )}
-                  </div>
-
-                  {NAV.map((item) =>
-                    navLink(item, "hover:text-primary p-2 text-base font-medium border-b border-white/5", () => document.body.click()),
-                  )}
-
-                  <Button
-                    variant="neon"
-                    className="mt-4 w-full h-12 rounded-xl"
-                    disabled={downloading}
-                    onClick={() => {
-                      void downloadExtension();
-                      document.body.click();
-                    }}
-                  >
-                    {downloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    {downloadLabel}
-                  </Button>
-                </nav>
-              </SheetContent>
-            </Sheet>
           </div>
         </div>
       </header>

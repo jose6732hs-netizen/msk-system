@@ -212,11 +212,12 @@ export function AdminSubscriptionsTab({
   });
 
   useEffect(() => {
-    const image = cmsQuery.data?.site_images?.plans_chatgpt_card;
+    const image = cmsQuery.data?.["site_images"]?.plans_chatgpt_card;
     if (typeof image === "string") setChatgptImage(image);
 
     // Aproveita a configuração antiga da oferta especial como valor inicial na primeira migração.
-    const special = objectValue(cmsQuery.data?.special_offer_chatgpt);
+    const special = objectValue(cmsQuery.data?.["special_offer_chatgpt"]);
+
     const delivery = objectValue(special["delivery"]);
     setChatgptDeliveryMethod(normalizeDeliveryMethod(delivery["method"]));
     setChatgptDeliveryLink(String(delivery["link"] ?? ""));

@@ -437,7 +437,7 @@ export function AdminEditorTab() {
     );
   }
 
-  const currentSection = SECTIONS.find((section) => section.id === activeSection) || SECTIONS[0];
+  const currentSection = SECTIONS.find((section) => section.id === activeSection) ?? SECTIONS[0]!;
   const recommendationSettings = {
     ...DEFAULT_CART_RECOMMENDATION,
     ...(localSettings.cart_recommendation || {}),
@@ -533,8 +533,8 @@ export function AdminEditorTab() {
                   <label className="block space-y-1.5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Título principal</span>
                     <Input
-                      value={localSettings.hero?.title ?? ""}
-                      placeholder={initialSettings.hero?.title || "Título principal"}
+                      value={localSettings["hero"]?.title ?? ""}
+                      placeholder={initialSettings["hero"]?.title || "Título principal"}
                       onChange={(event) => updateField("hero", "title", event.target.value)}
                     />
                   </label>
@@ -542,8 +542,8 @@ export function AdminEditorTab() {
                     <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subtítulo</span>
                     <Textarea
                       rows={5}
-                      value={localSettings.hero?.subtitle ?? ""}
-                      placeholder={initialSettings.hero?.subtitle || "Subtítulo"}
+                      value={localSettings["hero"]?.subtitle ?? ""}
+                      placeholder={initialSettings["hero"]?.subtitle || "Subtítulo"}
                       onChange={(event) => updateField("hero", "subtitle", event.target.value)}
                     />
                   </label>
@@ -551,14 +551,14 @@ export function AdminEditorTab() {
                     <label className="block space-y-1.5">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Texto do botão</span>
                       <Input
-                        value={localSettings.hero?.cta_text ?? initialSettings.hero?.cta_text ?? ""}
+                        value={localSettings["hero"]?.cta_text ?? initialSettings["hero"]?.cta_text ?? ""}
                         onChange={(event) => updateField("hero", "cta_text", event.target.value)}
                       />
                     </label>
                     <label className="block space-y-1.5">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Link do botão</span>
                       <Input
-                        value={localSettings.hero?.cta_link ?? initialSettings.hero?.cta_link ?? ""}
+                        value={localSettings["hero"]?.cta_link ?? initialSettings["hero"]?.cta_link ?? ""}
                         onChange={(event) => updateField("hero", "cta_link", event.target.value)}
                       />
                     </label>
@@ -572,7 +572,7 @@ export function AdminEditorTab() {
               <BannerManager
                 title="Banners da landing"
                 description="Esta tela cuida somente dos banners públicos da landing. Adicione, troque a imagem, reordene e ative ou desative cada banner."
-                banners={localSettings.hero?.banners}
+                banners={localSettings["hero"]?.banners}
                 defaults={DEFAULT_LANDING_BANNERS}
                 uploadKeyPrefix="landing-banner"
                 uploading={uploading}
@@ -828,7 +828,8 @@ export function AdminEditorTab() {
                     ["award_1m", "Placa 1M"],
                     ["award_5m", "Placa 5M"],
                   ].map(([key, label]) => {
-                    const value = localSettings.awards?.[key] ?? "";
+                    const awardKey = String(key);
+                    const value = localSettings["awards"]?.[awardKey] ?? "";
                     return (
                       <div key={key} className="rounded-2xl border border-white/5 bg-black/10 p-3">
                         <p className="text-[10px] font-black uppercase tracking-wide text-primary/70">{label}</p>
@@ -837,9 +838,9 @@ export function AdminEditorTab() {
                             {value ? <img src={value} alt={label} className="h-full w-full object-contain" /> : <Trophy className="h-5 w-5 text-muted-foreground/30" />}
                           </div>
                           <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_38px] gap-2">
-                            <Input value={value} onChange={(event) => updateField("awards", key, event.target.value)} className="min-w-0 text-xs" />
-                            <Button type="button" size="icon" variant="neonOutline" disabled={uploading === key} onClick={() => pickAndUpload({ key, setUploading, onDone: (url) => updateField("awards", key, url) })}>
-                              {uploading === key ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            <Input value={value} onChange={(event) => updateField("awards", awardKey, event.target.value)} className="min-w-0 text-xs" />
+                            <Button type="button" size="icon" variant="neonOutline" disabled={uploading === awardKey} onClick={() => pickAndUpload({ key: awardKey, setUploading, onDone: (url) => updateField("awards", awardKey, url) })}>
+                              {uploading === awardKey ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                             </Button>
                           </div>
                         </div>
@@ -875,13 +876,13 @@ export function AdminEditorTab() {
                     ["recovery", "Mensagem de recuperação", "Enviada para pagamentos pendentes."],
                     ["urgency", "Mensagem de urgência", "Mensagem de reforço por tempo limitado."],
                   ].map(([key, label, description]) => (
-                    <label key={key} className="block space-y-1.5 rounded-2xl border border-white/5 bg-black/10 p-4">
+                    <label key={String(key)} className="block space-y-1.5 rounded-2xl border border-white/5 bg-black/10 p-4">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{label}</span>
                       <Textarea
                         rows={4}
-                        value={localSettings.recovery_messages?.[key] ?? ""}
+                        value={localSettings["recovery_messages"]?.[String(key)] ?? ""}
                         placeholder="Olá {nome}, ..."
-                        onChange={(event) => replaceSection("recovery_messages", { ...(localSettings.recovery_messages || {}), [key]: event.target.value })}
+                        onChange={(event) => replaceSection("recovery_messages", { ...(localSettings.recovery_messages || {}), [String(key)]: event.target.value })}
                       />
                       <span className="block text-[9px] text-muted-foreground">{description} Use {"{nome}"} para o nome do cliente.</span>
                     </label>
@@ -942,14 +943,14 @@ export function AdminEditorTab() {
                   <div className="border-b border-white/5 px-4 py-3 text-[10px] font-mono text-muted-foreground">msksystem.online · prévia local</div>
                   <div className="space-y-8 p-5 sm:p-8">
                     <section className="space-y-4">
-                      <h1 className="max-w-3xl text-3xl font-black leading-tight sm:text-5xl">{localSettings.hero?.title || "Título principal"}</h1>
-                      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{localSettings.hero?.subtitle || "Subtítulo do site"}</p>
-                      <Button variant="neon">{localSettings.hero?.cta_text || "CTA"}</Button>
+                      <h1 className="max-w-3xl text-3xl font-black leading-tight sm:text-5xl">{localSettings["hero"]?.title || "Título principal"}</h1>
+                      <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{localSettings["hero"]?.subtitle || "Subtítulo do site"}</p>
+                      <Button variant="neon">{localSettings["hero"]?.cta_text || "CTA"}</Button>
                     </section>
                     <section>
                       <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Banners ativos</p>
                       <div className="grid gap-3 md:grid-cols-2">
-                        {(localSettings.hero?.banners ?? DEFAULT_LANDING_BANNERS)
+                        {(localSettings["hero"]?.banners ?? DEFAULT_LANDING_BANNERS)
                           .filter((banner: BannerItem) => banner.active !== false && banner.url)
                           .slice(0, 4)
                           .map((banner: BannerItem, index: number) => (

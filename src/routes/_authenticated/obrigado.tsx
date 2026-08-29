@@ -14,10 +14,14 @@ import {
   Lock,
   MessageSquare,
   KeyRound,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getPurchaseSuccess } from "@/lib/purchase-success.functions";
 import { MskLogo } from "@/components/msk/logo";
+import tutorialLovable from "@/assets/tutorial-lovable-cloud.png.asset.json";
+import tutorialGithub from "@/assets/tutorial-github.png.asset.json";
+import tutorialSupabase from "@/assets/tutorial-supabase.png.asset.json";
 
 export const Route = createFileRoute("/_authenticated/obrigado")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -231,7 +235,10 @@ function ObrigadoPage() {
               })}
             </div>
 
+            <AttentionTutorials />
+
             <div className="mx-auto max-w-2xl space-y-8 rounded-[3rem] border border-white/10 bg-white/5 p-8 text-left sm:p-12">
+
               <div>
                 <h3 className="mb-4 flex items-center gap-2 text-xl font-black uppercase tracking-tighter">
                   <Rocket className="text-primary" /> Próximo passo
@@ -280,5 +287,82 @@ function FeatureBox({ icon, title, value }: { icon: React.ReactNode; title: stri
       <h4 className="mb-1 text-[10px] font-black uppercase tracking-widest text-white/30">{title}</h4>
       <p className="truncate text-lg font-black uppercase tracking-tighter text-white">{value}</p>
     </div>
+  );
+}
+const TUTORIALS = [
+  {
+    step: "01",
+    title: "Conectar o Lovable Cloud",
+    description: "Primeiro passo obrigatório: autorize a conta Lovable Cloud dentro do MSK Agente.",
+    image: tutorialLovable.url,
+  },
+  {
+    step: "02",
+    title: "Autorização correta do GitHub",
+    description: "Libere leitura e escrita nos repositórios para o agente conseguir editar seu projeto.",
+    image: tutorialGithub.url,
+  },
+  {
+    step: "03",
+    title: "Conectar o Supabase no chat",
+    description: "Autorize todas as permissões do banco para consultas, tabelas e Edge Functions.",
+    image: tutorialSupabase.url,
+  },
+] as const;
+
+function AttentionTutorials() {
+  return (
+    <section className="mx-auto max-w-4xl space-y-6 text-left">
+      <div className="relative overflow-hidden rounded-[2rem] border border-amber-400/40 bg-amber-400/[0.06] p-5 shadow-[0_0_60px_rgba(251,191,36,0.18)] sm:p-7">
+        <div className="pointer-events-none absolute -left-16 -top-16 h-48 w-48 animate-pulse rounded-full bg-amber-400/20 blur-[70px]" />
+        <div className="relative grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4">
+          <div className="grid h-12 w-12 shrink-0 animate-pulse place-items-center rounded-2xl bg-amber-400/15 text-amber-300 ring-1 ring-amber-400/40">
+            <AlertTriangle className="h-6 w-6" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-[.3em] text-amber-300">Atenção — leia antes de usar</p>
+            <h3 className="mt-1 text-xl font-black uppercase tracking-tighter text-white sm:text-2xl">
+              Siga os 3 passos de conexão na ordem
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-white/60">
+              A licença já está liberada, mas o MSK Agente só funciona 100% depois que você autorizar
+              <strong className="text-amber-300"> Lovable Cloud</strong>,
+              <strong className="text-amber-300"> GitHub</strong> e
+              <strong className="text-amber-300"> Supabase</strong> com todas as permissões pedidas.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-5">
+        {TUTORIALS.map((item) => (
+          <article
+            key={item.step}
+            className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] transition-colors hover:border-primary/30"
+          >
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-4 p-5 sm:p-6">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-sm font-black text-primary ring-1 ring-primary/30">
+                {item.step}
+              </span>
+              <div className="min-w-0">
+                <h4 className="break-words text-lg font-black uppercase tracking-tight text-white">{item.title}</h4>
+                <p className="mt-1 text-xs leading-relaxed text-white/50 sm:text-sm">{item.description}</p>
+              </div>
+            </div>
+            <a href={item.image} target="_blank" rel="noopener noreferrer" className="block border-t border-white/5 bg-black/40">
+              <img
+                src={item.image}
+                alt={`Tutorial ${item.step} — ${item.title}`}
+                loading="lazy"
+                className="h-auto w-full object-contain"
+              />
+            </a>
+            <div className="border-t border-white/5 px-5 py-3 text-[10px] font-black uppercase tracking-widest text-white/30">
+              Toque na imagem para abrir em tamanho real
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
   );
 }

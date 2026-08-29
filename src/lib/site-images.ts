@@ -11,6 +11,7 @@ import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
 import bannerOffer from "@/assets/banner-offer.png.asset.json";
 import bannerCheap from "@/assets/banner-cheap.jpg.asset.json";
 import bannerIlimited from "@/assets/banner-ilimited.jpg.asset.json";
+import bannerAgenteMsk from "@/assets/banner-agente-msk.png.asset.json";
 import cardDiario from "@/assets/card-diario.jpg.asset.json";
 import dailyLicenseCard from "@/assets/daily_license_card.jpg.asset.json";
 import awardsHero from "@/assets/awards-hero.png.asset.json";
@@ -47,7 +48,7 @@ export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
 
   { key: "plans_extension_banner", label: "Banner — Extensão MSK", group: "Ofertas / Planos", hint: "Banner acima das ofertas da extensão principal", defaultUrl: bannerOffer.url },
   { key: "plans_cloner_banner", label: "Banner — Clonagem", group: "Ofertas / Planos", hint: "Banner acima das ofertas do Clonador MSK", defaultUrl: bannerCheap.url },
-  { key: "plans_agent_banner", label: "Banner — MSK Agente", group: "Ofertas / Planos", hint: "Banner acima das ofertas do MSK Agente", defaultUrl: bannerAjudaIA.url },
+  { key: "plans_agent_banner", label: "Banner — MSK Agente", group: "Ofertas / Planos", hint: "Banner acima das ofertas do MSK Agente", defaultUrl: bannerAgenteMsk.url },
   { key: "plans_chatgpt_card", label: "Card — Conta ChatGPT 30 dias", group: "Ofertas / Planos", hint: "Imagem do card da oferta de conta ChatGPT (em breve)", defaultUrl: "" },
   { key: "offer_banner", label: "Banner de oferta", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerOffer.url },
   { key: "offer_cheap", label: "Banner promocional", group: "Ofertas / Planos", hint: "Página de planos", defaultUrl: bannerCheap.url },
