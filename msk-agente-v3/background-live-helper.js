@@ -67,6 +67,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+// Assim que a própria ponte confirma que o prompt foi enviado, resincroniza o GPT
+// silenciosamente em segundo plano. Não abre aba, não muda foco e não exige F5.
+chrome.runtime.onMessage.addListener((message, sender) => {
+  if (message?.type !== "MSK_CHATGPT_STATUS") return;
+  if (String(message.payload?.status || "") !== "sent") return;
+  const tabId = Number(sender.tab?.id || 0);
+  if (!tabId || !MSK_CHATGPT_URL.test(String(sender.tab?.url || ""))) return;
+  const projectId = String(message.payload?.projectId || "");
+  mskLiveKeepTabReady(tabId, projectId).catch(() => {});
+  window.setTimeout?.(() => mskLiveKeepTabReady(tabId, projectId).catch(() => {}), 650);
+});
+
 // Mantém qualquer aba vinculada do ChatGPT pronta sem ativá-la.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   if (!MSK_CHATGPT_URL.test(String(tab?.url || ""))) return;
