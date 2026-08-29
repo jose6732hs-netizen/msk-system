@@ -259,7 +259,7 @@ function ComparePage() {
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
             >
-              <GlowFrame src={heroHub} alt="MSK Agente como central conectando ChatGPT, GitHub, Lovable, Supabase, banco de dados e APIs" width={1536} height={864} priority />
+              <GlowFrame src={heroHub} alt="MSK Agente como central conectando IA, repositório, editor de projeto, backend e APIs" width={1536} height={864} priority />
             </motion.div>
           </Reveal>
         </div>
@@ -268,7 +268,7 @@ function ComparePage() {
       {/* 2 — CHATGPT SOZINHO */}
       <SectionShell>
         <Split
-          image={<GlowFrame src={fragmented} alt="Fluxo fragmentado com várias janelas abertas: chat, repositório, editor e banco" width={1408} height={912} />}
+          image={<GlowFrame src={fragmented} alt="Fluxo fragmentado com várias janelas abertas: conversa, repositório, editor e banco" width={1408} height={912} />}
           reverse
         >
           <Eyebrow icon={Layers}>Fluxo tradicional</Eyebrow>
@@ -580,7 +580,7 @@ function ComparePage() {
           <Heading>Tudo conectado ao MSK Agente</Heading>
         </Reveal>
         <Reveal delay={0.08} className="mt-10">
-          <GlowFrame src={ecosystemImg} alt="Diagrama do MSK Agente conectando ChatGPT, GitHub, Lovable, Supabase, banco, APIs, checkout, automação e cofre" width={1536} height={864} />
+          <GlowFrame src={ecosystemImg} alt="Diagrama do MSK Agente conectando IA, repositório, projeto, backend, banco, APIs, checkout, automação e cofre" width={1536} height={864} />
         </Reveal>
         <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {["ChatGPT", "GitHub", "Lovable", "Supabase", "Database", "APIs", "Checkout", "Automação", "Cofre", "MSK Agente"].map((n, i) => (
