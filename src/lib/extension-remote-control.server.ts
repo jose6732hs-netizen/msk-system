@@ -374,7 +374,7 @@ async function commandTargets(userId: string, installationId?: string | null) {
 
 export async function loadRemoteControlAdmin() {
   const [{ data: installations }, { data: controls }, { data: commands }, { data: replies }] = await Promise.all([
-    db.from("extension_installations").select("id,user_id,installation_id,version,browser,os,ip_address,user_agent,last_url,last_seen_at,last_activity_at").order("last_seen_at", { ascending: false }).limit(1000),
+    db.from("extension_installations").select("id,user_id,installation_id,version,browser,os,ip_address,user_agent,last_url,last_seen_at,last_activity_at,extension_id,first_extension_id,suspicious,suspicion_reason,blocked,block_reason").order("last_seen_at", { ascending: false }).limit(1000),
     db.from("extension_remote_controls").select("*").order("updated_at", { ascending: false }).limit(1000),
     db.from("extension_remote_commands").select("id,user_id,installation_id,command_type,title,message,severity,status,created_at,delivered_at,acknowledged_at,expires_at").order("created_at", { ascending: false }).limit(300),
     db.from("extension_replies").select("id,command_id,user_id,installation_id,kind,body,payload,ip_address,extension_version,read_at,created_at").order("created_at", { ascending: false }).limit(300),
