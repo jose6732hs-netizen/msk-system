@@ -38,6 +38,12 @@ const SCENES: SceneDef[] = [
     id: "s01",
     img: "img/scene01.jpg",
     big: "ISSO JÁ É O\nMSK AGENTE?",
+    label: "A PERGUNTA",
+    sfx: [
+      { f: "riser", at: 0, vol: 0.35 },
+      { f: "glitch", at: 8, vol: 0.3 },
+      { f: "impact", at: 92, vol: 0.55 },
+    ],
     caption: [
       { t: "ChatGPT + GitHub + Lovable" },
       { t: "NÃO É", hi: true },
@@ -49,6 +55,14 @@ const SCENES: SceneDef[] = [
     img: "img/scene02.jpg",
     chip: "SEM MSK",
     chipSub: "FLUXO FRAGMENTADO",
+    label: "O PROBLEMA",
+    sfx: [
+      { f: "whoosh", at: 0, vol: 0.4 },
+      { f: "tension", at: 4, vol: 0.22 },
+      { f: "blip", at: 40, vol: 0.25 },
+      { f: "blip", at: 60, vol: 0.25 },
+      { f: "blip", at: 80, vol: 0.25 },
+    ],
     caption: [
       { t: "Troca de aba," },
       { t: "COPIA CÓDIGO", hi: true },
@@ -59,6 +73,11 @@ const SCENES: SceneDef[] = [
     id: "s03",
     img: "img/scene03.jpg",
     big: "TUDO\nCONECTADO",
+    label: "A CAMADA MSK",
+    sfx: [
+      { f: "impact", at: 0, vol: 0.5 },
+      { f: "connect", at: 10, vol: 0.4 },
+    ],
     caption: [
       { t: "Ferramentas separadas viram um" },
       { t: "FLUXO CONECTADO", hi: true },
@@ -69,6 +88,11 @@ const SCENES: SceneDef[] = [
     img: "img/scene04.jpg",
     chip: "CHATGPT",
     chipSub: "INTELIGÊNCIA",
+    label: "01 • INTELIGÊNCIA",
+    sfx: [
+      { f: "whoosh", at: 0, vol: 0.35 },
+      { f: "blip", at: 14, vol: 0.3 },
+    ],
     caption: [{ t: "O ChatGPT continua sendo a" }, { t: "INTELIGÊNCIA", hi: true }],
   },
   {
@@ -76,6 +100,11 @@ const SCENES: SceneDef[] = [
     img: "img/scene05.jpg",
     chip: "GITHUB",
     chipSub: "CÓDIGO",
+    label: "02 • CÓDIGO",
+    sfx: [
+      { f: "whoosh", at: 0, vol: 0.35 },
+      { f: "blip", at: 14, vol: 0.3 },
+    ],
     caption: [{ t: "O GitHub organiza o" }, { t: "CÓDIGO", hi: true }],
   },
   {
@@ -83,6 +112,11 @@ const SCENES: SceneDef[] = [
     img: "img/scene06.jpg",
     chip: "LOVABLE",
     chipSub: "PROJETO",
+    label: "03 • PROJETO",
+    sfx: [
+      { f: "whoosh", at: 0, vol: 0.35 },
+      { f: "blip", at: 14, vol: 0.3 },
+    ],
     caption: [{ t: "A Lovable é o" }, { t: "PROJETO", hi: true }],
   },
   {
@@ -90,6 +124,11 @@ const SCENES: SceneDef[] = [
     img: "img/scene07.jpg",
     chip: "SUPABASE",
     chipSub: "DADOS + BACKEND",
+    label: "04 • BACKEND",
+    sfx: [
+      { f: "whoosh", at: 0, vol: 0.35 },
+      { f: "connect", at: 12, vol: 0.28 },
+    ],
     caption: [
       { t: "Quando autorizado:" },
       { t: "BANCO E BACKEND", hi: true },
@@ -101,6 +140,11 @@ const SCENES: SceneDef[] = [
     img: "img/scene08.jpg",
     chip: "COFRE MSK",
     chipSub: "SEGURANÇA",
+    label: "05 • SEGURANÇA",
+    sfx: [
+      { f: "tension", at: 0, vol: 0.2 },
+      { f: "lock", at: 46, vol: 0.5 },
+    ],
     caption: [
       { t: "Credenciais em um" },
       { t: "COFRE", hi: true },
@@ -112,6 +156,12 @@ const SCENES: SceneDef[] = [
     img: "img/scene09.jpg",
     chip: "APIs • CHECKOUT",
     chipSub: "INTEGRAÇÕES",
+    label: "06 • INTEGRAÇÕES",
+    sfx: [
+      { f: "whoosh", at: 0, vol: 0.35 },
+      { f: "blip", at: 22, vol: 0.28 },
+      { f: "connect", at: 60, vol: 0.3 },
+    ],
     caption: [
       { t: "APIs, checkouts e webhooks" },
       { t: "ORGANIZADOS", hi: true },
@@ -122,6 +172,11 @@ const SCENES: SceneDef[] = [
     img: "img/scene10.jpg",
     chip: "SEM MSK  ×  COM MSK",
     chipSub: "CONNECTED • AUTHORIZED • SECURE",
+    label: "A COMPARAÇÃO",
+    sfx: [
+      { f: "riser", at: 0, vol: 0.3 },
+      { f: "impact", at: 78, vol: 0.5 },
+    ],
     caption: [
       { t: "Usar várias ferramentas" },
       { t: "×" },
@@ -133,6 +188,11 @@ const SCENES: SceneDef[] = [
     img: "img/scene11.jpg",
     big: "MSK AGENTE",
     captionTop: true,
+    label: "DO COMANDO AO PROJETO REAL",
+    sfx: [
+      { f: "logo_hit", at: 0, vol: 0.55 },
+      { f: "connect", at: 70, vol: 0.35 },
+    ],
     caption: [
       { t: "Você não assina outro chat." },
       { t: "INTELIGÊNCIA EM EXECUÇÃO", hi: true },
