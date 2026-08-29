@@ -220,7 +220,7 @@ function AffiliateDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                {/* Main Activity */}
                <div className="lg:col-span-2 space-y-8">
-                  <section className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-5 sm:p-8">
+                  <section className="holo-card holo-rise rounded-[2.5rem] p-5 sm:p-8">
                     <div className="flex items-center justify-between mb-5 sm:mb-6">
                       <h3 className="text-xl font-bold flex items-center gap-2">
                         <Clock className="text-white/20" size={20} /> Últimas Atividades
@@ -266,7 +266,7 @@ function AffiliateDashboard() {
                            </div>
                            <div className="text-right flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
                               <div className="flex flex-col items-start sm:items-end order-1 sm:order-none">
-                                 <p className="font-bold text-lg leading-none break-all">R$ {sale.commission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+                                 <p className="font-bold text-lg leading-none break-all"><CountUp value={Number(sale.commission ?? 0)} currency duration={1100} /></p>
                                  <p className="text-[9px] text-white/40 font-medium">Sua comissão ({sale.rate}%)</p>
                               </div>
                               <div className={cn(
@@ -293,7 +293,7 @@ function AffiliateDashboard() {
                {/* Sidebar Info */}
                <div className="space-y-8">
                   {/* Wallet Card Quick Access */}
-                  <section className="bg-gradient-to-br from-[#1A1A1A] to-[#0A0A0A] border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden group">
+                  <section className="holo-card holo-rise rounded-[2.5rem] p-8 relative overflow-hidden group">
                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full -mr-16 -mt-16 blur-3xl group-hover:bg-primary/20 transition-all duration-700" />
                      
                      <div className="relative z-10 flex flex-col h-full">
@@ -304,7 +304,7 @@ function AffiliateDashboard() {
                         <div className="space-y-4 mb-8">
                            <div>
                               <span className="text-[10px] uppercase font-bold text-white/40 tracking-widest block mb-1">Disponível</span>
-                              <span className="text-3xl font-black tracking-tighter">R$ {stats.availableBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                              <span className="text-3xl font-black tracking-tighter"><CountUp value={Number(stats.availableBalance ?? 0)} currency duration={1800} /></span>
                            </div>
                         </div>
 
@@ -319,14 +319,14 @@ function AffiliateDashboard() {
                   </section>
 
                   {/* Goal Card */}
-                  <section className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-8">
+                  <section className="holo-card holo-rise rounded-[2.5rem] p-8">
                      <div className="flex items-center justify-between mb-6">
                        <h4 className="font-bold text-white/60 uppercase text-xs tracking-widest">Sua Meta</h4>
                        <span className="text-xs font-bold bg-primary/10 text-primary px-2 py-1 rounded-lg">{goal.progress}%</span>
                      </div>
                      <div className="mb-4">
                         <div className="flex justify-between items-end mb-2">
-                           <span className="text-xl font-bold">R$ {goal.current.toLocaleString('pt-BR')}</span>
+                           <span className="text-xl font-bold"><CountUp value={Number(goal.current ?? 0)} currency /></span>
                            <span className="text-sm text-white/20">de R$ {goal.target.toLocaleString('pt-BR')}</span>
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
@@ -345,7 +345,7 @@ function AffiliateDashboard() {
 
             {/* Referrals Section */}
             <section id="referrals" className="scroll-mt-32">
-              <div className="bg-[#0F0F0F] border border-white/10 rounded-[2.5rem] p-5 sm:p-8">
+              <div className="holo-card holo-rise rounded-[2.5rem] p-5 sm:p-8">
                 <div className="flex items-center justify-between mb-5 sm:mb-6">
                   <h3 className="text-xl font-bold flex items-center gap-2">
                     <Users className="text-white/20" size={20} /> Suas Indicações
