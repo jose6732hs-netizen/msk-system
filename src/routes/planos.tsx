@@ -870,6 +870,15 @@ function PlanosPage() {
   const agentBanner = resolveSiteImage(cmsSettings, "plans_agent_banner");
   const chatgptCard = resolveSiteImage(cmsSettings, "plans_chatgpt_card");
   const offersLoading = isLoading || clonerLoading || agentLoading || chatgptLoading;
+  const categoryFilters = [
+    { id: "all", label: "Todas as ofertas" },
+    { id: "agent", label: "MSK Agente" },
+    { id: "cloner", label: "Clonagem" },
+    { id: "extension", label: "Extensão MSK" },
+  ] as const;
+  const showAgent = category === "all" || category === "agent";
+  const showCloner = category === "all" || category === "cloner";
+  const showExtension = category === "all" || category === "extension";
 
   return (
     <div className="min-h-screen overflow-x-hidden">
