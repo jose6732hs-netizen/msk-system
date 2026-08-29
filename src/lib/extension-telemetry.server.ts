@@ -387,6 +387,7 @@ export async function handleExtensionEvent(request: Request) {
       status: parsed.data.status,
       duration_ms: parsed.data.duration_ms ?? null,
       metadata: sanitized,
+      ip_address: extensionClientIp(request),
       created_at: parsed.data.timestamp ?? new Date().toISOString(),
     });
     if (error) throw error;
