@@ -869,6 +869,7 @@ function PlanosPage() {
   const clonerBanner = resolveSiteImage(cmsSettings, "plans_cloner_banner");
   const agentBanner = resolveSiteImage(cmsSettings, "plans_agent_banner");
   const chatgptCard = resolveSiteImage(cmsSettings, "plans_chatgpt_card");
+  const [category, setCategory] = useState<"all" | "agent" | "cloner" | "extension">("all");
   const offersLoading = isLoading || clonerLoading || agentLoading || chatgptLoading;
   const categoryFilters = [
     { id: "all", label: "Todas as ofertas" },
