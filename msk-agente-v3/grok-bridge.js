@@ -432,7 +432,9 @@
       el.dispatchEvent(new KeyboardEvent('keyup',{key:'Enter',code:'Enter',bubbles:true,cancelable:true}));
     }
     emit('MSK_GROK_STATUS',{status:'sent'});
-    setTimeout(scheduleMskSentRestore, 250);
+    // O Grok renderiza a bolha do usuário em etapas: repete a marcação até o card aparecer.
+    [200, 600, 1200, 2200, 3500].forEach(delay => setTimeout(scheduleMskSentRestore, delay));
+
     waitForNewResponse(before).catch(() => {});
     return {ok:true,accepted:true,url:location.href};
   };
