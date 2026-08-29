@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminAgentCenterLive } from "@/components/msk/admin-agent-center-live";
-import { AnimatedNumber } from "@/components/msk/animated-number";
+import { CountUp } from "@/components/msk/animated-number";
 import {
   extensionRemoteAdminBlockInstallation,
   extensionRemoteAdminBroadcastUpdate,
