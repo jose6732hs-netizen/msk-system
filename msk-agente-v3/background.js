@@ -2445,3 +2445,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   })();
   return true;
 });
+
+/* ===== Canal do painel MSK: mensagens do super admin + usuários ativos ===== */
+const mskPanelFetch = async (url, init) => {
+  try {
+    const response = await fetch(url, init);
+    return { ok: response.ok, data: await response.json().catch(() => ({})) };
+  } catch {
+    return { ok: false, data: {} };
+  }
+};
+
+const mskPullRemoteMessages = async () => {
+  const { mskLicense } = await chrome.storage.local.get("mskLicense");
+  if (!mskLicense?.token) return { ok: false, commands: [] };
+  const installId = await mskEnsureInstallationId();
+  const version = chrome.runtime.getManifest().version;
+  const url = `${MSK_SAAS_ORIGIN}/api/extension/control?installation_id=${encodeURIComponent(installId)}&version=${encodeURIComponent(version)}`;
+  const result = await mskPanelFetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${String(mskLicense.token).trim()}`,
+      "X-MSK-Installation-Id": installId,
+      "X-MSK-Extension-Version": version,
+    },
+  });
+  const commands = Array.isArray(result.data?.commands) ? result.data.commands : [];
+  return { ok: result.ok, commands };
+};
+
+const mskFetchActiveUsers = async () => {
+  const result = await mskPanelFetch(`${MSK_SAAS_ORIGIN}/api/public/extension/active-users`, {
+    method: "GET",
+    headers: { Accept: "application/json" },
+  });
+  const active = Number(result.data?.active);
+  return Number.isFinite(active) ? active : null;
+};
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "MSK_REMOTE_PULL") {
+    mskPullRemoteMessages().then(sendResponse, () => sendResponse({ ok: false, commands: [] }));
+    return true;
+  }
+  if (message?.type === "MSK_ACTIVE_USERS") {
+    mskFetchActiveUsers().then(active => sendResponse({ ok: true, active }), () => sendResponse({ ok: false }));
+    return true;
+  }
+  return undefined;
+});
