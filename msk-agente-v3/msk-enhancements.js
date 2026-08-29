@@ -325,36 +325,6 @@
     return { projectId: /^[0-9a-f-]{8,}$/i.test(id) ? id : fromUrl, repo };
   };
 
-  const downloadByProjectId = async projectId => {
-    if (!projectId) return false;
-    const urls = [
-      `https://lovable-api.com/projects/${projectId}/download`,
-      `https://api.lovable.dev/projects/${projectId}/download`,
-      `https://lovable.dev/api/projects/${projectId}/download`,
-      `https://lovable.dev/projects/${projectId}/download`,
-    ];
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, { credentials: "include" });
-        if (!res.ok) continue;
-        const blob = await res.blob();
-        if (!blob || blob.size < 1024) continue;
-        const href = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = href;
-        a.download = `lovable-${String(projectId).slice(0, 8)}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(href), 15000);
-        return true;
-      } catch {
-        /* tenta o próximo endpoint */
-      }
-    }
-    return false;
-  };
-
   let downloadBtn = null;
   const buildDownloadButton = () => {
     if (downloadBtn && document.contains(downloadBtn)) return;
