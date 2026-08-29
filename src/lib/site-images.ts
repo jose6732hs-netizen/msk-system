@@ -11,7 +11,7 @@ import bannerAjudaIA from "@/assets/banner-ajuda-ia.png.asset.json";
 import bannerOffer from "@/assets/banner-offer.png.asset.json";
 import bannerCheap from "@/assets/banner-cheap.jpg.asset.json";
 import bannerIlimited from "@/assets/banner-ilimited.jpg.asset.json";
-import bannerAgenteMsk from "@/assets/banner-agente-msk-oficial.png.asset.json";
+import bannerAgenteMsk from "@/assets/banner-agente-msk-oficial.jpg.asset.json";
 import cardDiario from "@/assets/card-diario.jpg.asset.json";
 import dailyLicenseCard from "@/assets/daily_license_card.jpg.asset.json";
 import awardsHero from "@/assets/awards-hero.png.asset.json";
