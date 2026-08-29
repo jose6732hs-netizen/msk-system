@@ -92,15 +92,13 @@
           el.classList.add("msk-credit-infinity");
         });
 
-      // Todas as barras de crédito do Lovable (principal e diária) em 100% neon MSK.
-      const bars = new Set([found.bar]);
-      found.root.querySelectorAll('[role="progressbar"]').forEach(el => bars.add(el));
-      [...found.root.querySelectorAll("div")].forEach(div => {
-        const rect = div.getBoundingClientRect();
-        if (rect.width > 60 && rect.height > 2 && rect.height <= 16) bars.add(div);
-      });
+      // Apenas a(s) barra(s) originais do Lovable — sem criar/duplicar barras.
+      const candidates = [...found.root.querySelectorAll('[role="progressbar"]')];
+      const bars = candidates.length ? candidates : [found.bar];
       bars.forEach(bar => {
         if (!bar || !bar.isConnected) return;
+        // se um ancestral já foi estilizado, não estiliza de novo (evita barra dupla)
+        if (bar.parentElement?.closest(".msk-credit-bar")) return;
         bar.classList.add("msk-credit-bar");
         const fill = bar.querySelector("div") || bar;
         if (fill.dataset.mskFillWidth === undefined) fill.dataset.mskFillWidth = fill.style.width || "";
@@ -123,6 +121,7 @@
   /* ---------------- sino de mensagens do painel MSK ---------------- */
   let messages = [];
   let readIds = new Set();
+  const ackedIds = new Set();
   let bellWrap = null;
   let bellButton = null;
   let bellBadge = null;
@@ -231,7 +230,14 @@
           created_at: item.created_at,
         }));
       const known = new Map(messages.map(item => [String(item.id), item]));
-      incoming.forEach(item => known.set(String(item.id), item));
+      incoming.forEach(item => {
+        const id = String(item.id);
+        if (!known.has(id) && !ackedIds.has(id)) {
+          ackedIds.add(id);
+          chrome.runtime.sendMessage({ type: "MSK_REMOTE_ACK", id }, () => void chrome.runtime.lastError);
+        }
+        known.set(id, item);
+      });
       messages = [...known.values()]
         .sort((a, b) => Date.parse(b.created_at || 0) - Date.parse(a.created_at || 0))
         .slice(0, 60);
