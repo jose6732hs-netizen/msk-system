@@ -366,26 +366,38 @@
     downloadBtn.title = "Baixar o projeto completo em ZIP";
     downloadBtn.innerHTML = `<img src="${chrome.runtime.getURL("assets/msk-download.png")}" alt=""><span>Baixar projeto (ZIP)</span>`;
     host.appendChild(downloadBtn);
-    downloadBtn.addEventListener("click", async () => {
+    const setState = (state, label) => {
+      downloadBtn.dataset.state = state;
+      const text = downloadBtn.querySelector("span");
+      if (text) text.textContent = label;
+    };
+    let busy = false;
+    downloadBtn.addEventListener("click", () => {
+      if (busy) return;
+      busy = true;
       const ctx = projectContext();
       downloadBtn.disabled = true;
-      showToast("Preparando download", ctx.projectId ? `Projeto ${ctx.projectId.slice(0, 8)}` : "Projeto atual");
-      const direct = await downloadByProjectId(ctx.projectId);
-      if (direct) {
-        downloadBtn.disabled = false;
-        showToast("Download iniciado", `${ctx.projectId ? `Projeto ${ctx.projectId.slice(0, 8)} · ` : ""}ZIP completo.`);
-        return;
-      }
-      if (!ctx.repo) {
-        downloadBtn.disabled = false;
-        showToast("Não foi possível baixar", "Abra o projeto no Lovable e tente novamente.", "warn");
-        return;
-      }
+      setState("preparing", "Preparando projeto...");
+      showToast("Preparando projeto...", ctx.projectId ? `Projeto ${ctx.projectId.slice(0, 8)}` : "Projeto atual");
       chrome.runtime.sendMessage({ type: "MSK_DOWNLOAD_PROJECT", payload: ctx }, response => {
         void chrome.runtime.lastError;
+        busy = false;
         downloadBtn.disabled = false;
-        if (response?.ok) showToast("Download iniciado", `${ctx.projectId ? `Projeto ${ctx.projectId.slice(0, 8)} · ` : ""}ZIP completo do repositório.`);
-        else showToast("Não foi possível baixar", response?.message || "Tente novamente em instantes.", "warn");
+        if (response?.ok) {
+          setState("done", "Baixado");
+          showToast("Projeto baixado com sucesso", response.filename || "ZIP completo do repositório.");
+        } else {
+          const code = response?.code || "DOWNLOAD_FAILED";
+          const messages = {
+            GITHUB_NOT_CONNECTED: "Conecte o GitHub primeiro.",
+            PROJECT_NOT_FOUND: "Abra o projeto no Lovable e tente novamente.",
+            REPOSITORY_NOT_FOUND: "Este projeto ainda não está conectado a um repositório GitHub.",
+            DOWNLOAD_FAILED: "Não foi possível preparar o projeto.",
+          };
+          setState("error", "Baixar projeto (ZIP)");
+          showToast("Download não concluído", response?.message || messages[code] || messages.DOWNLOAD_FAILED, "warn");
+        }
+        setTimeout(() => setState("idle", "Baixar projeto (ZIP)"), 2600);
       });
     });
   };
