@@ -8,6 +8,7 @@
   let observer = null;
 
   const trayHasFiles = tray => !!tray?.querySelector?.(".msk-file-chip");
+  const buttonBusy = button => !!button?.disabled || button?.getAttribute("aria-busy") === "true" || button?.classList.contains("msk-send-waiting");
 
   // Esconde SOMENTE a representação visual dos anexos já consumidos pelo envio.
   // pendingAttachments continua intacto no content.js para imagem/áudio/ZIP chegar à IA.
@@ -17,10 +18,12 @@
     if (!root || !tray || (!trayHasFiles(tray) && tray.dataset.mskSentHidden !== "1")) return false;
 
     tray.dataset.mskSentHidden = "1";
-    tray.setAttribute("aria-hidden", "true");
-    tray.style.setProperty("display", "none", "important");
-    tray.hidden = true;
-    tray.replaceChildren();
+    if (tray.getAttribute("aria-hidden") !== "true") tray.setAttribute("aria-hidden", "true");
+    if (tray.style.getPropertyValue("display") !== "none" || tray.style.getPropertyPriority("display") !== "important") {
+      tray.style.setProperty("display", "none", "important");
+    }
+    if (!tray.hidden) tray.hidden = true;
+    if (tray.childElementCount) tray.replaceChildren();
 
     const fileInput = root.querySelector(".msk-file-input");
     if (fileInput) fileInput.value = "";
@@ -39,22 +42,28 @@
   const keepSuppressed = () => {
     const tray = getRoot()?.querySelector(".msk-attachment-tray");
     if (!tray || tray.dataset.mskSentHidden !== "1") return;
-    tray.setAttribute("aria-hidden", "true");
-    tray.style.setProperty("display", "none", "important");
-    tray.hidden = true;
+    if (tray.getAttribute("aria-hidden") !== "true") tray.setAttribute("aria-hidden", "true");
+    if (tray.style.getPropertyValue("display") !== "none" || tray.style.getPropertyPriority("display") !== "important") {
+      tray.style.setProperty("display", "none", "important");
+    }
+    if (!tray.hidden) tray.hidden = true;
     if (tray.childElementCount) tray.replaceChildren();
   };
 
-  // Detecta o MESMO ciclo de envio do content.js. Só esconde se houver prova de
-  // aceite: o texto saiu do composer, botão entrou em busy ou o status começou.
+  // Detecta o MESMO ciclo de envio do content.js. Só esconde se houver prova nova
+  // de aceite: texto consumido, busy iniciado, status iniciado ou nova bolha do usuário.
   const armImmediateSendCleanup = () => {
     const root = getRoot();
     const tray = root?.querySelector(".msk-attachment-tray");
     const field = root?.querySelector(".msk-input");
+    const sendButton = root?.querySelector(".msk-send");
     if (!root || !tray || !field || !trayHasFiles(tray)) return;
 
     const run = ++sendProbeRun;
     const beforeText = String(field.value || "").trim();
+    const beforeBusy = buttonBusy(sendButton);
+    const beforeStageRunning = !!root.querySelector(".msk-stage.running");
+    const beforeUserCount = root.querySelectorAll(".msk-chat .msk-msg.user").length;
     const deadline = Date.now() + 1800;
 
     const verify = () => {
@@ -62,18 +71,17 @@
       const liveRoot = getRoot();
       const liveTray = liveRoot?.querySelector(".msk-attachment-tray");
       const liveField = liveRoot?.querySelector(".msk-input");
-      const sendButton = liveRoot?.querySelector(".msk-send");
+      const liveSend = liveRoot?.querySelector(".msk-send");
       if (!liveRoot || !liveTray || !liveField) return;
       if (liveTray.dataset.mskSentHidden === "1") return;
 
       const afterText = String(liveField.value || "").trim();
       const textWasConsumed = !!beforeText && !afterText;
-      const sendBusy = !!sendButton?.disabled || sendButton?.getAttribute("aria-busy") === "true" || sendButton?.classList.contains("msk-send-waiting");
-      const stageRunning = !!liveRoot.querySelector(".msk-stage.running");
-      const latestUser = liveRoot.querySelector(".msk-chat .msk-msg.user:last-of-type");
-      const acceptedBubble = !!latestUser && (latestUser.classList.contains("queued") || latestUser.classList.contains("sent"));
+      const busyStarted = !beforeBusy && buttonBusy(liveSend);
+      const stageStarted = !beforeStageRunning && !!liveRoot.querySelector(".msk-stage.running");
+      const userAdded = liveRoot.querySelectorAll(".msk-chat .msk-msg.user").length > beforeUserCount;
 
-      if (textWasConsumed || sendBusy || stageRunning || acceptedBubble) {
+      if (textWasConsumed || busyStarted || stageStarted || userAdded) {
         suppressSentAttachmentVisual();
         return;
       }
