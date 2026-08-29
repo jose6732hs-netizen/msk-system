@@ -83,6 +83,18 @@
   const setGuardianEnabled = (enabled, { persist = false } = {}) => {
     guardianEnabled = enabled !== false;
     guardianStateInitialized = true;
+    // Estado vivo no <html>: o CSS liga/desliga o bloqueio no mesmo instante,
+    // sem esperar timers, MutationObserver ou recarregar a página.
+    try {
+      document.documentElement.setAttribute("data-msk-guardian", guardianEnabled ? "on" : "off");
+      window.__MSK_GUARDIAN__ = guardianEnabled;
+      window.postMessage({ type: "MSK_GUARDIAN_STATE", enabled: guardianEnabled }, "*");
+    } catch {}
+    // Ao desligar, o overlay some na hora; ao ligar, é recriado no próximo apply.
+    if (!guardianEnabled && overlayEl) {
+      try { overlayEl.remove(); } catch {}
+      overlayEl = null;
+    }
     applyGuardianMode();
     // Executa uma segunda passagem no próximo frame para acompanhar re-renderizações do Lovable.
     requestAnimationFrame(() => applyGuardianMode());
