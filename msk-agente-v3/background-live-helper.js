@@ -76,7 +76,7 @@ chrome.runtime.onMessage.addListener((message, sender) => {
   if (!tabId || !MSK_CHATGPT_URL.test(String(sender.tab?.url || ""))) return;
   const projectId = String(message.payload?.projectId || "");
   mskLiveKeepTabReady(tabId, projectId).catch(() => {});
-  window.setTimeout?.(() => mskLiveKeepTabReady(tabId, projectId).catch(() => {}), 650);
+  setTimeout(() => mskLiveKeepTabReady(tabId, projectId).catch(() => {}), 650);
 });
 
 // Mantém qualquer aba vinculada do ChatGPT pronta sem ativá-la.
