@@ -1,3 +1,4 @@
+import { Money } from "@/components/msk/money";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -16,7 +17,6 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
-import { Money } from "@/components/msk/money";
   adminAdjustAffiliateBalance,
   adminAffiliates,
   adminSaveAffiliateGoals,

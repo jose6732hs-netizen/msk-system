@@ -1,3 +1,4 @@
+import { Money } from "@/components/msk/money";
 import { useEffect, useMemo, useState } from "react";
 import {
   Activity,
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-import { Money } from "@/components/msk/money";
   clearEvents,
   readCartSnapshot,
   readEvents,
