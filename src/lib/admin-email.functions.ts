@@ -32,7 +32,7 @@ export const adminSendEmailCampaign = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { sendCustomEmailCampaign } = await import("./admin-email.server");
-    return sendCustomEmailCampaign(data, context.userId);
+    return sendCustomEmailCampaign(data as Parameters<typeof sendCustomEmailCampaign>[0], context.userId);
   });
 
 export const adminSendWhatsappOutageBroadcast = createServerFn({ method: "POST" })
