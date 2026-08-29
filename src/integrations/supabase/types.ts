@@ -1360,6 +1360,7 @@ export type Database = {
           extension_version: string | null
           id: string
           installation_id: string
+          ip_address: string | null
           metadata: Json
           project_id: string | null
           provider: string | null
@@ -1382,6 +1383,7 @@ export type Database = {
           extension_version?: string | null
           id?: string
           installation_id: string
+          ip_address?: string | null
           metadata?: Json
           project_id?: string | null
           provider?: string | null
@@ -1404,6 +1406,7 @@ export type Database = {
           extension_version?: string | null
           id?: string
           installation_id?: string
+          ip_address?: string | null
           metadata?: Json
           project_id?: string | null
           provider?: string | null
@@ -1428,6 +1431,7 @@ export type Database = {
           extension_version: string | null
           id: string
           installation_id: string
+          ip_address: string | null
           metadata: Json
           project_id: string | null
           provider: string | null
@@ -1443,6 +1447,7 @@ export type Database = {
           extension_version?: string | null
           id?: string
           installation_id: string
+          ip_address?: string | null
           metadata?: Json
           project_id?: string | null
           provider?: string | null
@@ -1458,6 +1463,7 @@ export type Database = {
           extension_version?: string | null
           id?: string
           installation_id?: string
+          ip_address?: string | null
           metadata?: Json
           project_id?: string | null
           provider?: string | null
@@ -1524,11 +1530,14 @@ export type Database = {
           created_at: string
           id: string
           installation_id: string
+          ip_address: string | null
           last_activity_at: string | null
           last_seen_at: string | null
+          last_url: string | null
           license_id: string | null
           metadata: Json
           os: string | null
+          user_agent: string | null
           user_id: string
           version: string | null
         }
@@ -1537,11 +1546,14 @@ export type Database = {
           created_at?: string
           id?: string
           installation_id: string
+          ip_address?: string | null
           last_activity_at?: string | null
           last_seen_at?: string | null
+          last_url?: string | null
           license_id?: string | null
           metadata?: Json
           os?: string | null
+          user_agent?: string | null
           user_id: string
           version?: string | null
         }
@@ -1550,11 +1562,14 @@ export type Database = {
           created_at?: string
           id?: string
           installation_id?: string
+          ip_address?: string | null
           last_activity_at?: string | null
           last_seen_at?: string | null
+          last_url?: string | null
           license_id?: string | null
           metadata?: Json
           os?: string | null
+          user_agent?: string | null
           user_id?: string
           version?: string | null
         }
@@ -1757,6 +1772,56 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      extension_replies: {
+        Row: {
+          body: string | null
+          command_id: string | null
+          created_at: string
+          extension_version: string | null
+          id: string
+          installation_id: string
+          ip_address: string | null
+          kind: string
+          payload: Json
+          read_at: string | null
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          command_id?: string | null
+          created_at?: string
+          extension_version?: string | null
+          id?: string
+          installation_id: string
+          ip_address?: string | null
+          kind?: string
+          payload?: Json
+          read_at?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          command_id?: string | null
+          created_at?: string
+          extension_version?: string | null
+          id?: string
+          installation_id?: string
+          ip_address?: string | null
+          kind?: string
+          payload?: Json
+          read_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "extension_replies_command_id_fkey"
+            columns: ["command_id"]
+            isOneToOne: false
+            referencedRelation: "extension_remote_commands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoices: {
         Row: {
