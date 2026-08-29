@@ -78,3 +78,17 @@ export const extensionRemoteAdminMarkRepliesRead = createServerFn({ method: "POS
     return markRepliesRead(data.userId);
   });
 
+export const extensionRemoteAdminBlockInstallation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    installationId: z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/),
+    blocked: z.boolean(),
+    reason: z.string().trim().max(300).optional().nullable(),
+  }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { setInstallationBlock } = await import("./extension-remote-control.server");
+    return setInstallationBlock(data as any, context.userId);
+  });
+
+
