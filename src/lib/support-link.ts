@@ -10,6 +10,8 @@ export function buildWhatsappLink(raw?: string | null, message?: string) {
   const text = encodeURIComponent(message ?? "Olá! Preciso de suporte MSK SISTEM.");
 
   if (/^https?:\/\//i.test(value)) {
+    // Links de convite de grupo (chat.whatsapp.com) não aceitam texto pré-preenchido.
+    if (/^https?:\/\/chat\.whatsapp\.com\//i.test(value)) return value;
     return value.includes("text=") ? value : `${value}${value.includes("?") ? "&" : "?"}text=${text}`;
   }
 
