@@ -117,6 +117,9 @@ function ChartCard({ title, data, dataKey, line = false }: { title: string; data
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
       <p className="mb-4 text-[0.62rem] font-black uppercase tracking-widest text-muted-foreground">{title}</p>
       <div className="h-56 w-full text-primary">
+        {!data.length ? (
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">Sem dados no filtro atual.</div>
+        ) : (
         <ResponsiveContainer width="100%" height="100%">
           {line ? (
             <LineChart data={data}>
@@ -136,6 +139,7 @@ function ChartCard({ title, data, dataKey, line = false }: { title: string; data
             </BarChart>
           )}
         </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
@@ -232,9 +236,6 @@ export function AdminAgentCenter() {
     const byName = (rows: any[], selected: string) =>
       (rows ?? []).filter((row) => selected === "all" || String(row.name) === selected);
 
-    const versionOnly = chartVersion !== "all";
-    const providerOnly = chartProvider !== "all";
-
     return {
       active_users: ((raw.active_users ?? []) as any[]).filter((row) => inPeriod(String(row.day))),
       commands: ((raw.commands ?? []) as any[])
@@ -243,7 +244,7 @@ export function AdminAgentCenter() {
       errors_by_version: byName(raw.errors_by_version, chartVersion),
       errors_by_provider: byName(raw.errors_by_provider, chartProvider),
       installations_by_version: byName(raw.installations_by_version, chartVersion),
-      errors_by_browser: versionOnly || providerOnly ? (raw.errors_by_browser ?? []) : (raw.errors_by_browser ?? []),
+      errors_by_browser: raw.errors_by_browser ?? [],
       errors_by_stage: raw.errors_by_stage ?? [],
     };
   }, [data?.charts, chartDays, chartVersion, chartProvider]);
