@@ -2495,3 +2495,34 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
   return undefined;
 });
+
+/* ===== Download do projeto conectado (ZIP do repositório GitHub) ===== */
+const mskDownloadProjectZip = async ({ repo, projectId }) => {
+  const clean = String(repo || "").replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "").trim();
+  if (!/^[\w.-]+\/[\w.-]+$/.test(clean)) {
+    return { ok: false, message: "Conecte o GitHub do projeto para baixar o ZIP completo." };
+  }
+  const filename = `${projectId ? `lovable-${String(projectId).slice(0, 8)}-` : ""}${clean.split("/")[1]}.zip`;
+  for (const branch of ["main", "master"]) {
+    try {
+      const downloadId = await chrome.downloads.download({
+        url: `https://github.com/${clean}/archive/refs/heads/${branch}.zip`,
+        filename,
+      });
+      if (downloadId) return { ok: true, downloadId, repo: clean, branch };
+    } catch {
+      /* tenta o próximo branch */
+    }
+  }
+  return { ok: false, message: "Não consegui iniciar o download do projeto agora." };
+};
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "MSK_DOWNLOAD_PROJECT") {
+    mskDownloadProjectZip(message.payload || {}).then(sendResponse, () =>
+      sendResponse({ ok: false, message: "Falha ao iniciar o download." }),
+    );
+    return true;
+  }
+  return undefined;
+});
