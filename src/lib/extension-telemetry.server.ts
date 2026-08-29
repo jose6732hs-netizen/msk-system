@@ -499,6 +499,7 @@ export async function handleExtensionError(request: Request) {
       technical_message: typeof technical === "string" ? technical.slice(0, 8000) : REDACTED,
       stack_summary: typeof stackSummary === "string" ? stackSummary.slice(0, 8000) : REDACTED,
       metadata,
+      ip_address: extensionClientIp(request),
       created_at: parsed.data.timestamp ?? new Date().toISOString(),
     };
     const { data: created, error } = await db.from("extension_errors").insert(row).select("*").single();
