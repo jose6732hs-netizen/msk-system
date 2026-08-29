@@ -10,6 +10,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "@/lib/admin-guard";
+import { Money } from "@/components/msk/money";
 
 type AffiliateRow = {
   id: string;
@@ -401,19 +402,19 @@ export function AdminWalletsTab() {
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-right sm:grid-cols-4">
               <div>
                 <p className="text-[9px] font-bold uppercase text-white/40">Disponível</p>
-                <p className="text-sm font-black text-primary">{brl(w.available_balance)}</p>
+                <p className="text-sm font-black text-primary"><Money value={w.available_balance} /></p>
               </div>
               <div>
                 <p className="text-[9px] font-bold uppercase text-white/40">Pendente</p>
-                <p className="text-sm font-black text-white">{brl(w.pending_balance)}</p>
+                <p className="text-sm font-black text-white"><Money value={w.pending_balance} /></p>
               </div>
               <div>
                 <p className="text-[9px] font-bold uppercase text-white/40">Total ganho</p>
-                <p className="text-sm font-black text-white">{brl(w.total_earned)}</p>
+                <p className="text-sm font-black text-white"><Money value={w.total_earned} /></p>
               </div>
               <div>
                 <p className="text-[9px] font-bold uppercase text-white/40">Sacado</p>
-                <p className="text-sm font-black text-white">{brl(w.total_withdrawn)}</p>
+                <p className="text-sm font-black text-white"><Money value={w.total_withdrawn} /></p>
               </div>
             </div>
           </div>
@@ -500,7 +501,7 @@ export function AdminWithdrawalsTab() {
                   <p className="font-bold">{w.name}</p>
                   <p className="text-[10px] text-muted-foreground">{w.email} · {w.code}</p>
                 </td>
-                <td className="p-4 font-black text-primary">{brl(w.amount)}</td>
+                <td className="p-4 font-black text-primary"><Money value={w.amount} /></td>
                 <td className="p-4 font-mono text-xs">{w.pix_key}</td>
                 <td className="p-4">
                   <span className={cn(

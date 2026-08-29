@@ -6,6 +6,7 @@ import { Copy, Loader2, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getResellerPricing, sellLicense } from "@/lib/commerce.functions";
+import { Money } from "@/components/msk/money";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -76,7 +77,7 @@ export function ResellerSales({ onSold }: { onSold?: () => void }) {
                 }`}
               >
                 <p className="text-sm font-medium">{p["duration_label"]}</p>
-                <p className="text-xs text-muted-foreground">{brl(p["price"])}</p>
+                <p className="text-xs text-muted-foreground"><Money value={p["price"]} /></p>
               </button>
             ))}
             {prices.length === 0 && (

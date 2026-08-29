@@ -6,6 +6,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { adminFinanceOverview, adminSyncPayments, adminWithdrawalAction } from "@/lib/admin.functions";
 import { FilterChips } from "@/components/msk/filter-chips";
+import { Money } from "@/components/msk/money";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -104,7 +105,7 @@ export function AdminFinanceTab() {
             className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 py-3 text-sm"
           >
             <span>{w.profiles?.email ?? "—"}</span>
-            <span>{brl(w.amount)}</span>
+            <span><Money value={w.amount} /></span>
             <span className="text-xs text-muted-foreground">{w.pix_key_type}</span>
             <span className="text-xs text-primary">{w.status}</span>
             {w.status === "PENDING" && (
@@ -138,7 +139,7 @@ export function AdminFinanceTab() {
           <div key={t.id} className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 py-3 text-sm">
             <span className="font-mono text-xs">{t.identifier}</span>
             <span>{t.profiles?.email ?? "—"}</span>
-            <span>{brl(t.amount)}</span>
+            <span><Money value={t.amount} /></span>
             <span className="text-xs text-muted-foreground">{t.purpose}</span>
             <span className="text-xs text-primary">{t.status}</span>
             <span className="text-xs text-muted-foreground">{fmt(t.created_at)}</span>
@@ -153,7 +154,7 @@ export function AdminFinanceTab() {
             <div key={a.id} className="flex items-center justify-between border-t border-border/50 py-3 text-sm">
               <span>{a.profiles?.email ?? a.code}</span>
               <span className="text-xs text-muted-foreground">{a.total_sales} vendas</span>
-              <span className="text-xs text-primary">{brl(a.available_balance)}</span>
+              <span className="text-xs text-primary"><Money value={a.available_balance} /></span>
             </div>
           ))}
           {!data?.affiliates.length && <Empty />}
@@ -163,7 +164,7 @@ export function AdminFinanceTab() {
             <div key={r.id} className="flex items-center justify-between border-t border-border/50 py-3 text-sm">
               <span>{r.profiles?.email ?? r.code}</span>
               <span className="text-xs uppercase text-muted-foreground">{r.tier}</span>
-              <span className="text-xs text-primary">{brl(r.available_balance)}</span>
+              <span className="text-xs text-primary"><Money value={r.available_balance} /></span>
             </div>
           ))}
           {!data?.resellers.length && <Empty />}

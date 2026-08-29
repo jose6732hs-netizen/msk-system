@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+import { Money } from "@/components/msk/money";
   clearEvents,
   readCartSnapshot,
   readEvents,
@@ -194,7 +195,7 @@ export function AdminTrackingTab() {
               <span className="text-[0.65rem] text-muted-foreground">
                 Atualizado {new Date(cart.updatedAt).toLocaleString("pt-BR")}
               </span>
-              <span className="ml-auto text-sm font-black text-primary">{brl(cart.total)}</span>
+              <span className="ml-auto text-sm font-black text-primary"><Money value={cart.total} /></span>
             </div>
             <ul className="space-y-2">
               {cart.items.map((i, idx) => (
@@ -211,7 +212,7 @@ export function AdminTrackingTab() {
                     <p className="truncate text-xs font-bold">{i.name}</p>
                     <p className="text-[0.65rem] text-muted-foreground">Qtd. {i.quantity}</p>
                   </div>
-                  <span className="shrink-0 text-xs font-bold">{brl(i.price * i.quantity)}</span>
+                  <span className="shrink-0 text-xs font-bold"><Money value={i.price * i.quantity} /></span>
                 </li>
               ))}
             </ul>

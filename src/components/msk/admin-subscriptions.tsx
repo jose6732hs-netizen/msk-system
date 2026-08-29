@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { adminSavePlan } from "@/lib/admin.functions";
 import { getCmsEditorContent } from "@/lib/cms.functions";
+import { Money } from "@/components/msk/money";
 
 const brl = (v: unknown) =>
   Number(v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -589,7 +590,7 @@ function PlanCard({ plan, onClick }: { plan: Record<string, any>; onClick: () =>
               {plan["active"] !== false ? "Publicado" : "Oculto"}
             </span>
           </div>
-          <p className="mt-3 text-xl font-black text-primary">{brl(plan["price"])}</p>
+          <p className="mt-3 text-xl font-black text-primary"><Money value={plan["price"]} /></p>
           <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
             {plan["is_lifetime"] ? "Vitalício" : plan["duration_label"] || durationText(Number(plan["duration_value"] ?? 1), plan["duration_unit"])} · {plan["max_devices"]} disp.
           </p>

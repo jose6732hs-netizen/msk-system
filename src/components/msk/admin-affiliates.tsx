@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import {
+import { Money } from "@/components/msk/money";
   adminAdjustAffiliateBalance,
   adminAffiliates,
   adminSaveAffiliateGoals,
@@ -253,23 +254,23 @@ function AffiliateRow({
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase text-white/40">Receita Total</p>
-            <p className="text-sm font-black text-primary">{brl(affiliate["revenue_generated"])}</p>
+            <p className="text-sm font-black text-primary"><Money value={affiliate["revenue_generated"]} /></p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase text-white/40">Comissão Total</p>
-            <p className="text-sm font-black text-white">{brl(affiliate["commission_generated"])}</p>
+            <p className="text-sm font-black text-white"><Money value={affiliate["commission_generated"]} /></p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase text-white/40">Saldo Disp.</p>
-            <p className="text-sm font-black text-primary">{brl(affiliate["available_balance"])}</p>
+            <p className="text-sm font-black text-primary"><Money value={affiliate["available_balance"]} /></p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase text-white/40">Pendente</p>
-            <p className="text-sm font-black text-yellow-500">{brl(affiliate["commission_pending"])}</p>
+            <p className="text-sm font-black text-yellow-500"><Money value={affiliate["commission_pending"]} /></p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase text-white/40">Total Pago</p>
-            <p className="text-sm font-black text-white/80">{brl(affiliate["commission_paid"])}</p>
+            <p className="text-sm font-black text-white/80"><Money value={affiliate["commission_paid"]} /></p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase text-white/40">Conversão</p>
@@ -480,19 +481,19 @@ function AffiliateProfileDialog({ affiliate }: { affiliate: Record<string, any> 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold uppercase text-white/40">Receita Gerada</p>
-                  <p className="text-xl font-black text-white">{brl(affiliate["revenue_generated"])}</p>
+                  <p className="text-xl font-black text-white"><Money value={affiliate["revenue_generated"]} /></p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold uppercase text-white/40">Comissão Gerada</p>
-                  <p className="text-xl font-black text-primary">{brl(affiliate["commission_generated"])}</p>
+                  <p className="text-xl font-black text-primary"><Money value={affiliate["commission_generated"]} /></p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold uppercase text-white/40">Saldo Disponível</p>
-                  <p className="text-xl font-black text-green-400">{brl(affiliate["available_balance"])}</p>
+                  <p className="text-xl font-black text-green-400"><Money value={affiliate["available_balance"]} /></p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold uppercase text-white/40">Aguardando (Pendente)</p>
-                  <p className="text-xl font-black text-yellow-500">{brl(affiliate["commission_pending"])}</p>
+                  <p className="text-xl font-black text-yellow-500"><Money value={affiliate["commission_pending"]} /></p>
                 </div>
               </div>
             </div>
