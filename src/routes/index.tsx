@@ -6,7 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 // quando entra no sit ou na carteira os numeros de valores saldo etc devem comecar subir do centavo ate o valor total bem profissional
 // Saldo Disponível
 // R$ 0,00  esse cliente tem indicacoes e a carteira dele ta sem saldo mesmo ele ter feito vendas  e a barra de progresso n topo do sit nao ta subindo de acordo com as vendas e nem o valor de vendas na meta pra premiacao dele e aq Status da Conta
-// Verificada so deve aparecer isso se reamente ele stiver mandados os dcmentos e o admin tiver aprovado a conta como verificada
+// Verificada so deve aparecer isso se reamente ele stiver mandados os dcumentos e o admin tiver aprovado a conta como verificada
 // a carteira de afiliados nao siobe os saldos de acordo com as comicoes e nem fica disponive pra sacar e o saque minimo sera de 29
 // AS NOTIFICACOES DE TSTE NAO CAI EM PUSH FORA DO SIT RESOLVA ISSO E AS DE PIX AO GERA EX SE EU INDIQUEI UMA PESSOA ELA GERA A COMPRA  CHEGA PRA MIN PEDINDO PRA PAGAR E NAO CEGA MENSAGEM EX VENDA GERADA SUA COMICAO E DE E O VALOR ETC E NEM QUANDO APROVAA E A EXTENCAO DEVE ATIVAR ALTOMATIamente o time regressivo com os dados da licenca apos ela srr validada
 // a barra de origreso nao sobe de acordo com vendas e nem saldo da carteira em afiliados
