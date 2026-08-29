@@ -29,7 +29,16 @@ export function useBilling() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["billing-profile"],
-    queryFn: () => getBillingProfile(),
+    queryFn: async () => {
+      const { data: s } = await supabase.auth.getSession();
+      if (!s.session) return null;
+      try {
+        return await getBillingProfile();
+      } catch {
+        // Sessão ausente/expirada: evita quebrar a tela com erro 401.
+        return null;
+      }
+    },
     staleTime: 60_000,
     enabled: authed === true,
     retry: false,
