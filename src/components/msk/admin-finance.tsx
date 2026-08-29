@@ -82,11 +82,11 @@ export function AdminFinanceTab() {
         </Button>
       </div>
       <div className="overflow-hidden rounded-lg border border-primary/30 bg-background/40 shadow-[0_0_28px_hsl(var(--primary)/0.12)]">
-        {[
-          [["Receita aprovada", brl(s?.revenue)], ["Receita gerada", brl(s?.generatedRevenue)], ["Receita líquida", brl(s?.netRevenue)], ["Ticket médio", brl(s?.averageTicket)]],
-          [["Vendas aprovadas", String(s?.paidCount ?? 0)], ["Conversão", `${Number(s?.conversionRate ?? 0).toFixed(1)}%`], ["Em checkout", String(s?.pending ?? 0)], ["Valor pendente", brl(s?.pendingRevenue)]],
-          [["Comissões pagas", brl(s?.approvedCommissions)], ["Comissões pendentes", brl(s?.pendingCommissions)], ["Saques pendentes", brl(s?.pendingWithdrawalValue)], ["Vendas afiliadas", String(s?.totalAffiliateSales ?? 0)]],
-        ].map((row, rowIndex) => (
+        {([
+          [["Receita aprovada", <Money value={s?.revenue} />], ["Receita gerada", <Money value={s?.generatedRevenue} />], ["Receita líquida", <Money value={s?.netRevenue} />], ["Ticket médio", <Money value={s?.averageTicket} />]],
+          [["Vendas aprovadas", String(s?.paidCount ?? 0)], ["Conversão", `${Number(s?.conversionRate ?? 0).toFixed(1)}%`], ["Em checkout", String(s?.pending ?? 0)], ["Valor pendente", <Money value={s?.pendingRevenue} />]],
+          [["Comissões pagas", <Money value={s?.approvedCommissions} />], ["Comissões pendentes", <Money value={s?.pendingCommissions} />], ["Saques pendentes", <Money value={s?.pendingWithdrawalValue} />], ["Vendas afiliadas", String(s?.totalAffiliateSales ?? 0)]],
+        ] as [string, React.ReactNode][][]).map((row, rowIndex) => (
           <div key={rowIndex} className="grid grid-cols-2 border-b border-primary/20 last:border-b-0 lg:grid-cols-4">
             {row.map(([k, v]) => (
               <div key={k} className="min-w-0 border-r border-primary/15 p-4 last:border-r-0 transition-colors hover:bg-primary/5">
