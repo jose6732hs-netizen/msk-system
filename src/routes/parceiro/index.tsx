@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AffiliateRequestCard } from "@/components/msk/affiliate-request-card";
 import { FilterChips } from "@/components/msk/filter-chips";
+import { CountUp } from "@/components/msk/animated-number";
 
 export const Route = createFileRoute("/parceiro/")({
   component: AffiliateDashboard,
