@@ -346,13 +346,6 @@
     setInterval(pullReal, 60000);
   };
 
-  /* ---------------- montagem no painel MSK ---------------- */
-  const mount = () => {
-    const host = document.querySelector("#msk-root .msk-head-actions");
-    if (!host) return;
-    buildBell(host);
-    buildUsersChip(host);
-  };
 
   const boot = async () => {
     try {
