@@ -2543,6 +2543,30 @@ export type Database = {
         }
         Relationships: []
       }
+      presence_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen: string
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen?: string
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen?: string
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           active: boolean
@@ -3463,6 +3487,11 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      presence_heartbeat: {
+        Args: { _session_id: string; _user_id?: string }
+        Returns: number
+      }
+      presence_online_count: { Args: never; Returns: number }
     }
     Enums: {
       app_role:
