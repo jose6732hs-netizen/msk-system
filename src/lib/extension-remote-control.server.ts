@@ -191,12 +191,58 @@ export function clientIp(request: Request) {
   return ip && ip.length <= 60 ? ip : null;
 }
 
+const extensionIdSchema = z.string().min(8).max(120).regex(/^[A-Za-z0-9._-]+$/);
+
+/**
+ * Antifraude: confere se a instalação continua rodando com a mesma identidade
+ * de extensão registrada na primeira conexão. Um clone empacotado com outro ID
+ * aparece aqui como suspeito e pode ser bloqueado com um clique no painel.
+ */
+async function integrityGuard(identity: Identity, request: Request) {
+  const headerId = (request.headers.get("x-msk-extension-id") ?? "").trim();
+  const extensionId = extensionIdSchema.safeParse(headerId).success ? headerId : null;
+
+  const { data: row } = await db
+    .from("extension_installations")
+    .select("id,extension_id,first_extension_id,suspicious,blocked,block_reason")
+    .eq("installation_id", identity.installationId)
+    .eq("user_id", identity.userId)
+    .maybeSingle();
+
+  const patch: Record<string, unknown> = {};
+  let suspicious = !!row?.suspicious;
+  let reason: string | null = row?.suspicion_reason ?? null;
+
+  if (extensionId) {
+    patch.extension_id = extensionId;
+    if (!row?.first_extension_id) patch.first_extension_id = extensionId;
+    else if (String(row.first_extension_id) !== extensionId) {
+      suspicious = true;
+      reason = "ID da extensão mudou (possível cópia/clone da MSK Agente).";
+      patch.suspicious = true;
+      patch.suspicion_reason = reason;
+    }
+  }
+
+  if (Object.keys(patch).length && row?.id) {
+    await db.from("extension_installations").update(patch).eq("id", row.id);
+  }
+
+  return {
+    installationBlocked: !!row?.blocked,
+    installationBlockReason: row?.block_reason ?? null,
+    suspicious,
+    suspicionReason: reason,
+  };
+}
+
 export async function handleExtensionRemoteControl(request: Request) {
   const auth = await authenticate(request);
   if (!auth.identity) return auth.response!;
   const identity = auth.identity;
   const ip = clientIp(request);
   const userAgent = (request.headers.get("user-agent") ?? "").slice(0, 300) || null;
+
 
   if (request.method === "POST") {
     if (!(await rateLimit("extension-control-ack", `${identity.userId}:${identity.installationId}`, 60))) {
