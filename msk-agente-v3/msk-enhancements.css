@@ -135,6 +135,7 @@
 
 /* ---- baixar projeto ---- */
 #msk-root .msk-download-project {
+  grid-column: 1 / -1; justify-self: center; margin-top: 8px; max-width: 100%;
   display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer;
   border-radius: 12px; font-size: 11.5px; font-weight: 900; letter-spacing: .04em; color: #e6dcff;
   border: 1px solid rgba(168,85,247,.42); background: linear-gradient(120deg, rgba(168,85,247,.18), rgba(56,189,248,.12));
