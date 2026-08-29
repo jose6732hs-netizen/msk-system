@@ -1,121 +1,129 @@
 (() => {
   "use strict";
-  if (window.__MSK_UI_FIXES_3428__) return;
-  window.__MSK_UI_FIXES_3428__ = true;
+  if (window.__MSK_UI_FIXES_3429__) return;
+  window.__MSK_UI_FIXES_3429__ = true;
 
   const getRoot = () => document.querySelector("#msk-root");
-  let cleanupRun = 0;
+  let sendProbeRun = 0;
   let observer = null;
 
-  // Remove SOMENTE a parte visual do anexo. O objeto interno continua vivo para
-  // que imagem, áudio, ZIP ou outro arquivo termine de ser enviado normalmente.
-  const clearAttachmentTrayVisual = () => {
+  const trayHasFiles = tray => !!tray?.querySelector?.(".msk-file-chip");
+
+  // Esconde SOMENTE a representação visual dos anexos já consumidos pelo envio.
+  // pendingAttachments continua intacto no content.js para imagem/áudio/ZIP chegar à IA.
+  const suppressSentAttachmentVisual = () => {
     const root = getRoot();
-    if (!root) return false;
-    const tray = root.querySelector(".msk-attachment-tray");
-    if (!tray || tray.hidden || !tray.querySelector(".msk-file-chip")) return false;
-    tray.replaceChildren();
+    const tray = root?.querySelector(".msk-attachment-tray");
+    if (!root || !tray || (!trayHasFiles(tray) && tray.dataset.mskSentHidden !== "1")) return false;
+
+    tray.dataset.mskSentHidden = "1";
+    tray.setAttribute("aria-hidden", "true");
+    tray.style.setProperty("display", "none", "important");
     tray.hidden = true;
+    tray.replaceChildren();
+
     const fileInput = root.querySelector(".msk-file-input");
     if (fileInput) fileInput.value = "";
     return true;
   };
 
-  const clearSentAttachmentTray = () => {
-    const root = getRoot();
-    if (!root) return;
-    const tray = root.querySelector(".msk-attachment-tray");
-    if (!tray || tray.hidden || !tray.querySelector(".msk-file-chip")) return;
+  // Ao anexar um NOVO arquivo, libera o tray para o novo ciclo.
+  const releaseAttachmentVisual = () => {
+    const tray = getRoot()?.querySelector(".msk-attachment-tray");
+    if (!tray) return;
+    delete tray.dataset.mskSentHidden;
+    tray.removeAttribute("aria-hidden");
+    tray.style.removeProperty("display");
+  };
 
-    [...tray.querySelectorAll(".msk-file-remove")].forEach(button => {
-      try { button.click(); } catch {}
-    });
-
-    tray.replaceChildren();
+  const keepSuppressed = () => {
+    const tray = getRoot()?.querySelector(".msk-attachment-tray");
+    if (!tray || tray.dataset.mskSentHidden !== "1") return;
+    tray.setAttribute("aria-hidden", "true");
+    tray.style.setProperty("display", "none", "important");
     tray.hidden = true;
-    const fileInput = root.querySelector(".msk-file-input");
-    if (fileInput) fileInput.value = "";
+    if (tray.childElementCount) tray.replaceChildren();
   };
 
-  const executionConfirmed = () => {
+  // Detecta o MESMO ciclo de envio do content.js. Só esconde se houver prova de
+  // aceite: o texto saiu do composer, botão entrou em busy ou o status começou.
+  const armImmediateSendCleanup = () => {
     const root = getRoot();
     const tray = root?.querySelector(".msk-attachment-tray");
-    if (!root || !tray || tray.hidden || !tray.querySelector(".msk-file-chip")) return false;
-    if (tray.querySelector(".msk-file-chip.error, .msk-file-chip.uploading")) return false;
+    const field = root?.querySelector(".msk-input");
+    if (!root || !tray || !field || !trayHasFiles(tray)) return;
 
-    const stage = root.querySelector(".msk-stage");
-    const stageText = (stage?.querySelector("strong")?.textContent || "").trim();
-    if (!stage?.classList.contains("running")) return false;
-
-    return /(aplicando\s+altera[cç][aã]o|continuando\s+altera[cç][aã]o|inspecionando|fast\s*edit.*execu[cç][aã]o)/i.test(stageText);
-  };
-
-  const clearWhenConfirmed = () => {
-    if (!executionConfirmed()) return false;
-    window.setTimeout(clearSentAttachmentTray, 0);
-    return true;
-  };
-
-  const armAttachmentCleanup = () => {
-    const root = getRoot();
-    const tray = root?.querySelector(".msk-attachment-tray");
-    if (!root || !tray || tray.hidden || !tray.querySelector(".msk-file-chip")) return;
-
-    const run = ++cleanupRun;
-    const deadline = Date.now() + 90000;
+    const run = ++sendProbeRun;
+    const beforeText = String(field.value || "").trim();
+    const deadline = Date.now() + 1800;
 
     const verify = () => {
-      if (run !== cleanupRun) return;
+      if (run !== sendProbeRun) return;
       const liveRoot = getRoot();
       const liveTray = liveRoot?.querySelector(".msk-attachment-tray");
-      if (!liveRoot || !liveTray || liveTray.hidden || !liveTray.querySelector(".msk-file-chip")) return;
-      if (liveTray.querySelector(".msk-file-chip.error")) return;
+      const liveField = liveRoot?.querySelector(".msk-input");
+      const sendButton = liveRoot?.querySelector(".msk-send");
+      if (!liveRoot || !liveTray || !liveField) return;
+      if (liveTray.dataset.mskSentHidden === "1") return;
 
-      if (clearWhenConfirmed()) return;
-      if (Date.now() < deadline) window.setTimeout(verify, 80);
+      const afterText = String(liveField.value || "").trim();
+      const textWasConsumed = !!beforeText && !afterText;
+      const sendBusy = !!sendButton?.disabled || sendButton?.getAttribute("aria-busy") === "true" || sendButton?.classList.contains("msk-send-waiting");
+      const stageRunning = !!liveRoot.querySelector(".msk-stage.running");
+      const latestUser = liveRoot.querySelector(".msk-chat .msk-msg.user:last-of-type");
+      const acceptedBubble = !!latestUser && (latestUser.classList.contains("queued") || latestUser.classList.contains("sent"));
+
+      if (textWasConsumed || sendBusy || stageRunning || acceptedBubble) {
+        suppressSentAttachmentVisual();
+        return;
+      }
+      if (Date.now() < deadline) window.setTimeout(verify, 20);
     };
 
-    window.setTimeout(verify, 0);
+    queueMicrotask(verify);
   };
 
   const mountObserver = () => {
     const root = getRoot();
     if (!root || observer) return;
-    observer = new MutationObserver(() => {
-      clearWhenConfirmed();
-    });
+    observer = new MutationObserver(() => keepSuppressed());
     observer.observe(root, {
       subtree: true,
       childList: true,
-      characterData: true,
       attributes: true,
-      attributeFilter: ["class", "hidden"]
+      attributeFilter: ["hidden", "class", "style"]
     });
   };
 
-  // O content.js limpa o campo e dispara um evento input programático quando o
-  // comando foi aceito para envio. Nesse MESMO instante escondemos os anexos.
-  // isTrusted=false evita apagar anexos quando o usuário apenas apaga o texto à mão.
+  // Novo anexo escolhido pelo usuário: inicia um tray novo normalmente.
+  document.addEventListener("change", event => {
+    if (event.target?.matches?.("#msk-root .msk-file-input") && event.isTrusted) releaseAttachmentVisual();
+  }, true);
+
+  document.addEventListener("drop", event => {
+    if (!event.target?.closest?.("#msk-root")) return;
+    if (event.dataTransfer?.files?.length) releaseAttachmentVisual();
+  }, true);
+
+  // Fallback: quando o content.js limpa programaticamente o texto, some na hora.
   document.addEventListener("input", event => {
     const field = event.target;
     if (!field?.matches?.("#msk-root .msk-input")) return;
-    if (event.isTrusted) return;
-    if (String(field.value || "").trim()) return;
-    clearAttachmentTrayVisual();
+    if (!event.isTrusted && !String(field.value || "").trim()) suppressSentAttachmentVisual();
   }, true);
 
   document.addEventListener("click", event => {
-    if (event.target?.closest?.("#msk-root .msk-send")) armAttachmentCleanup();
+    if (event.target?.closest?.("#msk-root .msk-send")) armImmediateSendCleanup();
   }, true);
 
   document.addEventListener("keydown", event => {
     if (event.key !== "Enter" || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
-    if (event.target?.matches?.("#msk-root .msk-input")) armAttachmentCleanup();
+    if (event.target?.matches?.("#msk-root .msk-input")) armImmediateSendCleanup();
   }, true);
 
   const mountTimer = window.setInterval(() => {
     mountObserver();
     if (observer) window.clearInterval(mountTimer);
-  }, 250);
+  }, 120);
   mountObserver();
 })();
