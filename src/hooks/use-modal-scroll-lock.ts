@@ -103,8 +103,8 @@ function syncCheckoutSecurityArtwork() {
 
   ensureCheckoutSecurityArtworkStyles();
   const { root, methodBar, scroll } = checkout;
-  methodBar.dataset.mskSecurityRole = "method-bar";
-  scroll.dataset.mskSecurityRole = "checkout-scroll";
+  methodBar.dataset['mskSecurityRole'] = "method-bar";
+  scroll.dataset['mskSecurityRole'] = "checkout-scroll";
 
   const methodButtons = Array.from(methodBar.querySelectorAll("button"));
   const cardSelected = methodButtons[1]?.classList.contains("bg-primary") ?? false;
@@ -113,7 +113,7 @@ function syncCheckoutSecurityArtwork() {
   );
   const paid = scroll.textContent?.includes("Pagamento confirmado") ?? false;
 
-  root.dataset.mskCheckoutStage = paid ? "paid" : cardSelected ? "card" : pixGenerated ? "pix" : "choose";
+  root.dataset['mskCheckoutStage'] = paid ? "paid" : cardSelected ? "card" : pixGenerated ? "pix" : "choose";
   return root;
 }
 
