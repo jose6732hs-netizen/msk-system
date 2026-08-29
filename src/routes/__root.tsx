@@ -215,6 +215,8 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <PwaInstallBanner />
       <PushPermissionPrompt />
+      <PresenceTracker />
+
       <Outlet />
       {!isBoard && !isAuth && <MobileNavigation />}
       <Toaster position="top-right" />
