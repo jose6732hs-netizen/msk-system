@@ -97,3 +97,77 @@
 }
 .msk-users-chip b { font-variant-numeric: tabular-nums; color: #22ffa7; }
 .msk-users-emoji { font-size: 12px; }
+
+/* ---- cabeçalho sem quebras ---- */
+#msk-root .msk-head { align-items: center; gap: 10px; }
+#msk-root .msk-head-actions { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+#msk-root .msk-youtube-link {
+  flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: 10px; border: 1px solid rgba(255,255,255,.12); background: rgba(255,255,255,.05); padding: 0;
+  font-size: 0; line-height: 0; overflow: hidden;
+}
+#msk-root .msk-youtube-link img { width: 16px; height: 16px; display: block; }
+#msk-root .msk-guardian-toggle { flex: 0 0 auto; white-space: nowrap; }
+#msk-root .msk-badge { flex: 0 0 auto; white-space: nowrap; }
+#msk-root .msk-title, #msk-root .msk-subtitle { overflow-wrap: anywhere; }
+
+/* ---- compositor: ícones em imagem ---- */
+#msk-root .msk-compose .msk-icon img { width: 20px; height: 20px; object-fit: contain; display: block; filter: drop-shadow(0 0 6px rgba(34,255,167,.35)); }
+#msk-root .msk-compose .msk-attach, #msk-root .msk-compose .msk-mic {
+  display: grid; place-items: center; padding: 5px; transition: transform .16s ease, filter .16s ease;
+}
+#msk-root .msk-compose .msk-attach:hover img, #msk-root .msk-compose .msk-mic:hover img { transform: scale(1.1); filter: drop-shadow(0 0 10px rgba(168,85,247,.6)); }
+
+/* ---- área de gravação ---- */
+#msk-root .msk-recorder {
+  border-radius: 16px; padding: 12px;
+  border: 1px solid rgba(168,85,247,.3);
+  background: radial-gradient(120% 120% at 0% 0%, rgba(34,255,167,.10), transparent 60%), rgba(10,12,18,.92);
+  box-shadow: inset 0 0 26px rgba(168,85,247,.14);
+}
+#msk-root .msk-recorder-top { display: flex; align-items: center; gap: 8px; }
+#msk-root .msk-rec-art { width: 26px; height: 26px; object-fit: contain; animation: msk-inf-pulse 2.2s ease-in-out infinite; }
+#msk-root .msk-rec-time { margin-left: auto; font-variant-numeric: tabular-nums; color: #22ffa7; }
+#msk-root .msk-rec-actions { display: flex; gap: 8px; margin-top: 10px; }
+#msk-root .msk-rec-actions button { flex: 1; border-radius: 10px; padding: 8px; font-weight: 800; font-size: 11.5px; cursor: pointer; }
+#msk-root .msk-rec-use { border: 0; color: #06120c; background: linear-gradient(90deg, #22ffa7, #a855f7); }
+#msk-root .msk-rec-cancel { border: 1px solid rgba(255,255,255,.14); background: transparent; color: #c6d3e6; }
+
+/* ---- baixar projeto ---- */
+#msk-root .msk-download-project {
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer;
+  border-radius: 12px; font-size: 11.5px; font-weight: 900; letter-spacing: .04em; color: #e6dcff;
+  border: 1px solid rgba(168,85,247,.42); background: linear-gradient(120deg, rgba(168,85,247,.18), rgba(56,189,248,.12));
+  transition: transform .16s ease, box-shadow .16s ease;
+}
+#msk-root .msk-download-project:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(168,85,247,.28); }
+#msk-root .msk-download-project:disabled { opacity: .6; cursor: progress; }
+#msk-root .msk-download-project img { width: 20px; height: 20px; object-fit: contain; }
+
+/* ---- popup central da extensão ---- */
+@keyframes msk-toast-in { from { opacity: 0; transform: translate(-50%, -50%) scale(.92); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+#msk-root { position: relative; }
+#msk-root .msk-center-toast {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 40;
+  display: grid; justify-items: center; gap: 4px; text-align: center;
+  min-width: 210px; max-width: 86%; padding: 16px 18px; border-radius: 16px;
+  border: 1px solid rgba(34,255,167,.4); background: rgba(8,12,16,.97);
+  box-shadow: 0 22px 60px rgba(0,0,0,.6), 0 0 32px rgba(34,255,167,.18);
+  animation: msk-toast-in .22s ease-out; transition: opacity .4s ease, transform .4s ease;
+}
+#msk-root .msk-center-toast.warn { border-color: rgba(245,185,66,.45); box-shadow: 0 22px 60px rgba(0,0,0,.6), 0 0 32px rgba(245,185,66,.18); }
+#msk-root .msk-center-toast.out { opacity: 0; transform: translate(-50%, -60%) scale(.96); }
+#msk-root .msk-center-toast strong { font-size: 13px; color: #eaf2ff; }
+#msk-root .msk-center-toast small { font-size: 11px; color: #9fb0c9; line-height: 1.4; }
+#msk-root .msk-center-dot { width: 10px; height: 10px; border-radius: 50%; background: #22ffa7; box-shadow: 0 0 12px #22ffa7; animation: msk-live-pulse 1.6s ease-in-out infinite; }
+#msk-root .msk-center-toast.warn .msk-center-dot { background: #f5b942; box-shadow: 0 0 12px #f5b942; }
+
+/* ---- ponto verde pulsando nos usuários online ---- */
+@keyframes msk-live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(34,255,167,.55); }
+  50% { opacity: .75; transform: scale(1.25); box-shadow: 0 0 0 6px rgba(34,255,167,0); }
+}
+.msk-users-live {
+  width: 7px; height: 7px; border-radius: 50%; background: #22ffa7;
+  animation: msk-live-pulse 2.4s ease-in-out infinite;
+}
