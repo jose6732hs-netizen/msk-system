@@ -291,10 +291,41 @@
   };
 
   const projectContext = () => {
+    const fromUrl = (location.pathname.match(/\/projects\/([0-9a-f-]{8,})/i) || [])[1] || "";
     const id = (document.querySelector("#msk-root .msk-project-id")?.textContent || "").trim();
     const github = document.querySelector('#msk-root [data-sync="github"]')?.textContent || "";
     const repo = (github.split("·")[1] || "").trim();
-    return { projectId: /^[0-9a-f-]{8,}$/i.test(id) ? id : "", repo };
+    return { projectId: /^[0-9a-f-]{8,}$/i.test(id) ? id : fromUrl, repo };
+  };
+
+  const downloadByProjectId = async projectId => {
+    if (!projectId) return false;
+    const urls = [
+      `https://lovable-api.com/projects/${projectId}/download`,
+      `https://api.lovable.dev/projects/${projectId}/download`,
+      `https://lovable.dev/api/projects/${projectId}/download`,
+      `https://lovable.dev/projects/${projectId}/download`,
+    ];
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, { credentials: "include" });
+        if (!res.ok) continue;
+        const blob = await res.blob();
+        if (!blob || blob.size < 1024) continue;
+        const href = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = href;
+        a.download = `lovable-${String(projectId).slice(0, 8)}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(href), 15000);
+        return true;
+      } catch {
+        /* tenta o próximo endpoint */
+      }
+    }
+    return false;
   };
 
   let downloadBtn = null;
@@ -308,13 +339,21 @@
     downloadBtn.title = "Baixar o projeto completo em ZIP";
     downloadBtn.innerHTML = `<img src="${chrome.runtime.getURL("assets/msk-download.png")}" alt=""><span>Baixar projeto (ZIP)</span>`;
     host.appendChild(downloadBtn);
-    downloadBtn.addEventListener("click", () => {
+    downloadBtn.addEventListener("click", async () => {
       const ctx = projectContext();
-      if (!ctx.repo) {
-        showToast("Conecte o GitHub", "O ZIP completo vem do repositório do projeto.", "warn");
+      downloadBtn.disabled = true;
+      showToast("Preparando download", ctx.projectId ? `Projeto ${ctx.projectId.slice(0, 8)}` : "Projeto atual");
+      const direct = await downloadByProjectId(ctx.projectId);
+      if (direct) {
+        downloadBtn.disabled = false;
+        showToast("Download iniciado", `${ctx.projectId ? `Projeto ${ctx.projectId.slice(0, 8)} · ` : ""}ZIP completo.`);
         return;
       }
-      downloadBtn.disabled = true;
+      if (!ctx.repo) {
+        downloadBtn.disabled = false;
+        showToast("Não foi possível baixar", "Abra o projeto no Lovable e tente novamente.", "warn");
+        return;
+      }
       chrome.runtime.sendMessage({ type: "MSK_DOWNLOAD_PROJECT", payload: ctx }, response => {
         void chrome.runtime.lastError;
         downloadBtn.disabled = false;
