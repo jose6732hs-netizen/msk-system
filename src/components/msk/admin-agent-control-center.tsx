@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Activity, Ban, CheckCircle2, Download, Eraser, MessageSquare, Radio, RefreshCw, RotateCw, Send, ShieldAlert, Stethoscope, Unlock } from "lucide-react";
+import { Activity, Ban, CheckCircle2, Download, Eraser, Fingerprint, MessageSquare, Radio, RefreshCw, RotateCw, Send, ShieldAlert, Stethoscope, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminAgentCenterLive } from "@/components/msk/admin-agent-center-live";
+import { AnimatedNumber } from "@/components/msk/animated-number";
 import {
+  extensionRemoteAdminBlockInstallation,
   extensionRemoteAdminBroadcastUpdate,
   extensionRemoteAdminMarkRepliesRead,
   extensionRemoteAdminOverview,
@@ -16,6 +18,7 @@ import {
   extensionRemoteAdminSendMessage,
   extensionRemoteAdminSetBlock,
 } from "@/lib/extension-remote-admin.functions";
+
 
 const fmt = (value?: string | null) => value ? new Date(value).toLocaleString("pt-BR") : "—";
 
