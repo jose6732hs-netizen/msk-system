@@ -46,7 +46,7 @@
       sendResponse({ ok:true, ready:!!composer(), background:true });
       return;
     }
-    if (message?.type === "MSK_CHATGPT_INIT" || message?.type === "MSK_CHATGPT_PROMPT") arm();
+    if (["MSK_CHATGPT_INIT", "MSK_CHATGPT_PROMPT", "MSK_CHATGPT_BRIDGE_INIT", "MSK_CHATGPT_BRIDGE_SEND"].includes(message?.type)) arm();
   });
 
   window.addEventListener("pageshow", () => {
