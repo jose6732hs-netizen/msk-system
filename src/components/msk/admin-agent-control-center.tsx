@@ -231,23 +231,78 @@ export function AdminAgentControlCenter() {
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por e-mail, IP ou ID de instalação" />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+          <div className="relative">
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por e-mail, IP ou ID de instalação" className="border-primary/25 bg-black/30 pr-9 shadow-[inset_0_0_20px_rgba(57,255,20,.06)]" />
+            <span className="pointer-events-none absolute right-3 top-1/2 h-2 w-2 -translate-y-1/2 animate-pulse rounded-full bg-primary shadow-[0_0_10px_hsl(var(--primary))]" />
+          </div>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-xl border border-primary/25 bg-black/30 px-3 text-sm text-foreground outline-none focus:border-primary/60">
             <option value="all">Todos os status</option>
             <option value="online">Online agora</option>
             <option value="offline">Offline</option>
             <option value="blocked">Bloqueados</option>
             <option value="unread">Com resposta não lida</option>
+            <option value="suspicious">Suspeitos de clone</option>
           </select>
-          <select value={versionFilter} onChange={(e) => setVersionFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+          <select value={versionFilter} onChange={(e) => setVersionFilter(e.target.value)} className="h-10 rounded-xl border border-primary/25 bg-black/30 px-3 text-sm text-foreground outline-none focus:border-primary/60">
             <option value="all">Todas as versões</option>
             {versions.map((version) => <option key={version} value={version}>Versão {version}</option>)}
           </select>
           <div className="flex gap-2">
-            <Input value={broadcastVersion} onChange={(e) => setBroadcastVersion(e.target.value)} placeholder="Versão publicada (ex: 2.7.0)" />
+            <Input value={broadcastVersion} onChange={(e) => setBroadcastVersion(e.target.value)} placeholder="Versão publicada (ex: 3.4.17)" className="border-primary/25 bg-black/30" />
             <Button variant="outline" size="sm" className="shrink-0" disabled={!broadcastVersion.trim() || broadcast.isPending} onClick={() => broadcast.mutate()}>Avisar todos</Button>
           </div>
         </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-4 xl:grid-cols-8">
+          {[
+            { label: "Clientes", value: live.clients, tone: "text-foreground" },
+            { label: "Online", value: live.online, tone: "text-emerald-400" },
+            { label: "Instalações", value: live.installations, tone: "text-foreground" },
+            { label: "Bloqueados", value: live.blocked, tone: "text-red-400" },
+            { label: "Pendentes", value: live.pending, tone: "text-yellow-400" },
+            { label: "Entregues", value: live.delivered, tone: "text-cyan-400" },
+            { label: "Confirmados", value: live.acknowledged, tone: "text-emerald-400" },
+            { label: "Suspeitos", value: live.suspicious, tone: "text-orange-400" },
+          ].map((item) => (
+            <div key={item.label} className="holo-card rounded-xl border border-white/10 bg-black/30 px-3 py-2">
+              <p className="text-[0.55rem] font-black uppercase tracking-widest text-muted-foreground">{item.label}</p>
+              <p className={`mt-0.5 text-lg font-black tabular-nums ${item.tone}`}><CountUp value={item.value} /></p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 flex items-center gap-2 text-[0.6rem] uppercase tracking-widest text-muted-foreground">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" /> Filtros em tempo real · atualizado {fmt(new Date(dataUpdatedAt || Date.now()).toISOString())}
+        </p>
+
+        {suspiciousRows.length ? (
+          <div className="mt-5 overflow-hidden rounded-2xl border border-orange-500/30 bg-orange-500/[0.04]">
+            <div className="flex items-center gap-2 border-b border-orange-500/20 px-4 py-3">
+              <Fingerprint className="h-4 w-4 text-orange-400" />
+              <span className="text-[0.6rem] font-black uppercase tracking-widest text-orange-300">Integridade da extensão · possíveis clones</span>
+            </div>
+            <div className="divide-y divide-white/5">
+              {suspiciousRows.slice(0, 20).map((row: any) => (
+                <div key={row.id} className="grid gap-2 px-4 py-3 text-xs sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div className="min-w-0">
+                    <p className="truncate font-bold">{row.email} · {String(row.installation_id).slice(0, 8)} · v{row.version || "—"}</p>
+                    <p className="truncate text-[0.65rem] text-muted-foreground">
+                      {row.suspicion_reason || row.block_reason || "Instalação marcada manualmente"} · ID extensão {row.extension_id || "—"} · IP {row.ip_address || "—"}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={row.blocked ? "outline" : "destructive"}
+                    disabled={blockInstallation.isPending}
+                    onClick={() => blockInstallation.mutate({ installationId: String(row.installation_id), blocked: !row.blocked })}
+                  >
+                    {row.blocked ? <><Unlock className="mr-2 h-4 w-4" /> Liberar</> : <><Ban className="mr-2 h-4 w-4" /> Bloquear clone</>}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
 
         {isLoading ? <p className="mt-6 text-xs text-muted-foreground">Carregando clientes conectados…</p> : clients.length ? (
           <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,.85fr)]">
