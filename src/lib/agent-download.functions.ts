@@ -29,8 +29,16 @@ export const getAgentExtensionDownload = createServerFn({ method: "POST" })
 
     if (error || !license) throw new Error("Licença do MSK Agente não encontrada.");
 
+    const { data: roleRows } = await supabaseAdmin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const privileged = (roleRows ?? []).some((r: any) =>
+      ["admin", "super_admin"].includes(String(r.role)),
+    );
+
     const snapshot = resolveLicenseSnapshot(license);
-    if (!isUsableLicense(license) || snapshot.role !== "agent") {
+    if (!privileged && (!isUsableLicense(license) || snapshot.role !== "agent")) {
       await logEvent({
         license_id: license.id,
         user_id: context.userId,
