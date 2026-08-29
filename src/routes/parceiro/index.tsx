@@ -439,12 +439,14 @@ function RankingSection({ navigate }: { navigate: any }) {
 
 interface StatCardProps {
   label: string;
-  value: string;
+  value: number;
+  currency?: boolean;
   icon: React.ReactNode;
   color: "blue" | "purple" | "green" | "primary";
+  index?: number;
 }
 
-function StatCard({ label, value, icon, color }: StatCardProps) {
+function StatCard({ label, value, currency, icon, color, index = 0 }: StatCardProps) {
   const colors = {
     blue: "bg-blue-500/10 text-blue-500 border-blue-500/20",
     purple: "bg-purple-500/10 text-purple-500 border-purple-500/20",
@@ -453,12 +455,18 @@ function StatCard({ label, value, icon, color }: StatCardProps) {
   };
 
   return (
-    <div className="bg-[#0F0F0F] border border-white/10 p-5 sm:p-6 rounded-[2rem] hover:border-white/20 transition-all group overflow-hidden flex flex-col h-full">
+    <div
+      className="holo-card holo-rise p-5 sm:p-6 rounded-[2rem] group flex flex-col h-full"
+      style={{ animationDelay: `${index * 90}ms` }}
+    >
        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center mb-4 shrink-0 transition-transform group-hover:scale-110", colors[color])}>
          {icon}
        </div>
        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 truncate w-full">{label}</p>
-       <h4 className="text-xl sm:text-2xl font-bold tracking-tight break-words line-clamp-2">{value}</h4>
+       <h4 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
+         <CountUp value={value} currency={currency} />
+       </h4>
+       <div className="mt-4 h-[3px] w-full rounded-full bg-white/5 holo-bar" />
     </div>
   );
 }
