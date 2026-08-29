@@ -303,12 +303,35 @@
     document.documentElement.appendChild(style);
   };
   const grokRawText=node=>node ? [...node.childNodes].filter(child=>!(child instanceof Element && child.classList.contains('msk-grok-integration-card'))).map(child=>child.textContent||'').join('').trim() : '';
+  // Só é pedido de Cofre quando: (1) não é bolha do usuário — o próprio prompt MSK cita o marcador
+  // como exemplo; (2) o marcador está COMPLETO; (3) o JSON tem campos válidos.
+  const isSentPromptEcho = raw => {
+    const text=normalizedPrompt(raw); if(!text) return false;
+    for(const record of sentPromptCache.values()){
+      const full=normalizedPrompt(record.fullText); if(!full) continue;
+      const head=full.slice(0,120);
+      if(head.length>24 && (text.includes(head) || full.includes(text.slice(0,120)))) return true;
+    }
+    return false;
+  };
+  const validIntegrationData=raw=>{
+    const full=String(raw||'').match(integrationMarkerFull); if(!full) return null;
+    let data=null; try{ data=JSON.parse(full[1].trim()); }catch{ return null; }
+    if(!data || typeof data!=='object') return null;
+    const fields=Array.isArray(data.fields)?data.fields.filter(f=>f && (f.key || f.label)):[];
+    if(!fields.length) return null;
+    if(/Nome do servi[çc]o/i.test(String(data.service||''))) return null; // exemplo do prompt
+    return {...data, fields};
+  };
   const renderIntegrationCard=(node,rawText)=>{
-    const raw=String(rawText||''); if(!node || !integrationMarkerStart.test(raw)) return false; ensureIntegrationStyle(); node.classList.add('msk-grok-integration-answer');
+    const raw=String(rawText||'');
+    if(!node || isUserBubble(node) || node.closest?.('.msk-grok-sent-message')) return false;
+    if(isSentPromptEcho(raw)) return false;
+    const data=validIntegrationData(raw); if(!data) return false;
+    ensureIntegrationStyle(); node.classList.add('msk-grok-integration-answer');
     let card=node.querySelector(':scope > .msk-grok-integration-card'); if(!card){card=document.createElement('section');card.className='msk-grok-integration-card';node.appendChild(card)}
-    const full=raw.match(integrationMarkerFull); let data=null; if(full){try{data=JSON.parse(full[1].trim())}catch{}}
-    if(data && Array.isArray(data.fields) && data.fields.length){const signature=JSON.stringify(data);if(!integrationRequestSignatures.has(signature)){integrationRequestSignatures.add(signature);emit('MSK_GROK_INTEGRATION_REQUEST',{request:data});}}
-    const clean=raw.replace(integrationMarkerFull,'').replace(/<MSK_INTEGRATION_REQUEST>[\s\S]*$/i,'').trim(); const fields=Array.isArray(data?.fields)?data.fields.slice(0,12).map(f=>String(f?.label||f?.key||'Campo')).filter(Boolean):[];
+    {const signature=JSON.stringify(data);if(!integrationRequestSignatures.has(signature)){integrationRequestSignatures.add(signature);emit('MSK_GROK_INTEGRATION_REQUEST',{request:data});}}
+    const clean=raw.replace(integrationMarkerFull,'').replace(/<MSK_INTEGRATION_REQUEST>[\s\S]*$/i,'').trim(); const fields=data.fields.slice(0,12).map(f=>String(f?.label||f?.key||'Campo')).filter(Boolean);
     card.innerHTML=''; const title=document.createElement('strong'); title.textContent=String(data?.title||'Credenciais solicitadas'); const tag=document.createElement('b'); tag.textContent='🔐 Cofre MSK'; card.append(title,tag); if(clean){const note=document.createElement('p');note.textContent=clean;card.append(note)} const list=document.createElement('div');list.className='msk-grok-integration-fields';(fields.length?fields:['Preparando campos protegidos…']).forEach(label=>{const chip=document.createElement('span');chip.textContent=label;list.append(chip)});card.append(list);const foot=document.createElement('div');foot.className='msk-grok-integration-foot';foot.textContent='Preencha os valores somente no pop-up da extensão MSK.';card.append(foot);return true;
   };
 
@@ -323,9 +346,12 @@
       'main article [class*="prose" i]',
       'main [class*="response" i]',
     ];
-    const nodes = selectors.flatMap(selector => [...document.querySelectorAll(selector)]).filter(visible);
-    return [...new Set(nodes)].filter(node => !node.closest('form') && !node.closest('[contenteditable="true"]') && !node.closest('nav') && !node.closest('aside'));
+    const nodes = selectors.flatMap(selector => { try{ return [...document.querySelectorAll(selector)]; }catch{ return []; } }).filter(visible);
+    return [...new Set(nodes)].filter(node =>
+      !node.closest('form') && !node.closest('[contenteditable="true"]') && !node.closest('nav') && !node.closest('aside')
+      && !isUserBubble(node) && !node.closest('.msk-grok-sent-message') && !node.querySelector?.('.msk-sent-card'));
   };
+
 
   const latestAssistant = () => {
     const nodes = assistantNodes();
