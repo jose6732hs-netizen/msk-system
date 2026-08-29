@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { Bell, Check, Trash2, ExternalLink } from "lucide-react";
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { 
   getUnreadCount, 
@@ -32,19 +32,40 @@ export function NotificationBell() {
   const markRead = useServerFn(markAsRead);
   const markAllRead = useServerFn(markAllAsRead);
 
-  const { data: countData } = useSuspenseQuery({
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setHasSession(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setHasSession(!!session);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  const { data: countData } = useQuery({
     queryKey: ["notifications-unread-count"],
     queryFn: () => getCount(),
+    enabled: hasSession,
+    retry: false,
     refetchInterval: 30000, // 30s
   });
 
-  const { data: listData } = useSuspenseQuery({
+  const { data: listData } = useQuery({
     queryKey: ["notifications-list"],
     queryFn: () => getList(),
+    enabled: hasSession,
+    retry: false,
   });
 
   const count = countData?.count ?? 0;
   const notifications = listData?.notifications ?? [];
+
 
   // Ouvir notificações em tempo real
   useEffect(() => {
