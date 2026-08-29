@@ -48,9 +48,20 @@ export function NotificationBell() {
     };
   }, []);
 
+  const safeCall = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) return null;
+    try {
+      return await fn();
+    } catch {
+      // Sessão ausente/expirada: não quebra a UI.
+      return null;
+    }
+  };
+
   const { data: countData } = useQuery({
     queryKey: ["notifications-unread-count"],
-    queryFn: () => getCount(),
+    queryFn: () => safeCall(() => getCount()),
     enabled: hasSession,
     retry: false,
     refetchInterval: 30000, // 30s
@@ -58,10 +69,11 @@ export function NotificationBell() {
 
   const { data: listData } = useQuery({
     queryKey: ["notifications-list"],
-    queryFn: () => getList(),
+    queryFn: () => safeCall(() => getList()),
     enabled: hasSession,
     retry: false,
   });
+
 
   const count = countData?.count ?? 0;
   const notifications = listData?.notifications ?? [];
