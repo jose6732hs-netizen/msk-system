@@ -132,79 +132,17 @@ export function PlansExperienceEnhancer() {
     };
 
     const enhanceAgentBanner = (section: HTMLElement) => {
+      // O banner da seção MSK Agente usa SEMPRE a imagem oficial configurada
+      // no painel (plans_agent_banner). Nunca substituir por imagens das ofertas.
       const styled = styleBanner(section);
       if (!styled) return;
       const { wrapper, baseImage } = styled;
 
-      const cardImages = Array.from(
-        section.querySelectorAll<HTMLImageElement>("[id$='-carousel'] article img"),
-      )
-        .map((img) => img.currentSrc || img.src)
-        .filter(Boolean);
-      const sources = Array.from(new Set(cardImages)).slice(0, 2);
-      if (!sources.length) return;
+      // Remove um eventual carrossel antigo montado com imagens de ofertas.
+      const legacy = wrapper.querySelector<HTMLElement>("[data-msk-agent-banner-carousel]");
+      legacy?.remove();
 
-      if (baseImage) baseImage.style.display = "none";
-
-      let carousel = wrapper.querySelector<HTMLElement>("[data-msk-agent-banner-carousel]");
-      if (!carousel) {
-        carousel = document.createElement("div");
-        carousel.dataset["mskAgentBannerCarousel"] = "1";
-        carousel.style.order = "2";
-        carousel.style.display = "flex";
-        carousel.style.width = "100%";
-        carousel.style.overflowX = "auto";
-        carousel.style.overscrollBehaviorX = "contain";
-        carousel.style.scrollSnapType = "x mandatory";
-        carousel.style.scrollBehavior = "smooth";
-        carousel.style.touchAction = "pan-x pan-y";
-        carousel.style.borderRadius = "22px";
-        carousel.style.border = "1px solid rgba(255,255,255,.10)";
-        carousel.style.background = "#050505";
-        carousel.style.scrollbarWidth = "none";
-        wrapper.appendChild(carousel);
-      }
-
-      const currentSources = carousel.dataset["mskSources"] ?? "";
-      const nextSources = sources.join("|");
-      if (currentSources !== nextSources) {
-        carousel.dataset["mskSources"] = nextSources;
-        carousel.replaceChildren();
-        sources.forEach((src, index) => {
-          const slide = document.createElement("div");
-          slide.style.width = "100%";
-          slide.style.flex = "0 0 100%";
-          slide.style.display = "flex";
-          slide.style.alignItems = "center";
-          slide.style.justifyContent = "center";
-          slide.style.scrollSnapAlign = "center";
-          slide.style.minHeight = "170px";
-
-          const img = document.createElement("img");
-          img.src = src;
-          img.alt = `Banner MSK Agente ${index + 1}`;
-          img.loading = "lazy";
-          img.style.display = "block";
-          img.style.width = "100%";
-          img.style.height = "auto";
-          img.style.maxHeight = "420px";
-          img.style.objectFit = "contain";
-          slide.appendChild(img);
-          carousel!.appendChild(slide);
-        });
-      }
-
-      bindInteraction(carousel);
-      if (carousel.dataset["mskAutoPlay"] === "1" || sources.length <= 1) return;
-      carousel.dataset["mskAutoPlay"] = "1";
-      const timer = window.setInterval(() => {
-        if (!carousel!.isConnected || document.hidden || paused(carousel!)) return;
-        const step = carousel!.clientWidth;
-        if (!step) return;
-        const nearEnd = carousel!.scrollLeft + carousel!.clientWidth >= carousel!.scrollWidth - step * 0.55;
-        carousel!.scrollTo({ left: nearEnd ? 0 : carousel!.scrollLeft + step, behavior: "smooth" });
-      }, 5000);
-      timers.push(timer);
+      if (baseImage) baseImage.style.display = "block";
     };
 
     const putAgentFirst = () => {
