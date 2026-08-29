@@ -328,6 +328,87 @@ const BigTitle: React.FC<{ text: string }> = ({ text }) => {
   );
 };
 
+const CaptionCard: React.FC<{
+  parts: SceneDef["caption"];
+  delay: number;
+  label?: string;
+  duration: number;
+}> = ({ parts, delay, label, duration }) => {
+  const frame = useCurrentFrame();
+  const s = spring({
+    frame: frame - delay + 4,
+    fps: FPS,
+    config: { damping: 22, stiffness: 170 },
+  });
+  const out = interpolate(frame, [duration - 10, duration - 2], [1, 0], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  const sweep = interpolate(frame, [delay, delay + 26], [-30, 130], {
+    extrapolateRight: "clamp",
+  });
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderRadius: 34,
+        padding: "26px 34px 30px 34px",
+        background:
+          "linear-gradient(180deg, rgba(8,12,10,0.86), rgba(3,6,5,0.92))",
+        border: "2px solid rgba(34,245,138,0.45)",
+        boxShadow:
+          "0 0 70px rgba(34,245,138,0.18), 0 26px 70px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.06)",
+        overflow: "hidden",
+        transform: `translateY(${interpolate(s, [0, 1], [70, 0])}px) scale(${interpolate(
+          s,
+          [0, 1],
+          [0.96, 1],
+        )})`,
+        opacity: Math.min(s, out),
+      }}
+    >
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 8,
+          background: `linear-gradient(180deg, ${NEON}, ${VIOLET})`,
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          bottom: 0,
+          left: `${sweep}%`,
+          width: "22%",
+          background:
+            "linear-gradient(100deg, transparent, rgba(255,255,255,0.10), transparent)",
+          pointerEvents: "none",
+        }}
+      />
+      {label ? (
+        <div
+          style={{
+            fontFamily,
+            fontWeight: 800,
+            fontSize: 24,
+            letterSpacing: 6,
+            color: NEON,
+            opacity: 0.9,
+            marginBottom: 16,
+          }}
+        >
+          {label}
+        </div>
+      ) : null}
+      <Caption parts={parts} delay={delay} />
+    </div>
+  );
+};
+
 const Caption: React.FC<{ parts: SceneDef["caption"]; delay: number }> = ({
   parts,
   delay,
