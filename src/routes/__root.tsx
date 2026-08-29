@@ -445,13 +445,22 @@ function MobileNavigation() {
                 <p className="px-2 pb-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                   Mais
                 </p>
-                <Link
-                  to="/planos"
-                  className="block border-b border-white/5 p-4 text-sm font-bold"
-                  onClick={() => setOpen(false)}
-                >
-                  Planos e Preços
-                </Link>
+                {[
+                  { to: "/como-funciona", label: "Como Funciona" },
+                  { to: "/msk-agente-vs-chatgpt", label: "MSK Agente vs ChatGPT" },
+                  { to: "/planos", label: "Planos e Preços" },
+                  { to: "/clonagem", label: "Clonador de Sites" },
+                  { to: "/documentacao", label: "Documentação" },
+                ].map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className="block border-b border-white/5 p-4 text-sm font-bold"
+                    onClick={() => setOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
                 <Link
                   to="/parceiros"
                   search={{}}
