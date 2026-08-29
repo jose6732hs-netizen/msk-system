@@ -1,0 +1,263 @@
+/* Skills individuais do MSK Agente */
+#msk-root .msk-custom-skills-block {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+#msk-root .msk-custom-skills-title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#msk-root .msk-custom-skills-title small {
+  color: #7dff00;
+  font-size: 8px;
+  letter-spacing: .08em;
+}
+
+#msk-root .msk-create-skill-btn {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(125,255,0,.48);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(125,255,0,.13), rgba(152,54,255,.16));
+  color: #f5fff2;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: inset 0 0 20px rgba(125,255,0,.04), 0 0 18px rgba(152,54,255,.09);
+}
+
+#msk-root .msk-create-skill-btn:hover {
+  border-color: #7dff00;
+  box-shadow: 0 0 18px rgba(125,255,0,.18), 0 0 22px rgba(152,54,255,.12);
+}
+
+#msk-root .msk-create-skill-btn > b {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border-radius: 10px;
+  font-size: 21px;
+  line-height: 1;
+  color: #071009;
+  background: linear-gradient(135deg, #7dff00, #a43cff);
+}
+
+#msk-root .msk-create-skill-btn > span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+#msk-root .msk-create-skill-btn strong {
+  font-size: 11px;
+}
+
+#msk-root .msk-create-skill-btn small {
+  color: #9fa7b6;
+  font-size: 9px;
+}
+
+#msk-root .msk-custom-skills-list {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+#msk-root .msk-custom-skills-empty {
+  grid-column: 1 / -1;
+  padding: 10px;
+  border: 1px dashed #34343f;
+  border-radius: 10px;
+  color: #777d8a;
+  font-size: 9.5px;
+  text-align: center;
+}
+
+#msk-root .msk-custom-skill-card {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: 26px minmax(0,1fr) 20px;
+  align-items: center;
+  gap: 7px;
+  min-height: 52px !important;
+  text-align: left;
+}
+
+#msk-root .msk-custom-skill-icon {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #7dff00;
+  background: rgba(125,255,0,.08);
+  border: 1px solid rgba(125,255,0,.22);
+  box-shadow: 0 0 10px rgba(125,255,0,.12);
+}
+
+#msk-root .msk-custom-skill-copy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+#msk-root .msk-custom-skill-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #f2f3f8;
+}
+
+#msk-root .msk-custom-skill-copy small {
+  font-size: 8px;
+  color: #7dff00;
+}
+
+#msk-root .msk-custom-skill-remove {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #858b98;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#msk-root .msk-custom-skill-remove:hover {
+  color: #fff;
+  background: rgba(255,82,117,.18);
+}
+
+#msk-root .msk-custom-skill-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  border-radius: inherit;
+  background: rgba(4,5,8,.78);
+  backdrop-filter: blur(6px);
+}
+
+#msk-root .msk-custom-skill-box {
+  width: 100%;
+  max-width: 320px;
+  display: grid;
+  gap: 11px;
+  padding: 14px;
+  border-radius: 15px;
+  border: 1px solid rgba(125,255,0,.34);
+  background: linear-gradient(155deg, rgba(17,18,24,.99), rgba(6,7,10,.99));
+  box-shadow: 0 24px 70px rgba(0,0,0,.7), 0 0 34px rgba(152,54,255,.16);
+}
+
+#msk-root .msk-custom-skill-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#msk-root .msk-custom-skill-head > div {
+  display: grid;
+  gap: 3px;
+}
+
+#msk-root .msk-custom-skill-head strong {
+  font-size: 13px;
+  color: #fff;
+}
+
+#msk-root .msk-custom-skill-head small {
+  font-size: 9px;
+  color: #7dff00;
+}
+
+#msk-root .msk-custom-skill-close {
+  width: 27px;
+  height: 27px;
+  border: 1px solid #303039;
+  border-radius: 8px;
+  background: #111118;
+  color: #b8bec9;
+  cursor: pointer;
+  font-size: 17px;
+}
+
+#msk-root .msk-custom-skill-box label {
+  display: grid;
+  gap: 5px;
+  color: #b8bec9;
+  font-size: 9.5px;
+  font-weight: 800;
+}
+
+#msk-root .msk-custom-skill-box input,
+#msk-root .msk-custom-skill-box textarea {
+  width: 100%;
+  border: 1px solid #303039;
+  border-radius: 9px;
+  outline: 0;
+  background: #0b0b10;
+  color: #fff;
+  padding: 9px 10px;
+  font: 11px/1.4 Arial,Helvetica,sans-serif;
+  resize: vertical;
+}
+
+#msk-root .msk-custom-skill-box input:focus,
+#msk-root .msk-custom-skill-box textarea:focus {
+  border-color: rgba(125,255,0,.7);
+  box-shadow: 0 0 0 2px rgba(125,255,0,.08);
+}
+
+#msk-root .msk-custom-skill-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 7px;
+}
+
+#msk-root .msk-custom-skill-actions button {
+  min-height: 36px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+#msk-root .msk-custom-skill-cancel {
+  border: 1px solid #34343f;
+  background: #101016;
+  color: #aeb4c0;
+}
+
+#msk-root .msk-custom-skill-save {
+  border: 0;
+  color: #061008;
+  background: linear-gradient(90deg, #7dff00, #a23cff);
+}
+
+#msk-root .msk-custom-skill-error {
+  color: #ff7891;
+  font-size: 9px;
+  text-align: center;
+}
