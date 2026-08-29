@@ -23,6 +23,7 @@ import { HeroCarousel } from "@/components/msk/hero-carousel";
 import { Hero3D } from "@/components/msk/hero-3d";
 import { HeroScene3D } from "@/components/msk/hero-scene-3d";
 import bannerAsset from "@/assets/logo.png.asset.json";
+import agentBannerAsset from "@/assets/banner-agente-msk.png.asset.json";
 import { MskLogo } from "@/components/msk/logo";
 
 export const Route = createFileRoute("/")({
@@ -142,7 +143,7 @@ function Index() {
         >
           <Link to="/planos" preload="intent" className="block w-full">
             <img
-              src="/msk-agent-banner-oficial-1.svg"
+              src={agentBannerAsset.url}
               alt="MSK Agente — método oficial Lovable"
               className="block h-auto w-full object-contain"
             />
