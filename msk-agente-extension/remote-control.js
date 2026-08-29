@@ -98,6 +98,48 @@ async function acknowledge(id) {
   await request("POST", { command_id: id });
 }
 
+async function sendReply({ commandId = null, kind = "reply", body = "", payload = {} }) {
+  const result = await request("POST", {
+    kind,
+    command_id: commandId,
+    body: String(body || "").slice(0, 2000),
+    payload,
+  });
+  return !!result.ok;
+}
+
+async function collectDiagnostic() {
+  const stored = await chrome.storage.local.get(null).catch(() => ({}));
+  const license = stored.mskLicense || {};
+  const manifest = chrome.runtime.getManifest();
+  const tabs = await lovableTabs();
+  return {
+    version: manifest.version,
+    installation_id: await installationId(),
+    license_status: license.token ? "connected" : "missing",
+    license_expires_at: license.expires_at || null,
+    license_plan: license.plan || license.product || null,
+    blocked: !!stored.mskRemoteBlocked,
+    project_id: stored.mskCurrentProjectId || null,
+    repository: stored.mskRepository || null,
+    github_status: stored.mskGithubStatus || "unknown",
+    open_lovable_tabs: tabs.length,
+    last_error_code: stored.mskLastErrorCode || null,
+    storage_keys: Object.keys(stored).length,
+    browser: navigator.userAgent.slice(0, 200),
+    generated_at: new Date().toISOString(),
+  };
+}
+
+const PROTECTED_KEYS = new Set(["mskLicense", "mskInstallId", "mskAccount", "mskSession"]);
+
+async function clearLocalCache() {
+  const stored = await chrome.storage.local.get(null).catch(() => ({}));
+  const removable = Object.keys(stored).filter((key) => !PROTECTED_KEYS.has(key));
+  if (removable.length) await chrome.storage.local.remove(removable).catch(() => {});
+  return removable.length;
+}
+
 async function handleCommand(command) {
   if (!command?.id || !command?.type) return;
   if (command.type === "block") {
@@ -115,6 +157,24 @@ async function handleCommand(command) {
     await chrome.storage.local.remove(["mskRemoteBlocked", "mskRemoteBlockReason", "mskRemoteBlockMessage", "mskRemoteBlockedAt"]);
     await acknowledge(command.id);
     await reloadLovableTabs();
+    return;
+  }
+  if (command.type === "revalidate_license") {
+    await globalThis.MSK_LICENSE_WATCH?.revalidateLicense?.().catch?.(() => {});
+    await globalThis.MSK_TELEMETRY?.heartbeat?.();
+    await sendReply({ commandId: command.id, kind: "diagnostic", body: "Licença revalidada pela extensão.", payload: await collectDiagnostic() });
+    await reloadLovableTabs();
+    return;
+  }
+  if (command.type === "clear_cache") {
+    const removed = await clearLocalCache();
+    await sendReply({ commandId: command.id, kind: "diagnostic", body: `Cache local limpo (${removed} chaves).`, payload: await collectDiagnostic() });
+    await reloadLovableTabs();
+    return;
+  }
+  if (command.type === "diagnostic") {
+    await sendReply({ commandId: command.id, kind: "diagnostic", body: "Diagnóstico enviado pela extensão.", payload: await collectDiagnostic() });
+    void deliverMessage({ ...command, title: command.title || "Diagnóstico enviado", message: command.message || "O diagnóstico desta instalação foi enviado ao suporte MSK." });
     return;
   }
   if (command.type === "refresh") {
@@ -165,13 +225,29 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== "MSK_REMOTE_CONTROL_POLL") return;
-  (async () => { await pollRemoteControl(); sendResponse({ ok: true }); })();
-  return true;
+  if (message?.type === "MSK_REMOTE_CONTROL_POLL") {
+    (async () => { await pollRemoteControl(); sendResponse({ ok: true }); })();
+    return true;
+  }
+  if (message?.type === "MSK_REMOTE_REPLY") {
+    (async () => {
+      const ok = await sendReply({ commandId: message.commandId || null, kind: "reply", body: message.body || "" });
+      sendResponse({ ok });
+    })();
+    return true;
+  }
+  if (message?.type === "MSK_REMOTE_DIAGNOSTIC") {
+    (async () => {
+      const ok = await sendReply({ kind: "diagnostic", body: "Diagnóstico manual do usuário.", payload: await collectDiagnostic() });
+      sendResponse({ ok });
+    })();
+    return true;
+  }
+  return undefined;
 });
 
 chrome.alarms.create(CONTROL_ALARM, { periodInMinutes: CONTROL_PERIOD_MINUTES });
 void pollRemoteControl();
 
-export const mskRemoteControl = { pollRemoteControl };
+export const mskRemoteControl = { pollRemoteControl, sendReply, collectDiagnostic };
 globalThis.MSK_REMOTE_CONTROL = mskRemoteControl;
