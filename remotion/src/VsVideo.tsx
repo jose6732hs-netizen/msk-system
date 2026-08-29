@@ -26,6 +26,7 @@ type SceneDef = {
   chipSub?: string;
   caption: { t: string; hi?: boolean }[];
   big?: string;
+  captionTop?: boolean;
 };
 
 const SCENES: SceneDef[] = [
@@ -127,6 +128,7 @@ const SCENES: SceneDef[] = [
     id: "s11",
     img: "img/scene11.jpg",
     big: "MSK AGENTE",
+    captionTop: true,
     caption: [
       { t: "Você não assina outro chat." },
       { t: "INTELIGÊNCIA EM EXECUÇÃO", hi: true },
