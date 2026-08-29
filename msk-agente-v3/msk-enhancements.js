@@ -82,10 +82,9 @@
       const found = creditsContainer();
       if (!found) return;
 
-      // Valor numérico -> ∞ pulsante (mantém o rótulo "Credits" legível).
+      // Todos os valores de crédito (inclui "0 left" do plano Pro) -> ∞ pulsante.
       [...found.root.querySelectorAll("span,div,p,strong,b")]
         .filter(el => el.children.length === 0 && CREDIT_VALUE.test(el.textContent || ""))
-        .slice(0, 1)
         .forEach(el => {
           if (el.hasAttribute("data-msk-credit-original")) return;
           el.setAttribute("data-msk-credit-original", el.textContent || "");
@@ -93,13 +92,21 @@
           el.classList.add("msk-credit-infinity");
         });
 
-      // Barra 100% com gradiente neon MSK e brilho interno em movimento.
-      const bar = found.bar;
-      bar.classList.add("msk-credit-bar");
-      const fill = bar.querySelector("div") || bar;
-      if (fill.dataset.mskFillWidth === undefined) fill.dataset.mskFillWidth = fill.style.width || "";
-      fill.classList.add("msk-credit-fill");
-      fill.style.width = "100%";
+      // Todas as barras de crédito do Lovable (principal e diária) em 100% neon MSK.
+      const bars = new Set([found.bar]);
+      found.root.querySelectorAll('[role="progressbar"]').forEach(el => bars.add(el));
+      [...found.root.querySelectorAll("div")].forEach(div => {
+        const rect = div.getBoundingClientRect();
+        if (rect.width > 60 && rect.height > 2 && rect.height <= 16) bars.add(div);
+      });
+      bars.forEach(bar => {
+        if (!bar || !bar.isConnected) return;
+        bar.classList.add("msk-credit-bar");
+        const fill = bar.querySelector("div") || bar;
+        if (fill.dataset.mskFillWidth === undefined) fill.dataset.mskFillWidth = fill.style.width || "";
+        fill.classList.add("msk-credit-fill");
+        fill.style.width = "100%";
+      });
     } finally {
       applying = false;
     }
