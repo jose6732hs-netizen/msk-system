@@ -239,18 +239,20 @@
     });
   };
 
-  /* ---------------- usuários ativos (👥) ---------------- */
-  const MIN_USERS = 80;
-  const MAX_USERS = 300;
-  let usersValue = 0;
-  let usersReal = 0;
+  /* ---------------- usuários ativos (👥) — presença real ---------------- */
+  let usersValue = 0; // último valor válido conhecido (nunca zera na tela)
   let usersChip = null;
-
-  const clampUsers = value => Math.min(MAX_USERS, Math.max(MIN_USERS, Math.round(value)));
 
   const renderUsers = () => {
     if (!usersChip) return;
-    usersChip.querySelector("b").textContent = String(clampUsers(usersValue + usersReal));
+    const el = usersChip.querySelector("b");
+    const next = usersValue > 0 ? String(usersValue) : "—";
+    if (el.textContent === next) return;
+    el.textContent = next;
+    // Animação discreta (fade + leve scale), sem piscar.
+    el.classList.remove("msk-users-bump");
+    void el.offsetWidth;
+    el.classList.add("msk-users-bump");
   };
 
   const persistUsers = () => {
@@ -259,11 +261,10 @@
       .catch(() => {});
   };
 
-  const tickUsers = () => {
-    // Sobe com mais frequência; quando cai, cai devagar (movimento orgânico).
-    const up = Math.random() < 0.62;
-    const step = up ? 1 + Math.floor(Math.random() * 4) : 1 + Math.floor(Math.random() * 2);
-    usersValue = clampUsers(usersValue + (up ? step : -step));
+  const setUsers = value => {
+    const n = Number(value);
+    if (!Number.isFinite(n) || n <= 0) return; // erro/carregando: mantém o último válido
+    usersValue = Math.round(n);
     renderUsers();
     persistUsers();
   };
@@ -272,11 +273,13 @@
     if (usersChip && document.contains(usersChip)) return;
     usersChip = document.createElement("span");
     usersChip.className = "msk-users-chip";
-    usersChip.title = "Usuários ativos agora no MSK Agente";
+    usersChip.title = "Presença ativa agora";
     usersChip.innerHTML = '<span class="msk-users-live"></span><span class="msk-users-emoji">👥</span><b>—</b>';
     host.prepend(usersChip);
     renderUsers();
   };
+
+
 
   /* ---------------- popup central + baixar projeto ---------------- */
   let toastTimer = 0;
