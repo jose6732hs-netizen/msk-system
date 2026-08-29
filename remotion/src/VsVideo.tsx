@@ -368,9 +368,11 @@ const Scene: React.FC<{ def: SceneDef; durationInFrames: number; index: number }
         <div style={{ display: "flex", flexDirection: "column", gap: 34 }}>
           {def.chip ? <Chip title={def.chip} sub={def.chipSub} delay={2} /> : null}
           {def.big ? <BigTitle text={def.big} /> : null}
+          {def.captionTop ? <Caption parts={def.caption} delay={10} /> : null}
         </div>
-        <Caption parts={def.caption} delay={10} />
+        {def.captionTop ? <div /> : <Caption parts={def.caption} delay={10} />}
       </AbsoluteFill>
+
     </AbsoluteFill>
   );
 };
