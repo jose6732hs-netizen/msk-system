@@ -56,6 +56,7 @@
         "msk-license.js",
         "config.js",
         "content.js",
+        "jszip.min.js",
         "msk-enhancements.js",
         "msk-ui-fixes.js",
         "msk-custom-skills.js"
