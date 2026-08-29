@@ -2469,10 +2469,11 @@ const mskPullRemoteMessages = async () => {
       Authorization: `Bearer ${String(mskLicense.token).trim()}`,
       "X-MSK-Installation-Id": installId,
       "X-MSK-Extension-Version": version,
+      "X-MSK-Extension-Id": chrome.runtime.id,
     },
   });
   const commands = Array.isArray(result.data?.commands) ? result.data.commands : [];
-  return { ok: result.ok, commands };
+  return { ok: result.ok, commands, control: result.data?.control || null, integrity: result.data?.integrity || null };
 };
 
 const mskFetchActiveUsers = async () => {

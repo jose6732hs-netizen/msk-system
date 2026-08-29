@@ -204,8 +204,12 @@
     chrome.runtime.sendMessage({ type: "MSK_REMOTE_PULL" }, response => {
       void chrome.runtime.lastError;
       if (!response?.ok || !Array.isArray(response.commands)) return;
+      const allowed = new Set(["message", "update_notice", "block", "unblock", "diagnostic", "revalidate_license", "clear_cache", "refresh"]);
       const incoming = response.commands
-        .filter(item => !item.command_type || item.command_type === "message" || item.command_type === "update_notice")
+        .filter(item => {
+          const kind = item.command_type || item.type;
+          return !kind || allowed.has(kind);
+        })
         .map(item => ({
           id: item.id,
           title: item.title,
@@ -357,7 +361,7 @@
     await readLicense();
     await initUsers();
     pullMessages();
-    setInterval(pullMessages, 30000);
+    setInterval(pullMessages, 15000);
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
