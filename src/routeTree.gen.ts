@@ -38,6 +38,7 @@ import { Route as ApiExtensionControlRouteImport } from './routes/api/extension/
 import { Route as ApiExtensionDownloadRouteImport } from './routes/api/extension/download'
 import { Route as ApiExtensionErrorsRouteImport } from './routes/api/extension/errors'
 import { Route as ApiExtensionEventsRouteImport } from './routes/api/extension/events'
+import { Route as ApiExtensionGithubDownloadRouteImport } from './routes/api/extension/github-download'
 import { Route as ApiExtensionHeartbeatRouteImport } from './routes/api/extension/heartbeat'
 import { Route as ApiExtensionVersionRouteImport } from './routes/api/extension/version'
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
@@ -216,6 +217,12 @@ const ApiExtensionEventsRoute = ApiExtensionEventsRouteImport.update({
   path: '/api/extension/events',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExtensionGithubDownloadRoute =
+  ApiExtensionGithubDownloadRouteImport.update({
+    id: '/api/extension/github-download',
+    path: '/api/extension/github-download',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiExtensionHeartbeatRoute = ApiExtensionHeartbeatRouteImport.update({
   id: '/api/extension/heartbeat',
   path: '/api/extension/heartbeat',
@@ -409,6 +416,7 @@ export interface FileRoutesByFullPath {
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
   '/api/extension/events': typeof ApiExtensionEventsRoute
+  '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
@@ -468,6 +476,7 @@ export interface FileRoutesByTo {
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
   '/api/extension/events': typeof ApiExtensionEventsRoute
+  '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
@@ -529,6 +538,7 @@ export interface FileRoutesById {
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
   '/api/extension/events': typeof ApiExtensionEventsRoute
+  '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
@@ -590,6 +600,7 @@ export interface FileRouteTypes {
     | '/api/extension/download'
     | '/api/extension/errors'
     | '/api/extension/events'
+    | '/api/extension/github-download'
     | '/api/extension/heartbeat'
     | '/api/extension/version'
     | '/api/license/validate'
@@ -649,6 +660,7 @@ export interface FileRouteTypes {
     | '/api/extension/download'
     | '/api/extension/errors'
     | '/api/extension/events'
+    | '/api/extension/github-download'
     | '/api/extension/heartbeat'
     | '/api/extension/version'
     | '/api/license/validate'
@@ -709,6 +721,7 @@ export interface FileRouteTypes {
     | '/api/extension/download'
     | '/api/extension/errors'
     | '/api/extension/events'
+    | '/api/extension/github-download'
     | '/api/extension/heartbeat'
     | '/api/extension/version'
     | '/api/license/validate'
@@ -765,6 +778,7 @@ export interface RootRouteChildren {
   ApiExtensionDownloadRoute: typeof ApiExtensionDownloadRoute
   ApiExtensionErrorsRoute: typeof ApiExtensionErrorsRoute
   ApiExtensionEventsRoute: typeof ApiExtensionEventsRoute
+  ApiExtensionGithubDownloadRoute: typeof ApiExtensionGithubDownloadRoute
   ApiExtensionHeartbeatRoute: typeof ApiExtensionHeartbeatRoute
   ApiExtensionVersionRoute: typeof ApiExtensionVersionRoute
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
@@ -998,6 +1012,13 @@ declare module '@tanstack/react-router' {
       path: '/api/extension/events'
       fullPath: '/api/extension/events'
       preLoaderRoute: typeof ApiExtensionEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/github-download': {
+      id: '/api/extension/github-download'
+      path: '/api/extension/github-download'
+      fullPath: '/api/extension/github-download'
+      preLoaderRoute: typeof ApiExtensionGithubDownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extension/heartbeat': {
@@ -1263,6 +1284,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionDownloadRoute: ApiExtensionDownloadRoute,
   ApiExtensionErrorsRoute: ApiExtensionErrorsRoute,
   ApiExtensionEventsRoute: ApiExtensionEventsRoute,
+  ApiExtensionGithubDownloadRoute: ApiExtensionGithubDownloadRoute,
   ApiExtensionHeartbeatRoute: ApiExtensionHeartbeatRoute,
   ApiExtensionVersionRoute: ApiExtensionVersionRoute,
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
