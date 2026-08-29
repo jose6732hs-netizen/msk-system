@@ -1,0 +1,112 @@
+{
+  "manifest_version": 3,
+  "name": "MSK Agente — Guardião Lovable",
+  "version": "3.4.8",
+  "description": "Envio imediato em segundo plano para ChatGPT e Grok: a mensagem enviada pela extensão chega diretamente à IA sem sair do Lovable; visual e demais funções preservados.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "windows",
+    "unlimitedStorage",
+    "alarms",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://lovable.dev/*",
+    "https://msksystem.online/*",
+    "https://chatgpt.com/*",
+    "https://api.lovable.dev/*",
+    "https://lovable-api.com/*",
+    "https://grok.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://lovable.dev/*"
+      ],
+      "js": [
+        "msk-lovable-session.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://lovable.dev/*"
+      ],
+      "js": [
+        "msk-lovable-cards.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://lovable.dev/*"
+      ],
+      "js": [
+        "msk-license.js",
+        "config.js",
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*"
+      ],
+      "js": [
+        "chatgpt-bridge.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://grok.com/*"
+      ],
+      "js": [
+        "grok-bridge.js"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/*"
+      ],
+      "matches": [
+        "https://lovable.dev/*",
+        "https://chatgpt.com/*",
+        "https://grok.com/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_title": "Ativar Guardião MSK",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png",
+      "48": "assets/icon-48.png",
+      "128": "assets/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "options_page": "options.html"
+}
