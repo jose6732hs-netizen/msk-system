@@ -165,6 +165,9 @@ export function AdminAgentCenter() {
   const [releaseStatus, setReleaseStatus] = useState<"draft" | "testing" | "released" | "deprecated">("draft");
   const [releaseMandatory, setReleaseMandatory] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [chartDays, setChartDays] = useState(30);
+  const [chartVersion, setChartVersion] = useState("all");
+  const [chartProvider, setChartProvider] = useState("all");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const { data, isLoading, isFetching } = useQuery({
