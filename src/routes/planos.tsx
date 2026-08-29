@@ -1047,50 +1047,76 @@ function PlanosPage() {
           onShare={(plan) => void sharePlan(plan)}
         />
 
+        <div className="mt-10 flex flex-wrap gap-2">
+          {categoryFilters.map((filter) => {
+            const active = category === filter.id;
+            return (
+              <button
+                key={filter.id}
+                type="button"
+                onClick={() => setCategory(filter.id)}
+                className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition ${
+                  active
+                    ? "border-primary bg-primary/15 text-primary shadow-[0_0_25px_-6px_hsl(var(--primary))]"
+                    : "border-white/10 bg-white/[.03] text-muted-foreground hover:border-primary/40 hover:text-primary"
+                }`}
+              >
+                {filter.label}
+              </button>
+            );
+          })}
+        </div>
+
         {offersLoading ? (
           <div className="mt-16 flex justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : (
           <>
-            <OfferCarouselSection
-              sectionId="msk-agente"
-              eyebrow="Assistente do projeto"
-              title="MSK Agente"
-              description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
-              bannerUrl={agentBanner}
-              plans={agentPlans ?? []}
-              highlightSlug="msk-agent-2"
-              loadingPlan={loadingPlan}
-              onAdd={(plan) => void addToCart(plan)}
-              onShare={(plan) => void sharePlan(plan)}
-            />
+            {showAgent ? (
+              <OfferCarouselSection
+                sectionId="msk-agente"
+                eyebrow="Assistente do projeto"
+                title="MSK Agente"
+                description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
+                bannerUrl={agentBanner}
+                plans={agentPlans ?? []}
+                highlightSlug="msk-agent-2"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
 
-            <OfferCarouselSection
-              sectionId="clonagem-msk"
-              eyebrow="Ferramenta independente"
-              title="Clonagem"
-              description="Capture e recrie páginas com o Clonador MSK. A licença do Clonador é independente da extensão principal."
-              bannerUrl={clonerBanner}
-              plans={clonerPlans ?? []}
-              highlightSlug="page-cloner-monthly"
-              loadingPlan={loadingPlan}
-              onAdd={(plan) => void addToCart(plan)}
-              onShare={(plan) => void sharePlan(plan)}
-            />
+            {showCloner ? (
+              <OfferCarouselSection
+                sectionId="clonagem-msk"
+                eyebrow="Ferramenta independente"
+                title="Clonagem"
+                description="Capture e recrie páginas com o Clonador MSK. A licença do Clonador é independente da extensão principal."
+                bannerUrl={clonerBanner}
+                plans={clonerPlans ?? []}
+                highlightSlug="page-cloner-monthly"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
 
-            <OfferCarouselSection
-              sectionId="extensao-msk"
-              eyebrow="Extensão principal"
-              title="Extensão MSK"
-              description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
-              bannerUrl={extensionBanner}
-              plans={plans ?? []}
-              highlightSlug="monthly"
-              loadingPlan={loadingPlan}
-              onAdd={(plan) => void addToCart(plan)}
-              onShare={(plan) => void sharePlan(plan)}
-            />
+            {showExtension ? (
+              <OfferCarouselSection
+                sectionId="extensao-msk"
+                eyebrow="Extensão principal"
+                title="Extensão MSK"
+                description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
+                bannerUrl={extensionBanner}
+                plans={plans ?? []}
+                highlightSlug="monthly"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
           </>
         )}
       </main>
