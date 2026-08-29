@@ -179,7 +179,38 @@ export function AdminAgentControlCenter() {
             <h3 className="mt-2 text-xl font-black uppercase tracking-tight">Controle remoto da extensão</h3>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">Envie avisos diretamente para o HTML da extensão do cliente ou bloqueie o acesso do MSK Agente. O comando fica salvo no servidor até a extensão receber.</p>
           </div>
-          <Button variant="outline" size="sm" onClick={refresh} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> Atualizar</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={refresh} disabled={isFetching}><RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> Atualizar</Button>
+            <Button variant="outline" size="sm" onClick={() => exportCsv("msk-extensao-clientes.csv", clients.map((client: any) => ({
+              email: client.email,
+              nome: client.name,
+              versao: client.version,
+              ip: client.ip_address ?? "",
+              bloqueado: client.blocked ? "sim" : "nao",
+              instalacoes: client.installations?.length ?? 0,
+              ultimo_online: client.last_seen_at ?? "",
+              respostas_nao_lidas: client.unread_replies ?? 0,
+            })))}><Download className="mr-2 h-4 w-4" /> Exportar CSV</Button>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por e-mail, IP ou ID de instalação" />
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+            <option value="all">Todos os status</option>
+            <option value="online">Online agora</option>
+            <option value="offline">Offline</option>
+            <option value="blocked">Bloqueados</option>
+            <option value="unread">Com resposta não lida</option>
+          </select>
+          <select value={versionFilter} onChange={(e) => setVersionFilter(e.target.value)} className="h-10 rounded-xl border border-border bg-background px-3 text-sm text-foreground">
+            <option value="all">Todas as versões</option>
+            {versions.map((version) => <option key={version} value={version}>Versão {version}</option>)}
+          </select>
+          <div className="flex gap-2">
+            <Input value={broadcastVersion} onChange={(e) => setBroadcastVersion(e.target.value)} placeholder="Versão publicada (ex: 2.7.0)" />
+            <Button variant="outline" size="sm" className="shrink-0" disabled={!broadcastVersion.trim() || broadcast.isPending} onClick={() => broadcast.mutate()}>Avisar todos</Button>
+          </div>
         </div>
 
         {isLoading ? <p className="mt-6 text-xs text-muted-foreground">Carregando clientes conectados…</p> : clients.length ? (
@@ -213,7 +244,14 @@ export function AdminAgentControlCenter() {
               <Textarea value={message} onChange={(e) => setMessage(e.target.value)} maxLength={2000} rows={4} placeholder="Digite a mensagem que deve aparecer dentro da extensão do cliente…" />
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button variant="neon" disabled={!userId || !title.trim() || !message.trim() || sendMessage.isPending} onClick={() => sendMessage.mutate()}><Send className="mr-2 h-4 w-4" /> Enviar mensagem</Button>
-                <span className="self-center text-[0.62rem] text-muted-foreground">Entrega automática quando a extensão estiver online.</span>
+                <span className="self-center text-[0.62rem] text-muted-foreground">Entrega automática quando a extensão estiver online. O cliente pode responder direto na extensão.</span>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <Button variant="outline" size="sm" disabled={!userId || sendAction.isPending} onClick={() => sendAction.mutate("refresh")}><RotateCw className="mr-2 h-4 w-4" /> Recarregar</Button>
+                <Button variant="outline" size="sm" disabled={!userId || sendAction.isPending} onClick={() => sendAction.mutate("revalidate_license")}><Activity className="mr-2 h-4 w-4" /> Revalidar licença</Button>
+                <Button variant="outline" size="sm" disabled={!userId || sendAction.isPending} onClick={() => sendAction.mutate("clear_cache")}><Eraser className="mr-2 h-4 w-4" /> Limpar cache</Button>
+                <Button variant="outline" size="sm" disabled={!userId || sendAction.isPending} onClick={() => sendAction.mutate("diagnostic")}><Stethoscope className="mr-2 h-4 w-4" /> Pedir diagnóstico</Button>
               </div>
             </div>
 
@@ -226,6 +264,8 @@ export function AdminAgentControlCenter() {
                 <p>{selected?.email ?? "—"}</p>
                 <p className="mt-1">Último online: {fmt(selected?.last_seen_at)}</p>
                 <p className="mt-1">Instalações: {selected?.installations?.length ?? 0}</p>
+                <p className="mt-1">IP atual: {selected?.ip_address ?? "—"}</p>
+                <p className="mt-1">Versão: {selected?.version ?? "—"}</p>
               </div>
               {selected?.blocked ? (
                 <Button className="w-full" variant="outline" disabled={setBlock.isPending} onClick={() => setBlock.mutate(false)}><Unlock className="mr-2 h-4 w-4" /> Desbloquear cliente</Button>
@@ -239,9 +279,56 @@ export function AdminAgentControlCenter() {
           </div>
         ) : <div className="mt-6 rounded-2xl border border-dashed border-border p-6 text-center text-xs text-muted-foreground">Nenhuma instalação conectada ainda. Assim que um cliente usar a nova extensão, ele aparecerá aqui.</div>}
 
+        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+            <span className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Respostas e diagnósticos da extensão</span>
+            <div className="flex gap-2">
+              <Button variant="ghost" size="sm" disabled={!userId || markRead.isPending} onClick={() => markRead.mutate()}>Marcar como lidas</Button>
+              <Button variant="ghost" size="sm" onClick={() => exportCsv("msk-extensao-respostas.csv", replies.map((row: any) => ({
+                data: row.created_at,
+                cliente: row.email,
+                tipo: row.kind,
+                mensagem: row.body ?? "",
+                instalacao: row.installation_id,
+                versao: row.extension_version ?? "",
+                ip: row.ip_address ?? "",
+              })))}><Download className="mr-2 h-4 w-4" /> CSV</Button>
+            </div>
+          </div>
+          {replies.length ? (
+            <div className="max-h-80 divide-y divide-white/5 overflow-y-auto">
+              {replies.slice(0, 40).map((row: any) => (
+                <div key={row.id} className="px-4 py-3 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold">{row.email} · {row.kind === "diagnostic" ? "Diagnóstico" : "Resposta"}</span>
+                    <span className={`text-[0.6rem] uppercase ${row.read_at ? "text-muted-foreground" : "text-primary"}`}>{fmt(row.created_at)}</span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{row.body || "—"}</p>
+                  {row.kind === "diagnostic" && row.payload ? (
+                    <pre className="mt-2 max-h-40 overflow-auto rounded-lg border border-white/5 bg-black/40 p-2 text-[0.6rem] leading-relaxed text-muted-foreground">{JSON.stringify(row.payload, null, 2)}</pre>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : <p className="px-4 py-5 text-xs text-muted-foreground">Nenhuma resposta recebida ainda.</p>}
+        </div>
+
         {recent.length ? (
           <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
-            <div className="border-b border-white/10 px-4 py-3 text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Últimos comandos remotos</div>
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
+              <span className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Últimos comandos remotos</span>
+              <select value={commandFilter} onChange={(e) => setCommandFilter(e.target.value)} className="h-8 rounded-lg border border-border bg-background px-2 text-[0.65rem] text-foreground">
+                <option value="all">Todos os comandos</option>
+                <option value="message">Mensagem</option>
+                <option value="block">Bloqueio</option>
+                <option value="unblock">Desbloqueio</option>
+                <option value="refresh">Recarregar</option>
+                <option value="revalidate_license">Revalidar licença</option>
+                <option value="clear_cache">Limpar cache</option>
+                <option value="diagnostic">Diagnóstico</option>
+                <option value="update_notice">Atualização</option>
+              </select>
+            </div>
             <div className="divide-y divide-white/5">
               {recent.map((command: any) => (
                 <div key={command.id} className="grid gap-2 px-4 py-3 text-xs sm:grid-cols-[auto_1fr_auto] sm:items-center">
