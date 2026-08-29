@@ -31,6 +31,7 @@ import { Bell } from "lucide-react";
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
 import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
+import { CountUp } from "@/components/msk/animated-number";
 import { FilterChips } from "@/components/msk/filter-chips";
 
 const levels = [
@@ -370,12 +371,12 @@ function Admin() {
             <>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5 sm:gap-4">
                 {[
-                  ["Usuários", stats?.users, Users, "text-blue-400"],
-                  ["Licenças Ativas", stats?.activeLicenses, Zap, "text-yellow-400"],
-                  ["Comissões do Mês", brl(stats?.monthCommissions), TrendingUp, "text-primary"],
-                  ["Vendas Aprovadas", stats?.conversions ?? 0, Activity, "text-cyan-400"],
-                  ["Receita Aprovada", brl(stats?.revenue), DollarSign, "text-emerald-400"],
-                ].map(([k, v, Icon, color]: any) => <div key={k} className="glass group rounded-2xl p-4 sm:p-5"><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div><p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{k}</p><p className="mt-1 text-lg sm:text-2xl font-bold">{v ?? "—"}</p></div><div className={`w-fit rounded-xl bg-muted/20 p-2 ${color}`}><Icon className="h-5 w-5" /></div></div></div>)}
+                  ["Usuários", Number(stats?.users ?? 0), false, Users, "text-blue-400"],
+                  ["Licenças Ativas", Number(stats?.activeLicenses ?? 0), false, Zap, "text-yellow-400"],
+                  ["Comissões do Mês", Number(stats?.monthCommissions ?? 0), true, TrendingUp, "text-primary"],
+                  ["Vendas Aprovadas", Number(stats?.conversions ?? 0), false, Activity, "text-cyan-400"],
+                  ["Receita Aprovada", Number(stats?.revenue ?? 0), true, DollarSign, "text-emerald-400"],
+                ].map(([k, v, isMoney, Icon, color]: any, i: number) => <div key={k} className="holo-card holo-rise group rounded-2xl p-4 sm:p-5" style={{ animationDelay: `${i * 80}ms` }}><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div><p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{k}</p><p className="mt-1 text-lg sm:text-2xl font-bold"><CountUp value={v} currency={isMoney} /></p></div><div className={`w-fit rounded-xl bg-muted/20 p-2 ${color}`}><Icon className="h-5 w-5" /></div></div><div className="mt-3 h-[3px] w-full rounded-full bg-foreground/5 holo-bar" /></div>)}
               </div>
 
               <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -467,7 +468,7 @@ function Admin() {
                       <FilterChips value={salesFilter} onChange={setSalesFilter} chips={[{ id: "all", label: "Todas", count: sales.length }, { id: "paid", label: "Aprovadas", count: sales.filter((p) => saleGroup(p) === "paid").length }, { id: "pending", label: "Pendentes", count: sales.filter((p) => saleGroup(p) === "pending").length }, { id: "failed", label: "Não pagas", count: sales.filter((p) => saleGroup(p) === "failed").length }]} />
                       {filtered.map((p) => {
                         const group = saleGroup(p);
-                        return <div key={p["id"]} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 bg-background/30 px-4 py-3 text-sm"><div className="min-w-0"><p className="truncate font-medium">{p["profiles"]?.email ?? "—"}</p><p className="truncate text-xs text-muted-foreground">{p["provider"]} · {p["method"] ?? "pix"} · {fmt(p["created_at"])}</p></div><div className="text-right"><p className="font-black text-primary">{brl(p["amount"])}</p><span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase", group === "paid" ? "bg-emerald-500/15 text-emerald-400" : group === "pending" ? "bg-yellow-500/15 text-yellow-500" : "bg-red-500/15 text-red-400")}>{p["status"]}</span></div></div>;
+                        return <div key={p["id"]} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl border border-border/40 bg-background/30 px-4 py-3 text-sm"><div className="min-w-0"><p className="truncate font-medium">{p["profiles"]?.email ?? "—"}</p><p className="truncate text-xs text-muted-foreground">{p["provider"]} · {p["method"] ?? "pix"} · {fmt(p["created_at"])}</p></div><div className="text-right"><p className="font-black text-primary"><CountUp value={Number(p["amount"] ?? 0)} currency duration={1100} /></p><span className={cn("mt-1 inline-block rounded-full px-2 py-0.5 text-[0.55rem] font-black uppercase", group === "paid" ? "bg-emerald-500/15 text-emerald-400" : group === "pending" ? "bg-yellow-500/15 text-yellow-500" : "bg-red-500/15 text-red-400")}>{p["status"]}</span></div></div>;
                       })}
                       {!filtered.length ? <p className="text-sm text-muted-foreground">Nenhuma venda neste filtro.</p> : null}
                     </div>
