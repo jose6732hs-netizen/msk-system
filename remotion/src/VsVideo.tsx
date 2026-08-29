@@ -642,6 +642,14 @@ export const VsVideo: React.FC = () => {
           <Sequence key={def.id} from={from} durationInFrames={dur}>
             <Scene def={def} durationInFrames={dur} index={i} />
             <Audio src={staticFile(`voiceover/msk/${def.id}.mp3`)} />
+            {(def.sfx ?? []).map((s, k) => (
+              <Sequence key={`${def.id}-sfx-${k}`} from={s.at}>
+                <Audio
+                  src={staticFile(`sfx/${s.f}.wav`)}
+                  volume={s.vol ?? 0.35}
+                />
+              </Sequence>
+            ))}
           </Sequence>
         );
       })}
