@@ -141,15 +141,26 @@
 
   const restoreMskSentCards = () => {
     if(!sentPromptCache.size) return;
-    const records=[...sentPromptCache.values()];
-    for(const node of grokUserNodes()){
+    const records=[...sentPromptCache.values()].sort((a,b)=>Number(b.createdAt||0)-Number(a.createdAt||0));
+    const nodes=grokUserNodes();
+    const used=new Set();
+    for(const node of nodes){
       const existingKey=String(node?.dataset?.mskPromptKey || '');
-      if(existingKey && sentPromptCache.has(existingKey)){decorateMskSentNode(node,sentPromptCache.get(existingKey));continue;}
+      if(existingKey && sentPromptCache.has(existingKey)){decorateMskSentNode(node,sentPromptCache.get(existingKey));used.add(existingKey);continue;}
+      if(node.querySelector?.('.msk-sent-card')) continue;
       const raw=normalizedPrompt(String(node?.innerText || node?.textContent || '')); if(!raw) continue;
-      const record=records.find(item=>normalizedPrompt(item.fullText)===raw);
-      if(record) decorateMskSentNode(node,record);
+      // O Grok pode truncar/reformatar a bolha: aceita igualdade, prefixo ou trecho inicial em comum.
+      const record=records.find(item=>{
+        if(used.has(item.key)) return false;
+        const full=normalizedPrompt(item.fullText); if(!full) return false;
+        if(full===raw) return true;
+        const head=full.slice(0,120);
+        return head.length>24 && (raw.startsWith(head) || full.startsWith(raw.slice(0,120)) || raw.includes(head));
+      });
+      if(record){ decorateMskSentNode(node,record); used.add(record.key); }
     }
   };
+
   const scheduleMskSentRestore = () => { if(sentRestoreScheduled) return; sentRestoreScheduled=true; setTimeout(()=>{sentRestoreScheduled=false;restoreMskSentCards()},100); };
   const initializeMskSentCards = async () => {
     await waitForDocument(); ensureMskSentCardStyle();
