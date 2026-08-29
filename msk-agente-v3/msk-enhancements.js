@@ -184,30 +184,42 @@
       <button type="button" class="msk-bell-btn" title="Mensagens da MSK" aria-label="Mensagens da MSK">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
         <span class="msk-bell-badge" style="display:none">0</span>
-      </button>
-      <div class="msk-bell-panel" hidden>
+      </button>`;
+    bellWrap.innerHTML = bellWrap.innerHTML.replace("</button>", "</button>");
+    host.prepend(bellWrap);
+    const overlay = document.createElement("div");
+    overlay.className = "msk-bell-overlay";
+    overlay.hidden = true;
+    overlay.innerHTML = `
+      <div class="msk-bell-panel" role="dialog" aria-label="Mensagens MSK">
         <header><b>Mensagens MSK</b><button type="button" class="msk-bell-close" aria-label="Fechar">×</button></header>
         <div class="msk-bell-list"></div>
       </div>`;
-    host.prepend(bellWrap);
+    (document.querySelector("#msk-root") || document.body).appendChild(overlay);
     bellButton = bellWrap.querySelector(".msk-bell-btn");
     bellBadge = bellWrap.querySelector(".msk-bell-badge");
-    bellList = bellWrap.querySelector(".msk-bell-list");
-    const panel = bellWrap.querySelector(".msk-bell-panel");
+    bellList = overlay.querySelector(".msk-bell-list");
+    const panel = overlay;
     bellButton.addEventListener("click", event => {
       event.stopPropagation();
       bellOpen = !bellOpen;
       panel.hidden = !bellOpen;
       if (bellOpen) markAllRead();
     });
-    bellWrap.querySelector(".msk-bell-close").addEventListener("click", () => {
+    overlay.querySelector(".msk-bell-close").addEventListener("click", () => {
       bellOpen = false;
       panel.hidden = true;
     });
-    document.addEventListener("click", event => {
-      if (!bellOpen || bellWrap.contains(event.target)) return;
+    overlay.addEventListener("click", event => {
+      if (event.target !== overlay) return;
       bellOpen = false;
       panel.hidden = true;
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && bellOpen) {
+        bellOpen = false;
+        panel.hidden = true;
+      }
     });
     renderBell();
   };
