@@ -1526,8 +1526,12 @@ export type Database = {
       }
       extension_installations: {
         Row: {
+          block_reason: string | null
+          blocked: boolean
           browser: string | null
           created_at: string
+          extension_id: string | null
+          first_extension_id: string | null
           id: string
           installation_id: string
           ip_address: string | null
@@ -1537,13 +1541,19 @@ export type Database = {
           license_id: string | null
           metadata: Json
           os: string | null
+          suspicion_reason: string | null
+          suspicious: boolean
           user_agent: string | null
           user_id: string
           version: string | null
         }
         Insert: {
+          block_reason?: string | null
+          blocked?: boolean
           browser?: string | null
           created_at?: string
+          extension_id?: string | null
+          first_extension_id?: string | null
           id?: string
           installation_id: string
           ip_address?: string | null
@@ -1553,13 +1563,19 @@ export type Database = {
           license_id?: string | null
           metadata?: Json
           os?: string | null
+          suspicion_reason?: string | null
+          suspicious?: boolean
           user_agent?: string | null
           user_id: string
           version?: string | null
         }
         Update: {
+          block_reason?: string | null
+          blocked?: boolean
           browser?: string | null
           created_at?: string
+          extension_id?: string | null
+          first_extension_id?: string | null
           id?: string
           installation_id?: string
           ip_address?: string | null
@@ -1569,6 +1585,8 @@ export type Database = {
           license_id?: string | null
           metadata?: Json
           os?: string | null
+          suspicion_reason?: string | null
+          suspicious?: boolean
           user_agent?: string | null
           user_id?: string
           version?: string | null
