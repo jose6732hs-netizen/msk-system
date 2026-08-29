@@ -134,6 +134,8 @@ export function AdminAgentControlCenter() {
   });
 
   const allClients = (data?.clients ?? []) as any[];
+  const allCommands = (data?.commands ?? []) as any[];
+  const suspiciousRows = ((data?.suspicious ?? []) as any[]);
   const versions = useMemo(() => [...new Set(allClients.map((client: any) => String(client.version ?? "—")))].sort(), [allClients]);
   const clients = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -142,8 +144,9 @@ export function AdminAgentControlCenter() {
       if (versionFilter !== "all" && String(client.version ?? "—") !== versionFilter) return false;
       if (statusFilter === "online" && !isOnline(client.last_seen_at)) return false;
       if (statusFilter === "offline" && isOnline(client.last_seen_at)) return false;
-      if (statusFilter === "blocked" && !client.blocked) return false;
+      if (statusFilter === "blocked" && !client.blocked && !client.installation_blocked) return false;
       if (statusFilter === "unread" && !client.unread_replies) return false;
+      if (statusFilter === "suspicious" && !client.suspicious) return false;
       return true;
     });
   }, [allClients, search, statusFilter, versionFilter]);
@@ -152,11 +155,37 @@ export function AdminAgentControlCenter() {
     [data?.replies, userId],
   );
   const recent = useMemo(
-    () => ((data?.commands ?? []) as any[])
+    () => allCommands
       .filter((command: any) => (commandFilter === "all" || command.command_type === commandFilter) && (!userId || String(command.user_id) === userId))
       .slice(0, 12),
-    [data?.commands, commandFilter, userId],
+    [allCommands, commandFilter, userId],
   );
+
+  const live = useMemo(() => {
+    const visible = clients;
+    const commandsVisible = allCommands.filter((command: any) => commandFilter === "all" || command.command_type === commandFilter);
+    return {
+      clients: visible.length,
+      online: visible.filter((client: any) => isOnline(client.last_seen_at)).length,
+      installations: visible.reduce((total: number, client: any) => total + (client.installations?.length ?? 0), 0),
+      blocked: visible.filter((client: any) => client.blocked || client.installation_blocked).length,
+      pending: commandsVisible.filter((command: any) => command.status === "pending").length,
+      delivered: commandsVisible.filter((command: any) => command.status === "delivered").length,
+      acknowledged: commandsVisible.filter((command: any) => command.status === "acknowledged").length,
+      suspicious: suspiciousRows.length,
+    };
+  }, [clients, allCommands, commandFilter, suspiciousRows.length]);
+
+  const blockInstallation = useMutation({
+    mutationFn: (input: { installationId: string; blocked: boolean }) =>
+      blockInstallationFn({ data: { ...input, reason: input.blocked ? "Instalação suspeita de clone bloqueada pelo painel MSK." : null } }),
+    onSuccess: (_result, input) => {
+      toast.success(input.blocked ? "Instalação bloqueada." : "Instalação liberada.");
+      void qc.invalidateQueries({ queryKey: ["extension-remote-admin"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
 
   const sendAction = useMutation({
     mutationFn: (action: "refresh" | "revalidate_license" | "clear_cache" | "diagnostic") =>
