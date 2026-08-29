@@ -716,3 +716,8 @@
 
 #msk-root .msk-integration-vault-fields{max-height:44vh;overflow:auto;padding-right:2px}
 #msk-root .msk-integration-vault-overlay .msk-integration-vault-actions{position:sticky;bottom:0;padding-top:4px;background:linear-gradient(180deg,rgba(12,13,20,0),rgba(12,13,20,.98) 24%)}
+
+/* ===== Guardião em tempo real: estado vivo no <html>, sem F5 ===== */
+html[data-msk-guardian="off"] .msk-guardian-lock.msk-guardian-overlay{display:none!important}
+html[data-msk-guardian="off"] .msk-native-composer.msk-guardian-hard .msk-guardian-lock{display:none!important}
+html[data-msk-guardian="on"] .msk-guardian-lock.msk-guardian-overlay{display:flex}
