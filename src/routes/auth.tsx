@@ -234,6 +234,7 @@ function AuthPage() {
         setMode("verify");
         toast.success("Verifique seu e-mail para confirmar o cadastro.");
       } else {
+        localStorage.setItem("msk_pw_reset", "1");
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/auth?mode=new-password`,
         });

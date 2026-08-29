@@ -25,8 +25,13 @@ if (typeof window !== "undefined" && !window.__mskPasswordRecoveryListener) {
     goToRecovery(`${RECOVERY_PATH}${hash}`);
   }
 
-  // 2) Fluxo PKCE: chega ?code=... na URL. Marca de que é recuperação vem do
-  //    localStorage (gravada ao solicitar o reset) ou o evento trata abaixo.
+  // 2) Fluxo PKCE: chega ?code=... na URL. Se o reset foi solicitado neste
+  //    navegador (flag local) ou o evento disparar, levamos para a tela certa.
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("code") && localStorage.getItem("msk_pw_reset") === "1") {
+    localStorage.removeItem("msk_pw_reset");
+    goToRecovery(`${RECOVERY_PATH}&code=${params.get("code")}`);
+  }
   supabase.auth.onAuthStateChange((event) => {
     if (event !== "PASSWORD_RECOVERY") return;
     goToRecovery(RECOVERY_PATH);
