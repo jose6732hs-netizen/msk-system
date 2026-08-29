@@ -231,7 +231,10 @@ function ObrigadoPage() {
               })}
             </div>
 
+            <AttentionTutorials />
+
             <div className="mx-auto max-w-2xl space-y-8 rounded-[3rem] border border-white/10 bg-white/5 p-8 text-left sm:p-12">
+
               <div>
                 <h3 className="mb-4 flex items-center gap-2 text-xl font-black uppercase tracking-tighter">
                   <Rocket className="text-primary" /> Próximo passo
