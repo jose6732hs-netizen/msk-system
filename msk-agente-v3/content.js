@@ -91,10 +91,12 @@
       window.postMessage({ type: "MSK_GUARDIAN_STATE", enabled: guardianEnabled }, "*");
     } catch {}
     // Ao desligar, o overlay some na hora; ao ligar, é recriado no próximo apply.
-    if (!guardianEnabled && overlayEl) {
-      try { overlayEl.remove(); } catch {}
-      overlayEl = null;
-    }
+    try {
+      if (!guardianEnabled && overlayEl) {
+        overlayEl.remove();
+        overlayEl = null;
+      }
+    } catch {}
     applyGuardianMode();
     // Executa uma segunda passagem no próximo frame para acompanhar re-renderizações do Lovable.
     requestAnimationFrame(() => applyGuardianMode());
