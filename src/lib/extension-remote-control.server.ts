@@ -401,15 +401,66 @@ export async function loadRemoteControlAdmin() {
       ip_address: rows[0]?.ip_address ?? null,
       unread_replies: clientReplies.filter((row: any) => !row.read_at).length,
       replies_count: clientReplies.length,
+      suspicious: rows.some((row: any) => row.suspicious === true),
+      installation_blocked: rows.some((row: any) => row.blocked === true),
     };
   });
+  const suspicious = installRows
+    .filter((row: any) => row.suspicious === true || row.blocked === true)
+    .map((row: any) => ({
+      ...row,
+      name: profiles.get(String(row.user_id))?.name ?? "Cliente",
+      email: profiles.get(String(row.user_id))?.email ?? "—",
+    }));
   return {
     clients,
+    installations: installRows.map((row: any) => ({
+      ...row,
+      name: profiles.get(String(row.user_id))?.name ?? "Cliente",
+      email: profiles.get(String(row.user_id))?.email ?? "—",
+    })),
+    suspicious,
     commands: commands ?? [],
     replies: replyRows.map((row: any) => ({ ...row, name: profiles.get(String(row.user_id))?.name ?? "Cliente", email: profiles.get(String(row.user_id))?.email ?? "—" })),
     generated_at: new Date().toISOString(),
   };
 }
+
+/** Bloqueia (ou libera) uma instalação específica — usado contra clones. */
+export async function setInstallationBlock(
+  input: { installationId: string; blocked: boolean; reason?: string | null },
+  adminUserId: string,
+) {
+  const { data, error } = await db
+    .from("extension_installations")
+    .update({
+      blocked: input.blocked,
+      block_reason: input.blocked ? String(input.reason || "Instalação bloqueada pelo suporte MSK.").slice(0, 300) : null,
+      suspicious: input.blocked ? true : false,
+      suspicion_reason: input.blocked ? String(input.reason || "Bloqueio manual do painel MSK.").slice(0, 300) : null,
+    })
+    .eq("installation_id", input.installationId)
+    .select("id,user_id,installation_id,blocked");
+  if (error) throw error;
+  const row = (data ?? [])[0];
+  if (row?.user_id) {
+    await db.from("extension_remote_commands").insert({
+      user_id: row.user_id,
+      installation_id: input.installationId,
+      command_type: input.blocked ? "block" : "unblock",
+      title: input.blocked ? "Instalação bloqueada" : "Instalação liberada",
+      message: input.blocked
+        ? String(input.reason || "Esta instalação do MSK Agente foi bloqueada pelo suporte.")
+        : "Esta instalação do MSK Agente foi liberada novamente.",
+      severity: input.blocked ? "critical" : "success",
+      status: "pending",
+      created_by: adminUserId,
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60_000).toISOString(),
+    });
+  }
+  return { ok: true, blocked: input.blocked };
+}
+
 
 const ACTION_LABELS: Record<string, { title: string; message: string; severity: z.infer<typeof severitySchema> }> = {
   refresh: { title: "Atualizando ambiente", message: "O administrador solicitou a recarga do MSK Agente.", severity: "info" },
