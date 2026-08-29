@@ -386,24 +386,19 @@
     try {
       const stored = await chrome.storage.local.get(STORE_USERS);
       const saved = stored?.[STORE_USERS];
-      usersValue = saved?.value ? clampUsers(saved.value) : clampUsers(MIN_USERS + Math.random() * 90);
-    } catch {
-      usersValue = clampUsers(MIN_USERS + Math.random() * 90);
-    }
+      if (Number(saved?.value) > 0) usersValue = Math.round(Number(saved.value));
+    } catch {}
     renderUsers();
-    persistUsers();
-    setInterval(tickUsers, 4200 + Math.floor(Math.random() * 2600));
+
     const pullReal = () =>
       chrome.runtime.sendMessage({ type: "MSK_ACTIVE_USERS" }, response => {
         void chrome.runtime.lastError;
-        if (typeof response?.active === "number") {
-          usersReal = Math.max(0, Math.min(120, response.active));
-          renderUsers();
-        }
+        if (typeof response?.active === "number") setUsers(response.active);
       });
     pullReal();
-    setInterval(pullReal, 60000);
+    setInterval(pullReal, 30000);
   };
+
 
 
   const boot = async () => {
