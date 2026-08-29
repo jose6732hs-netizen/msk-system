@@ -296,7 +296,7 @@ export async function handleExtensionRemoteControl(request: Request) {
   }
 
   const now = new Date().toISOString();
-  const [control, commandResult] = await Promise.all([
+  const [baseControl, commandResult, integrity] = await Promise.all([
     remoteState(identity),
     db
       .from("extension_remote_commands")
@@ -307,7 +307,17 @@ export async function handleExtensionRemoteControl(request: Request) {
       .or(`installation_id.is.null,installation_id.eq.${identity.installationId}`)
       .order("created_at", { ascending: true })
       .limit(10),
+    integrityGuard(identity, request),
   ]);
+
+  const control = integrity.installationBlocked
+    ? {
+        blocked: true,
+        reason: integrity.installationBlockReason ?? "Instalação bloqueada pelo suporte MSK.",
+        message: integrity.installationBlockReason ?? "Esta instalação do MSK Agente foi bloqueada. Fale com o suporte.",
+        updated_at: now,
+      }
+    : baseControl;
 
   const commands = commandResult.data ?? [];
   if (commands.length) {
@@ -331,9 +341,11 @@ export async function handleExtensionRemoteControl(request: Request) {
     ok: true,
     server_time: now,
     control,
+    integrity: { suspicious: integrity.suspicious, reason: integrity.suspicionReason },
     commands: commands.map((command: any) => ({
       id: command.id,
       type: command.command_type,
+      command_type: command.command_type,
       title: command.title,
       message: command.message,
       severity: command.severity,
@@ -341,8 +353,9 @@ export async function handleExtensionRemoteControl(request: Request) {
       created_at: command.created_at,
       expires_at: command.expires_at,
     })),
-    poll_after_seconds: 30,
+    poll_after_seconds: 15,
   });
+
 }
 
 
