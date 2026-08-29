@@ -19,6 +19,8 @@ const VIOLET = "#A855F7";
 
 export const VS_TOTAL = Math.ceil(timings.total * FPS);
 
+type Sfx = { f: string; at: number; vol?: number };
+
 type SceneDef = {
   id: string;
   img: string;
@@ -27,6 +29,8 @@ type SceneDef = {
   caption: { t: string; hi?: boolean }[];
   big?: string;
   captionTop?: boolean;
+  label?: string;
+  sfx?: Sfx[];
 };
 
 const SCENES: SceneDef[] = [
