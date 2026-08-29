@@ -2,25 +2,51 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Ban, CheckCircle2, MessageSquare, Radio, RefreshCw, Send, ShieldAlert, Unlock } from "lucide-react";
+import { Activity, Ban, CheckCircle2, Download, Eraser, MessageSquare, Radio, RefreshCw, RotateCw, Send, ShieldAlert, Stethoscope, Unlock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminAgentCenterLive } from "@/components/msk/admin-agent-center-live";
 import {
+  extensionRemoteAdminBroadcastUpdate,
+  extensionRemoteAdminMarkRepliesRead,
   extensionRemoteAdminOverview,
+  extensionRemoteAdminSendAction,
   extensionRemoteAdminSendMessage,
   extensionRemoteAdminSetBlock,
 } from "@/lib/extension-remote-admin.functions";
 
 const fmt = (value?: string | null) => value ? new Date(value).toLocaleString("pt-BR") : "—";
 
+const isOnline = (value?: string | null) => !!value && Date.now() - Date.parse(value) < 10 * 60_000;
+
+function exportCsv(filename: string, rows: Record<string, unknown>[]) {
+  if (!rows.length) return;
+  const headers = [...new Set(rows.flatMap((row) => Object.keys(row)))];
+  const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+  const csv = [headers.join(","), ...rows.map((row) => headers.map((header) => escape(row[header])).join(","))].join("\n");
+  const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
 export function AdminAgentControlCenter() {
   const qc = useQueryClient();
   const overviewFn = useServerFn(extensionRemoteAdminOverview);
   const sendFn = useServerFn(extensionRemoteAdminSendMessage);
   const blockFn = useServerFn(extensionRemoteAdminSetBlock);
+  const actionFn = useServerFn(extensionRemoteAdminSendAction);
+  const broadcastFn = useServerFn(extensionRemoteAdminBroadcastUpdate);
+  const markReadFn = useServerFn(extensionRemoteAdminMarkRepliesRead);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline" | "blocked" | "unread">("all");
+  const [versionFilter, setVersionFilter] = useState("all");
+  const [commandFilter, setCommandFilter] = useState("all");
+  const [broadcastVersion, setBroadcastVersion] = useState("");
   const [userId, setUserId] = useState("");
   const [installationId, setInstallationId] = useState("");
   const [title, setTitle] = useState("Mensagem da MSK");
@@ -100,8 +126,49 @@ export function AdminAgentControlCenter() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const clients = data?.clients ?? [];
-  const recent = (data?.commands ?? []).slice(0, 8);
+  const allClients = (data?.clients ?? []) as any[];
+  const versions = useMemo(() => [...new Set(allClients.map((client: any) => String(client.version ?? "—")))].sort(), [allClients]);
+  const clients = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    return allClients.filter((client: any) => {
+      if (term && !`${client.email} ${client.name} ${client.user_id} ${client.ip_address ?? ""} ${(client.installations ?? []).map((i: any) => i.installation_id).join(" ")}`.toLowerCase().includes(term)) return false;
+      if (versionFilter !== "all" && String(client.version ?? "—") !== versionFilter) return false;
+      if (statusFilter === "online" && !isOnline(client.last_seen_at)) return false;
+      if (statusFilter === "offline" && isOnline(client.last_seen_at)) return false;
+      if (statusFilter === "blocked" && !client.blocked) return false;
+      if (statusFilter === "unread" && !client.unread_replies) return false;
+      return true;
+    });
+  }, [allClients, search, statusFilter, versionFilter]);
+  const replies = useMemo(
+    () => ((data?.replies ?? []) as any[]).filter((row: any) => !userId || String(row.user_id) === userId),
+    [data?.replies, userId],
+  );
+  const recent = useMemo(
+    () => ((data?.commands ?? []) as any[])
+      .filter((command: any) => (commandFilter === "all" || command.command_type === commandFilter) && (!userId || String(command.user_id) === userId))
+      .slice(0, 12),
+    [data?.commands, commandFilter, userId],
+  );
+
+  const sendAction = useMutation({
+    mutationFn: (action: "refresh" | "revalidate_license" | "clear_cache" | "diagnostic") =>
+      actionFn({ data: { userId, installationId: installationId || null, action } }),
+    onSuccess: () => { toast.success("Comando enviado para a extensão."); refresh(); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const broadcast = useMutation({
+    mutationFn: () => broadcastFn({ data: { version: broadcastVersion.trim(), mandatory: false } }),
+    onSuccess: (result: any) => { toast.success(`Aviso de atualização enviado (${result?.deliveries ?? 0} instalações).`); refresh(); },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const markRead = useMutation({
+    mutationFn: () => markReadFn({ data: { userId } }),
+    onSuccess: () => refresh(),
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   return (
     <div className="space-y-6">
