@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.17"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -990,6 +990,134 @@ export type Database = {
         }
         Relationships: []
       }
+      email_campaign_recipients: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          email: string
+          error: string | null
+          id: string
+          profile_id: string | null
+          provider_message_id: string | null
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          email: string
+          error?: string | null
+          id?: string
+          profile_id?: string | null
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          email?: string
+          error?: string | null
+          id?: string
+          profile_id?: string | null
+          provider_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaign_recipients_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaign_recipients_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_campaigns: {
+        Row: {
+          audience: string
+          campaign_key: string
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          error: string | null
+          failed_count: number
+          from_email: string | null
+          id: string
+          message: string | null
+          new_whatsapp: string
+          recipient_profile_id: string | null
+          sent_count: number
+          started_at: string | null
+          status: string
+          subject: string
+          target_count: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          audience?: string
+          campaign_key: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          failed_count?: number
+          from_email?: string | null
+          id?: string
+          message?: string | null
+          new_whatsapp?: string
+          recipient_profile_id?: string | null
+          sent_count?: number
+          started_at?: string | null
+          status?: string
+          subject: string
+          target_count?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          audience?: string
+          campaign_key?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          failed_count?: number
+          from_email?: string | null
+          id?: string
+          message?: string | null
+          new_whatsapp?: string
+          recipient_profile_id?: string | null
+          sent_count?: number
+          started_at?: string | null
+          status?: string
+          subject?: string
+          target_count?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_recipient_profile_id_fkey"
+            columns: ["recipient_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       extension_alerts: {
         Row: {
           acknowledged: boolean
@@ -1548,6 +1676,7 @@ export type Database = {
           expires_at: string | null
           id: string
           installation_id: string | null
+          last_delivery_at: string | null
           message: string | null
           payload: Json
           severity: string
@@ -1565,6 +1694,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           installation_id?: string | null
+          last_delivery_at?: string | null
           message?: string | null
           payload?: Json
           severity?: string
@@ -1582,6 +1712,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           installation_id?: string | null
+          last_delivery_at?: string | null
           message?: string | null
           payload?: Json
           severity?: string
