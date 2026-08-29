@@ -5,8 +5,16 @@ import { Download, Loader2, LockKeyhole, PackageOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getActiveExtensionChannels, getExtensionDownload } from "@/lib/extension.functions";
 
+type DownloadNotice = {
+  name: string;
+  version: string;
+  fileName?: string;
+  status: "preparing" | "started";
+};
+
 export function ExtensionDownloadCard() {
   const [busy, setBusy] = useState<string | null>(null);
+  const [downloadNotice, setDownloadNotice] = useState<DownloadNotice | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["active-extension-channels"],
@@ -19,10 +27,19 @@ export function ExtensionDownloadCard() {
   const [progress, setProgress] = useState<Record<string, number>>({});
 
   async function download(slug: string) {
+    const selectedChannel = channels.find((channel) => channel.slug === slug);
     setBusy(slug);
     setProgress((prev) => ({ ...prev, [slug]: 0 }));
+    setDownloadNotice({
+      name: selectedChannel?.display_name ?? "Extensão MSK",
+      version: selectedChannel?.version ?? "",
+      status: "preparing",
+    });
+
+    let interval: number | undefined;
+
     try {
-      const interval = window.setInterval(() => {
+      interval = window.setInterval(() => {
         setProgress((prev) => {
           const val = prev[slug] ?? 0;
           if (val >= 90) return prev;
@@ -31,17 +48,31 @@ export function ExtensionDownloadCard() {
       }, 100);
 
       const res = await getExtensionDownload({ data: { channelSlug: slug } });
-      window.clearInterval(interval);
+      if (interval) window.clearInterval(interval);
       setProgress((prev) => ({ ...prev, [slug]: 100 }));
+      setDownloadNotice({
+        name: res.channelName,
+        version: res.version,
+        fileName: res.fileName,
+        status: "started",
+      });
       await new Promise((resolve) => window.setTimeout(resolve, 300));
 
-      const a = window.document.createElement("a");
-      a.href = res.url;
-      a.download = res.fileName;
-      a.rel = "noopener";
-      a.click();
+      // Dispara o arquivo sem navegar a página atual para a URL assinada.
+      // Assim o painel continua visível mesmo enquanto o navegador inicia o download.
+      const iframe = window.document.createElement("iframe");
+      iframe.src = res.url;
+      iframe.title = `Download ${res.channelName} v${res.version}`;
+      iframe.setAttribute("aria-hidden", "true");
+      iframe.style.display = "none";
+      window.document.body.appendChild(iframe);
+      window.setTimeout(() => iframe.remove(), 30_000);
+
       toast.success(`${res.channelName} v${res.version}: download iniciado.`);
+      window.setTimeout(() => setDownloadNotice(null), 8_000);
     } catch (e) {
+      if (interval) window.clearInterval(interval);
+      setDownloadNotice(null);
       toast.error((e as Error).message || "Seu plano atual não libera este download.");
     } finally {
       window.setTimeout(() => {
@@ -61,6 +92,38 @@ export function ExtensionDownloadCard() {
       <p className="mt-1 text-sm text-muted-foreground">
         O download é liberado somente quando a sua licença comprada inclui a extensão principal.
       </p>
+
+      {downloadNotice ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-5 overflow-hidden rounded-2xl border border-primary/30 bg-primary/10 p-4 sm:p-5"
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
+              {downloadNotice.status === "preparing" ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Download className="h-5 w-5" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-black uppercase tracking-wide text-primary">
+                {downloadNotice.status === "preparing" ? "Preparando download..." : "Download iniciado"}
+              </p>
+              <p className="mt-1 truncate text-sm font-semibold text-foreground">
+                {downloadNotice.name}
+                {downloadNotice.version ? ` · Versão ${downloadNotice.version}` : ""}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {downloadNotice.status === "preparing"
+                  ? "Estamos preparando o arquivo para você."
+                  : `O arquivo ${downloadNotice.fileName ?? ".zip"} está sendo baixado. Você pode continuar nesta página.`}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {isLoading && <Loader2 className="mt-5 h-5 w-5 animate-spin text-primary" />}
 
