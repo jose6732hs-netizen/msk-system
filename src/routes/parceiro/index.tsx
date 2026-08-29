@@ -187,27 +187,32 @@ function AffiliateDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard 
                 label="Cliques Totais" 
-                value={stats.clicks.toLocaleString()} 
+                value={Number(stats.clicks ?? 0)} 
                 icon={<BarChart3 size={20} />} 
                 color="blue"
+                index={0}
               />
               <StatCard 
                 label="Cadastros" 
-                value={stats.signups.toLocaleString()} 
+                value={Number(stats.signups ?? 0)} 
                 icon={<Users size={20} />} 
                 color="purple"
+                index={1}
               />
               <StatCard 
                 label="Vendas Aprovadas" 
-                value={stats.approvedSales.toLocaleString()} 
+                value={Number(stats.approvedSales ?? 0)} 
                 icon={<ShoppingCart size={20} />} 
                 color="green"
+                index={2}
               />
               <StatCard 
                 label="Comissões Totais" 
-                value={`R$ ${stats.totalCommission.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} 
+                value={Number(stats.totalCommission ?? 0)} 
+                currency
                 icon={<TrendingUp size={20} />} 
                 color="primary"
+                index={3}
               />
             </div>
 
