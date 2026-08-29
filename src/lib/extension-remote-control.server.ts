@@ -158,16 +158,54 @@ async function remoteState(identity: Identity) {
   };
 }
 
+export function clientIp(request: Request) {
+  const raw =
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-real-ip") ||
+    (request.headers.get("x-forwarded-for") ?? "").split(",")[0] ||
+    "";
+  const ip = raw.trim();
+  return ip && ip.length <= 60 ? ip : null;
+}
+
 export async function handleExtensionRemoteControl(request: Request) {
   const auth = await authenticate(request);
   if (!auth.identity) return auth.response!;
   const identity = auth.identity;
+  const ip = clientIp(request);
+  const userAgent = (request.headers.get("user-agent") ?? "").slice(0, 300) || null;
 
   if (request.method === "POST") {
     if (!(await rateLimit("extension-control-ack", `${identity.userId}:${identity.installationId}`, 60))) {
       return json(request, { ok: false, code: "RATE_LIMITED", message: "Muitas confirmações em pouco tempo." }, 429);
     }
-    const parsed = ackSchema.safeParse(await request.json().catch(() => null));
+    const body = (await request.json().catch(() => null)) as any;
+
+    // Canal de volta: resposta escrita pelo usuário ou diagnóstico solicitado pelo admin.
+    const replyParsed = replySchema.safeParse(body);
+    if (replyParsed.success) {
+      const { error } = await db.from("extension_replies").insert({
+        command_id: replyParsed.data.command_id ?? null,
+        user_id: identity.userId,
+        installation_id: identity.installationId,
+        kind: replyParsed.data.kind,
+        body: replyParsed.data.body?.slice(0, 2000) ?? null,
+        payload: sanitizeReplyPayload(replyParsed.data.payload ?? {}),
+        ip_address: ip,
+        extension_version: identity.version,
+      });
+      if (error) return json(request, { ok: false, code: "REPLY_FAILED", message: "Não foi possível registrar a resposta." }, 500);
+      if (replyParsed.data.command_id) {
+        await db
+          .from("extension_remote_commands")
+          .update({ status: "acknowledged", acknowledged_at: new Date().toISOString() })
+          .eq("id", replyParsed.data.command_id)
+          .eq("user_id", identity.userId);
+      }
+      return json(request, { ok: true, received: true });
+    }
+
+    const parsed = ackSchema.safeParse(body);
     if (!parsed.success) return json(request, { ok: false, code: "INVALID_ACK", message: "Confirmação inválida." }, 400);
     const { data: command } = await db
       .from("extension_remote_commands")
@@ -212,7 +250,11 @@ export async function handleExtensionRemoteControl(request: Request) {
     ));
   }
 
-  await db.from("extension_installations").update({ last_seen_at: now, last_activity_at: now }).eq("installation_id", identity.installationId).eq("user_id", identity.userId);
+  await db
+    .from("extension_installations")
+    .update({ last_seen_at: now, last_activity_at: now, version: identity.version, ip_address: ip, user_agent: userAgent })
+    .eq("installation_id", identity.installationId)
+    .eq("user_id", identity.userId);
 
   return json(request, {
     ok: true,
@@ -231,6 +273,7 @@ export async function handleExtensionRemoteControl(request: Request) {
     poll_after_seconds: 30,
   });
 }
+
 
 async function profileMap(userIds: string[]) {
   if (!userIds.length) return new Map<string, any>();
