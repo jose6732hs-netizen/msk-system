@@ -208,6 +208,47 @@ export function AdminAgentCenter() {
     });
   }, [data?.errors, search, severity, provider, resolvedFilter]);
 
+  const chartVersions = useMemo(() => {
+    const raw = data?.charts as any;
+    const list = [
+      ...((raw?.errors_by_version ?? []) as any[]).map((row) => String(row.name)),
+      ...((raw?.installations_by_version ?? []) as any[]).map((row) => String(row.name)),
+    ];
+    return [...new Set(list.filter(Boolean))].sort();
+  }, [data?.charts]);
+
+  const chartProviders = useMemo(() => {
+    const raw = data?.charts as any;
+    return [...new Set(((raw?.errors_by_provider ?? []) as any[]).map((row) => String(row.name)).filter(Boolean))].sort();
+  }, [data?.charts]);
+
+  const charts = useMemo(() => {
+    const raw = (data?.charts ?? {}) as any;
+    const cutoff = Date.now() - chartDays * 24 * 60 * 60 * 1000;
+    const inPeriod = (day: string) => {
+      const parsed = Date.parse(/^\d{4}-/.test(day) ? day : `${new Date().getFullYear()}-${day}`);
+      return Number.isNaN(parsed) ? true : parsed >= cutoff;
+    };
+    const byName = (rows: any[], selected: string) =>
+      (rows ?? []).filter((row) => selected === "all" || String(row.name) === selected);
+
+    const versionOnly = chartVersion !== "all";
+    const providerOnly = chartProvider !== "all";
+
+    return {
+      active_users: ((raw.active_users ?? []) as any[]).filter((row) => inPeriod(String(row.day))),
+      commands: ((raw.commands ?? []) as any[])
+        .filter((row) => inPeriod(String(row.day)))
+        .map((row) => ({ name: row.day, value: row.commands })),
+      errors_by_version: byName(raw.errors_by_version, chartVersion),
+      errors_by_provider: byName(raw.errors_by_provider, chartProvider),
+      installations_by_version: byName(raw.installations_by_version, chartVersion),
+      errors_by_browser: versionOnly || providerOnly ? (raw.errors_by_browser ?? []) : (raw.errors_by_browser ?? []),
+      errors_by_stage: raw.errors_by_stage ?? [],
+    };
+  }, [data?.charts, chartDays, chartVersion, chartProvider]);
+
+
   async function publishRelease() {
     const version = releaseVersion.trim();
     if (!version) { toast.error("Informe a versão."); return undefined; }
