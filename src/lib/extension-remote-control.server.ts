@@ -7,6 +7,29 @@ const installationSchema = z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/);
 const versionSchema = z.string().min(1).max(64).regex(/^[0-9A-Za-z.+_-]+$/);
 const ackSchema = z.object({ command_id: z.string().uuid() });
 const severitySchema = z.enum(["info", "success", "warning", "critical"]);
+const replySchema = z.object({
+  kind: z.enum(["reply", "diagnostic"]),
+  command_id: z.string().uuid().optional().nullable(),
+  body: z.string().trim().max(2000).optional().nullable(),
+  payload: z.record(z.unknown()).optional(),
+});
+
+const SENSITIVE_REPLY_KEY = /(token|secret|password|cookie|authorization|api[_-]?key|private)/i;
+
+function sanitizeReplyPayload(value: Record<string, unknown>) {
+  const output: Record<string, unknown> = {};
+  for (const [key, raw] of Object.entries(value).slice(0, 40)) {
+    if (SENSITIVE_REPLY_KEY.test(key)) {
+      output[key.slice(0, 60)] = "[REDACTED]";
+      continue;
+    }
+    if (raw == null || typeof raw === "boolean" || typeof raw === "number") output[key.slice(0, 60)] = raw;
+    else if (typeof raw === "string") output[key.slice(0, 60)] = raw.slice(0, 600);
+    else output[key.slice(0, 60)] = JSON.stringify(raw ?? null).slice(0, 900);
+  }
+  const encoded = JSON.stringify(output);
+  return encoded.length > 15_000 ? { truncated: true, size: encoded.length } : output;
+}
 
 function cors(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
