@@ -30,12 +30,12 @@
       <div class="msk-chat"><div class="msk-msg agent">Guardião ativado. Escolha ChatGPT ou Grok para este projeto; comandos e respostas aparecerão aqui em tempo real.</div></div>
       <div class="msk-attachment-tray" hidden></div>
       <div class="msk-recorder" hidden>
-        <div class="msk-recorder-top"><span class="msk-rec-dot"></span><strong>Transcrevendo áudio</strong><time class="msk-rec-time">00:00</time></div>
+        <div class="msk-recorder-top"><img class="msk-rec-art" src="${asset("msk-mic.png")}" alt=""><span class="msk-rec-dot"></span><strong>Transcrevendo áudio</strong><time class="msk-rec-time">00:00</time></div>
         <div class="msk-wave" aria-label="Onda sonora da gravação"></div>
         <div class="msk-rec-text">Fale normalmente. A transcrição aparecerá aqui.</div>
         <div class="msk-rec-actions"><button type="button" class="msk-rec-cancel">Cancelar</button><button type="button" class="msk-rec-use">Usar transcrição</button></div>
       </div>
-      <div class="msk-compose"><button class="msk-icon msk-attach" title="Anexar arquivos">📎</button><button class="msk-icon msk-mic" title="Gravar e transcrever áudio">🎙</button><input class="msk-input" placeholder="Enviar para sua IA"><button class="msk-icon msk-send" title="Enviar à IA escolhida">➤</button><input class="msk-file-input" type="file" multiple accept="*/*" hidden></div>
+      <div class="msk-compose"><button class="msk-icon msk-attach" title="Anexar arquivos"><img src="${asset("msk-zip.png")}" alt="Anexar"></button><button class="msk-icon msk-mic" title="Gravar e transcrever áudio"><img src="${asset("msk-mic.png")}" alt="Gravar"></button><input class="msk-input" placeholder="Enviar para sua IA"><button class="msk-icon msk-send" title="Enviar à IA escolhida">➤</button><input class="msk-file-input" type="file" multiple accept="*/*" hidden></div>
       <button class="msk-apply-update" hidden>Aplicar alteração e atualizar site</button>
       <div class="msk-foot"><span class="msk-preview">● Lovable conectado</span><span class="msk-guardian-foot">Proteção contra envio ao agente Lovable</span></div>
     </section>
