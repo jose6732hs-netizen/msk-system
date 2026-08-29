@@ -231,8 +231,20 @@ async function authenticateExtension(
   };
 }
 
-async function touchInstallation(identity: ExtensionIdentity, input: { browser?: string | null; os?: string | null; metadata?: Record<string, unknown> }) {
+function extensionClientIp(request: Request) {
+  const raw =
+    request.headers.get("cf-connecting-ip") ||
+    request.headers.get("x-real-ip") ||
+    (request.headers.get("x-forwarded-for") ?? "").split(",")[0] ||
+    "";
+  const ip = raw.trim();
+  return ip && ip.length <= 60 ? ip : null;
+}
+
+async function touchInstallation(identity: ExtensionIdentity, input: { browser?: string | null; os?: string | null; metadata?: Record<string, unknown>; request?: Request; lastUrl?: string | null }) {
   const now = new Date().toISOString();
+  const ipAddress = input.request ? extensionClientIp(input.request) : null;
+  const userAgent = input.request ? (input.request.headers.get("user-agent") ?? "").slice(0, 300) || null : null;
   const metadata = sanitizeMetadata(input.metadata ?? {});
   const { data: current } = await db
     .from("extension_installations")
@@ -251,6 +263,9 @@ async function touchInstallation(identity: ExtensionIdentity, input: { browser?:
         last_seen_at: now,
         last_activity_at: now,
         metadata,
+        ...(ipAddress ? { ip_address: ipAddress } : {}),
+        ...(userAgent ? { user_agent: userAgent } : {}),
+        ...(input.lastUrl ? { last_url: input.lastUrl.slice(0, 1000) } : {}),
       })
       .eq("id", current.id)
       .eq("user_id", identity.userId);
@@ -266,6 +281,9 @@ async function touchInstallation(identity: ExtensionIdentity, input: { browser?:
       last_seen_at: now,
       last_activity_at: now,
       metadata,
+      ip_address: ipAddress,
+      user_agent: userAgent,
+      last_url: input.lastUrl?.slice(0, 1000) ?? null,
     });
     if (error) throw error;
   }
@@ -355,7 +373,7 @@ export async function handleExtensionEvent(request: Request) {
   }
   try {
     const sanitized = sanitizeMetadata(parsed.data.metadata);
-    await touchInstallation(identity, { metadata: { last_event: parsed.data.action } });
+    await touchInstallation(identity, { request, metadata: { last_event: parsed.data.action } });
     await upsertProject(identity, projectPatchForEvent(parsed.data) as any);
     const { error } = await db.from("extension_events").insert({
       event_id: parsed.data.event_id ?? crypto.randomUUID(),
@@ -453,7 +471,7 @@ export async function handleExtensionError(request: Request) {
     return extensionJson(request, { ok: false, code: "RATE_LIMITED", message: "Muitos erros enviados em pouco tempo." }, 429);
   }
   try {
-    await touchInstallation(identity, { browser: parsed.data.browser ?? null, metadata: { last_error_code: parsed.data.error_code } });
+    await touchInstallation(identity, { request, browser: parsed.data.browser ?? null, metadata: { last_error_code: parsed.data.error_code } });
     const { data: catalog } = await db
       .from("extension_error_catalog")
       .select("title,user_message,severity,recovery_action")
@@ -513,7 +531,7 @@ export async function handleExtensionHeartbeat(request: Request) {
     return extensionJson(request, { ok: false, code: "RATE_LIMITED", message: "Heartbeat muito frequente." }, 429);
   }
   try {
-    await touchInstallation(identity, { browser: parsed.data.browser ?? null, os: parsed.data.os ?? null, metadata: { provider: parsed.data.provider ?? null, project_id: parsed.data.project_id ?? null } });
+    await touchInstallation(identity, { request, lastUrl: parsed.data.workspace_url ?? null, browser: parsed.data.browser ?? null, os: parsed.data.os ?? null, metadata: { provider: parsed.data.provider ?? null, project_id: parsed.data.project_id ?? null } });
     await upsertProject(identity, {
       project_id: parsed.data.project_id,
       project_name: parsed.data.project_name,
