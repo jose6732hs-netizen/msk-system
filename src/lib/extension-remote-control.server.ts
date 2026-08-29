@@ -312,18 +312,21 @@ async function commandTargets(userId: string, installationId?: string | null) {
 }
 
 export async function loadRemoteControlAdmin() {
-  const [{ data: installations }, { data: controls }, { data: commands }] = await Promise.all([
-    db.from("extension_installations").select("id,user_id,installation_id,version,browser,os,last_seen_at,last_activity_at").order("last_seen_at", { ascending: false }).limit(1000),
+  const [{ data: installations }, { data: controls }, { data: commands }, { data: replies }] = await Promise.all([
+    db.from("extension_installations").select("id,user_id,installation_id,version,browser,os,ip_address,user_agent,last_url,last_seen_at,last_activity_at").order("last_seen_at", { ascending: false }).limit(1000),
     db.from("extension_remote_controls").select("*").order("updated_at", { ascending: false }).limit(1000),
-    db.from("extension_remote_commands").select("id,user_id,installation_id,command_type,title,message,severity,status,created_at,delivered_at,acknowledged_at,expires_at").order("created_at", { ascending: false }).limit(200),
+    db.from("extension_remote_commands").select("id,user_id,installation_id,command_type,title,message,severity,status,created_at,delivered_at,acknowledged_at,expires_at").order("created_at", { ascending: false }).limit(300),
+    db.from("extension_replies").select("id,command_id,user_id,installation_id,kind,body,payload,ip_address,extension_version,read_at,created_at").order("created_at", { ascending: false }).limit(300),
   ]);
   const installRows = installations ?? [];
   const userIds: string[] = [...new Set(installRows.map((row: any) => String(row.user_id)))] as string[];
   const profiles = await profileMap(userIds);
   const controlRows = controls ?? [];
+  const replyRows = replies ?? [];
   const clients = userIds.map((userId) => {
     const rows = installRows.filter((row: any) => String(row.user_id) === userId);
     const globalControl = controlRows.find((row: any) => String(row.user_id) === userId && row.installation_id == null) ?? null;
+    const clientReplies = replyRows.filter((row: any) => String(row.user_id) === userId);
     return {
       user_id: userId,
       name: profiles.get(userId)?.name ?? "Cliente",
@@ -334,10 +337,92 @@ export async function loadRemoteControlAdmin() {
       installations: rows,
       last_seen_at: rows[0]?.last_seen_at ?? null,
       version: rows[0]?.version ?? "—",
+      ip_address: rows[0]?.ip_address ?? null,
+      unread_replies: clientReplies.filter((row: any) => !row.read_at).length,
+      replies_count: clientReplies.length,
     };
   });
-  return { clients, commands: commands ?? [], generated_at: new Date().toISOString() };
+  return {
+    clients,
+    commands: commands ?? [],
+    replies: replyRows.map((row: any) => ({ ...row, name: profiles.get(String(row.user_id))?.name ?? "Cliente", email: profiles.get(String(row.user_id))?.email ?? "—" })),
+    generated_at: new Date().toISOString(),
+  };
 }
+
+const ACTION_LABELS: Record<string, { title: string; message: string; severity: z.infer<typeof severitySchema> }> = {
+  refresh: { title: "Atualizando ambiente", message: "O administrador solicitou a recarga do MSK Agente.", severity: "info" },
+  revalidate_license: { title: "Revalidando licença", message: "Sua licença está sendo revalidada automaticamente.", severity: "info" },
+  clear_cache: { title: "Limpando cache local", message: "O cache local do MSK Agente foi limpo pelo suporte.", severity: "warning" },
+  diagnostic: { title: "Diagnóstico solicitado", message: "O suporte MSK solicitou um diagnóstico desta instalação.", severity: "info" },
+  update_notice: { title: "Atualização disponível", message: "Uma nova versão do MSK Agente está publicada. Atualize para continuar com tudo funcionando.", severity: "warning" },
+};
+
+export async function sendRemoteAction(
+  input: { userId: string; installationId?: string | null; action: keyof typeof ACTION_LABELS; payload?: Record<string, unknown> },
+  adminUserId: string,
+) {
+  const preset = ACTION_LABELS[input.action];
+  if (!preset) throw new Error("Ação remota inválida.");
+  const targets = await commandTargets(input.userId, input.installationId);
+  const rows = targets.map((target) => ({
+    user_id: input.userId,
+    installation_id: target,
+    command_type: input.action,
+    title: preset.title,
+    message: preset.message,
+    severity: preset.severity,
+    status: "pending",
+    payload: input.payload ?? {},
+    created_by: adminUserId,
+    expires_at: new Date(Date.now() + 3 * 24 * 60 * 60_000).toISOString(),
+  }));
+  const { data, error } = await db.from("extension_remote_commands").insert(rows).select("id,installation_id,status");
+  if (error) throw error;
+  return { ok: true, deliveries: data ?? [] };
+}
+
+export async function broadcastUpdateNotice(
+  input: { version: string; downloadUrl?: string | null; mandatory?: boolean },
+  adminUserId: string,
+) {
+  const { data: installations } = await db
+    .from("extension_installations")
+    .select("user_id,installation_id,version")
+    .order("last_seen_at", { ascending: false })
+    .limit(5000);
+  const targets = (installations ?? []).filter((row: any) => String(row.version ?? "") !== input.version);
+  if (!targets.length) return { ok: true, deliveries: 0 };
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60_000).toISOString();
+  const rows = targets.map((row: any) => ({
+    user_id: row.user_id,
+    installation_id: row.installation_id,
+    command_type: "update_notice",
+    title: `MSK Agente ${input.version} disponível`,
+    message: input.mandatory
+      ? `A versão ${input.version} é obrigatória. Atualize agora para continuar usando o MSK Agente.`
+      : `A versão ${input.version} do MSK Agente foi publicada. Atualize para receber as melhorias.`,
+    severity: input.mandatory ? "critical" : "warning",
+    status: "pending",
+    payload: { version: input.version, download_url: input.downloadUrl ?? null, mandatory: !!input.mandatory },
+    created_by: adminUserId,
+    expires_at: expiresAt,
+  }));
+  const { error } = await db.from("extension_remote_commands").insert(rows);
+  if (error) throw error;
+  return { ok: true, deliveries: rows.length };
+}
+
+export async function markRepliesRead(userId: string) {
+  const { error } = await db
+    .from("extension_replies")
+    .update({ read_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .is("read_at", null);
+  if (error) throw error;
+  return { ok: true };
+}
+
 
 export async function sendRemoteMessage(input: { userId: string; installationId?: string | null; title: string; message: string; severity: z.infer<typeof severitySchema> }, adminUserId: string) {
   const targets = await commandTargets(input.userId, input.installationId);
