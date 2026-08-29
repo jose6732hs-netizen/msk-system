@@ -195,13 +195,18 @@ function AuthPage() {
         setConfirmPassword("");
         window.history.replaceState({}, "", "/auth?mode=login");
         setMode("login");
-        toast.success("Senha redefinida com segurança. Entre novamente com a nova senha.");
+        toast.success("Senha definida com segurança. Agora você também pode entrar com e-mail e senha.");
         return;
       }
 
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
+        if (error) {
+          if (/invalid login credentials/i.test(error.message)) {
+            throw new Error("E-mail ou senha inválidos. Se esta conta foi criada com Google, use 'Ativar senha da conta Google' uma vez.");
+          }
+          throw error;
+        }
         await attachRef();
         
         if (search.next?.includes('parceiro')) {
@@ -249,6 +254,25 @@ function AuthPage() {
     { id: "github", label: "GitHub", Icon: GitHubIcon },
     { id: "discord", label: "Discord", Icon: DiscordIcon },
   ] as const;
+
+  async function activatePasswordWithGoogle() {
+    try {
+      const next = search.next || "/painel";
+      try {
+        sessionStorage.setItem("post-auth-redirect", next);
+      } catch {
+        /* storage indisponível */
+      }
+
+      const params = new URLSearchParams({ mode: "new-password", next });
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/auth?${params.toString()}`,
+      });
+      if (result.error) throw result.error;
+    } catch (err) {
+      toast.error((err as Error)?.message || "Não foi possível ativar o acesso por senha.");
+    }
+  }
 
   async function social(provider: (typeof PROVIDERS)[number]["id"]) {
     try {
@@ -487,6 +511,13 @@ function AuthPage() {
                       onClick={() => setMode("reset")}
                     >
                       Esqueci minha senha
+                    </button>
+                    <button
+                      type="button"
+                      className="block w-full font-medium text-primary hover:underline"
+                      onClick={activatePasswordWithGoogle}
+                    >
+                      Ativar senha da conta Google
                     </button>
                   </>
                 )}
