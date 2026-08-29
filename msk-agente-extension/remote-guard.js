@@ -57,12 +57,41 @@
         h3{margin:5px 0 0;font-size:16px;line-height:1.25;font-weight:900}.msg{margin-top:9px;color:#c9c6ce;font-size:12.5px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
         button{width:32px;height:32px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#aaa;cursor:pointer;font-size:18px}.bar{height:3px;border-radius:99px;margin-top:14px;background:#58ef75}
         .warning .bar{background:#f5b942}.critical .bar{background:#ff4d68}.success .bar{background:#40e397}
+        .reply{margin-top:12px;display:flex;gap:8px;align-items:flex-end}
+        textarea{flex:1;min-height:38px;max-height:120px;resize:vertical;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:#fff;padding:9px 11px;font-size:12px;font-family:inherit;outline:none}
+        textarea:focus{border-color:rgba(138,255,114,.5)}
+        .send{width:auto;height:38px;padding:0 14px;border-radius:12px;border:1px solid rgba(138,255,114,.45);background:rgba(138,255,114,.14);color:#8aff72;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+        .status{margin-top:8px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#8aff72;display:none}
         @keyframes in{from{opacity:0;transform:translateY(-8px) scale(.98)}to{opacity:1;transform:none}}
       </style>
-      <div class="wrap ${severity}"><section class="card"><div class="top"><div><div class="brand">Mensagem MSK SISTEM</div><h3 id="title"></h3></div><button id="close" aria-label="Fechar">×</button></div><div class="msg" id="message"></div><div class="bar"></div></section></div>`;
+      <div class="wrap ${severity}"><section class="card"><div class="top"><div><div class="brand">Mensagem MSK SISTEM</div><h3 id="title"></h3></div><button id="close" aria-label="Fechar">×</button></div><div class="msg" id="message"></div><div class="reply"><textarea id="reply" rows="1" placeholder="Responder ao suporte MSK…"></textarea><button class="send" id="send">Enviar</button></div><div class="status" id="status">Resposta enviada ao suporte MSK</div><div class="bar"></div></section></div>`;
     shadow.getElementById("title").textContent = String(command?.title || "Mensagem da MSK").slice(0, 180);
     shadow.getElementById("message").textContent = String(command?.message || "").slice(0, 2000);
     shadow.getElementById("close").addEventListener("click", () => root.remove());
+
+    const replyBox = shadow.getElementById("reply");
+    const sendButton = shadow.getElementById("send");
+    const status = shadow.getElementById("status");
+    const submit = () => {
+      const body = String(replyBox.value || "").trim();
+      if (!body) return;
+      sendButton.disabled = true;
+      sendButton.textContent = "Enviando";
+      chrome.runtime.sendMessage({ type: "MSK_REMOTE_REPLY", commandId: command?.id || null, body }, (response) => {
+        sendButton.disabled = false;
+        sendButton.textContent = response?.ok ? "Enviado" : "Tentar";
+        status.style.display = "block";
+        status.textContent = response?.ok ? "Resposta enviada ao suporte MSK" : "Não foi possível enviar agora";
+        if (response?.ok) {
+          replyBox.value = "";
+          setTimeout(() => root.remove(), 2200);
+        }
+      });
+    };
+    sendButton.addEventListener("click", submit);
+    replyBox.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) submit();
+    });
   }
 
   chrome.runtime.onMessage.addListener((message) => {

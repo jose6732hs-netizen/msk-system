@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MSK Agente — Guardião Lovable",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "Agente MSK multiusuário com conta, licença exclusiva do produto Agente, GitHub persistente, projetos, chat, skills, histórico, telemetria segura, controle remoto e atualização assistida.",
   "permissions": [
     "storage",
