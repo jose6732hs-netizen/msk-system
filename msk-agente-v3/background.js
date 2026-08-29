@@ -2520,25 +2520,72 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return undefined;
 });
 
-/* ===== Download do projeto conectado (ZIP do repositório GitHub) ===== */
-const mskDownloadProjectZip = async ({ repo, projectId }) => {
-  const clean = String(repo || "").replace(/^https?:\/\/github\.com\//i, "").replace(/\.git$/i, "").trim();
-  if (!/^[\w.-]+\/[\w.-]+$/.test(clean)) {
-    return { ok: false, message: "Conecte o GitHub do projeto para baixar o ZIP completo." };
+/* ===== Download real do projeto conectado (ZIP do repositório GitHub) ===== */
+const mskGithubBranchExists = async (repo, branch) => {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${repo}/branches/${encodeURIComponent(branch)}`, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
-  const filename = `${projectId ? `lovable-${String(projectId).slice(0, 8)}-` : ""}${clean.split("/")[1]}.zip`;
-  for (const branch of ["main", "master"]) {
+};
+
+const mskResolveProjectRepo = async ({ projectId, repo }) => {
+  const { mskLicense } = await chrome.storage.local.get("mskLicense");
+  if (!mskLicense?.token) return { ok: false, code: "GITHUB_NOT_CONNECTED", message: "Conecte sua licença MSK primeiro." };
+  const installId = await mskEnsureInstallationId();
+  const version = chrome.runtime.getManifest().version;
+  const result = await mskPanelFetch(`${MSK_SAAS_ORIGIN}/api/extension/github-download`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${String(mskLicense.token).trim()}`,
+      "X-MSK-Installation-Id": installId,
+      "X-MSK-Extension-Version": version,
+      "X-MSK-Extension-Id": chrome.runtime.id,
+    },
+    body: JSON.stringify({ project_id: String(projectId || ""), repository: repo ? String(repo) : null }),
+  });
+  if (result.ok && result.data?.ok) return { ok: true, ...result.data };
+  return {
+    ok: false,
+    code: result.data?.code || "DOWNLOAD_FAILED",
+    message: result.data?.message || "Não foi possível preparar o projeto.",
+  };
+};
+
+const mskDownloadProjectZip = async ({ repo, projectId }) => {
+  console.log("[MSK Download] Project detected", String(projectId || "").slice(0, 8) || "—");
+  const resolved = await mskResolveProjectRepo({ projectId, repo });
+  if (!resolved.ok) return resolved;
+  console.log("[MSK Download] Repository detected", resolved.repository);
+
+  const branches = Array.isArray(resolved.branches) && resolved.branches.length ? resolved.branches : ["main", "master"];
+  const ordered = [];
+  for (const branch of branches) {
+    if (await mskGithubBranchExists(resolved.repository, branch)) ordered.unshift(branch);
+    else ordered.push(branch);
+  }
+
+  for (const branch of ordered) {
     try {
+      console.log("[MSK Download] Archive requested", branch);
       const downloadId = await chrome.downloads.download({
-        url: `https://github.com/${clean}/archive/refs/heads/${branch}.zip`,
-        filename,
+        url: `https://github.com/${resolved.repository}/archive/refs/heads/${branch}.zip`,
+        filename: resolved.filename || `${resolved.repository.split("/")[1]}.zip`,
       });
-      if (downloadId) return { ok: true, downloadId, repo: clean, branch };
+      if (downloadId) {
+        console.log("[MSK Download] Download started");
+        return { ok: true, downloadId, repo: resolved.repository, branch, filename: resolved.filename };
+      }
     } catch {
       /* tenta o próximo branch */
     }
   }
-  return { ok: false, message: "Não consegui iniciar o download do projeto agora." };
+  return { ok: false, code: "DOWNLOAD_FAILED", message: "Não foi possível preparar o projeto." };
 };
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
