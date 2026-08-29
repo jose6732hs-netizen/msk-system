@@ -1,11 +1,25 @@
 (() => {
   "use strict";
-  if (window.__MSK_UI_FIXES_3424__) return;
-  window.__MSK_UI_FIXES_3424__ = true;
+  if (window.__MSK_UI_FIXES_3428__) return;
+  window.__MSK_UI_FIXES_3428__ = true;
 
   const getRoot = () => document.querySelector("#msk-root");
   let cleanupRun = 0;
   let observer = null;
+
+  // Remove SOMENTE a parte visual do anexo. O objeto interno continua vivo para
+  // que imagem, áudio, ZIP ou outro arquivo termine de ser enviado normalmente.
+  const clearAttachmentTrayVisual = () => {
+    const root = getRoot();
+    if (!root) return false;
+    const tray = root.querySelector(".msk-attachment-tray");
+    if (!tray || tray.hidden || !tray.querySelector(".msk-file-chip")) return false;
+    tray.replaceChildren();
+    tray.hidden = true;
+    const fileInput = root.querySelector(".msk-file-input");
+    if (fileInput) fileInput.value = "";
+    return true;
+  };
 
   const clearSentAttachmentTray = () => {
     const root = getRoot();
@@ -78,6 +92,17 @@
       attributeFilter: ["class", "hidden"]
     });
   };
+
+  // O content.js limpa o campo e dispara um evento input programático quando o
+  // comando foi aceito para envio. Nesse MESMO instante escondemos os anexos.
+  // isTrusted=false evita apagar anexos quando o usuário apenas apaga o texto à mão.
+  document.addEventListener("input", event => {
+    const field = event.target;
+    if (!field?.matches?.("#msk-root .msk-input")) return;
+    if (event.isTrusted) return;
+    if (String(field.value || "").trim()) return;
+    clearAttachmentTrayVisual();
+  }, true);
 
   document.addEventListener("click", event => {
     if (event.target?.closest?.("#msk-root .msk-send")) armAttachmentCleanup();
