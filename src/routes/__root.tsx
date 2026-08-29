@@ -229,6 +229,8 @@ import { Home, CreditCard, LayoutDashboard, Share2, Menu, X, Download, ShieldChe
 import { PwaInstallBanner } from "@/components/msk/pwa-install-banner";
 import { PushPermissionPrompt } from "@/components/msk/push-permission-prompt";
 import { WhatsappSupportButton } from "@/components/msk/whatsapp-support";
+import { PresenceTracker } from "@/components/msk/presence-tracker";
+
 
 import { MskLogo } from "@/components/msk/logo";
 import { Button } from "@/components/ui/button";
