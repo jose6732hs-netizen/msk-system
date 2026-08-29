@@ -470,7 +470,7 @@ function StatCard({ label, value, currency, icon, color, index = 0 }: StatCardPr
        </div>
        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 truncate w-full">{label}</p>
        <h4 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
-         <CountUp value={value} currency={currency} />
+         <CountUp value={value} currency={currency ?? false} />
        </h4>
        <div className="mt-4 h-[3px] w-full rounded-full bg-white/5 holo-bar" />
     </div>
