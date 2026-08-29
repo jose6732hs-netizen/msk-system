@@ -172,3 +172,7 @@
   width: 7px; height: 7px; border-radius: 50%; background: #22ffa7;
   animation: msk-live-pulse 2.4s ease-in-out infinite;
 }
+
+#msk-root .msk-users-chip b { display: inline-block; transition: opacity .18s ease, transform .18s ease; }
+#msk-root .msk-users-chip b.msk-users-bump { animation: msk-users-bump .34s ease; }
+@keyframes msk-users-bump { 0% { opacity: .45; transform: scale(.94); } 100% { opacity: 1; transform: scale(1); } }

@@ -2477,11 +2477,11 @@ const mskPullRemoteMessages = async () => {
 };
 
 const mskFetchActiveUsers = async () => {
-  const result = await mskPanelFetch(`${MSK_SAAS_ORIGIN}/api/public/extension/active-users`, {
+  const result = await mskPanelFetch(`${MSK_SAAS_ORIGIN}/api/public/presence`, {
     method: "GET",
     headers: { Accept: "application/json" },
   });
-  const active = Number(result.data?.active);
+  const active = Number(result.data?.online);
   return Number.isFinite(active) ? active : null;
 };
 
