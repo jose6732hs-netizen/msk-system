@@ -2485,7 +2485,30 @@ const mskFetchActiveUsers = async () => {
   return Number.isFinite(active) ? active : null;
 };
 
+const mskAckRemote = async commandId => {
+  const { mskLicense } = await chrome.storage.local.get("mskLicense");
+  if (!mskLicense?.token) return { ok: false };
+  const installId = await mskEnsureInstallationId();
+  const version = chrome.runtime.getManifest().version;
+  return mskPanelFetch(`${MSK_SAAS_ORIGIN}/api/extension/control`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      Authorization: `Bearer ${String(mskLicense.token).trim()}`,
+      "X-MSK-Installation-Id": installId,
+      "X-MSK-Extension-Version": version,
+      "X-MSK-Extension-Id": chrome.runtime.id,
+    },
+    body: JSON.stringify({ command_id: commandId }),
+  });
+};
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.type === "MSK_REMOTE_ACK") {
+    mskAckRemote(message.id).then(sendResponse, () => sendResponse({ ok: false }));
+    return true;
+  }
   if (message?.type === "MSK_REMOTE_PULL") {
     mskPullRemoteMessages().then(sendResponse, () => sendResponse({ ok: false, commands: [] }));
     return true;

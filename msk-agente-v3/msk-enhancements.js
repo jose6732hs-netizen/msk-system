@@ -159,7 +159,13 @@
   };
 
   const markAllRead = () => {
-    messages.forEach(item => readIds.add(String(item.id)));
+    messages.forEach(item => {
+      const id = String(item.id);
+      if (!readIds.has(id)) {
+        chrome.runtime.sendMessage({ type: "MSK_REMOTE_ACK", id }, () => void chrome.runtime.lastError);
+      }
+      readIds.add(id);
+    });
     chrome.storage.local.set({ [STORE_READ]: [...readIds].slice(-300) }).catch(() => {});
     renderBell();
   };
