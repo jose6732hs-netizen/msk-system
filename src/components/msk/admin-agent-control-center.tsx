@@ -45,8 +45,9 @@ export function AdminAgentControlCenter() {
   const actionFn = useServerFn(extensionRemoteAdminSendAction);
   const broadcastFn = useServerFn(extensionRemoteAdminBroadcastUpdate);
   const markReadFn = useServerFn(extensionRemoteAdminMarkRepliesRead);
+  const blockInstallationFn = useServerFn(extensionRemoteAdminBlockInstallation);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline" | "blocked" | "unread">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline" | "blocked" | "unread" | "suspicious">("all");
   const [versionFilter, setVersionFilter] = useState("all");
   const [commandFilter, setCommandFilter] = useState("all");
   const [broadcastVersion, setBroadcastVersion] = useState("");
@@ -57,10 +58,10 @@ export function AdminAgentControlCenter() {
   const [severity, setSeverity] = useState<"info" | "success" | "warning" | "critical">("info");
   const [blockReason, setBlockReason] = useState("Bloqueado pelo administrador");
 
-  const { data, isLoading, isFetching } = useQuery({
+  const { data, isLoading, isFetching, dataUpdatedAt } = useQuery({
     queryKey: ["extension-remote-admin"],
     queryFn: () => overviewFn(),
-    refetchInterval: 30_000,
+    refetchInterval: 8_000,
   });
 
   useEffect(() => {
@@ -78,11 +79,14 @@ export function AdminAgentControlCenter() {
       .channel("msk-agent-remote-admin")
       .on("postgres_changes", { event: "*", schema: "public", table: "extension_remote_commands" }, refresh)
       .on("postgres_changes", { event: "*", schema: "public", table: "extension_remote_controls" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "extension_installations" }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "extension_replies" }, refresh)
       .subscribe();
     return () => {
       if (timer) clearTimeout(timer);
       void supabase.removeChannel(channel);
     };
+
   }, [qc]);
 
   const selected = useMemo(
