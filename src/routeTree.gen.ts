@@ -17,6 +17,7 @@ import { Route as ClonagemRouteImport } from './routes/clonagem'
 import { Route as ComoFuncionaRouteImport } from './routes/como-funciona'
 import { Route as DocumentacaoRouteImport } from './routes/documentacao'
 import { Route as McpRouteImport } from './routes/mcp'
+import { Route as MskAgenteVsChatgptRouteImport } from './routes/msk-agente-vs-chatgpt'
 import { Route as PlanosRouteImport } from './routes/planos'
 import { Route as PremiacoesRouteImport } from './routes/premiacoes'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
@@ -102,6 +103,11 @@ const DocumentacaoRoute = DocumentacaoRouteImport.update({
 const McpRoute = McpRouteImport.update({
   id: '/mcp',
   path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MskAgenteVsChatgptRoute = MskAgenteVsChatgptRouteImport.update({
+  id: '/msk-agente-vs-chatgpt',
+  path: '/msk-agente-vs-chatgpt',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanosRoute = PlanosRouteImport.update({
@@ -369,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/como-funciona': typeof ComoFuncionaRoute
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
+  '/msk-agente-vs-chatgpt': typeof MskAgenteVsChatgptRoute
   '/planos': typeof PlanosRoute
   '/premiacoes': typeof PremiacoesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -425,6 +432,7 @@ export interface FileRoutesByTo {
   '/como-funciona': typeof ComoFuncionaRoute
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
+  '/msk-agente-vs-chatgpt': typeof MskAgenteVsChatgptRoute
   '/planos': typeof PlanosRoute
   '/premiacoes': typeof PremiacoesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -483,6 +491,7 @@ export interface FileRoutesById {
   '/como-funciona': typeof ComoFuncionaRoute
   '/documentacao': typeof DocumentacaoRoute
   '/mcp': typeof McpRoute
+  '/msk-agente-vs-chatgpt': typeof MskAgenteVsChatgptRoute
   '/planos': typeof PlanosRoute
   '/premiacoes': typeof PremiacoesRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
@@ -541,6 +550,7 @@ export interface FileRouteTypes {
     | '/como-funciona'
     | '/documentacao'
     | '/mcp'
+    | '/msk-agente-vs-chatgpt'
     | '/planos'
     | '/premiacoes'
     | '/.mcp/list-tools'
@@ -597,6 +607,7 @@ export interface FileRouteTypes {
     | '/como-funciona'
     | '/documentacao'
     | '/mcp'
+    | '/msk-agente-vs-chatgpt'
     | '/planos'
     | '/premiacoes'
     | '/.mcp/list-tools'
@@ -654,6 +665,7 @@ export interface FileRouteTypes {
     | '/como-funciona'
     | '/documentacao'
     | '/mcp'
+    | '/msk-agente-vs-chatgpt'
     | '/planos'
     | '/premiacoes'
     | '/.mcp/list-tools'
@@ -712,6 +724,7 @@ export interface RootRouteChildren {
   ComoFuncionaRoute: typeof ComoFuncionaRoute
   DocumentacaoRoute: typeof DocumentacaoRoute
   McpRoute: typeof McpRoute
+  MskAgenteVsChatgptRoute: typeof MskAgenteVsChatgptRoute
   PlanosRoute: typeof PlanosRoute
   PremiacoesRoute: typeof PremiacoesRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
@@ -811,6 +824,13 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/msk-agente-vs-chatgpt': {
+      id: '/msk-agente-vs-chatgpt'
+      path: '/msk-agente-vs-chatgpt'
+      fullPath: '/msk-agente-vs-chatgpt'
+      preLoaderRoute: typeof MskAgenteVsChatgptRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planos': {
@@ -1185,6 +1205,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComoFuncionaRoute: ComoFuncionaRoute,
   DocumentacaoRoute: DocumentacaoRoute,
   McpRoute: McpRoute,
+  MskAgenteVsChatgptRoute: MskAgenteVsChatgptRoute,
   PlanosRoute: PlanosRoute,
   PremiacoesRoute: PremiacoesRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,

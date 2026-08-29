@@ -14,11 +14,13 @@ import { MskLogo } from "./logo";
 
 const NAV = [
   { to: "/planos", label: "Planos" },
+  { to: "/msk-agente-vs-chatgpt", label: "MSK vs ChatGPT" },
   { to: "/clonagem", label: "Clonador" },
   { to: "/documentacao", label: "Documentação" },
   { to: "/como-funciona", label: "Como Funciona" },
   { to: "/parceiro", label: "Afiliados" },
 ] as const;
+
 
 export function SiteHeader({ mobileMenuOnly = false }: { mobileMenuOnly?: boolean }) {
   const navigate = useNavigate();
