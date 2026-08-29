@@ -69,11 +69,38 @@
     (document.head || document.documentElement).appendChild(style);
   };
 
-  const grokUserNodes = () => {
-    const selectors=['[data-message-author-role="user"]','[data-testid*="user-message" i]','[data-testid*="message" i]','main article','main [class*="message" i]'];
-    const nodes=selectors.flatMap(sel=>[...document.querySelectorAll(sel)]).filter(node=>node?.isConnected && !node.closest('nav,aside,form'));
-    return [...new Set(nodes)];
+  // Bolhas do usuário no Grok: cobre os layouts atuais (message-bubble / alinhamento à direita)
+  // além dos atributos semânticos, para o card "Enviado por MSK" nunca ficar de fora.
+  const isUserBubble = node => {
+    if(!(node instanceof Element)) return false;
+    if(node.matches('[data-message-author-role="user"]')) return true;
+    if(node.closest('[data-message-author-role="user"]')) return true;
+    if(node.classList.contains('msk-grok-sent-message')) return true;
+    const cls=`${node.className || ''}`;
+    if(/items-end|justify-end|user-message|message-bubble/i.test(cls) && !/assistant|response/i.test(cls)) {
+      // bolha à direita = mensagem enviada pelo usuário
+      const rect=node.getBoundingClientRect?.();
+      if(/items-end|justify-end|user/i.test(cls)) return true;
+      if(rect && rect.width && rect.right > (window.innerWidth * 0.55)) return true;
+    }
+    return false;
   };
+
+  const grokUserNodes = () => {
+    const selectors=[
+      '[data-message-author-role="user"]',
+      '[data-testid*="user-message" i]',
+      '[data-testid*="user" i]',
+      '.message-bubble',
+      'main [class*="items-end" i] [class*="message" i]',
+      'main [class*="items-end" i]',
+      'main [class*="message" i]'
+    ];
+    const nodes=selectors.flatMap(sel=>{ try{ return [...document.querySelectorAll(sel)]; }catch{ return []; } })
+      .filter(node=>node?.isConnected && !node.closest('nav,aside,form') && !node.closest('[contenteditable="true"]'));
+    return [...new Set(nodes)].filter(node=>isUserBubble(node) || node.querySelector?.('.msk-sent-card'));
+  };
+
 
   const rememberMskSentPrompt = async (fullText, displayText, projectId='') => {
     const cleanFull=String(fullText || '').trim(); if(!cleanFull) return null;
