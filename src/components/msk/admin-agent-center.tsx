@@ -294,9 +294,25 @@ export function AdminAgentCenter() {
               ))}
             </div>
           ) : null}
-          <div className="grid gap-4 xl:grid-cols-2"><ChartCard title="Usuários ativos por dia" data={data?.charts?.active_users ?? []} dataKey="users" line /><ChartCard title="Comandos enviados" data={(data?.charts?.commands ?? []).map((row: any) => ({ name: row.day, value: row.commands }))} dataKey="value" /></div>
-          <div className="grid gap-4 xl:grid-cols-3"><ChartCard title="Erros por versão" data={data?.charts?.errors_by_version ?? []} dataKey="value" /><ChartCard title="Erros por provedor" data={data?.charts?.errors_by_provider ?? []} dataKey="value" /><ChartCard title="Instalações por versão" data={data?.charts?.installations_by_version ?? []} dataKey="value" /></div>
-          <div className="grid gap-4 xl:grid-cols-2"><ChartCard title="Erros por navegador" data={data?.charts?.errors_by_browser ?? []} dataKey="value" /><ChartCard title="Erros por etapa" data={data?.charts?.errors_by_stage ?? []} dataKey="value" /></div>
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+            <span className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Filtros dos gráficos</span>
+            {[7, 14, 30].map((days) => (
+              <Button key={days} size="sm" variant={chartDays === days ? "default" : "outline"} onClick={() => setChartDays(days)}>
+                {days} dias
+              </Button>
+            ))}
+            <select value={chartVersion} onChange={(event) => setChartVersion(event.target.value)} className="rounded-lg border border-white/10 bg-background/60 px-2 py-1 text-xs">
+              <option value="all">Todas as versões</option>
+              {chartVersions.map((version) => <option key={version} value={version}>v{version}</option>)}
+            </select>
+            <select value={chartProvider} onChange={(event) => setChartProvider(event.target.value)} className="rounded-lg border border-white/10 bg-background/60 px-2 py-1 text-xs">
+              <option value="all">Todos os provedores</option>
+              {chartProviders.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2"><ChartCard title="Usuários ativos por dia" data={charts.active_users} dataKey="users" line /><ChartCard title="Comandos enviados" data={charts.commands} dataKey="value" /></div>
+          <div className="grid gap-4 xl:grid-cols-3"><ChartCard title="Erros por versão" data={charts.errors_by_version} dataKey="value" /><ChartCard title="Erros por provedor" data={charts.errors_by_provider} dataKey="value" /><ChartCard title="Instalações por versão" data={charts.installations_by_version} dataKey="value" /></div>
+          <div className="grid gap-4 xl:grid-cols-2"><ChartCard title="Erros por navegador" data={charts.errors_by_browser} dataKey="value" /><ChartCard title="Erros por etapa" data={charts.errors_by_stage} dataKey="value" /></div>
         </div>
       ) : null}
 
