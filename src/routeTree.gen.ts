@@ -43,6 +43,7 @@ import { Route as ApiExtensionVersionRouteImport } from './routes/api/extension/
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
+import { Route as ApiPublicPresenceRouteImport } from './routes/api/public/presence'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
 import { Route as ApiPublicCmsUploadRouteImport } from './routes/api/public/cms.upload'
 import { Route as ApiPublicCronReconcilePaymentsRouteImport } from './routes/api/public/cron/reconcile-payments'
@@ -240,6 +241,11 @@ const ApiPublicOpenapiRoute = ApiPublicOpenapiRouteImport.update({
   path: '/api/public/openapi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPresenceRoute = ApiPublicPresenceRouteImport.update({
+  id: '/api/public/presence',
+  path: '/api/public/presence',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExtRuntimeManifestRoute = ExtRuntimeManifestRouteImport.update({
   id: '/ext/runtime/manifest',
   path: '/ext/runtime/manifest',
@@ -408,6 +414,7 @@ export interface FileRoutesByFullPath {
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/api/public/presence': typeof ApiPublicPresenceRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
@@ -466,6 +473,7 @@ export interface FileRoutesByTo {
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/api/public/presence': typeof ApiPublicPresenceRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
@@ -526,6 +534,7 @@ export interface FileRoutesById {
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/api/public/presence': typeof ApiPublicPresenceRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
@@ -586,6 +595,7 @@ export interface FileRouteTypes {
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
+    | '/api/public/presence'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
@@ -644,6 +654,7 @@ export interface FileRouteTypes {
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
+    | '/api/public/presence'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
@@ -703,6 +714,7 @@ export interface FileRouteTypes {
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
+    | '/api/public/presence'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
@@ -758,6 +770,7 @@ export interface RootRouteChildren {
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
+  ApiPublicPresenceRoute: typeof ApiPublicPresenceRoute
   ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
   ApiPublicCronReconcilePaymentsRoute: typeof ApiPublicCronReconcilePaymentsRoute
   ApiPublicCronRenewLicensesRoute: typeof ApiPublicCronRenewLicensesRoute
@@ -1022,6 +1035,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicOpenapiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/presence': {
+      id: '/api/public/presence'
+      path: '/api/public/presence'
+      fullPath: '/api/public/presence'
+      preLoaderRoute: typeof ApiPublicPresenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ext/runtime/manifest': {
       id: '/ext/runtime/manifest'
       path: '/ext/runtime/manifest'
@@ -1248,6 +1268,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
+  ApiPublicPresenceRoute: ApiPublicPresenceRoute,
   ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
   ApiPublicCronReconcilePaymentsRoute: ApiPublicCronReconcilePaymentsRoute,
   ApiPublicCronRenewLicensesRoute: ApiPublicCronRenewLicensesRoute,
