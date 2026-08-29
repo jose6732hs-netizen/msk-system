@@ -330,7 +330,21 @@ export async function saveExtensionRelease(input: {
     if (response.error) throw new Error(response.error.message);
     result = response.data;
   }
-  return { ok: true, release: result };
+  let notified = 0;
+  if (input.status === "released") {
+    try {
+      const { broadcastUpdateNotice } = await import("./extension-remote-control.server");
+      const outcome = await broadcastUpdateNotice(
+        { version: input.version, downloadUrl: input.downloadUrl || null, mandatory: input.mandatory },
+        adminId,
+      );
+      notified = outcome.deliveries;
+    } catch {
+      notified = 0;
+    }
+  }
+
+  return { ok: true, release: result, notified };
 }
 
 export async function acknowledgeExtensionAlert(alertId: string, adminId: string) {
