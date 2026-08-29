@@ -202,31 +202,33 @@ async function integrityGuard(identity: Identity, request: Request) {
   const headerId = (request.headers.get("x-msk-extension-id") ?? "").trim();
   const extensionId = extensionIdSchema.safeParse(headerId).success ? headerId : null;
 
-  const { data: row } = await db
+  const { data: rowData } = await db
     .from("extension_installations")
-    .select("id,extension_id,first_extension_id,suspicious,blocked,block_reason")
+    .select("id,extension_id,first_extension_id,suspicious,suspicion_reason,blocked,block_reason")
     .eq("installation_id", identity.installationId)
     .eq("user_id", identity.userId)
     .maybeSingle();
+  const row = (rowData ?? null) as any;
 
   const patch: Record<string, unknown> = {};
   let suspicious = !!row?.suspicious;
   let reason: string | null = row?.suspicion_reason ?? null;
 
   if (extensionId) {
-    patch.extension_id = extensionId;
-    if (!row?.first_extension_id) patch.first_extension_id = extensionId;
+    patch["extension_id"] = extensionId;
+    if (!row?.first_extension_id) patch["first_extension_id"] = extensionId;
     else if (String(row.first_extension_id) !== extensionId) {
       suspicious = true;
       reason = "ID da extensão mudou (possível cópia/clone da MSK Agente).";
-      patch.suspicious = true;
-      patch.suspicion_reason = reason;
+      patch["suspicious"] = true;
+      patch["suspicion_reason"] = reason;
     }
   }
 
   if (Object.keys(patch).length && row?.id) {
     await db.from("extension_installations").update(patch).eq("id", row.id);
   }
+
 
   return {
     installationBlocked: !!row?.blocked,
