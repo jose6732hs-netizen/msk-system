@@ -1,0 +1,26 @@
+/* Ajustes pontuais do painel MSK: alinhamento do cabeçalho e status centralizado. */
+#msk-root .msk-head {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+#msk-root .msk-brand {
+  width: 100%;
+  flex: 0 0 auto;
+  align-self: stretch;
+}
+
+#msk-root .msk-head-actions {
+  width: 100%;
+  display: grid !important;
+  grid-template-columns: repeat(4, max-content);
+  align-items: center;
+  justify-content: center !important;
+  gap: 6px 7px;
+}
+
+#msk-root .msk-head-actions > .msk-badge {
+  grid-column: 1 / -1;
+  justify-self: center;
+  margin-top: 1px;
+}
