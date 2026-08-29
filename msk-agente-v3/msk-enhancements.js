@@ -256,9 +256,71 @@
     usersChip = document.createElement("span");
     usersChip.className = "msk-users-chip";
     usersChip.title = "Usuários ativos agora no MSK Agente";
-    usersChip.innerHTML = '<span class="msk-users-emoji">👥</span><b>—</b>';
+    usersChip.innerHTML = '<span class="msk-users-live"></span><span class="msk-users-emoji">👥</span><b>—</b>';
     host.prepend(usersChip);
     renderUsers();
+  };
+
+  /* ---------------- popup central + baixar projeto ---------------- */
+  let toastTimer = 0;
+  const showToast = (title, detail, tone = "ok") => {
+    const panel = document.querySelector("#msk-root");
+    if (!panel) return;
+    panel.querySelector(".msk-center-toast")?.remove();
+    const toast = document.createElement("div");
+    toast.className = `msk-center-toast ${tone}`;
+    toast.innerHTML = '<span class="msk-center-dot"></span><strong></strong><small></small>';
+    toast.querySelector("strong").textContent = title;
+    toast.querySelector("small").textContent = detail || "";
+    panel.appendChild(toast);
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => {
+      toast.classList.add("out");
+      setTimeout(() => toast.remove(), 420);
+    }, 3200);
+  };
+
+  const projectContext = () => {
+    const id = (document.querySelector("#msk-root .msk-project-id")?.textContent || "").trim();
+    const github = document.querySelector('#msk-root [data-sync="github"]')?.textContent || "";
+    const repo = (github.split("·")[1] || "").trim();
+    return { projectId: /^[0-9a-f-]{8,}$/i.test(id) ? id : "", repo };
+  };
+
+  let downloadBtn = null;
+  const buildDownloadButton = () => {
+    if (downloadBtn && document.contains(downloadBtn)) return;
+    const host = document.querySelector("#msk-root .msk-auto-actions");
+    if (!host) return;
+    downloadBtn = document.createElement("button");
+    downloadBtn.type = "button";
+    downloadBtn.className = "msk-download-project";
+    downloadBtn.title = "Baixar o projeto completo em ZIP";
+    downloadBtn.innerHTML = `<img src="${chrome.runtime.getURL("assets/msk-download.png")}" alt=""><span>Baixar projeto (ZIP)</span>`;
+    host.appendChild(downloadBtn);
+    downloadBtn.addEventListener("click", () => {
+      const ctx = projectContext();
+      if (!ctx.repo) {
+        showToast("Conecte o GitHub", "O ZIP completo vem do repositório do projeto.", "warn");
+        return;
+      }
+      downloadBtn.disabled = true;
+      chrome.runtime.sendMessage({ type: "MSK_DOWNLOAD_PROJECT", payload: ctx }, response => {
+        void chrome.runtime.lastError;
+        downloadBtn.disabled = false;
+        if (response?.ok) showToast("Download iniciado", `${ctx.projectId ? `Projeto ${ctx.projectId.slice(0, 8)} · ` : ""}ZIP completo do repositório.`);
+        else showToast("Não foi possível baixar", response?.message || "Tente novamente em instantes.", "warn");
+      });
+    });
+  };
+
+  /* ---------------- montagem no painel MSK ---------------- */
+  const mount = () => {
+    const host = document.querySelector("#msk-root .msk-head-actions");
+    if (!host) return;
+    buildBell(host);
+    buildUsersChip(host);
+    buildDownloadButton();
   };
 
   const initUsers = async () => {
