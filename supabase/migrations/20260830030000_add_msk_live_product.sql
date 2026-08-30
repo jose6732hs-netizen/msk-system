@@ -5,16 +5,14 @@ INSERT INTO public.products (
   slug,
   description,
   active,
-  sort_order,
-  affiliate_commission_rate
+  sort_order
 )
 VALUES (
   'MSK LIVE',
   'msk-live',
   'Produto MSK para TikTok Live.',
   true,
-  30,
-  0
+  30
 )
 ON CONFLICT (slug) DO UPDATE
 SET
