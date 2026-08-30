@@ -359,7 +359,8 @@ export async function saveLiveOffer(input: Record<string, any>, adminId: string)
   if (productError) throw productError;
   if (!product) throw new Error("O produto MSK LIVE ainda não existe no banco ativo.");
 
-  const payload = { ...input };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const payload = { ...input } as any;
   if (payload.id) {
     const { data: current, error } = await supabaseAdmin
       .from("plans")

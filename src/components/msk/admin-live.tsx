@@ -299,9 +299,9 @@ export function AdminLiveTab() {
 
   async function uploadBuild() {
     const file = fileRef.current?.files?.[0];
-    if (!file) return toast.error("Selecione o ZIP da MSK LIVE.");
-    if (!/\.zip$/i.test(file.name)) return toast.error("O arquivo precisa ser .zip");
-    if (!version.trim()) return toast.error("Informe a versão.");
+    if (!file) { toast.error("Selecione o ZIP da MSK LIVE."); return; }
+    if (!/\.zip$/i.test(file.name)) { toast.error("O arquivo precisa ser .zip"); return; }
+    if (!version.trim()) { toast.error("Informe a versão."); return; }
     setUploading(true);
     try {
       const signed = await createUploadUrl({ data: { version: version.trim(), fileName: file.name } });
