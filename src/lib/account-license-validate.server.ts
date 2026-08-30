@@ -8,6 +8,11 @@ import {
   rateLimit,
 } from "./license.server";
 import { resolveLicenseSnapshot } from "./license-entitlements.server";
+import {
+  resolveLicenseScope,
+  scopeLabel,
+  type LicenseScope,
+} from "./license-scope.server";
 import { resolvePlanDuration } from "./plan-duration";
 
 const accountLicenseSchema = z.object({
@@ -17,7 +22,7 @@ const accountLicenseSchema = z.object({
   product: z.string().max(40).optional(),
 });
 
-export type AccountTokenRole = "extension" | "agent";
+export type AccountTokenRole = LicenseScope;
 
 type LicenseRow = {
   id: string;
@@ -129,8 +134,10 @@ export async function handleAccountTokenValidation(
   request: Request,
   bucket: string,
   limit: number,
-  expectedRole: AccountTokenRole,
+  expectedRole: AccountTokenRole | AccountTokenRole[],
 ) {
+  const allowedScopes: LicenseScope[] = Array.isArray(expectedRole) ? expectedRole : [expectedRole];
+  const primaryScope = allowedScopes[0] ?? "extension";
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const respond = (body: unknown, status = 200) => jsonResponse(body, status, request);
 
@@ -151,7 +158,7 @@ export async function handleAccountTokenValidation(
   // Rate limit por credencial/produto, nunca por IP. Usuários em VPN, CGNAT,
   // outro provedor ou rede compartilhada não bloqueiam uns aos outros.
   const credentialKey = await hashValue(
-    `${expectedRole}::${parsed.data.email.trim().toLowerCase()}::${parsed.data.token.trim().toUpperCase()}`,
+    `${primaryScope}::${parsed.data.email.trim().toLowerCase()}::${parsed.data.token.trim().toUpperCase()}`,
   );
   if (!(await rateLimit(bucket, `account:${credentialKey}`, limit))) {
     return respond(
@@ -177,7 +184,7 @@ export async function handleAccountTokenValidation(
         sent_hash: sentHash,
         error: "Token not found in database",
         policy: "account_token",
-        expected_role: expectedRole,
+        expected_role: primaryScope,
       },
     });
     return respond(
@@ -193,14 +200,22 @@ export async function handleAccountTokenValidation(
   }
 
   const snapshot = resolveLicenseSnapshot(license);
-  if (snapshot.role !== expectedRole) {
+
+  // Separação por produto: o escopo real vem do vínculo de produto no banco
+  // (licenses.product_id / transação / oferta) e só cai no snapshot em licenças
+  // realmente legadas. Um token do MSK LIVE nunca valida no Agente, e vice-versa.
+  const scopeInfo = await resolveLicenseScope(license, parsed.data.product ?? primaryScope);
+  if (!allowedScopes.includes(scopeInfo.scope)) {
     await logEvent({
       license_id: license.id,
       user_id: license.user_id,
       event_type: "product_mismatch",
       metadata: {
-        requested_role: expectedRole,
+        requested_role: allowedScopes.join(","),
         license_role: snapshot.role,
+        license_scope: scopeInfo.scope,
+        license_product_slug: scopeInfo.productSlug,
+        scope_source: scopeInfo.source,
         requested_product: parsed.data.product ?? null,
         license_slug: snapshot.slug,
       },
@@ -211,7 +226,7 @@ export async function handleAccountTokenValidation(
         valid: false,
         error: "LICENSE_PRODUCT_MISMATCH",
         code: "LICENSE_PRODUCT_MISMATCH",
-        message: "Este token não é válido para este produto.",
+        message: `Este token pertence a ${scopeLabel(scopeInfo.scope)} e só funciona nesse produto.`,
       },
       403,
     );
@@ -236,7 +251,7 @@ export async function handleAccountTokenValidation(
       license_id: license.id,
       user_id: license.user_id,
       event_type: "email_mismatch",
-      metadata: { bucket, policy: "account_token", expected_role: expectedRole },
+      metadata: { bucket, policy: "account_token", expected_role: primaryScope },
     });
     return respond(
       {
@@ -280,7 +295,7 @@ export async function handleAccountTokenValidation(
         license_id: license.id,
         user_id: license.user_id,
         event_type: "activation_error",
-        metadata: { bucket, policy: "account_token", expected_role: expectedRole },
+        metadata: { bucket, policy: "account_token", expected_role: primaryScope },
       });
       return respond(
         {
@@ -339,7 +354,7 @@ export async function handleAccountTokenValidation(
           license_id: license.id,
           user_id: license.user_id,
           event_type: "expired_automatically",
-          metadata: { bucket, policy: "expires_at_authoritative", expected_role: expectedRole },
+          metadata: { bucket, policy: "expires_at_authoritative", expected_role: primaryScope },
         });
       } else {
         // Se o status mudou em paralelo (por exemplo, revogação pelo admin),
@@ -363,8 +378,9 @@ export async function handleAccountTokenValidation(
     device_hash: null,
     metadata: {
       product: parsed.data.product ?? null,
-      expected_role: expectedRole,
+      expected_role: primaryScope,
       license_role: snapshot.role,
+      license_scope: scopeInfo.scope,
       extension_version: parsed.data.extension_version ?? null,
       policy: "account_token",
     },
@@ -403,6 +419,8 @@ export async function handleAccountTokenValidation(
       devices_used: 0,
       features: snapshot.features,
       role: snapshot.role,
+      scope: scopeInfo.scope,
+      product_slug: scopeInfo.productSlug,
     },
     expiresAt: license.expires_at,
     email_required: true,

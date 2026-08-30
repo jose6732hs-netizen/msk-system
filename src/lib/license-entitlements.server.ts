@@ -47,9 +47,12 @@ export function resolveLicenseSnapshot(row: any): LicenseSnapshot {
     explicitRole === "agent" ||
     explicitRole === "cloner" ||
     explicitRole === "extension" ||
-    explicitRole === "delivery"
+    explicitRole === "delivery" ||
+    explicitRole === "live"
   ) {
     role = explicitRole;
+  } else if (features["product_type"] === "live" || features["msk_live"] === true) {
+    role = "live";
   } else if (features["agent"] === true || features["product_type"] === "agent") {
     role = "agent";
   } else if (features["page_cloner"] === true || features["product_type"] === "cloner") {

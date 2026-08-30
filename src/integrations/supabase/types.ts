@@ -3153,6 +3153,7 @@ export type Database = {
           pix_code: string | null
           pix_qrcode: string | null
           plan_id: string | null
+          product_id: string | null
           provider: string
           provider_transaction_id: string | null
           purpose: string
@@ -3182,6 +3183,7 @@ export type Database = {
           pix_code?: string | null
           pix_qrcode?: string | null
           plan_id?: string | null
+          product_id?: string | null
           provider?: string
           provider_transaction_id?: string | null
           purpose?: string
@@ -3211,6 +3213,7 @@ export type Database = {
           pix_code?: string | null
           pix_qrcode?: string | null
           plan_id?: string | null
+          product_id?: string | null
           provider?: string
           provider_transaction_id?: string | null
           purpose?: string
@@ -3242,6 +3245,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
           {
