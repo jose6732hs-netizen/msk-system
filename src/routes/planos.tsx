@@ -68,6 +68,11 @@ function isChatGptSlug(value: unknown) {
   return slug.startsWith("chatgpt") || slug.startsWith("chat-gpt") || slug.startsWith("gpt-plus");
 }
 
+function isMskLiveSlug(value: unknown) {
+  const slug = String(value ?? "").toLowerCase();
+  return slug === "msk-live" || slug.startsWith("msk-live-");
+}
+
 function planImage(plan?: any) {
   const uploaded = String(plan?.image_url ?? "").trim();
   if (uploaded) return uploaded;
@@ -111,7 +116,7 @@ export const Route = createFileRoute("/planos")({
       { title: "Planos e preços — MSK SISTEM" },
       {
         name: "description",
-        content: "Planos da Extensão MSK, Clonador e MSK Agente com licença automática após o pagamento.",
+        content: "Planos da Extensão MSK, MSK LIVE, Clonador e MSK Agente com licença automática após o pagamento.",
       },
       { property: "og:title", content: "Planos MSK SISTEM" },
       {
@@ -501,6 +506,7 @@ function PlanosPage() {
         (plan: any) =>
           !String(plan.slug ?? "").startsWith("page-cloner") &&
           !String(plan.slug ?? "").startsWith("msk-agent") &&
+          !isMskLiveSlug(plan.slug) &&
           !isChatGptSlug(plan.slug),
       );
     },
@@ -536,6 +542,21 @@ function PlanosPage() {
     },
   });
 
+  const { data: livePlans, isLoading: liveLoading } = useQuery({
+    queryKey: ["plans", "msk-live"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("plans")
+        .select("*")
+        .eq("active", true)
+        .like("slug", "msk-live%")
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const { data: chatgptPlan, isLoading: chatgptLoading } = useQuery({
     queryKey: ["plans", "chatgpt-plus"],
     staleTime: 60_000,
@@ -559,14 +580,17 @@ function PlanosPage() {
     ...(plans ?? []),
     ...(clonerPlans ?? []),
     ...(agentPlans ?? []),
+    ...(livePlans ?? []),
     ...(chatgptPlan ? [chatgptPlan] : []),
   ];
   const recommendationPlan =
     activeOffers.find((plan: any) => String(plan.slug ?? "") === recommendationSlug) ??
     chatgptPlan ??
     null;
+  const hasMskLiveInCart = cart.some((item) => isMskLiveSlug(item.slug));
   const showCartRecommendation =
     recommendationSettings.enabled !== false &&
+    !hasMskLiveInCart &&
     cart.length > 0 &&
     !!recommendationPlan &&
     Number(recommendationPlan.price ?? 0) > 0 &&
@@ -866,18 +890,21 @@ function PlanosPage() {
   }, [plans, isLoading]);
 
   const extensionBanner = resolveSiteImage(cmsSettings, "plans_extension_banner");
+  const liveBanner = resolveSiteImage(cmsSettings, "plans_live_banner") || extensionBanner;
   const clonerBanner = resolveSiteImage(cmsSettings, "plans_cloner_banner");
   const agentBanner = resolveSiteImage(cmsSettings, "plans_agent_banner");
   const chatgptCard = resolveSiteImage(cmsSettings, "plans_chatgpt_card");
-  const [category, setCategory] = useState<"all" | "agent" | "cloner" | "extension">("all");
-  const offersLoading = isLoading || clonerLoading || agentLoading || chatgptLoading;
+  const [category, setCategory] = useState<"all" | "agent" | "live" | "cloner" | "extension">("all");
+  const offersLoading = isLoading || clonerLoading || agentLoading || liveLoading || chatgptLoading;
   const categoryFilters = [
     { id: "all", label: "Todas as ofertas" },
     { id: "agent", label: "MSK Agente" },
+    { id: "live", label: "MSK LIVE · TikTok" },
     { id: "cloner", label: "Clonagem" },
-    { id: "extension", label: "Extensão MSK" },
+    { id: "extension", label: "MSK · Extensão Principal" },
   ] as const;
   const showAgent = category === "all" || category === "agent";
+  const showLive = category === "all" || category === "live";
   const showCloner = category === "all" || category === "cloner";
   const showExtension = category === "all" || category === "extension";
 
@@ -891,7 +918,7 @@ function PlanosPage() {
               Nossos <span className="neon-text">Planos</span>
             </h1>
             <p className="mt-4 break-words text-[10px] font-bold uppercase tracking-[.18em] text-muted-foreground sm:text-sm sm:tracking-[.25em]">
-              Extensão · Clonagem · MSK Agente · PIX ou cartão · licença automática
+              Extensão Principal · MSK LIVE · Clonagem · MSK Agente · PIX ou cartão · licença automática
             </p>
           </div>
 
@@ -1088,6 +1115,21 @@ function PlanosPage() {
               />
             ) : null}
 
+            {showLive ? (
+              <OfferCarouselSection
+                sectionId="msk-live"
+                eyebrow="Produto exclusivo para TikTok Live"
+                title="MSK LIVE · TikTok"
+                description="Planos exclusivos da extensão MSK LIVE para TikTok. Licenças, dispositivos e acesso são separados da extensão principal, do MSK Agente e do Clonador."
+                bannerUrl={liveBanner}
+                plans={livePlans ?? []}
+                highlightSlug="msk-live-oferta-2"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
+
             {showCloner ? (
               <OfferCarouselSection
                 sectionId="clonagem-msk"
@@ -1106,9 +1148,9 @@ function PlanosPage() {
             {showExtension ? (
               <OfferCarouselSection
                 sectionId="extensao-msk"
-                eyebrow="Extensão principal"
-                title="Extensão MSK"
-                description="Acesso à extensão principal MSK e aos recursos liberados pelo seu plano."
+                eyebrow="Produto principal MSK"
+                title="MSK · Extensão Principal"
+                description="Planos exclusivos da extensão principal MSK. MSK LIVE/TikTok possui uma seção e uma licença próprias e não aparece mais neste bloco."
                 bannerUrl={extensionBanner}
                 plans={plans ?? []}
                 highlightSlug="monthly"
