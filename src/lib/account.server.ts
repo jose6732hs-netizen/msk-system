@@ -42,8 +42,7 @@ export async function loadAccount(supabase: Client, userId: string) {
       "id,plan_id,status,expires_at,activated_at,starts_at,type,metadata,transaction_id,max_devices,token_preview,token_last4,token_encrypted,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,duration_days,duration_value,duration_unit,features,max_devices,is_lifetime,image_url)",
     )
     .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(50);
+    .order("created_at", { ascending: false });
 
   const rawList = (licenseRows ?? []) as Record<string, any>[];
   const transactionIds = [
