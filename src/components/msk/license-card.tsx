@@ -38,6 +38,13 @@ function money(value: unknown, currency = "BRL") {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency }).format(n);
 }
 
+function safeToken(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized || normalized === "[object Promise]") return null;
+  return normalized;
+}
+
 function parseDeliveryFields(value: string) {
   return value
     .split(/\r?\n/)
@@ -123,7 +130,9 @@ export function LicenseCard({
     "Sua compra foi confirmada. Os dados e instruções desta oferta ficam disponíveis aqui no seu painel.";
   const deliveryFields = parseDeliveryFields(deliveryInstructions);
   const showPanelDelivery = deliveryMethod === "panel" || deliveryMethod === "panel_email";
-  const completeToken = String(token ?? license?.full_token ?? "").trim() || null;
+  const revealedToken = safeToken(token);
+  const completeToken = revealedToken ?? safeToken(license?.full_token);
+  const tokenPreview = safeToken(license?.token_preview);
   const awaitingActivation = !isDigitalDelivery && license.status === "inactive" && !license.expires_at;
   const status = timeLeft?.isExpired ? "expired" : license.status;
   const currency = String(license?.purchase?.currency ?? plan?.currency ?? "BRL");
@@ -162,7 +171,7 @@ export function LicenseCard({
   }
 
   async function copyCompleteToken() {
-    if (token) {
+    if (revealedToken) {
       onCopyToken();
       return;
     }
@@ -423,7 +432,7 @@ export function LicenseCard({
             <input
               type="text"
               readOnly
-              value={completeToken ?? license.token_preview ?? "MSK-••••-••••-••••-••••"}
+              value={completeToken ?? tokenPreview ?? "MSK-••••-••••-••••-••••"}
               onFocus={(event) => event.currentTarget.select()}
               aria-label={`Licença completa de ${plan?.name || purpose.label}`}
               className="h-14 w-full rounded-xl border border-primary/25 bg-black/35 px-4 font-mono text-sm font-black text-primary outline-none focus:border-primary/60 sm:text-base"
