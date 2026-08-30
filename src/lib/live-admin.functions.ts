@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
+import { planSchema } from "./admin.schemas";
 
 export const liveAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -9,6 +10,15 @@ export const liveAdminOverview = createServerFn({ method: "GET" })
     await assertAdmin(context.supabase, context.userId);
     const { loadLiveAdmin } = await import("./live-admin.server");
     return loadLiveAdmin();
+  });
+
+export const liveAdminSaveOffer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => planSchema.parse(input))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { saveLiveOffer } = await import("./live-admin.server");
+    return saveLiveOffer(data, context.userId);
   });
 
 export const liveAdminGenerateLicense = createServerFn({ method: "POST" })

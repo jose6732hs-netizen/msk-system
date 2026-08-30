@@ -82,6 +82,17 @@ export const getExtensionDownload = createServerFn({ method: "POST" })
     return issueDownloadLink(context.userId, data?.channelSlug ?? null);
   });
 
+/** Entrega exclusiva da MSK LIVE: licença de outros produtos nunca autoriza o ZIP. */
+export const getLiveExtensionDownload = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { hasUsableLicenseRole } = await import("./license-entitlements.server");
+    const allowed = await hasUsableLicenseRole(context.userId, "live", { allowPrivileged: true });
+    if (!allowed) throw new Error("Sua conta não possui uma licença MSK LIVE válida.");
+    const { issueDownloadLink } = await import("./extension.server");
+    return issueDownloadLink(context.userId, "msk-live");
+  });
+
 /** Canais só são expostos ao cliente que possui licença da extensão. */
 export const getActiveExtensionChannels = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
