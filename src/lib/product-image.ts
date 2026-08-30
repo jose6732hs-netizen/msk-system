@@ -27,6 +27,10 @@ export function productImageFallback(slugValue?: unknown) {
     .toLowerCase()
     .replace(/[\s_]+/g, "-");
 
+  if (slug.includes("msk-live") || slug.includes("msklive")) {
+    return mskLiveBannerAsset.url;
+  }
+
   if (isChatGptProduct(slug)) {
     return cachedChatGptImage() || "/favicon.png";
   }
