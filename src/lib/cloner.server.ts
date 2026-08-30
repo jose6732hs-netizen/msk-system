@@ -206,6 +206,10 @@ async function resolveOffer(userId: string, mainPlanId: string, logShown: boolea
   const clonerPlans = await ensureClonerPlans(cfg);
   const main = await loadPlan(mainPlanId);
   if (!main || !main.active || Number(main.price) <= 0) return { available: false as const, reason: "MAIN_UNAVAILABLE" };
+  const mainSlug = String(main.slug ?? "").toLowerCase();
+  if (mainSlug === "msk-live" || mainSlug.startsWith("msk-live-")) {
+    return { available: false as const, reason: "PRODUCT_ISOLATED" };
+  }
   const period = cadence(main);
   if (!period) return { available: false as const, reason: "UNSUPPORTED_PERIOD" };
   const sourceKind = kind(main);
