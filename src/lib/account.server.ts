@@ -19,11 +19,11 @@ function moneyOrNull(value: unknown) {
   return Number.isFinite(n) ? n : null;
 }
 
-function decryptOwnedToken(value: unknown) {
+async function decryptOwnedToken(value: unknown) {
   const encrypted = String(value ?? "").trim();
   if (!encrypted) return null;
   try {
-    return decryptToken(encrypted);
+    return await decryptToken(encrypted);
   } catch {
     return null;
   }
@@ -65,35 +65,37 @@ export async function loadAccount(supabase: Client, userId: string) {
     licenseCountByTransaction.set(txId, (licenseCountByTransaction.get(txId) ?? 0) + 1);
   }
 
-  const list = rawList.map((row) => {
-    const resolvedPlan = resolveLicenseSnapshot(row);
-    const txId = String(row["transaction_id"] ?? "");
-    const tx = txId ? txById.get(txId) : null;
-    const txMeta = meta(tx?.metadata);
-    const totalPaid = tx
-      ? moneyOrNull(txMeta["card_charged_total"]) ?? moneyOrNull(tx.amount)
-      : null;
-    const fullToken = decryptOwnedToken(row["token_encrypted"]);
-    const safeRow = { ...row };
-    delete safeRow["token_encrypted"];
+  const list = await Promise.all(
+    rawList.map(async (row) => {
+      const resolvedPlan = resolveLicenseSnapshot(row);
+      const txId = String(row["transaction_id"] ?? "");
+      const tx = txId ? txById.get(txId) : null;
+      const txMeta = meta(tx?.metadata);
+      const totalPaid = tx
+        ? moneyOrNull(txMeta["card_charged_total"]) ?? moneyOrNull(tx.amount)
+        : null;
+      const fullToken = await decryptOwnedToken(row["token_encrypted"]);
+      const safeRow = { ...row };
+      delete safeRow["token_encrypted"];
 
-    return {
-      ...safeRow,
-      full_token: fullToken,
-      resolved_plan: resolvedPlan,
-      purchase: tx
-        ? {
-            base_amount: moneyOrNull(tx.amount),
-            total_paid: totalPaid,
-            currency: String(tx.currency ?? resolvedPlan.currency ?? "BRL"),
-            method: String(tx.method ?? ""),
-            status: String(tx.status ?? ""),
-            paid_at: tx.paid_at ?? null,
-            license_count: licenseCountByTransaction.get(txId) ?? 1,
-          }
-        : null,
-    };
-  });
+      return {
+        ...safeRow,
+        full_token: fullToken,
+        resolved_plan: resolvedPlan,
+        purchase: tx
+          ? {
+              base_amount: moneyOrNull(tx.amount),
+              total_paid: totalPaid,
+              currency: String(tx.currency ?? resolvedPlan.currency ?? "BRL"),
+              method: String(tx.method ?? ""),
+              status: String(tx.status ?? ""),
+              paid_at: tx.paid_at ?? null,
+              license_count: licenseCountByTransaction.get(txId) ?? 1,
+            }
+          : null,
+      };
+    }),
+  );
 
   const usable = list.filter(isUsableLicense);
   const license =
