@@ -19,7 +19,12 @@ export const liveAdminGenerateLicense = createServerFn({ method: "POST" })
       email: z.string().email().max(200).optional(),
       standalone: z.boolean().optional(),
       note: z.string().max(300).optional(),
-    }).parse(input),
+    })
+      .refine((data) => data.standalone === true || Boolean(data.email), {
+        message: "Informe o e-mail do cliente ou marque licença sem usuário.",
+        path: ["email"],
+      })
+      .parse(input),
   )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
