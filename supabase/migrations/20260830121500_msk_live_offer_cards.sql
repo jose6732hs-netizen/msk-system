@@ -181,10 +181,10 @@ SET
 -- Garante o vínculo de qualquer licença desses planos ao produto MSK LIVE.
 UPDATE public.licenses AS license
 SET product_id = product.id
-FROM public.products AS product
-JOIN public.offers AS offer
-  ON offer.product_id = product.id
+FROM public.products AS product,
+     public.offers AS offer
 WHERE product.slug = 'msk-live'
+  AND offer.product_id = product.id
   AND offer.plan_id = license.plan_id
   AND offer.slug IN (
     'msk-live-oferta-1',
