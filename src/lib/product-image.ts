@@ -3,6 +3,7 @@ import cardSemanalImg from "@/assets/card-semanal.jpg";
 import cardMensalImg from "@/assets/card-mensal.jpg";
 import cardTrimestralImg from "@/assets/card-trimestral.jpg";
 import dailyLicenseAsset from "@/assets/daily_license_card.jpg.asset.json";
+import mskLiveBannerAsset from "@/assets/msk-live-banner.png.asset.json";
 
 function isChatGptProduct(value?: unknown) {
   const hint = String(value ?? "").trim().toLowerCase();
@@ -25,6 +26,10 @@ export function productImageFallback(slugValue?: unknown) {
     .trim()
     .toLowerCase()
     .replace(/[\s_]+/g, "-");
+
+  if (slug.includes("msk-live") || slug.includes("msklive")) {
+    return mskLiveBannerAsset.url;
+  }
 
   if (isChatGptProduct(slug)) {
     return cachedChatGptImage() || "/favicon.png";

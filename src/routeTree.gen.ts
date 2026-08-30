@@ -68,6 +68,8 @@ import { Route as ApiPublicAgentLicenseValidateRouteImport } from './routes/api/
 import { Route as ApiPublicExtRuntimeBundleRouteImport } from './routes/api/public/ext/runtime/bundle'
 import { Route as ApiPublicExtRuntimeManifestRouteImport } from './routes/api/public/ext/runtime/manifest'
 import { Route as ApiPublicLicenseDeviceRemoveRouteImport } from './routes/api/public/license/device/remove'
+import { Route as ApiPublicLiveLicenseHeartbeatRouteImport } from './routes/api/public/live/license/heartbeat'
+import { Route as ApiPublicLiveLicenseValidateRouteImport } from './routes/api/public/live/license/validate'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -386,6 +388,18 @@ const ApiPublicLicenseDeviceRemoveRoute =
     path: '/api/public/license/device/remove',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicLiveLicenseHeartbeatRoute =
+  ApiPublicLiveLicenseHeartbeatRouteImport.update({
+    id: '/api/public/live/license/heartbeat',
+    path: '/api/public/live/license/heartbeat',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLiveLicenseValidateRoute =
+  ApiPublicLiveLicenseValidateRouteImport.update({
+    id: '/api/public/live/license/validate',
+    path: '/api/public/live/license/validate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -446,6 +460,8 @@ export interface FileRoutesByFullPath {
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
+  '/api/public/live/license/heartbeat': typeof ApiPublicLiveLicenseHeartbeatRoute
+  '/api/public/live/license/validate': typeof ApiPublicLiveLicenseValidateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -506,6 +522,8 @@ export interface FileRoutesByTo {
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
+  '/api/public/live/license/heartbeat': typeof ApiPublicLiveLicenseHeartbeatRoute
+  '/api/public/live/license/validate': typeof ApiPublicLiveLicenseValidateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -568,6 +586,8 @@ export interface FileRoutesById {
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
+  '/api/public/live/license/heartbeat': typeof ApiPublicLiveLicenseHeartbeatRoute
+  '/api/public/live/license/validate': typeof ApiPublicLiveLicenseValidateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -630,6 +650,8 @@ export interface FileRouteTypes {
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
+    | '/api/public/live/license/heartbeat'
+    | '/api/public/live/license/validate'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -690,6 +712,8 @@ export interface FileRouteTypes {
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
+    | '/api/public/live/license/heartbeat'
+    | '/api/public/live/license/validate'
   id:
     | '__root__'
     | '/'
@@ -751,6 +775,8 @@ export interface FileRouteTypes {
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
+    | '/api/public/live/license/heartbeat'
+    | '/api/public/live/license/validate'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -807,6 +833,8 @@ export interface RootRouteChildren {
   ApiPublicExtRuntimeBundleRoute: typeof ApiPublicExtRuntimeBundleRoute
   ApiPublicExtRuntimeManifestRoute: typeof ApiPublicExtRuntimeManifestRoute
   ApiPublicLicenseDeviceRemoveRoute: typeof ApiPublicLicenseDeviceRemoveRoute
+  ApiPublicLiveLicenseHeartbeatRoute: typeof ApiPublicLiveLicenseHeartbeatRoute
+  ApiPublicLiveLicenseValidateRoute: typeof ApiPublicLiveLicenseValidateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1224,6 +1252,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicLicenseDeviceRemoveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/live/license/heartbeat': {
+      id: '/api/public/live/license/heartbeat'
+      path: '/api/public/live/license/heartbeat'
+      fullPath: '/api/public/live/license/heartbeat'
+      preLoaderRoute: typeof ApiPublicLiveLicenseHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/live/license/validate': {
+      id: '/api/public/live/license/validate'
+      path: '/api/public/live/license/validate'
+      fullPath: '/api/public/live/license/validate'
+      preLoaderRoute: typeof ApiPublicLiveLicenseValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -1313,6 +1355,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicExtRuntimeBundleRoute: ApiPublicExtRuntimeBundleRoute,
   ApiPublicExtRuntimeManifestRoute: ApiPublicExtRuntimeManifestRoute,
   ApiPublicLicenseDeviceRemoveRoute: ApiPublicLicenseDeviceRemoveRoute,
+  ApiPublicLiveLicenseHeartbeatRoute: ApiPublicLiveLicenseHeartbeatRoute,
+  ApiPublicLiveLicenseValidateRoute: ApiPublicLiveLicenseValidateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
