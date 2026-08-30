@@ -10,6 +10,7 @@ import {
 import { resolveLicenseSnapshot } from "./license-entitlements.server";
 import { resolveLicenseProductBinding, resolveProductIdentifier } from "./license-product.server";
 import { resolvePlanDuration } from "./plan-duration";
+import { resolveLicenseScope, scopeLabel, type LicenseScope } from "./license-scope.server";
 
 export const validateSchema = z.object({
   token: z.string().min(8).max(64),
@@ -23,7 +24,7 @@ export const validateSchema = z.object({
   product: z.string().max(40).optional(),
 });
 
-type ExpectedRole = "extension" | "cloner" | "agent";
+type ExpectedRole = LicenseScope;
 
 type LicenseRow = {
   id: string;
@@ -118,8 +119,10 @@ export async function handleValidation(
   request: Request,
   bucket: string,
   limit: number,
-  expectedRole: ExpectedRole,
+  expectedRole: ExpectedRole | ExpectedRole[],
 ) {
+  const allowedScopes: LicenseScope[] = Array.isArray(expectedRole) ? expectedRole : [expectedRole];
+  const primaryScope = allowedScopes[0] ?? "extension";
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const ip = clientIp(request);
   const respond = (body: unknown, status = 200) => jsonResponse(body, status, request);
@@ -164,25 +167,27 @@ export async function handleValidation(
   // nesse caso reconciliamos por transação/oferta/plano e persistimos o vínculo.
   // A role continua existindo apenas como fallback para registros realmente
   // legados que não possuem relação inequívoca com um produto.
-  const expectedProduct = await resolveProductIdentifier(parsed.data.product);
+  const expectedProduct = await resolveProductIdentifier(parsed.data.product ?? primaryScope);
   const productBinding = await resolveLicenseProductBinding({
     licenseId: license.id,
     planId: license.plan_id,
-    expectedProductIdentifier: parsed.data.product ?? null,
+    expectedProductIdentifier: parsed.data.product ?? primaryScope,
   });
+  const scopeInfo = await resolveLicenseScope(license, parsed.data.product ?? primaryScope);
   const productMismatch =
     !!expectedProduct && !!productBinding.product && productBinding.product.id !== expectedProduct.id;
-  const roleMismatch =
-    (!expectedProduct || !productBinding.product) && snapshot.role !== expectedRole;
+  const scopeMismatch = !allowedScopes.includes(scopeInfo.scope);
 
-  if (productMismatch || roleMismatch) {
+  if (productMismatch || scopeMismatch) {
     await logEvent({
       license_id: license.id,
       user_id: license.user_id,
       event_type: "product_mismatch",
       metadata: {
-        requested_role: expectedRole,
+        requested_role: allowedScopes.join(","),
         license_role: snapshot.role,
+        license_scope: scopeInfo.scope,
+        scope_source: scopeInfo.source,
         requested_product: parsed.data.product ?? null,
         requested_product_id: expectedProduct?.id ?? null,
         license_product_id: productBinding.product?.id ?? null,
@@ -198,7 +203,7 @@ export async function handleValidation(
         valid: false,
         error: "LICENSE_PRODUCT_MISMATCH",
         code: "LICENSE_PRODUCT_MISMATCH",
-        message: "Este token não é válido para este produto.",
+        message: `Este token pertence a ${scopeLabel(scopeInfo.scope)} e só funciona nesse produto.`,
       },
       403,
     );
