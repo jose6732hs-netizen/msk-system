@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MSK Live",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "MSK Live — painel inteligente de automação e controle para TikTok Shop com licença MSK SYSTEM.",
   "icons": {
     "16": "icon16.png",
@@ -10,7 +10,7 @@
     "128": "icon128.png"
   },
   "action": {
-    "default_title": "MSK Live: licença e painel",
+    "default_title": "MSK Live: validar licença",
     "default_icon": {
       "16": "icon16.png",
       "32": "icon32.png",
