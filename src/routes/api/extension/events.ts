@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { extensionPreflight, handleExtensionEvent } from "@/lib/extension-telemetry.server";
+import { handleExtensionEvent } from "@/lib/extension-telemetry.server";
+import { enforceExtensionDeviceSecurity, extensionSecurityPreflight } from "@/lib/extension-device-security.server";
 
 export const Route = createFileRoute("/api/extension/events")({
   server: {
     handlers: {
-      OPTIONS: ({ request }) => extensionPreflight(request),
-      POST: ({ request }) => handleExtensionEvent(request),
+      OPTIONS: ({ request }) => extensionSecurityPreflight(request),
+      POST: async ({ request }) => (await enforceExtensionDeviceSecurity(request)) ?? handleExtensionEvent(request),
     },
   },
 });
