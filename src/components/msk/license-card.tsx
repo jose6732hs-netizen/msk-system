@@ -118,8 +118,12 @@ export function LicenseCard({
   const deliveryMethod = String(metadata["delivery_method"] ?? "panel_email");
   const deliveryLink = String(metadata["delivery_link"] ?? "").trim();
   const deliveryInstructions = String(metadata["delivery_instructions"] ?? "").trim();
+  const deliveryText =
+    deliveryInstructions ||
+    "Sua compra foi confirmada. Os dados e instruções desta oferta ficam disponíveis aqui no seu painel.";
   const deliveryFields = parseDeliveryFields(deliveryInstructions);
   const showPanelDelivery = deliveryMethod === "panel" || deliveryMethod === "panel_email";
+  const completeToken = String(token ?? license?.full_token ?? "").trim() || null;
   const awaitingActivation = !isDigitalDelivery && license.status === "inactive" && !license.expires_at;
   const status = timeLeft?.isExpired ? "expired" : license.status;
   const currency = String(license?.purchase?.currency ?? plan?.currency ?? "BRL");
@@ -155,6 +159,16 @@ export function LicenseCard({
   async function copyDelivery(value: string, label = "Entrega") {
     await navigator.clipboard.writeText(value);
     toast.success(`${label} copiado.`);
+  }
+
+  async function copyCompleteToken() {
+    if (token) {
+      onCopyToken();
+      return;
+    }
+    if (!completeToken) return;
+    await navigator.clipboard.writeText(completeToken);
+    toast.success("Licença copiada com sucesso!");
   }
 
   return (
@@ -343,10 +357,15 @@ export function LicenseCard({
                 <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-500 text-white">
                   <MessageSquareText className="h-4 w-4" />
                 </div>
-                <div className="min-w-0 max-w-2xl rounded-2xl rounded-tl-md border border-white/10 bg-white/[.045] px-4 py-3">
-                  <p className="whitespace-pre-wrap text-xs leading-relaxed text-white/70">
-                    {deliveryInstructions || "Sua compra foi confirmada. Os dados e instruções desta oferta ficam disponíveis aqui no seu painel."}
-                  </p>
+                <div className="min-w-0 flex-1">
+                  <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-blue-300/80">Texto completo recebido</p>
+                  <textarea
+                    readOnly
+                    value={deliveryText}
+                    rows={Math.max(5, deliveryText.split(/\r?\n/).length + Math.ceil(deliveryText.length / 90))}
+                    onFocus={(event) => event.currentTarget.select()}
+                    className="w-full resize-y rounded-2xl rounded-tl-md border border-white/10 bg-white/[.045] px-4 py-3 text-xs leading-relaxed text-white/75 outline-none focus:border-blue-400/40"
+                  />
                 </div>
               </div>
 
@@ -372,11 +391,9 @@ export function LicenseCard({
               ) : null}
 
               <div className="flex flex-wrap gap-2">
-                {deliveryInstructions ? (
-                  <Button size="sm" variant="neonOutline" onClick={() => void copyDelivery(deliveryInstructions, "Entrega")}>
-                    <Copy className="mr-2 h-3.5 w-3.5" /> Copiar entrega
-                  </Button>
-                ) : null}
+                <Button size="sm" variant="neonOutline" onClick={() => void copyDelivery(deliveryText, "Texto completo")}>
+                  <Copy className="mr-2 h-3.5 w-3.5" /> Copiar texto completo
+                </Button>
                 {deliveryLink ? (
                   <a
                     href={deliveryLink}
@@ -394,16 +411,31 @@ export function LicenseCard({
 
         {!isDigitalDelivery ? (
           <div className="mt-8 rounded-2xl border border-primary/20 bg-primary/5 p-5">
-            <p className="mb-3 text-[10px] font-black uppercase tracking-widest text-white/40">Token de Ativação</p>
-            <p className="mb-4 break-all font-mono text-lg text-primary">
-              {token ?? license.token_preview ?? "MSK-••••-••••-••••-••••"}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="neonOutline" onClick={onReveal} disabled={busy} className="h-9 px-4 text-[10px] font-black uppercase">
-                {busy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} {token ? "Ocultar" : "Revelar"}
-              </Button>
-              <Button size="sm" variant="neon" onClick={onCopyToken} disabled={!token && !license.token_preview} className="h-9 px-4 text-[10px] font-black uppercase">
-                <Copy size={14} /> Copiar
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Licença completa</p>
+                <p className="mt-1 text-[10px] text-white/40">Chave individual deste plano. Use somente no produto indicado neste card.</p>
+              </div>
+              <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-[9px] font-black uppercase tracking-wider text-primary">
+                {purpose.label}
+              </span>
+            </div>
+            <input
+              type="text"
+              readOnly
+              value={completeToken ?? license.token_preview ?? "MSK-••••-••••-••••-••••"}
+              onFocus={(event) => event.currentTarget.select()}
+              aria-label={`Licença completa de ${plan?.name || purpose.label}`}
+              className="h-14 w-full rounded-xl border border-primary/25 bg-black/35 px-4 font-mono text-sm font-black text-primary outline-none focus:border-primary/60 sm:text-base"
+            />
+            <div className="mt-4 flex flex-wrap gap-2">
+              {!completeToken && onReveal ? (
+                <Button size="sm" variant="neonOutline" onClick={onReveal} disabled={busy} className="h-9 px-4 text-[10px] font-black uppercase">
+                  {busy ? <Loader2 size={14} className="animate-spin" /> : <Eye size={14} />} Mostrar licença completa
+                </Button>
+              ) : null}
+              <Button size="sm" variant="neon" onClick={() => void copyCompleteToken()} disabled={!completeToken} className="h-9 px-4 text-[10px] font-black uppercase">
+                <Copy size={14} /> Copiar licença
               </Button>
             </div>
           </div>
