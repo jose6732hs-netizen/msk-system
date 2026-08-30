@@ -131,7 +131,7 @@ async function ensureTransactionLicenses(tx: {
 
     for (let i = 0; i < missing; i += 1) {
       try {
-        await issueStandaloneLicense({
+        const issued = await issueStandaloneLicense({
           userId: tx.user_id,
           planId: line.planId,
           type: "paid",
@@ -151,6 +151,11 @@ async function ensureTransactionLicenses(tx: {
             delivery_instructions: delivery.instructions || null,
           },
         });
+
+        if (purpose.role === "live") {
+          const { finalizePaidLiveLicense } = await import("@/lib/live-purchase-license.server");
+          await finalizePaidLiveLicense(issued.licenseId);
+        }
       } catch (e) {
         console.error("[settle] emissão de licença do item falhou:", e);
       }
