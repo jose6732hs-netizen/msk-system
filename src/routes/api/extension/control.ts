@@ -1,9 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { handleExtensionRemoteControl } from "@/lib/extension-remote-control.server";
 import { enforceExtensionDeviceSecurity, extensionSecurityPreflight } from "@/lib/extension-device-security.server";
+import { enforceExtensionIntegrityGate } from "@/lib/extension-integrity-gate.server";
 
 async function secured(request: Request) {
-  return (await enforceExtensionDeviceSecurity(request)) ?? handleExtensionRemoteControl(request);
+  return (
+    (await enforceExtensionIntegrityGate(request)) ??
+    (await enforceExtensionDeviceSecurity(request)) ??
+    handleExtensionRemoteControl(request)
+  );
 }
 
 export const Route = createFileRoute("/api/extension/control")({
