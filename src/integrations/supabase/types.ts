@@ -3148,6 +3148,7 @@ export type Database = {
           identifier: string
           metadata: Json
           method: string
+          offer_id: string | null
           paid_at: string | null
           pix_code: string | null
           pix_qrcode: string | null
@@ -3176,6 +3177,7 @@ export type Database = {
           identifier: string
           metadata?: Json
           method?: string
+          offer_id?: string | null
           paid_at?: string | null
           pix_code?: string | null
           pix_qrcode?: string | null
@@ -3204,6 +3206,7 @@ export type Database = {
           identifier?: string
           metadata?: Json
           method?: string
+          offer_id?: string | null
           paid_at?: string | null
           pix_code?: string | null
           pix_qrcode?: string | null
@@ -3225,6 +3228,13 @@ export type Database = {
             columns: ["affiliate_id"]
             isOneToOne: false
             referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "offers"
             referencedColumns: ["id"]
           },
           {
