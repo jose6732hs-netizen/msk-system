@@ -372,7 +372,7 @@ export async function handleValidation(
       product_id: productBinding.product?.id ?? null,
       product_slug: productBinding.product?.slug ?? null,
       product_binding_source: productBinding.source,
-      expected_role: expectedRole,
+      expected_role: primaryScope,
       license_role: snapshot.role,
       extension_version: parsed.data.extension_version ?? null,
     },
