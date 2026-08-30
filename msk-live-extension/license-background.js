@@ -97,6 +97,30 @@ chrome.runtime.onMessage.addListener(function(msg,sender,sendResponse){
     (async function(){ sendResponse(await mskliveLicenseCheck(msg.type==='MSKLIVE_LICENSE_FORCE_REFRESH')); })();
     return true;
   }
+  if (msg.type==='MSKLIVE_LICENSE_FORM_STATE') {
+    (async function(){
+      try {
+        var saved = await self.MSKLiveLicense.getState();
+        sendResponse({email:saved.email||'',token:saved.token||''});
+      } catch(e) { sendResponse({email:'',token:''}); }
+    })();
+    return true;
+  }
+  if (msg.type==='MSKLIVE_LICENSE_ACTIVATE') {
+    (async function(){
+      if (!self.MSKLiveLicense) { sendResponse({licensed:false,code:'LICENSE_SERVICE_UNAVAILABLE',message:mskliveFriendly('LICENSE_SERVICE_UNAVAILABLE')}); return; }
+      var result = await self.MSKLiveLicense.activate(msg.token, msg.email);
+      if (!result.ok) {
+        await mskliveRememberAccess(false,result.code||'LICENSE_INVALID');
+        sendResponse({licensed:false,code:result.code||'LICENSE_INVALID',message:result.message||mskliveFriendly(result.code)});
+        return;
+      }
+      await mskliveRememberAccess(true,null);
+      if (sender&&sender.tab&&sender.tab.id) await mskliveInjectTools(sender.tab.id);
+      sendResponse({licensed:true,state:result.state||null,message:'Licença MSK LIVE validada.'});
+    })();
+    return true;
+  }
   if (msg.type==='MSKLIVE_LICENSE_UNLOCK_TIKTOK') {
     (async function(){ sendResponse(await mskliveUnlockOpenTabs()); })();
     return true;
@@ -111,4 +135,5 @@ chrome.runtime.onMessage.addListener(function(msg,sender,sendResponse){
   }
   if (msg.type==='MSKLIVE_OPEN_DASHBOARD') { chrome.tabs.create({url:chrome.runtime.getURL('start.html')}); sendResponse({ok:true}); return; }
   if (msg.type==='MSKLIVE_OPEN_PLANS') { chrome.tabs.create({url:'https://msksystem.online/planos?produto=msk-live'}); sendResponse({ok:true}); return; }
+  if (msg.type==='MSKLIVE_OPEN_ACCOUNT') { chrome.tabs.create({url:'https://msksystem.online/painel'}); sendResponse({ok:true}); return; }
 });
