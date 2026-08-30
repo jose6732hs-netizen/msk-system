@@ -19,6 +19,16 @@ function moneyOrNull(value: unknown) {
   return Number.isFinite(n) ? n : null;
 }
 
+function decryptOwnedToken(value: unknown) {
+  const encrypted = String(value ?? "").trim();
+  if (!encrypted) return null;
+  try {
+    return decryptToken(encrypted);
+  } catch {
+    return null;
+  }
+}
+
 export async function loadAccount(supabase: Client, userId: string) {
   const { data: profile } = await supabase
     .from("profiles")
@@ -29,7 +39,7 @@ export async function loadAccount(supabase: Client, userId: string) {
   const { data: licenseRows } = await supabase
     .from("licenses")
     .select(
-      "id,plan_id,status,expires_at,activated_at,starts_at,type,metadata,transaction_id,max_devices,token_preview,token_last4,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,duration_days,duration_value,duration_unit,features,max_devices,is_lifetime,image_url)",
+      "id,plan_id,status,expires_at,activated_at,starts_at,type,metadata,transaction_id,max_devices,token_preview,token_last4,token_encrypted,last_validation,created_at,subscription_id,plans(id,slug,name,price,currency,duration_label,duration_days,duration_value,duration_unit,features,max_devices,is_lifetime,image_url)",
     )
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
@@ -64,9 +74,13 @@ export async function loadAccount(supabase: Client, userId: string) {
     const totalPaid = tx
       ? moneyOrNull(txMeta["card_charged_total"]) ?? moneyOrNull(tx.amount)
       : null;
+    const fullToken = decryptOwnedToken(row["token_encrypted"]);
+    const safeRow = { ...row };
+    delete safeRow["token_encrypted"];
 
     return {
-      ...row,
+      ...safeRow,
+      full_token: fullToken,
       resolved_plan: resolvedPlan,
       purchase: tx
         ? {
