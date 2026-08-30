@@ -4,7 +4,7 @@
  * garantindo que uma compra com várias licenças (ex.: oferta + combo) fique separada
  * e identificada item a item.
  */
-export type LicenseRole = "cloner" | "agent" | "extension" | "delivery";
+export type LicenseRole = "cloner" | "agent" | "extension" | "delivery" | "live";
 
 export type LicensePurpose = {
   role: LicenseRole;
@@ -44,11 +44,19 @@ const PURPOSES: Record<LicenseRole, LicensePurpose> = {
     where: "Painel MSK",
     accent: "text-blue-300 border-blue-400/40 bg-blue-400/10",
   },
+  live: {
+    role: "live",
+    label: "MSK LIVE",
+    description: "Licença exclusiva do produto MSK LIVE para TikTok Live.",
+    where: "MSK LIVE",
+    accent: "text-primary border-primary/40 bg-primary/10",
+  },
 };
 
 export function licenseRoleFromSlug(slug?: string | null): LicenseRole {
   const s = String(slug ?? "").toLowerCase();
   if (s.includes("chatgpt") || s.includes("chat-gpt") || s.includes("gpt-plus")) return "delivery";
+  if (s === "msk-live" || s.startsWith("msk-live-")) return "live";
   if (s.includes("clon") || s.includes("cloner")) return "cloner";
   if (s.includes("agent")) return "agent";
   return "extension";

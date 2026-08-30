@@ -3,10 +3,12 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 const PRIMARY_PRODUCT_SLUG = "extensao-msk";
 const SPECIAL_PLAN_PREFIXES = ["page-cloner-", "msk-agent", "msk-agente"];
 
-function isPrimaryExtensionPlan(plan: Record<string, any>) {
+function targetProductSlug(plan: Record<string, any>) {
   const slug = String(plan["slug"] ?? "").trim().toLowerCase();
-  if (!slug) return false;
-  return !SPECIAL_PLAN_PREFIXES.some((prefix) => slug.startsWith(prefix));
+  if (!slug) return null;
+  if (slug === "msk-live" || slug.startsWith("msk-live-")) return "msk-live";
+  if (SPECIAL_PLAN_PREFIXES.some((prefix) => slug.startsWith(prefix))) return null;
+  return PRIMARY_PRODUCT_SLUG;
 }
 
 function periodicityType(unit: unknown) {
@@ -35,18 +37,20 @@ async function uniqueOfferSlug(base: string, planId: string) {
 
 /**
  * Mantém plano, oferta, transação e licença apontando para o mesmo produto.
- * Clonador e MSK Agente usam fluxos próprios e são deliberadamente ignorados.
+ * MSK LIVE usa esta mesma sincronização com produto próprio; Clonador e MSK Agente
+ * continuam em seus fluxos específicos e são deliberadamente ignorados.
  */
 export async function syncPrimaryPlanOffer(planId: string, plan: Record<string, any>) {
-  if (!isPrimaryExtensionPlan(plan)) return { synced: false as const, reason: "SPECIAL_PRODUCT" };
+  const productSlug = targetProductSlug(plan);
+  if (!productSlug) return { synced: false as const, reason: "SPECIAL_PRODUCT" };
 
   const { data: product, error: productError } = await supabaseAdmin
     .from("products")
     .select("id,slug,name")
-    .eq("slug", PRIMARY_PRODUCT_SLUG)
+    .eq("slug", productSlug)
     .maybeSingle();
   if (productError) throw productError;
-  if (!product) throw new Error("Produto Extensão MSK não encontrado para sincronizar a oferta.");
+  if (!product) throw new Error(`Produto ${productSlug} não encontrado para sincronizar a oferta.`);
 
   const { data: offers, error: offersError } = await supabaseAdmin
     .from("offers")
