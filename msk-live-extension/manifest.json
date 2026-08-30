@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "MSK Live",
+  "version": "4.1.0",
+  "description": "MSK Live — painel inteligente de automação e controle para TikTok Shop com licença MSK SYSTEM.",
+  "icons": {
+    "16": "icon16.png",
+    "32": "icon32.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "action": {
+    "default_title": "MSK Live: licença e painel",
+    "default_icon": {
+      "16": "icon16.png",
+      "32": "icon32.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  },
+  "background": {
+    "service_worker": "license-background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://shop.tiktok.com/*",
+        "https://*.tiktok.com/*"
+      ],
+      "js": [
+        "legacy-cleanup.js",
+        "license-guard.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false,
+      "match_about_blank": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icon48.png",
+        "cash.mp3",
+        "inter.woff2",
+        "video-engine.html",
+        "video-engine.css",
+        "video-engine.js",
+        "video-engine-core.js",
+        "metronomo.js",
+        "logo-completo.png",
+        "logo-simbolo.png"
+      ],
+      "matches": [
+        "https://shop.tiktok.com/*",
+        "https://*.tiktok.com/*"
+      ]
+    }
+  ],
+  "permissions": [
+    "storage",
+    "tabs",
+    "offscreen",
+    "activeTab",
+    "tabCapture",
+    "clipboardWrite",
+    "scripting",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://msksystem.online/*",
+    "https://shop.tiktok.com/*",
+    "https://*.tiktok.com/*"
+  ]
+}

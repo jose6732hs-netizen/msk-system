@@ -1,0 +1,9 @@
+MSK Live 4.1.0
+- Conexão com MSK SYSTEM (https://msksystem.online)
+- Licença exclusiva do produto msk-live
+- Dashboard interno de licença, plano e validade
+- Bloqueio antes de carregar as ferramentas
+- Heartbeat automático e revalidação ao focar a página
+- Bloqueio imediato quando licença expira ou plano/produto é desativado
+- Botões Meu painel e Pedir/Renovar licença
+- Video Engine protegido pela mesma licença
