@@ -39,7 +39,7 @@ export const liveAdminGenerateLicense = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { generateLiveLicense } = await import("./live-admin.server");
-    return generateLiveLicense(data, context.userId);
+    return generateLiveLicense(data as { planId: string; email?: string | null; standalone?: boolean; note?: string | null }, context.userId);
   });
 
 export const liveAdminLicenseAction = createServerFn({ method: "POST" })

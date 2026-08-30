@@ -10,7 +10,8 @@ const LIVE_PLAN_PREFIX = "msk-live";
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 const TOKEN_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-type Loose = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Loose = any;
 
 function isLivePlanSlug(slug: unknown) {
   const value = String(slug ?? "").trim().toLowerCase();
