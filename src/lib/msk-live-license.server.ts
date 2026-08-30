@@ -83,7 +83,7 @@ export async function handleMskLiveLicenseValidation(
 ) {
   const body = (await request.clone().json().catch(() => ({}))) as Record<string, unknown>;
   const fixedRequest = fixedProductRequest(request, body);
-  const response = await handleValidation(fixedRequest, bucket, limit, "extension");
+  const response = await handleValidation(fixedRequest, bucket, limit, "live" as any);
 
   const payload = (await response.clone().json().catch(() => null)) as Record<string, unknown> | null;
   if (!response.ok || payload?.["valid"] !== true) return response;
