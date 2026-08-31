@@ -107,7 +107,7 @@ async function validateBaiKey(apiKey: string) {
       body: JSON.stringify({
         model: "deepseek-v4-flash",
         messages: [{ role: "user", content: "Reply only OK" }],
-        max_tokens: 1,
+        max_tokens: 8,
         temperature: 0,
         stream: false,
       }),
