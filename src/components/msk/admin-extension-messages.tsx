@@ -5,18 +5,18 @@ import { Loader2, MessageSquareText, Send, UserRound, UsersRound } from "lucide-
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { extensionRemoteAdminSendMessage } from "@/lib/extension-remote-admin.functions";
 import {
-  extensionRemoteAdminOverview,
-  extensionRemoteAdminSendMessage,
-} from "@/lib/extension-remote-admin.functions";
-import { extensionGlobalBroadcastMessage } from "@/lib/extension-global-message.functions";
+  extensionGlobalBroadcastMessage,
+  extensionGlobalMessageRecipients,
+} from "@/lib/extension-global-message.functions";
 
 type Target = "specific" | "all";
 type Severity = "info" | "success" | "warning" | "critical";
 
 export function AdminExtensionMessages() {
   const qc = useQueryClient();
-  const overviewFn = useServerFn(extensionRemoteAdminOverview);
+  const recipientsFn = useServerFn(extensionGlobalMessageRecipients);
   const sendOneFn = useServerFn(extensionRemoteAdminSendMessage);
   const sendAllFn = useServerFn(extensionGlobalBroadcastMessage);
   const [target, setTarget] = useState<Target>("specific");
@@ -26,24 +26,22 @@ export function AdminExtensionMessages() {
   const [severity, setSeverity] = useState<Severity>("info");
   const [sending, setSending] = useState(false);
 
-  const overview = useQuery({
-    queryKey: ["extension-remote-overview"],
-    queryFn: () => overviewFn(),
+  const recipients = useQuery({
+    queryKey: ["extension-message-recipients"],
+    queryFn: () => recipientsFn(),
     refetchInterval: 30_000,
   });
 
   const clients = useMemo(() => {
-    const rows = (overview.data?.clients ?? []) as any[];
+    const rows = (recipients.data?.users ?? []) as any[];
     return [...rows].sort((a, b) =>
       String(a.email ?? "").localeCompare(String(b.email ?? ""), "pt-BR"),
     );
-  }, [overview.data]);
+  }, [recipients.data]);
 
   const selected = clients.find((client) => client.user_id === userId) ?? null;
-  const installationCount = clients.reduce(
-    (sum, client) => sum + Number(client.installations?.length ?? 0),
-    0,
-  );
+  const licensedUsers = Number(recipients.data?.licensedUsers ?? 0);
+  const installationCount = Number(recipients.data?.installations ?? 0);
 
   async function submit() {
     const cleanTitle = title.trim();
@@ -59,7 +57,7 @@ export function AdminExtensionMessages() {
     if (
       target === "all" &&
       !window.confirm(
-        `Enviar esta mensagem para todos os usuários conectados à extensão (${clients.length} usuários / ${installationCount} instalações)?`,
+        `Enviar esta mensagem para todos os ${licensedUsers} usuários com licença? Usuários offline receberão quando a extensão consultar o canal.`,
       )
     ) {
       return;
@@ -72,7 +70,7 @@ export function AdminExtensionMessages() {
           data: { title: cleanTitle, message: cleanMessage, severity },
         });
         toast.success(
-          `Mensagem global enviada para ${result.users} usuário${result.users === 1 ? "" : "s"} (${result.deliveries} entrega${result.deliveries === 1 ? "" : "s"}).`,
+          `Mensagem global enfileirada para ${result.users} usuário${result.users === 1 ? "" : "s"}.`,
         );
       } else {
         const result = await sendOneFn({
@@ -86,11 +84,13 @@ export function AdminExtensionMessages() {
         });
         const deliveries = Array.isArray(result.deliveries) ? result.deliveries.length : 0;
         toast.success(
-          `Mensagem enviada para ${selected?.email ?? "o usuário"}${deliveries ? ` em ${deliveries} instalação${deliveries === 1 ? "" : "ões"}` : ""}.`,
+          selected?.installations > 0
+            ? `Mensagem enviada para ${selected.email} em ${deliveries || selected.installations} instalação(ões).`
+            : `Mensagem enfileirada para ${selected?.email ?? "o usuário"}. Ela será entregue quando a extensão consultar o canal.`,
         );
       }
       setMessage("");
-      qc.invalidateQueries({ queryKey: ["extension-remote-overview"] });
+      qc.invalidateQueries({ queryKey: ["extension-message-recipients"] });
     } catch (error) {
       toast.error((error as Error).message || "Não foi possível enviar a mensagem.");
     } finally {
@@ -108,12 +108,14 @@ export function AdminExtensionMessages() {
           <div>
             <h4 className="text-sm font-black uppercase tracking-widest">Mensagem para a extensão</h4>
             <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-              Envie um aviso diretamente dentro da extensão para um cliente específico ou para todos os usuários conectados.
+              Envie um aviso dentro da extensão para um cliente específico ou para todos os clientes que possuem licença. Mensagens para clientes offline ficam enfileiradas por até 7 dias.
             </p>
           </div>
         </div>
         <div className="rounded-xl border border-border/50 bg-black/20 px-3 py-2 text-[0.62rem] font-bold uppercase tracking-widest text-muted-foreground">
-          {overview.isLoading ? "Carregando..." : `${clients.length} usuários · ${installationCount} instalações`}
+          {recipients.isLoading
+            ? "Carregando..."
+            : `${licensedUsers} com licença · ${installationCount} instalações online/registradas`}
         </div>
       </div>
 
@@ -149,13 +151,14 @@ export function AdminExtensionMessages() {
               {clients.map((client) => (
                 <option key={client.user_id} value={client.user_id}>
                   {client.name || "Cliente"} — {client.email || client.user_id}
+                  {client.licensed ? " · licença" : " · sem licença"}
                 </option>
               ))}
             </select>
           </label>
         ) : (
           <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs text-muted-foreground">
-            A mensagem será criada para cada instalação conectada, garantindo a entrega também quando um mesmo cliente usa mais de um computador.
+            O envio global cria uma mensagem por cliente com licença. Mesmo quem estiver offline agora poderá receber o aviso quando abrir ou reconectar a extensão dentro do prazo de 7 dias.
           </div>
         )}
 
@@ -202,9 +205,9 @@ export function AdminExtensionMessages() {
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p className="text-[0.65rem] text-muted-foreground">
           {target === "all"
-            ? "O envio global pede confirmação antes de disparar."
+            ? `Destino: todos os ${licensedUsers} clientes com licença.`
             : selected
-              ? `Destino: ${selected.email} · ${selected.installations?.length ?? 0} instalação(ões)`
+              ? `Destino: ${selected.email} · ${selected.installations} instalação(ões) registrada(s)${selected.licensed ? " · com licença" : " · sem licença ativa/cadastrada"}`
               : "Escolha um cliente para habilitar o envio individual."}
         </p>
         <Button
