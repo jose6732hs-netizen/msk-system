@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { loadActiveGlobalTraining } from "@/lib/ai-global-training.server";
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3-flash-preview";
@@ -34,7 +35,7 @@ export async function buildUserContext(supabase: SupabaseClient<any>, userId: st
   };
 }
 
-function systemPrompt(context: unknown) {
+function systemPrompt(context: unknown, globalTraining = "") {
   return [
     "Você é o Assistente MSK, o suporte virtual dentro do painel do MSK SISTEM.",
     "Responda sempre em português do Brasil, de forma curta, objetiva e cordial.",
@@ -42,10 +43,12 @@ function systemPrompt(context: unknown) {
     "Você não executa ações: para gerar licença, sacar comissão, comprar plano ou aprovar afiliado, oriente o usuário a usar os botões do painel.",
     "Nunca revele tokens completos, chaves, senhas ou dados de outros usuários.",
     "Se a informação não estiver no contexto, diga que não tem acesso e sugira o caminho no painel ou o suporte no WhatsApp.",
+    globalTraining ? "" : null,
+    globalTraining || null,
     "",
     "CONTEXTO DO USUÁRIO (JSON):",
     JSON.stringify(context),
-  ].join("\n");
+  ].filter((line): line is string => typeof line === "string").join("\n");
 }
 
 export async function askAssistant(params: {
@@ -53,6 +56,7 @@ export async function askAssistant(params: {
   messages: AssistantMessage[];
   context: unknown;
 }): Promise<{ ok: true; reply: string } | { ok: false; status: number; error: string }> {
+  const training = await loadActiveGlobalTraining();
   const res = await fetch(GATEWAY_URL, {
     method: "POST",
     headers: {
@@ -62,7 +66,7 @@ export async function askAssistant(params: {
     body: JSON.stringify({
       model: MODEL,
       messages: [
-        { role: "system", content: systemPrompt(params.context) },
+        { role: "system", content: systemPrompt(params.context, training.text) },
         ...params.messages.slice(-12),
       ],
     }),
