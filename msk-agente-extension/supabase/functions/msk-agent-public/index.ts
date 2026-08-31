@@ -11,6 +11,7 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 const cleanText = (value: unknown) => String(value ?? "")
   .replace(/deepseek(?:\s*v4\s*flash|[-_ ]v4[-_ ]flash)?/gi, "MSK IA")
+  .replace(/gemini(?:[-_ ]\d+(?:\.\d+)?(?:[-_ ]flash(?:[-_ ]lite)?)?)/gi, "MSK IA")
   .replace(/B\.AI/gi, "MSK");
 
 const normalizeIntent = (value: unknown) => String(value ?? "")
@@ -25,11 +26,11 @@ const hasEditIntent = (value: unknown) => {
   const text = normalizeIntent(value);
   if (!text) return false;
 
-  if (/\b(mud(?:a|e|ar)|alter(?:a|e|ar)|troc(?:a|e|ar)|corrij(?:a|ir)|adicion(?:a|e|ar)|remov(?:a|e|er)|cri(?:a|e|ar)|fac(?:a|e|er)|implement(?:a|e|ar)|edit(?:a|e|ar)|ajust(?:a|e|ar)|coloqu(?:e|ar)|tir(?:a|e|ar)|exclu(?:a|ir)|delet(?:a|e|ar)|renome(?:ia|ie|ar)|configur(?:a|e|ar)|integr(?:a|e|ar)|conect(?:a|e|ar)|desenvolv(?:a|e|er)|mont(?:a|e|ar)|atualiz(?:a|e|ar)|apliqu(?:e|ar)|substitu(?:a|ir)|arrum(?:a|e|ar)|consert(?:a|e|ar)|ger(?:a|e|ar)|refator(?:a|e|ar)|otimiz(?:a|e|ar)|migr(?:a|e|ar)|prote(?:ja|ger)|bloque(?:ia|ie|ar)|liber(?:a|e|ar)|salv(?:a|e|ar)|cadastr(?:a|e|ar))\b/.test(text)) return true;
+  if (/\b(mud(?:a|e|ar)|alter(?:a|e|ar)|troc(?:a|e|ar)|corrij(?:a|ir)|adicion(?:a|e|ar)|remov(?:a|e|er)|cri(?:a|e|ar)|fac(?:a|e|er)|implement(?:a|e|ar)|edit(?:a|e|ar)|ajust(?:a|e|ar)|coloqu(?:e|ar)|tir(?:a|e|ar)|exclu(?:a|ir)|delet(?:a|e|ar)|renome(?:ia|ie|ar)|configur(?:a|e|ar)|integr(?:a|e|ar)|conect(?:a|e|ar)|desenvolv(?:a|e|er)|mont(?:a|e|ar)|atualiz(?:a|e|ar)|apliqu(?:e|ar)|substitu(?:a|ir)|arrum(?:a|e|ar)|consert(?:a|e|ar)|ger(?:a|e|ar)|refator(?:a|e|ar)|otimiz(?:a|e|ar)|migr(?:a|e|ar)|prote(?:ja|ger)|bloque(?:ia|ie|ar)|liber(?:a|e|ar)|salv(?:a|e|ar)|cadastr(?:a|e|ar)|instal(?:a|e|ar)|importe|importar|use|usar)\b/.test(text)) return true;
 
-  if (/\b(quero|preciso|necessito)\b.{0,32}\b(checkout|login|cadastro|dashboard|painel|pagina|site|sistema|saas|api|endpoint|banco|database|tabela|rls|webhook|pix|pagamento|assinatura|licenca|componente|botao|formulario|rota|funcao|edge function)\b/.test(text)) return true;
+  if (/\b(quero|preciso|necessito)\b.{0,40}\b(checkout|login|cadastro|dashboard|painel|pagina|site|sistema|saas|api|endpoint|banco|database|tabela|rls|webhook|pix|pagamento|assinatura|licenca|componente|botao|formulario|rota|funcao|edge function|arquivo|imagem|logo)\b/.test(text)) return true;
 
-  if (/\b(nao funciona|parou de funcionar|quebrou|esta quebrado|ta quebrado|deu erro|esta dando erro|ta dando erro|bug|falha)\b/.test(text)) return true;
+  if (/\b(nao funciona|parou de funcionar|quebrou|esta quebrado|ta quebrado|deu erro|esta dando erro|ta dando erro|corrija o erro|conserte o erro|bug para corrigir|falha para corrigir)\b/.test(text)) return true;
 
   return false;
 };
@@ -91,6 +92,33 @@ const sanitize = (data: any, upstreamStatus: number) => {
   return source;
 };
 
+const attachmentArray = (value: unknown) => Array.isArray(value) ? value.slice(0, 8) : [];
+
+async function analyzeAttachments(supabaseUrl: string, command: string, attachments: any[]) {
+  if (!attachments.length) return { ok: true, context: "", attachment_count: 0 } as any;
+  const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  if (!serviceRole) return { ok: false, error: "O leitor seguro de anexos está temporariamente indisponível.", code: "MSK_ATTACHMENT_SERVICE_UNAVAILABLE" };
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/msk-attachment-analyze`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${serviceRole}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ command, attachments }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data?.ok === false) {
+      return {
+        ok: false,
+        code: String(data?.code || "MSK_ATTACHMENT_ANALYSIS_FAILED"),
+        error: String(data?.error || "O MSK não conseguiu ler um dos anexos agora."),
+        status: response.status,
+      };
+    }
+    return data;
+  } catch {
+    return { ok: false, code: "MSK_ATTACHMENT_ANALYSIS_FAILED", error: "O MSK não conseguiu ler os anexos agora. Tente novamente." };
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
@@ -106,19 +134,53 @@ Deno.serve(async (req: Request) => {
       if (value) headers[name] = value;
     }
 
-    const body = await req.text();
+    const rawBody = await req.text();
     let parsed: any = {};
-    try { parsed = body ? JSON.parse(body) : {}; } catch { parsed = {}; }
+    try { parsed = rawBody ? JSON.parse(rawBody) : {}; } catch { parsed = {}; }
 
-    const command = String(parsed?.original_command || parsed?.message || parsed?.command || "").trim();
-    const conversational = action === "run" && !!command && !hasEditIntent(command);
-    const quickReply = conversational ? quickConversationReply(command) : "";
+    const originalCommand = String(parsed?.original_command || parsed?.message || parsed?.command || "").trim();
+    const attachments = action === "run" || action === "chat" ? attachmentArray(parsed?.attachments) : [];
+    const conversational = action === "run" && !!originalCommand && !hasEditIntent(originalCommand);
+    const quickReply = conversational && !attachments.length ? quickConversationReply(originalCommand) : "";
+
+    let attachmentInfo: any = { ok: true, context: "", attachment_count: 0 };
+    if (attachments.length) {
+      attachmentInfo = await analyzeAttachments(supabaseUrl, originalCommand, attachments);
+      if (!attachmentInfo?.ok) {
+        return json({
+          ok: false,
+          code: attachmentInfo.code || "MSK_ATTACHMENT_ANALYSIS_FAILED",
+          error: cleanText(attachmentInfo.error || "O MSK não conseguiu ler os anexos agora."),
+          message: cleanText(attachmentInfo.error || "O MSK não conseguiu ler os anexos agora."),
+        }, Number(attachmentInfo.status || 422));
+      }
+    }
+
+    const attachmentContext = String(attachmentInfo?.context || "").trim();
+    const augmented = attachmentContext
+      ? `${originalCommand || "Analise os anexos enviados no contexto deste projeto."}\n\n${attachmentContext}`
+      : originalCommand;
 
     const upstreamAction = quickReply ? "status" : conversational ? "chat" : action;
+    if (attachments.length) {
+      delete parsed.attachments;
+      parsed.attachment_count = Number(attachmentInfo?.attachment_count || attachments.length);
+      parsed.attachment_context_used = true;
+      parsed.client_original_command = originalCommand;
+      if (upstreamAction === "chat") {
+        parsed.message = augmented;
+        parsed.command = augmented;
+      } else if (upstreamAction === "run") {
+        parsed.original_command = augmented;
+        parsed.command = augmented;
+        parsed.reinforced_command = `${String(parsed.reinforced_command || originalCommand || "")}\n\n${attachmentContext}`.trim();
+      }
+    }
+
     const upstream = await fetch(`${supabaseUrl}/functions/v1/msk-agent?action=${encodeURIComponent(upstreamAction)}`, {
       method: "POST",
       headers,
-      body,
+      body: JSON.stringify(parsed),
     });
 
     const text = await upstream.text();
@@ -142,7 +204,9 @@ Deno.serve(async (req: Request) => {
     }
 
     if (conversational && !upstream.ok) {
-      const fallback = "Entendi. Estou aqui como desenvolvedor do seu projeto. Posso te orientar e, quando você pedir uma alteração concreta, trabalho nos arquivos, código e banco de dados sem marcar nada como concluído antes da aplicação real.";
+      const fallback = attachments.length
+        ? "Recebi seus anexos, mas a análise completa ficou temporariamente indisponível. Nenhuma alteração foi feita. Tente novamente para eu ler o material antes de mexer no projeto."
+        : "Entendi. Estou aqui como desenvolvedor do seu projeto. Posso te orientar e, quando você pedir uma alteração concreta, trabalho nos arquivos, código e banco de dados sem marcar nada como concluído antes da aplicação real.";
       return json({
         ok: true,
         connected: data?.connected !== false,
@@ -158,6 +222,10 @@ Deno.serve(async (req: Request) => {
     }
 
     const publicData = sanitize(data, upstream.status);
+    if (attachments.length && publicData && typeof publicData === "object") {
+      publicData.attachments_read = Number(attachmentInfo?.attachment_count || attachments.length);
+      publicData.attachment_context_used = true;
+    }
     if (conversational && publicData && typeof publicData === "object") {
       publicData.mode = "chat";
       publicData.no_edit = true;
