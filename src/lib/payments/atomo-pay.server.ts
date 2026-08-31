@@ -16,6 +16,7 @@ const CATALOG_KEY = "atomopay_catalog";
 type AtomoCatalogState = {
   productHash?: string;
   offerHash?: string;
+  offersByAmount?: Record<string, string>;
 };
 
 type AtomoCatalog = { productHash: string; offerHash: string };
@@ -31,6 +32,10 @@ function sanitizeProviderText(value: string) {
     .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]"')
     .replace(/\b\d{12,19}\b/g, "[card-redacted]")
     .slice(0, 500);
+}
+
+function offerPrice(offer: any) {
+  return Number(offer?.price ?? offer?.amount ?? offer?.value ?? 0);
 }
 
 function customerData(customer: AmploCustomer) {
@@ -106,18 +111,11 @@ export class AtomoPayService {
   createOffer(productHash: string, input: { title: string; amount: number }) {
     return this.call<Record<string, unknown>>("POST", `/products/${productHash}/offers`, {
       title: input.title,
-      amount: input.amount,
+      price: input.amount,
     });
   }
 
-  /**
-   * Resolve uma única oferta configurada para o catálogo MSK.
-   *
-   * O próprio fluxo PIX já cria cobranças de valores diferentes usando a mesma
-   * offer_hash. Portanto não criamos uma oferta nova antes de cada cartão:
-   * isso adicionava uma chamada desnecessária e podia impedir o POST real de
-   * /transactions de acontecer.
-   */
+  /** Resolve a oferta padrão do catálogo MSK. */
   async ensureCatalog(): Promise<AtomoCatalog> {
     const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
     const envOffer = process.env["ATOMOPAY_OFFER_HASH"];
@@ -173,7 +171,78 @@ export class AtomoPayService {
     await supabaseAdmin.from("app_settings").upsert(
       {
         key: CATALOG_KEY,
-        value: { productHash, offerHash } as never,
+        value: { ...cached, productHash, offerHash } as never,
+        updated_at: new Date().toISOString(),
+      } as never,
+      { onConflict: "key" },
+    );
+
+    return { productHash, offerHash };
+  }
+
+  /**
+   * Para PIX, resolve uma oferta compatível com o valor exato da cobrança.
+   * Evita reutilizar uma oferta de preço diferente em compras maiores.
+   */
+  private async ensurePixCatalogForAmount(amountCents: number): Promise<AtomoCatalog> {
+    const amount = Math.max(1, Math.round(amountCents));
+    const amountKey = String(amount);
+    const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
+    const envOffer = process.env["ATOMOPAY_OFFER_HASH"];
+    if (envProduct && envOffer) return { productHash: envProduct, offerHash: envOffer };
+
+    const { data: saved } = await supabaseAdmin
+      .from("app_settings")
+      .select("value")
+      .eq("key", CATALOG_KEY)
+      .maybeSingle();
+    const cached = (saved?.value ?? {}) as AtomoCatalogState;
+    let productHash = String(envProduct ?? cached.productHash ?? "");
+
+    const cachedOffer = cached.offersByAmount?.[amountKey];
+    if (productHash && cachedOffer) return { productHash, offerHash: cachedOffer };
+
+    if (!productHash) {
+      const base = await this.ensureCatalog();
+      productHash = base.productHash;
+    }
+
+    const productRaw = (await this.call<Record<string, any>>(
+      "GET",
+      `/products/${encodeURIComponent(productHash)}`,
+    )) as any;
+    const product = productRaw?.data ?? productRaw ?? {};
+    const offers: any[] = Array.isArray(product?.offers)
+      ? product.offers
+      : Array.isArray(product?.offer)
+        ? product.offer
+        : [];
+
+    let offerHash = String(
+      offers.find((offer) => offer?.hash && offerPrice(offer) === amount)?.hash ?? "",
+    );
+
+    if (!offerHash) {
+      const created = (await this.createOffer(productHash, {
+        title: `MSK ${amount} centavos`,
+        amount,
+      })) as any;
+      const createdOffer = created?.data ?? created;
+      offerHash = String(createdOffer?.hash ?? createdOffer?.offer_hash ?? "");
+    }
+
+    if (!offerHash) throw new Error("ATOMOPAY_CATALOG_OFFER_MISSING");
+
+    const offersByAmount = { ...(cached.offersByAmount ?? {}), [amountKey]: offerHash };
+    await supabaseAdmin.from("app_settings").upsert(
+      {
+        key: CATALOG_KEY,
+        value: {
+          ...cached,
+          productHash,
+          offerHash: cached.offerHash ?? offerHash,
+          offersByAmount,
+        } as never,
         updated_at: new Date().toISOString(),
       } as never,
       { onConflict: "key" },
@@ -193,7 +262,7 @@ export class AtomoPayService {
     metadata?: Record<string, unknown> | undefined;
   }) {
     const amount = Math.round(input.amountCents);
-    const catalog = await this.ensureCatalog();
+    const catalog = await this.ensurePixCatalogForAmount(amount);
     const customer = customerData(input.customer);
 
     const body: Record<string, unknown> = {
@@ -203,6 +272,7 @@ export class AtomoPayService {
       customer,
       cart: input.items.map((i) => ({
         product_hash: catalog.productHash,
+        offer_hash: catalog.offerHash,
         title: i.title,
         cover: null,
         price: Math.round(i.unitPrice),
