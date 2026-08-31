@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminAgentCenter } from "@/components/msk/admin-agent-center";
+import { AdminAgentAiSettings } from "@/components/msk/admin-agent-ai-settings";
 
 const TABLES = [
   "extension_installations",
@@ -41,5 +42,10 @@ export function AdminAgentCenterLive() {
     };
   }, [queryClient]);
 
-  return <AdminAgentCenter />;
+  return (
+    <div className="space-y-6">
+      <AdminAgentAiSettings />
+      <AdminAgentCenter />
+    </div>
+  );
 }
