@@ -19,5 +19,27 @@ export const agentHealth = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { loadAgentHealth } = await import("./agent-usage.server");
-    return loadAgentHealth();
+    const health = await loadAgentHealth();
+
+    const { data: aiData } = await (context.supabase as any).rpc("msk_ai_settings_status");
+    const aiRow = Array.isArray(aiData) ? aiData[0] : aiData;
+    const aiConfigured = !!aiRow?.configured;
+
+    const checks = (health.checks ?? []).map((check: any) =>
+      check.key === "gateway"
+        ? {
+            ...check,
+            status: aiConfigured ? "up" : "down",
+            detail: aiConfigured ? "IA do MSK configurada no SaaS" : "Chave da IA não configurada",
+          }
+        : check,
+    );
+
+    const overall = checks.some((c: any) => c.status === "down")
+      ? "down"
+      : checks.some((c: any) => c.status === "degraded")
+        ? "degraded"
+        : "up";
+
+    return { ...health, checks, overall };
   });
