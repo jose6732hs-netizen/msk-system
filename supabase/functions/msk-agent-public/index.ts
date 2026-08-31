@@ -25,7 +25,6 @@ const isSimpleConversation = (value: unknown) => {
   const text = normalizeIntent(value);
   if (!text || text.split(" ").length > 10) return false;
 
-  // Se houver um verbo claro de edição, o pedido deve seguir para o executor.
   const editIntent = /\b(mud(?:a|e|ar)|alter(?:a|e|ar)|troc(?:a|e|ar)|corrij(?:a|ir)|adicion(?:a|e|ar)|remov(?:a|e|er)|cri(?:a|e|ar)|fac(?:a|er)|implement(?:a|e|ar)|edit(?:a|e|ar)|ajust(?:a|e|ar)|coloqu(?:e|ar)|tir(?:a|e|ar)|exclu(?:a|ir)|delet(?:a|e|ar)|renome(?:ia|ie|ar))\b/.test(text);
   if (editIntent) return false;
 
@@ -90,11 +89,8 @@ Deno.serve(async (req: Request) => {
     try { parsed = body ? JSON.parse(body) : {}; } catch { parsed = {}; }
 
     const command = String(parsed?.original_command || parsed?.message || parsed?.command || "").trim();
-    const legacyBuild = !req.headers.get("x-msk-build-id");
-    const simpleConversation = action === "run" && legacyBuild && isSimpleConversation(command);
+    const simpleConversation = action === "run" && isSimpleConversation(command);
 
-    // Saudação/conversa curta nunca entra no executor de código. Primeiro usamos
-    // o status apenas para manter licença, identidade e ownership validados.
     const upstreamAction = simpleConversation ? "status" : action;
     const upstream = await fetch(`${supabaseUrl}/functions/v1/msk-agent?action=${encodeURIComponent(upstreamAction)}`, {
       method: "POST",
