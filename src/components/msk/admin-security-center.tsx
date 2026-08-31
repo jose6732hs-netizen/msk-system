@@ -59,6 +59,12 @@ type InstallAction =
 
 type MessageScope = "INCIDENT" | "BLOCK";
 
+type CriticalFile = {
+  file?: string | null;
+  expected_hash?: string | null;
+  received_hash?: string | null;
+};
+
 function dateTime(value?: string | null) {
   if (!value) return "—";
   const date = new Date(value);
@@ -68,6 +74,12 @@ function dateTime(value?: string | null) {
 function shortId(value?: string | null) {
   const text = String(value || "");
   return text.length > 22 ? `${text.slice(0, 8)}…${text.slice(-8)}` : text || "—";
+}
+
+function shortHash(value?: string | null) {
+  const text = String(value || "").trim();
+  if (!text) return "—";
+  return text.length > 28 ? `${text.slice(0, 12)}…${text.slice(-10)}` : text;
 }
 
 function trustClass(status: string) {
@@ -89,6 +101,45 @@ function incidentMessageHidden(row: any) {
       && row.message_hidden_incident_code === row.incident_code
       && row.message_hidden_block_reason === row.block_reason,
   );
+}
+
+function eventTitle(event: any) {
+  const labels: Record<string, string> = {
+    integrity_failed: "Adulteração detectada",
+    protected_file_modified: "Arquivo protegido alterado",
+    installation_ownership_mismatch: "Possível extensão clonada",
+    device_limit_exceeded: "Limite de dispositivos excedido",
+    handshake_verified: "Integridade verificada",
+  };
+  return labels[String(event?.event_type || "")] || String(event?.event_type || "Evento de segurança").replaceAll("_", " ");
+}
+
+function eventCriticalFiles(event: any): CriticalFile[] {
+  const metadataFiles = Array.isArray(event?.metadata?.critical_files)
+    ? event.metadata.critical_files.filter((item: any) => item && typeof item === "object")
+    : [];
+  const files: CriticalFile[] = metadataFiles.map((item: any) => ({
+    file: String(item.file || "").slice(0, 260) || null,
+    expected_hash: item.expected_hash || null,
+    received_hash: item.received_hash || null,
+  }));
+  if (event?.affected_file && !files.some((item) => item.file === event.affected_file)) {
+    files.unshift({
+      file: event.affected_file,
+      expected_hash: event.expected_hash || null,
+      received_hash: event.received_hash || null,
+    });
+  }
+  return files.slice(0, 12);
+}
+
+function fileChangeLabel(file: CriticalFile) {
+  const expected = String(file.expected_hash || "").toLowerCase();
+  const received = String(file.received_hash || "").toLowerCase();
+  if (expected && !received) return "Arquivo removido ou não encontrado";
+  if (!expected && received) return "Arquivo inesperado ou adicionado";
+  if (expected && received && expected !== received) return "Conteúdo alterado";
+  return "Divergência de integridade detectada";
 }
 
 export function AdminSecurityCenter() {
@@ -279,6 +330,8 @@ export function AdminSecurityCenter() {
             const rowBlocks = blocks.filter((block) => block.installation_id === row.installation_id && !block.message_hidden_at).slice(0, 10);
             const rowIps = ips.filter((item) => item.installation_id === row.installation_id).slice(0, 10);
             const showIncidentMessage = (row.block_reason || row.incident_code) && !incidentMessageHidden(row);
+            const latestDetailedEvent = rowEvents.find((event) => eventCriticalFiles(event).length || event.expected_hash || event.received_hash || event.expected_build || event.received_build);
+            const latestFiles = latestDetailedEvent ? eventCriticalFiles(latestDetailedEvent) : [];
             return (
               <article key={row.installation_id} className={`rounded-2xl border ${trustClass(row.trust_status)} bg-background/45`}>
                 <button type="button" onClick={() => setExpanded(isOpen ? null : row.installation_id)} className="grid w-full gap-4 p-4 text-left xl:grid-cols-[1.35fr_1fr_1fr_1fr_auto] xl:items-center">
@@ -302,18 +355,49 @@ export function AdminSecurityCenter() {
                     </div>
 
                     {showIncidentMessage ? (
-                      <div className="mt-3 flex flex-col gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0"><AlertTriangle className="mr-2 inline h-4 w-4" /><b>{row.incident_code || "Incidente"}</b> — {row.block_reason || "Em análise"}</div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          className="shrink-0 text-red-200 hover:text-red-100"
-                          disabled={dismissMessageMutation.isPending}
-                          onClick={() => dismissMessageMutation.mutate({ row, scope: "INCIDENT" })}
-                        >
-                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />Excluir mensagem
-                        </Button>
+                      <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div><AlertTriangle className="mr-2 inline h-4 w-4" /><b>{row.incident_code || "Incidente"}</b> — {row.block_reason || "Em análise"}</div>
+                            {latestDetailedEvent ? (
+                              <div className="mt-3 space-y-2 rounded-lg border border-amber-500/15 bg-black/10 p-3">
+                                <p className="font-bold text-amber-100">O que foi detectado</p>
+                                <div className="grid gap-1 text-[0.68rem] text-muted-foreground sm:grid-cols-2">
+                                  <span><b className="text-foreground">Evento:</b> {eventTitle(latestDetailedEvent)}</span>
+                                  <span><b className="text-foreground">Horário:</b> {dateTime(latestDetailedEvent.created_at)}</span>
+                                  <span><b className="text-foreground">IP:</b> {latestDetailedEvent.ip_address || row.last_ip || "—"}</span>
+                                  <span><b className="text-foreground">Build recebido:</b> {latestDetailedEvent.received_build || row.build_id || "—"}</span>
+                                </div>
+                                {latestFiles.length ? (
+                                  <div className="space-y-2 pt-1">
+                                    {latestFiles.map((file, index) => (
+                                      <div key={`${file.file || "arquivo"}-${index}`} className="rounded-lg border border-red-500/20 bg-red-500/[0.05] p-2">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <b className="font-mono text-red-100">{file.file || "Arquivo protegido"}</b>
+                                          <span className="rounded-full border border-red-500/20 px-2 py-0.5 text-[0.58rem] font-black uppercase text-red-200">{fileChangeLabel(file)}</span>
+                                        </div>
+                                        <div className="mt-1 grid gap-1 font-mono text-[0.58rem] opacity-70 sm:grid-cols-2">
+                                          <span>Esperado: {shortHash(file.expected_hash)}</span>
+                                          <span>Recebido: {shortHash(file.received_hash)}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="shrink-0 text-red-200 hover:text-red-100"
+                            disabled={dismissMessageMutation.isPending}
+                            onClick={() => dismissMessageMutation.mutate({ row, scope: "INCIDENT" })}
+                          >
+                            <Trash2 className="mr-1.5 h-3.5 w-3.5" />Excluir mensagem
+                          </Button>
+                        </div>
                       </div>
                     ) : null}
 
@@ -329,7 +413,47 @@ export function AdminSecurityCenter() {
                     </div>
 
                     <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                      <div className="rounded-2xl border border-border/50 bg-black/15 p-4"><h5 className="text-[0.62rem] font-black uppercase tracking-widest">Timeline de integridade</h5><div className="mt-3 space-y-2">{rowEvents.length ? rowEvents.map((event) => <div key={event.id} className="rounded-xl border border-border/40 p-3 text-xs"><div className="flex items-center justify-between gap-3"><b>{event.event_type}</b><span className="text-[0.58rem] uppercase opacity-70">{event.severity}</span></div><p className="mt-1 opacity-70">{dateTime(event.created_at)} · {event.affected_file || event.metadata?.reason || event.received_build || "verificação"}</p></div>) : <p className="text-xs text-muted-foreground">Sem eventos registrados.</p>}</div></div>
+                      <div className="rounded-2xl border border-border/50 bg-black/15 p-4">
+                        <h5 className="text-[0.62rem] font-black uppercase tracking-widest">Timeline de integridade</h5>
+                        <div className="mt-3 space-y-2">
+                          {rowEvents.length ? rowEvents.map((event) => {
+                            const eventFiles = eventCriticalFiles(event);
+                            const hasPackageHash = event.expected_hash || event.received_hash;
+                            const hasBuildComparison = event.expected_build || event.received_build;
+                            return (
+                              <div key={event.id} className={`rounded-xl border p-3 text-xs ${["critical", "high"].includes(event.severity) ? "border-red-500/30 bg-red-500/[0.04]" : "border-border/40"}`}>
+                                <div className="flex flex-wrap items-center justify-between gap-3"><b>{eventTitle(event)}</b><span className="text-[0.58rem] uppercase opacity-70">{event.severity}</span></div>
+                                <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[0.65rem] opacity-70">
+                                  <span>{dateTime(event.created_at)}</span>
+                                  {event.ip_address ? <span>IP {event.ip_address}</span> : null}
+                                  {event.metadata?.reason ? <span>{event.metadata.reason}</span> : null}
+                                </div>
+                                {hasBuildComparison ? (
+                                  <div className="mt-2 grid gap-2 rounded-lg border border-border/30 bg-black/10 p-2 text-[0.62rem] sm:grid-cols-2">
+                                    <div><span className="opacity-60">Build esperado</span><p className="mt-0.5 font-mono">{event.expected_build || "—"}</p></div>
+                                    <div><span className="opacity-60">Build recebido</span><p className="mt-0.5 font-mono">{event.received_build || "—"}</p></div>
+                                  </div>
+                                ) : null}
+                                {eventFiles.length ? (
+                                  <div className="mt-2 space-y-2">
+                                    {eventFiles.map((file, index) => (
+                                      <div key={`${file.file || "arquivo"}-${index}`} className="rounded-lg border border-red-500/20 bg-red-500/[0.04] p-2">
+                                        <div className="flex flex-wrap items-center justify-between gap-2"><b className="font-mono">{file.file || "Arquivo protegido"}</b><span className="text-[0.58rem] font-black uppercase text-red-200">{fileChangeLabel(file)}</span></div>
+                                        <div className="mt-1 grid gap-1 font-mono text-[0.56rem] opacity-65 sm:grid-cols-2"><span>Esperado: {shortHash(file.expected_hash)}</span><span>Recebido: {shortHash(file.received_hash)}</span></div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : hasPackageHash ? (
+                                  <div className="mt-2 rounded-lg border border-border/30 bg-black/10 p-2">
+                                    <p className="text-[0.58rem] font-black uppercase opacity-70">Integridade do pacote</p>
+                                    <div className="mt-1 grid gap-1 font-mono text-[0.56rem] opacity-65 sm:grid-cols-2"><span>Hash esperado: {shortHash(event.expected_hash)}</span><span>Hash recebido: {shortHash(event.received_hash)}</span></div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            );
+                          }) : <p className="text-xs text-muted-foreground">Sem eventos registrados.</p>}
+                        </div>
+                      </div>
                       <div className="rounded-2xl border border-border/50 bg-black/15 p-4"><h5 className="text-[0.62rem] font-black uppercase tracking-widest">Sessões e IPs observados</h5><div className="mt-3 space-y-2">{rowSessions.slice(0, 5).map((session) => <div key={session.id} className="flex items-center justify-between rounded-xl border border-border/40 p-3 text-xs"><span>{session.revoked_at ? "Revogada" : new Date(session.expires_at).getTime() > Date.now() ? "Ativa" : "Expirada"}</span><span className="font-mono opacity-70">{session.ip || "—"}</span><span className="opacity-70">{dateTime(session.issued_at)}</span></div>)}{rowIps.map((item) => <div key={item.id} className="flex items-center justify-between rounded-xl border border-border/40 p-3 text-xs"><span className="font-mono">{item.ip}</span><span className="opacity-70">Último: {dateTime(item.last_seen_at)}</span></div>)}{!rowSessions.length && !rowIps.length ? <p className="text-xs text-muted-foreground">Sem histórico de sessão/IP.</p> : null}</div></div>
                     </div>
 
