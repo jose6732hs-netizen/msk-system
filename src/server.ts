@@ -11,7 +11,7 @@ const MSK_APPROVED_BUILDS = [
   "3.4.49=4e33986364c2eee30d1baa0f1e1079212a34b1a8576f45371313a87110dc1996",
   "3.4.49=e0379fe1f2f403b41da52302b9c9bad85744e3596699a0de6d5a2c9dce49d4fb",
   "3.4.49=a98175aa85a42a8537315a5f23dfc11516cb194c2f052eff171cb5734347efdd",
-  "3.4.49=f38a08f95babd79a3964666d928d66c4643cdaed381bcc84594f353652982074",
+  "3.4.49=3ba6c4f49f3a85640a949dcc8d8c545b671739ce19f2995426eb221fd33b3e67",
 ];
 const approvedBuilds = String(process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] ?? "");
 const approvedSet = new Set(approvedBuilds.split(",").map((item) => item.trim()).filter(Boolean));
@@ -41,8 +41,6 @@ async function getServerEntry(): Promise<ServerEntry> {
   return serverEntryPromise;
 }
 
-// h3 swallows in-handler throws into a normal 500 Response with body
-// {"unhandled":true,"message":"HTTPError"} — try/catch alone never fires for those.
 async function normalizeCatastrophicSsrResponse(response: Response): Promise<Response> {
   if (response.status < 500) return response;
   const contentType = response.headers.get("content-type") ?? "";
