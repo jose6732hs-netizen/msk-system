@@ -4,6 +4,7 @@ import { Bell, Check, Trash2, ExternalLink } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { 
+  deleteNotification,
   getUnreadCount, 
   listNotifications, 
   markAsRead, 
@@ -13,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -31,8 +31,10 @@ export function NotificationBell() {
   const getList = useServerFn(listNotifications);
   const markRead = useServerFn(markAsRead);
   const markAllRead = useServerFn(markAllAsRead);
+  const removeNotification = useServerFn(deleteNotification);
 
   const [hasSession, setHasSession] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -74,10 +76,8 @@ export function NotificationBell() {
     retry: false,
   });
 
-
   const count = countData?.count ?? 0;
   const notifications = listData?.notifications ?? [];
-
 
   // Ouvir notificações em tempo real
   useEffect(() => {
@@ -98,21 +98,39 @@ export function NotificationBell() {
     };
   }, [queryClient]);
 
+  const refreshNotifications = () => {
+    queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
+    queryClient.invalidateQueries({ queryKey: ["notifications-list"] });
+  };
+
   const handleMarkRead = async (id: string) => {
     try {
       await markRead({ data: { id } });
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-list"] });
+      refreshNotifications();
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (deletingId) return;
+    setDeletingId(id);
+    try {
+      await removeNotification({ data: { id } });
+      refreshNotifications();
+      toast.success("Notificação removida.");
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível remover a notificação.");
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleMarkAllRead = async () => {
     try {
       await markAllRead();
-      queryClient.invalidateQueries({ queryKey: ["notifications-unread-count"] });
-      queryClient.invalidateQueries({ queryKey: ["notifications-list"] });
+      refreshNotifications();
       toast.success("Todas as notificações marcadas como lidas.");
     } catch (e) {
       toast.error("Erro ao marcar notificações.");
@@ -190,6 +208,18 @@ export function NotificationBell() {
                           Lida
                         </Button>
                       )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto h-7 px-2 text-[10px] font-bold uppercase text-red-300 hover:text-red-200"
+                        disabled={deletingId === n.id}
+                        onClick={() => handleDelete(n.id)}
+                        title="Excluir notificação"
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Excluir
+                      </Button>
                     </div>
                     
                     {!isRead && (
