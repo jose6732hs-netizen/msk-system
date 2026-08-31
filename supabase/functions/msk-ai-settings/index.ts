@@ -131,7 +131,7 @@ async function validateBaiKey(apiKey: string) {
         body?.error?.message || body?.message || `A IA respondeu HTTP ${response.status}`,
       ).slice(0, 300);
       const error = new Error(providerMessage);
-      (error as any).status = [401, 403] .includes(response.status) ? 400 : 502;
+      (error as any).status = [401, 403].includes(response.status) ? 400 : 502;
       throw error;
     }
   } catch (error: any) {
