@@ -752,6 +752,84 @@ export type Database = {
           },
         ]
       }
+      agent_api_usage: {
+        Row: {
+          action: string
+          browser: string | null
+          created_at: string
+          error_message: string | null
+          estimated_cost_usd: number
+          extension_version: string | null
+          http_status: number | null
+          id: string
+          input_tokens: number
+          installation_id: string | null
+          ip_address: string | null
+          latency_ms: number
+          metadata: Json
+          model: string | null
+          output_tokens: number
+          prompt_chars: number
+          provider: string
+          reply_chars: number
+          source: string
+          status: string
+          total_tokens: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          action?: string
+          browser?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost_usd?: number
+          extension_version?: string | null
+          http_status?: number | null
+          id?: string
+          input_tokens?: number
+          installation_id?: string | null
+          ip_address?: string | null
+          latency_ms?: number
+          metadata?: Json
+          model?: string | null
+          output_tokens?: number
+          prompt_chars?: number
+          provider?: string
+          reply_chars?: number
+          source?: string
+          status?: string
+          total_tokens?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          browser?: string | null
+          created_at?: string
+          error_message?: string | null
+          estimated_cost_usd?: number
+          extension_version?: string | null
+          http_status?: number | null
+          id?: string
+          input_tokens?: number
+          installation_id?: string | null
+          ip_address?: string | null
+          latency_ms?: number
+          metadata?: Json
+          model?: string | null
+          output_tokens?: number
+          prompt_chars?: number
+          provider?: string
+          reply_chars?: number
+          source?: string
+          status?: string
+          total_tokens?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       app_settings: {
         Row: {
           key: string
