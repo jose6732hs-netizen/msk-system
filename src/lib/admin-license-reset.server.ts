@@ -48,11 +48,16 @@ export async function resetLicenseTimer(licenseId: string, adminId: string) {
     durationMs = resolved.milliseconds;
   }
 
+  const finalDurationMs = Number(durationMs);
+  if (!(finalDurationMs > 0)) {
+    throw new Error("A duração original desta licença é inválida.");
+  }
+
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + durationMs).toISOString();
+  const expiresAt = new Date(now.getTime() + finalDurationMs).toISOString();
   const nextMetadata = {
     ...metadata,
-    pending_duration_ms: durationMs,
+    pending_duration_ms: finalDurationMs,
     timer_restarted_at: now.toISOString(),
     timer_restarted_by: adminId,
   };
@@ -76,7 +81,7 @@ export async function resetLicenseTimer(licenseId: string, adminId: string) {
     event_type: "admin_restart_timer",
     metadata: {
       admin_id: adminId,
-      duration_ms: durationMs,
+      duration_ms: finalDurationMs,
       previous_status: license.status,
       previous_expires_at: license.expires_at ?? null,
       expires_at: expiresAt,
@@ -86,7 +91,7 @@ export async function resetLicenseTimer(licenseId: string, adminId: string) {
   return {
     ok: true,
     expiresAt,
-    durationMs,
-    durationLabel: durationLabelFromMs(durationMs) ?? "validade original",
+    durationMs: finalDurationMs,
+    durationLabel: durationLabelFromMs(finalDurationMs) ?? "validade original",
   };
 }
