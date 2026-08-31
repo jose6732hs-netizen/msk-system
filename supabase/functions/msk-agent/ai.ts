@@ -1,4 +1,4 @@
-import { db, enc, dec, unb64, identity } from "./common.ts";
+import { db, enc, dec, unb64, identity, globalTraining } from "./common.ts";
 import { gh } from "./github.ts";
 
 async function material() {
@@ -79,9 +79,14 @@ async function resilientAI(r: Request, base: any, jsonMode: boolean) {
 }
 
 export async function ask(r: Request, prompt: string, jsonMode = false, max = 4000) {
+  const training = await globalTraining(r);
+  const effectivePrompt = training
+    ? `${training}\n\nCONTEXTO E PEDIDO ATUAL — execute respeitando o treinamento global e as regras de segurança do agente:\n${prompt}`
+    : prompt;
+
   const base: any = {
     model: "deepseek-v4-flash",
-    messages: [{ role: "user", content: prompt }],
+    messages: [{ role: "user", content: effectivePrompt }],
     max_tokens: Math.max(256, Math.min(Number(max || 4000), 36000)),
     temperature: 0,
     stream: false,
