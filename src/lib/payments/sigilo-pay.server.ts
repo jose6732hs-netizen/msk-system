@@ -34,7 +34,7 @@ export class SigiloPayService {
   }
 
   /** Cobrança PIX — POST /gateway/pix/receive */
-  createPix(input: {
+  async createPix(input: {
     identifier: string;
     amountCents: number;
     customer: AmploCustomer;
@@ -44,13 +44,7 @@ export class SigiloPayService {
     callbackUrl?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
   }) {
-    return callGateway<{
-      status?: string;
-      transactionId?: string;
-      id?: string;
-      order?: { id?: string; url?: string };
-      pix?: { code?: string; base64?: string; image?: string; payload?: string };
-    }>(this.creds, "POST", "/gateway/pix/receive", {
+    const raw = await callGateway<Record<string, any>>(this.creds, "POST", "/gateway/pix/receive", {
       identifier: input.identifier,
       amount: toReais(input.amountCents),
       client: {
@@ -77,6 +71,46 @@ export class SigiloPayService {
       ...(input.callbackUrl ? { callbackUrl: input.callbackUrl } : {}),
       ...(input.metadata ? { metadata: input.metadata } : {}),
     });
+
+    const data = (raw?.data ?? raw ?? {}) as Record<string, any>;
+    const pix = (data.pix ?? raw?.pix ?? {}) as Record<string, any>;
+    const code =
+      pix.code ??
+      pix.payload ??
+      pix.copyPaste ??
+      pix.copy_paste ??
+      pix.qrCode ??
+      pix.qr_code ??
+      data.pixCode ??
+      data.pix_code ??
+      raw?.pixCode ??
+      raw?.pix_code ??
+      null;
+    const base64 =
+      pix.base64 ??
+      pix.qrCodeBase64 ??
+      pix.qr_code_base64 ??
+      data.qrImage ??
+      data.qr_image ??
+      raw?.qrImage ??
+      raw?.qr_image ??
+      null;
+    const image = pix.image ?? pix.qrCodeImage ?? pix.qr_code_image ?? null;
+
+    return {
+      ...data,
+      status: data.status ?? raw?.status,
+      transactionId:
+        data.transactionId ?? data.transaction_id ?? data.id ?? raw?.transactionId ?? raw?.transaction_id ?? raw?.id,
+      id: data.id ?? raw?.id,
+      order: data.order ?? raw?.order,
+      pix: {
+        ...pix,
+        ...(code ? { code: String(code), payload: String(code) } : {}),
+        ...(base64 ? { base64: String(base64) } : {}),
+        ...(image ? { image: String(image) } : {}),
+      },
+    };
   }
 
   getTransaction(transactionId: string) {
