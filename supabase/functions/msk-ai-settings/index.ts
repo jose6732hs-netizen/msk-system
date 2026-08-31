@@ -156,13 +156,13 @@ Deno.serve(async (req: Request) => {
     if (action === "ai-global-status") {
       const { data, error } = await db
         .from("msk_ai_settings")
-        .select("provider,model,api_key_last4,active,updated_at")
+        .select("provider,model,api_key_ciphertext,api_key_last4,active,updated_at")
         .eq("id", "default")
         .maybeSingle();
       if (error) throw error;
 
       return json({
-        configured: !!(data?.active && data?.api_key_last4),
+        configured: !!(data?.active && data?.api_key_ciphertext && data?.api_key_last4),
         provider: data?.provider || "B.AI",
         model: data?.model || "deepseek-v4-flash",
         keyMasked: data?.api_key_last4 ? `••••${data.api_key_last4}` : null,
@@ -179,30 +179,36 @@ Deno.serve(async (req: Request) => {
       await validateBaiKey(apiKey);
       const ciphertext = await encrypt(apiKey);
       const now = new Date().toISOString();
+      const last4 = apiKey.slice(-4);
 
-      const { error } = await db.from("msk_ai_settings").upsert(
+      const { data: saved, error } = await db.from("msk_ai_settings").upsert(
         {
           id: "default",
           provider: "B.AI",
           model: "deepseek-v4-flash",
           api_base_url: "https://api.b.ai/v1/chat/completions",
           api_key_ciphertext: ciphertext,
-          api_key_last4: apiKey.slice(-4),
+          api_key_last4: last4,
           active: true,
           updated_by: admin.id,
           updated_at: now,
         },
         { onConflict: "id" },
-      );
+      ).select("id,provider,model,api_key_ciphertext,api_key_last4,active,updated_at").single();
       if (error) throw error;
+      if (!saved?.active || !saved.api_key_ciphertext || saved.api_key_last4 !== last4) {
+        const persistenceError = new Error("A chave foi validada, mas o banco não confirmou a gravação. Tente novamente.");
+        (persistenceError as any).status = 500;
+        throw persistenceError;
+      }
 
       return json({
         ok: true,
         configured: true,
-        provider: "B.AI",
-        model: "deepseek-v4-flash",
-        keyMasked: `••••${apiKey.slice(-4)}`,
-        updatedAt: now,
+        provider: saved.provider || "B.AI",
+        model: saved.model || "deepseek-v4-flash",
+        keyMasked: `••••${saved.api_key_last4}`,
+        updatedAt: saved.updated_at || now,
       });
     }
 
