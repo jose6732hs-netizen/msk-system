@@ -104,6 +104,27 @@ export const securityCenterInstallationAction = createServerFn({ method: "POST" 
     return result as any;
   });
 
+export const securityCenterDismissMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({
+    installationId: z.string().min(16).max(80),
+    scope: z.enum(["INCIDENT", "BLOCK"]),
+    blockId: z.string().uuid().optional().nullable(),
+  }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    if (data.scope === "BLOCK" && !data.blockId) {
+      throw new Error("ID da mensagem de bloqueio é obrigatório.");
+    }
+    const { data: result, error } = await (context.supabase as any).rpc("security_admin_dismiss_message", {
+      p_installation_id: data.installationId,
+      p_scope: data.scope,
+      p_block_id: data.blockId ?? null,
+    });
+    if (error) throw error;
+    return result as any;
+  });
+
 export const securityCenterBuildAction = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({
