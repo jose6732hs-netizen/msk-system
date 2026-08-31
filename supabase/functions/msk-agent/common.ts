@@ -14,6 +14,39 @@ export const unb64 = (v: string) => Uint8Array.from(atob(v.replace(/-/g, "+").re
 export const sha = async (v: string) => b64(new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(v))));
 const token = (r: Request) => (r.headers.get("authorization") || r.headers.get("x-msk-license") || "").replace(/^Bearer\s+/i, "").trim();
 
+let globalTrainingCache: { text: string; expiresAt: number } = { text: "", expiresAt: 0 };
+
+/**
+ * Loads the persistent training published by the MSK Super Admin.
+ * It is fetched server-to-server from the SaaS control plane and cached briefly,
+ * so a new training or disable action propagates to the agent within seconds.
+ */
+export const globalTraining = async (r: Request) => {
+  if (globalTrainingCache.expiresAt > Date.now()) return globalTrainingCache.text;
+  const t = token(r);
+  if (!t || t.startsWith("sb_publishable_")) return "";
+
+  for (const origin of ["https://msksystem.online", "https://msk-system.lovable.app"]) {
+    try {
+      const response = await fetch(`${origin}/api/extension/global-training`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (!response.ok) continue;
+      const data = await response.json().catch(() => ({}));
+      const text = String(data?.training || "").trim().slice(0, 18000);
+      globalTrainingCache = { text, expiresAt: Date.now() + 15_000 };
+      return text;
+    } catch {}
+  }
+
+  // Training is an operational enhancement; an unavailable control plane must
+  // not invent rules nor leak errors into the client's command.
+  globalTrainingCache = { text: "", expiresAt: Date.now() + 5_000 };
+  return "";
+};
+
 export const identity = async (r: Request) => {
   const t = token(r);
   if (!t || t.startsWith("sb_publishable_")) return null;
