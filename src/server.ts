@@ -3,13 +3,14 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
-const MSK_CURRENT_BUILD = "3.4.49=0e6a4f54b0529b0a7a418821ad52082d5a4e78bbc35aa9d3ac8de9d2e3ba48a9";
+const MSK_APPROVED_BUILDS = [
+  "3.4.49=0e6a4f54b0529b0a7a418821ad52082d5a4e78bbc35aa9d3ac8de9d2e3ba48a9",
+  "3.4.49=96217c9c41c9022bb6624aa91836ea28e6f16c0568b875d71f489c42c4c6e278",
+];
 const approvedBuilds = String(process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] ?? "");
-if (!approvedBuilds.split(",").map((item) => item.trim()).includes(MSK_CURRENT_BUILD)) {
-  process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] = [approvedBuilds, MSK_CURRENT_BUILD]
-    .filter(Boolean)
-    .join(",");
-}
+const approvedSet = new Set(approvedBuilds.split(",").map((item) => item.trim()).filter(Boolean));
+for (const build of MSK_APPROVED_BUILDS) approvedSet.add(build);
+process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] = [...approvedSet].join(",");
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
