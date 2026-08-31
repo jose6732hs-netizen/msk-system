@@ -29,29 +29,64 @@ async function key(r: Request) {
   return f;
 }
 
-async function requestAI(r: Request, body: any) {
-  return fetch("https://api.b.ai/v1/chat/completions", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${await key(r)}`, "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const retryable = (status: number) => [408, 409, 425, 429, 500, 502, 503, 504].includes(status);
+
+async function requestAI(r: Request, body: any, timeoutMs = 50000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch("https://api.b.ai/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await key(r)}`, "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function resilientAI(r: Request, base: any, jsonMode: boolean) {
+  let mode = jsonMode;
+  let lastStatus = 0;
+  let lastError = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const body = mode ? { ...base, response_format: { type: "json_object" } } : base;
+      let x = await requestAI(r, body);
+      if (mode && [400, 404, 422].includes(x.status)) {
+        mode = false;
+        x = await requestAI(r, base);
+      }
+      if (x.ok) return x;
+      lastStatus = x.status;
+      const detail = await x.text().catch(() => "");
+      lastError = detail.slice(0, 500);
+      if (!retryable(x.status) || attempt === 2) break;
+    } catch (e) {
+      const name = e instanceof Error ? e.name : "";
+      const msg = e instanceof Error ? e.message : String(e || "");
+      lastError = `${name}:${msg}`.slice(0, 500);
+      if (attempt === 2) {
+        if (name === "AbortError") throw new Error("MSK_AI_TIMEOUT");
+        throw new Error("MSK_AI_NETWORK_UNAVAILABLE");
+      }
+    }
+    await sleep(450 * (attempt + 1));
+  }
+  throw new Error(`MSK_AI_UPSTREAM_${lastStatus || "UNAVAILABLE"}${lastError ? `:${lastError}` : ""}`);
 }
 
 export async function ask(r: Request, prompt: string, jsonMode = false, max = 4000) {
   const base: any = {
     model: "deepseek-v4-flash",
     messages: [{ role: "user", content: prompt }],
-    max_tokens: max,
+    max_tokens: Math.max(256, Math.min(Number(max || 4000), 36000)),
     temperature: 0,
     stream: false,
   };
-  let body: any = jsonMode ? { ...base, response_format: { type: "json_object" } } : base;
-  let x = await requestAI(r, body);
-  if (jsonMode && [400, 404, 422].includes(x.status)) {
-    body = base;
-    x = await requestAI(r, body);
-  }
-  if (!x.ok) throw new Error(`MSK_AI_UPSTREAM_${x.status}`);
+  const x = await resilientAI(r, base, jsonMode);
   const d = await x.json();
   const text = String(d.choices?.[0]?.message?.content || "").trim();
   if (!text) throw new Error("MSK_AI_EMPTY_RESPONSE");
