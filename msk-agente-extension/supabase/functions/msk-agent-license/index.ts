@@ -22,7 +22,7 @@ const makeState = async (projectId: string, returnUrl: string, repository: strin
 const identityFromLicense = async (req: Request) => {
   const token = (req.headers.get("authorization") || req.headers.get("x-msk-license") || "").replace(/^Bearer\s+/i, "").trim();
   if (!token || token.startsWith("sb_publishable_")) return null;
-  for (const origin of ["https://msksystem.online", "https://msk-system.lovable.app"]) {
+  for (const origin of ["https://msksystem.online", "https://msk-system.lovable.app", "https://id-preview--2763a21e-c47d-4e62-bc58-ab51fe5dc2d5.lovable.app"]) {
     try {
       const response = await fetch(`${origin}/api/extension/license-identity`, {
         method: "POST",
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
   const action = new URL(req.url).searchParams.get("action") || "status";
-  if (action === "health") return json({ ok: true, service: "msk-agent-license", version: "1.0.0", license_identity: true });
+  if (action === "health") return json({ ok: true, service: "msk-agent-license", version: "1.1.0", license_identity: true });
 
   const identity = await identityFromLicense(req);
   if (!identity) return json({ ok: false, connected: false, code: "LICENSE_REQUIRED", error: "Valide uma licença MSK ativa para conectar o GitHub." }, 401);
