@@ -20,6 +20,7 @@ const publicKeySchema = z.object({
   key_ops: z.array(z.string()).optional(),
 });
 const enrollSchema = z.object({ public_key_jwk: publicKeySchema, build_fingerprint: fingerprintSchema });
+type PublicJwk = z.infer<typeof publicKeySchema>;
 
 type DeviceIdentity = {
   userId: string;
@@ -32,7 +33,7 @@ type DeviceIdentity = {
 type SecurityMetadata = {
   mode: "required";
   protocol: typeof PROTOCOL;
-  public_key_jwk: JsonWebKey;
+  public_key_jwk: PublicJwk;
   build_fingerprint: string;
   enrolled_at: string;
   last_verified_at?: string | null;
@@ -42,7 +43,7 @@ type SecurityMetadata = {
 const encoder = new TextEncoder();
 
 function approvedBuildFingerprints() {
-  const configured = String(process.env.MSK_EXTENSION_APPROVED_FINGERPRINTS ?? "")
+  const configured = String(process.env['MSK_EXTENSION_APPROVED_FINGERPRINTS'] ?? "")
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter((value) => /^[a-f0-9]{64}$/.test(value));
@@ -61,7 +62,7 @@ function base64UrlDecode(value: string) {
   return new Uint8Array(Buffer.from(value, "base64url"));
 }
 
-function stablePublicJwk(jwk: JsonWebKey) {
+function stablePublicJwk(jwk: PublicJwk) {
   return { kty: String(jwk.kty ?? ""), crv: String(jwk.crv ?? ""), x: String(jwk.x ?? ""), y: String(jwk.y ?? "") };
 }
 
@@ -365,7 +366,7 @@ export async function handleExtensionSecuritySession(request: Request) {
 }
 
 async function sha256Base64Url(data: Uint8Array) {
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", data));
+  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", data as unknown as BufferSource));
   return base64UrlEncode(digest);
 }
 
@@ -376,7 +377,7 @@ async function bodyHash(request: Request) {
 
 async function verifyDeviceSignature(publicKeyJwk: JsonWebKey, canonical: string, signature: string) {
   try {
-    const key = await crypto.subtle.importKey("jwk", publicKeyJwk, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
+    const key = await crypto.subtle.importKey("jwk", publicKeyJwk as JsonWebKey, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
     return await crypto.subtle.verify(
       { name: "ECDSA", hash: "SHA-256" },
       key,
