@@ -32,7 +32,7 @@ async function key(r: Request) {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const retryable = (status: number) => [408, 409, 425, 429, 500, 502, 503, 504].includes(status);
 
-async function requestAI(r: Request, body: any, timeoutMs = 50000) {
+async function requestAI(r: Request, body: any, timeoutMs = 26000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -51,7 +51,7 @@ async function resilientAI(r: Request, base: any, jsonMode: boolean) {
   let mode = jsonMode;
   let lastStatus = 0;
   let lastError = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const body = mode ? { ...base, response_format: { type: "json_object" } } : base;
       let x = await requestAI(r, body);
@@ -63,17 +63,17 @@ async function resilientAI(r: Request, base: any, jsonMode: boolean) {
       lastStatus = x.status;
       const detail = await x.text().catch(() => "");
       lastError = detail.slice(0, 500);
-      if (!retryable(x.status) || attempt === 2) break;
+      if (!retryable(x.status) || attempt === 1) break;
     } catch (e) {
       const name = e instanceof Error ? e.name : "";
       const msg = e instanceof Error ? e.message : String(e || "");
       lastError = `${name}:${msg}`.slice(0, 500);
-      if (attempt === 2) {
+      if (attempt === 1) {
         if (name === "AbortError") throw new Error("MSK_AI_TIMEOUT");
         throw new Error("MSK_AI_NETWORK_UNAVAILABLE");
       }
     }
-    await sleep(450 * (attempt + 1));
+    await sleep(350 * (attempt + 1));
   }
   throw new Error(`MSK_AI_UPSTREAM_${lastStatus || "UNAVAILABLE"}${lastError ? `:${lastError}` : ""}`);
 }
@@ -81,13 +81,12 @@ async function resilientAI(r: Request, base: any, jsonMode: boolean) {
 export async function ask(r: Request, prompt: string, jsonMode = false, max = 4000) {
   const training = await globalTraining(r);
   const effectivePrompt = training
-    ? `${training}\n\nCONTEXTO E PEDIDO ATUAL — execute respeitando o treinamento global e as regras de segurança do agente:\n${prompt}`
+    ? `${training}\n\nCONTEXTO E PEDIDO ATUAL — execute respeitando o treinamento global, o histórico do projeto, a skill escolhida e as regras de segurança:\n${prompt}`
     : prompt;
-
   const base: any = {
     model: "deepseek-v4-flash",
     messages: [{ role: "user", content: effectivePrompt }],
-    max_tokens: Math.max(256, Math.min(Number(max || 4000), 36000)),
+    max_tokens: Math.max(256, Math.min(Number(max || 4000), 18000)),
     temperature: 0,
     stream: false,
   };
