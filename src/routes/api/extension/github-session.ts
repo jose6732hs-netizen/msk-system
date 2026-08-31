@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { enforceExtensionIntegrityGate } from "@/lib/extension-integrity-gate.server";
+import { enforceExtensionDeviceSecurity } from "@/lib/extension-device-security.server";
 import {
   findLicenseByToken,
   isTrustedExtensionOrigin,
@@ -22,6 +24,13 @@ function cors(request: Request) {
       "x-msk-installation-id",
       "x-msk-extension-version",
       "x-msk-extension-id",
+      "x-msk-session",
+      "x-msk-proof-version",
+      "x-msk-timestamp",
+      "x-msk-counter",
+      "x-msk-body-sha256",
+      "x-msk-signature",
+      "x-msk-build-fingerprint",
     ].join(", "),
     "access-control-allow-methods": "POST, OPTIONS",
     "access-control-max-age": "86400",
@@ -117,7 +126,7 @@ async function verifyLovableProjectAccess(projectId: string, token: string) {
       }
       if (!response.ok) continue;
       const data = await response.json().catch(() => null);
-      return { ok: true, unauthorized: false, repository: findRepo(data), project: data };
+      return { ok: true, unauthorized: false, repository: findRepo(data) };
     } catch {
       // Tenta o próximo endpoint conhecido do Lovable.
     }
@@ -127,6 +136,21 @@ async function verifyLovableProjectAccess(projectId: string, token: string) {
 
 async function handle(request: Request) {
   if (request.method !== "POST") return json(request, { ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
+
+  // Esta rota pode vincular uma instalação GitHub a um projeto. Por isso ela exige
+  // build oficial aprovado e prova criptográfica do dispositivo antes de aceitar o ID.
+  const url = new URL(request.url);
+  if (!url.searchParams.get("__msk_root") || !url.searchParams.get("__msk_gate")) {
+    return json(request, { ok: false, code: "INTEGRITY_GATE_REQUIRED" }, 401);
+  }
+  if (!request.headers.get("x-msk-session") || !request.headers.get("x-msk-signature")) {
+    return json(request, { ok: false, code: "DEVICE_PROOF_REQUIRED" }, 401);
+  }
+  const integrityFailure = await enforceExtensionIntegrityGate(request);
+  if (integrityFailure) return integrityFailure;
+  const deviceFailure = await enforceExtensionDeviceSecurity(request);
+  if (deviceFailure) return deviceFailure;
+
   const origin = request.headers.get("origin")?.trim() ?? "";
   if (origin && !isTrustedExtensionOrigin(origin)) {
     return json(request, { ok: false, code: "ORIGIN_NOT_ALLOWED" }, 403);
