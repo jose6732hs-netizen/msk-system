@@ -13,10 +13,21 @@ async function secured(request: Request) {
   );
 }
 
+function preflight(request: Request) {
+  const legacy = extensionSecurityPreflight(request);
+  const headers = new Headers(legacy.headers);
+  const allowed = headers.get("access-control-allow-headers") ?? "";
+  const extra = ["x-msk-license", "x-msk-security-session"];
+  const current = new Set(allowed.split(",").map((value) => value.trim().toLowerCase()).filter(Boolean));
+  for (const header of extra) current.add(header);
+  headers.set("access-control-allow-headers", [...current].join(", "));
+  return new Response(null, { status: 204, headers });
+}
+
 export const Route = createFileRoute("/api/extension/control")({
   server: {
     handlers: {
-      OPTIONS: ({ request }) => extensionSecurityPreflight(request),
+      OPTIONS: ({ request }) => preflight(request),
       GET: ({ request }) => secured(request),
       POST: ({ request }) => secured(request),
     },
