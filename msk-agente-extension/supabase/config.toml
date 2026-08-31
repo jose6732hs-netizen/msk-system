@@ -3,3 +3,6 @@ verify_jwt = false
 
 [functions.msk-api]
 verify_jwt = false
+
+[functions.msk-agent-user]
+verify_jwt = false
