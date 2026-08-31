@@ -375,7 +375,7 @@ async function bodyHash(request: Request) {
   return sha256Base64Url(bytes);
 }
 
-async function verifyDeviceSignature(publicKeyJwk: JsonWebKey, canonical: string, signature: string) {
+async function verifyDeviceSignature(publicKeyJwk: PublicJwk, canonical: string, signature: string) {
   try {
     const key = await crypto.subtle.importKey("jwk", publicKeyJwk as JsonWebKey, { name: "ECDSA", namedCurve: "P-256" }, false, ["verify"]);
     return await crypto.subtle.verify(
