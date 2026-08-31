@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { FilterChips } from "@/components/msk/filter-chips";
 import { AdminAgentControlCenter } from "@/components/msk/admin-agent-control-center";
-import { AdminAgentAiSettings } from "@/components/msk/admin-agent-ai-settings";
 import { agentAdminOverview } from "@/lib/agent-admin.functions";
 import { adminSavePlan } from "@/lib/admin.functions";
 import {
@@ -142,14 +141,6 @@ export function AdminAgentTab() {
           <p className="text-xs text-muted-foreground">Ofertas, compras, mensagens para a extensão e entrega do arquivo do assistente.</p>
         </div>
       </div>
-
-      <section className="space-y-3">
-        <div>
-          <h4 className="text-[0.7rem] font-black uppercase tracking-widest">API do Agente</h4>
-          <p className="text-xs text-muted-foreground">Gestão completa da infraestrutura de IA do MSK Agente.</p>
-        </div>
-        <AdminAgentAiSettings />
-      </section>
 
       <AdminAgentControlCenter />
 
