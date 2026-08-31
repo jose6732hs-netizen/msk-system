@@ -69,7 +69,6 @@ export class SigiloPayService {
         : {}),
       ...(input.dueDate ? { dueDate: input.dueDate } : {}),
       ...(input.callbackUrl ? { callbackUrl: input.callbackUrl } : {}),
-      ...(input.metadata ? { metadata: input.metadata } : {}),
     });
 
     const data = (raw?.data ?? raw ?? {}) as Record<string, any>;
