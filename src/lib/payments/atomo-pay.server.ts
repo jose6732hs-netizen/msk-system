@@ -188,8 +188,6 @@ export class AtomoPayService {
     const amount = Math.max(1, Math.round(amountCents));
     const amountKey = String(amount);
     const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
-    const envOffer = process.env["ATOMOPAY_OFFER_HASH"];
-    if (envProduct && envOffer) return { productHash: envProduct, offerHash: envOffer };
 
     const { data: saved } = await supabaseAdmin
       .from("app_settings")
