@@ -103,7 +103,7 @@ function Index() {
               <HeroCarousel />
             </motion.div>
 
-            <motion.h1 variants={fadeInUp} className="text-3xl font-black tracking-tighter sm:text-6xl lg:text-7xl bg-gradient-to-b from-primary to-primary/40 bg-clip-text text-transparent uppercase leading-[0.95] break-words text-center md:text-left py-2">
+            <motion.h1 variants={fadeInUp} className="text-3xl font-black tracking-tighter sm:text-6xl lg:text-7xl bg-gradient-to-b from-orange-500 to-orange-300 bg-clip-text text-transparent uppercase leading-[0.95] break-words text-center md:text-left py-2">
               {cms['hero']?.title || "Pare de ser interrompido no meio da criação"}
             </motion.h1>
             
