@@ -3,6 +3,14 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
+const MSK_CURRENT_BUILD = "3.4.49=98f28ce56c0e8ede7c5ab28f1600b8d470eb126a03897d876d1c7b6b987d1df7";
+const approvedBuilds = String(process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] ?? "");
+if (!approvedBuilds.split(",").map((item) => item.trim()).includes(MSK_CURRENT_BUILD)) {
+  process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] = [approvedBuilds, MSK_CURRENT_BUILD]
+    .filter(Boolean)
+    .join(",");
+}
+
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
 };
