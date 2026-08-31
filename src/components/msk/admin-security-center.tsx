@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   ShieldX,
   Siren,
+  Trash2,
   UnlockKeyhole,
   UserX,
   Wrench,
@@ -28,6 +29,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   securityCenterBuildAction,
+  securityCenterDismissMessage,
   securityCenterInstallationAction,
   securityCenterOverview,
 } from "@/lib/security-center.functions";
@@ -55,6 +57,8 @@ type InstallAction =
   | "INVESTIGATE"
   | "BLOCK_USER";
 
+type MessageScope = "INCIDENT" | "BLOCK";
+
 function dateTime(value?: string | null) {
   if (!value) return "—";
   const date = new Date(value);
@@ -79,10 +83,19 @@ function integrityClass(status: string) {
   return "text-muted-foreground";
 }
 
+function incidentMessageHidden(row: any) {
+  return Boolean(
+    row.message_hidden_at
+      && row.message_hidden_incident_code === row.incident_code
+      && row.message_hidden_block_reason === row.block_reason,
+  );
+}
+
 export function AdminSecurityCenter() {
   const qc = useQueryClient();
   const overviewFn = useServerFn(securityCenterOverview);
   const actionFn = useServerFn(securityCenterInstallationAction);
+  const dismissMessageFn = useServerFn(securityCenterDismissMessage);
   const buildActionFn = useServerFn(securityCenterBuildAction);
   const [filter, setFilter] = useState<(typeof FILTERS)[number][0]>("ALL");
   const [search, setSearch] = useState("");
@@ -159,6 +172,28 @@ export function AdminSecurityCenter() {
     },
   });
 
+  const dismissMessageMutation = useMutation({
+    mutationFn: async ({ row, scope, blockId }: { row: any; scope: MessageScope; blockId?: string | null }) => {
+      if (!window.confirm("Excluir esta mensagem do painel? O bloqueio, a classificação de segurança e a auditoria serão mantidos.")) {
+        throw new Error("CANCELLED");
+      }
+      return dismissMessageFn({
+        data: {
+          installationId: row.installation_id,
+          scope,
+          blockId: blockId ?? null,
+        },
+      });
+    },
+    onSuccess: () => {
+      toast.success("Mensagem excluída do painel. O bloqueio e a auditoria foram preservados.");
+      qc.invalidateQueries({ queryKey: ["msk-security-center"] });
+    },
+    onError: (error: Error) => {
+      if (error.message !== "CANCELLED") toast.error(error.message || "Não foi possível excluir a mensagem.");
+    },
+  });
+
   const buildMutation = useMutation({
     mutationFn: async (build: any) => {
       const action = build.active ? "BLOCK" : "UNBLOCK";
@@ -203,7 +238,7 @@ export function AdminSecurityCenter() {
           </div>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => query.refetch()} disabled={query.isFetching}>
-          {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+          {query.isFetching ? <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" /> : <RefreshCw className="mr-2 h-4 w-4" />}
           Atualizar
         </Button>
       </div>
@@ -241,8 +276,9 @@ export function AdminSecurityCenter() {
             const isOpen = expanded === row.installation_id;
             const rowEvents = events.filter((event) => event.installation_id === row.installation_id).slice(0, 12);
             const rowSessions = sessions.filter((session) => session.installation_id === row.installation_id).slice(0, 10);
-            const rowBlocks = blocks.filter((block) => block.installation_id === row.installation_id).slice(0, 10);
+            const rowBlocks = blocks.filter((block) => block.installation_id === row.installation_id && !block.message_hidden_at).slice(0, 10);
             const rowIps = ips.filter((item) => item.installation_id === row.installation_id).slice(0, 10);
+            const showIncidentMessage = (row.block_reason || row.incident_code) && !incidentMessageHidden(row);
             return (
               <article key={row.installation_id} className={`rounded-2xl border ${trustClass(row.trust_status)} bg-background/45`}>
                 <button type="button" onClick={() => setExpanded(isOpen ? null : row.installation_id)} className="grid w-full gap-4 p-4 text-left xl:grid-cols-[1.35fr_1fr_1fr_1fr_auto] xl:items-center">
@@ -265,7 +301,21 @@ export function AdminSecurityCenter() {
                       <div className="rounded-xl border border-border/50 bg-black/15 p-3"><p className="text-[0.55rem] font-black uppercase text-muted-foreground">Sessão protegida</p><p className="mt-1">{row.session_required ? "Obrigatória" : "Compatibilidade legada"}</p></div>
                     </div>
 
-                    {(row.block_reason || row.incident_code) ? <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs"><AlertTriangle className="mr-2 inline h-4 w-4" /><b>{row.incident_code || "Incidente"}</b> — {row.block_reason || "Em análise"}</div> : null}
+                    {showIncidentMessage ? (
+                      <div className="mt-3 flex flex-col gap-3 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] p-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0"><AlertTriangle className="mr-2 inline h-4 w-4" /><b>{row.incident_code || "Incidente"}</b> — {row.block_reason || "Em análise"}</div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          className="shrink-0 text-red-200 hover:text-red-100"
+                          disabled={dismissMessageMutation.isPending}
+                          onClick={() => dismissMessageMutation.mutate({ row, scope: "INCIDENT" })}
+                        >
+                          <Trash2 className="mr-1.5 h-3.5 w-3.5" />Excluir mensagem
+                        </Button>
+                      </div>
+                    ) : null}
 
                     <div className="mt-4 flex flex-wrap gap-2">
                       {row.trust_status === "BLOCKED" ? <Button size="sm" variant="outline" onClick={() => mutate.mutate({ row, action: "UNBLOCK" })}><UnlockKeyhole className="mr-1.5 h-3.5 w-3.5" />Desbloquear</Button> : <Button size="sm" variant="destructive" onClick={() => mutate.mutate({ row, action: "BLOCK" })}><Ban className="mr-1.5 h-3.5 w-3.5" />Bloquear instalação</Button>}
@@ -283,7 +333,28 @@ export function AdminSecurityCenter() {
                       <div className="rounded-2xl border border-border/50 bg-black/15 p-4"><h5 className="text-[0.62rem] font-black uppercase tracking-widest">Sessões e IPs observados</h5><div className="mt-3 space-y-2">{rowSessions.slice(0, 5).map((session) => <div key={session.id} className="flex items-center justify-between rounded-xl border border-border/40 p-3 text-xs"><span>{session.revoked_at ? "Revogada" : new Date(session.expires_at).getTime() > Date.now() ? "Ativa" : "Expirada"}</span><span className="font-mono opacity-70">{session.ip || "—"}</span><span className="opacity-70">{dateTime(session.issued_at)}</span></div>)}{rowIps.map((item) => <div key={item.id} className="flex items-center justify-between rounded-xl border border-border/40 p-3 text-xs"><span className="font-mono">{item.ip}</span><span className="opacity-70">Último: {dateTime(item.last_seen_at)}</span></div>)}{!rowSessions.length && !rowIps.length ? <p className="text-xs text-muted-foreground">Sem histórico de sessão/IP.</p> : null}</div></div>
                     </div>
 
-                    {rowBlocks.length ? <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-4"><h5 className="text-[0.62rem] font-black uppercase tracking-widest text-red-200">Histórico de bloqueios</h5><div className="mt-2 space-y-2">{rowBlocks.map((block) => <div key={block.id} className="text-xs"><b>{block.block_type}</b> · {block.reason} · {dateTime(block.created_at)}{block.released_at ? ` · liberado ${dateTime(block.released_at)}` : " · ativo"}</div>)}</div></div> : null}
+                    {rowBlocks.length ? (
+                      <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/[0.04] p-4">
+                        <h5 className="text-[0.62rem] font-black uppercase tracking-widest text-red-200">Histórico de bloqueios</h5>
+                        <div className="mt-2 space-y-2">
+                          {rowBlocks.map((block) => (
+                            <div key={block.id} className="flex flex-col gap-2 rounded-xl border border-red-500/10 p-2 text-xs sm:flex-row sm:items-center sm:justify-between">
+                              <div><b>{block.block_type}</b> · {block.reason} · {dateTime(block.created_at)}{block.released_at ? ` · liberado ${dateTime(block.released_at)}` : " · ativo"}</div>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="shrink-0 text-red-200 hover:text-red-100"
+                                disabled={dismissMessageMutation.isPending}
+                                onClick={() => dismissMessageMutation.mutate({ row, scope: "BLOCK", blockId: block.id })}
+                              >
+                                <Trash2 className="mr-1.5 h-3.5 w-3.5" />Excluir mensagem
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
               </article>
