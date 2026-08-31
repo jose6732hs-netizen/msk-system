@@ -12,6 +12,7 @@ import { CountUp } from "@/components/msk/animated-number";
 import {
   extensionRemoteAdminBlockInstallation,
   extensionRemoteAdminBroadcastUpdate,
+  extensionRemoteAdminDismissCloneAlert,
   extensionRemoteAdminMarkRepliesRead,
   extensionRemoteAdminOverview,
   extensionRemoteAdminSendAction,
@@ -46,6 +47,7 @@ export function AdminAgentControlCenter() {
   const broadcastFn = useServerFn(extensionRemoteAdminBroadcastUpdate);
   const markReadFn = useServerFn(extensionRemoteAdminMarkRepliesRead);
   const blockInstallationFn = useServerFn(extensionRemoteAdminBlockInstallation);
+  const dismissCloneFn = useServerFn(extensionRemoteAdminDismissCloneAlert);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "online" | "offline" | "blocked" | "unread" | "suspicious">("all");
   const [versionFilter, setVersionFilter] = useState("all");
@@ -186,6 +188,14 @@ export function AdminAgentControlCenter() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const dismissCloneAlert = useMutation({
+    mutationFn: (installationId: string) => dismissCloneFn({ data: { installationId } }),
+    onSuccess: () => {
+      toast.success("Alerta removido da lista. Segurança, bloqueio e auditoria foram preservados.");
+      void qc.invalidateQueries({ queryKey: ["extension-remote-admin"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
 
   const sendAction = useMutation({
     mutationFn: (action: "refresh" | "revalidate_license" | "clear_cache" | "diagnostic") =>
@@ -289,14 +299,29 @@ export function AdminAgentControlCenter() {
                       {row.suspicion_reason || row.block_reason || "Instalação marcada manualmente"} · ID extensão {row.extension_id || "—"} · IP {row.ip_address || "—"}
                     </p>
                   </div>
-                  <Button
-                    size="sm"
-                    variant={row.blocked ? "outline" : "destructive"}
-                    disabled={blockInstallation.isPending}
-                    onClick={() => blockInstallation.mutate({ installationId: String(row.installation_id), blocked: !row.blocked })}
-                  >
-                    {row.blocked ? <><Unlock className="mr-2 h-4 w-4" /> Liberar</> : <><Ban className="mr-2 h-4 w-4" /> Bloquear clone</>}
-                  </Button>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant={row.blocked ? "outline" : "destructive"}
+                      disabled={blockInstallation.isPending}
+                      onClick={() => blockInstallation.mutate({ installationId: String(row.installation_id), blocked: !row.blocked })}
+                    >
+                      {row.blocked ? <><Unlock className="mr-2 h-4 w-4" /> Liberar</> : <><Ban className="mr-2 h-4 w-4" /> Bloquear clone</>}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="border border-white/10 text-muted-foreground hover:text-foreground"
+                      disabled={dismissCloneAlert.isPending}
+                      onClick={() => {
+                        if (window.confirm("Remover este alerta da lista? O status de segurança, o bloqueio e a auditoria serão mantidos.")) {
+                          dismissCloneAlert.mutate(String(row.installation_id));
+                        }
+                      }}
+                    >
+                      <Eraser className="mr-2 h-4 w-4" /> Remover
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
