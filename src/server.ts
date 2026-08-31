@@ -11,11 +11,20 @@ const MSK_APPROVED_BUILDS = [
   "3.4.49=4e33986364c2eee30d1baa0f1e1079212a34b1a8576f45371313a87110dc1996",
   "3.4.49=e0379fe1f2f403b41da52302b9c9bad85744e3596699a0de6d5a2c9dce49d4fb",
   "3.4.49=a98175aa85a42a8537315a5f23dfc11516cb194c2f052eff171cb5734347efdd",
+  "3.4.49=f38a08f95babd79a3964666d928d66c4643cdaed381bcc84594f353652982074",
 ];
 const approvedBuilds = String(process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] ?? "");
 const approvedSet = new Set(approvedBuilds.split(",").map((item) => item.trim()).filter(Boolean));
 for (const build of MSK_APPROVED_BUILDS) approvedSet.add(build);
 process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] = [...approvedSet].join(",");
+
+const MSK_APPROVED_FINGERPRINTS = [
+  "f3f7a8c085b19b8d3ce62dd7f3d4444367d7d4fce5a49babd7810e69a2b49629",
+];
+const configuredFingerprints = String(process.env["MSK_EXTENSION_APPROVED_FINGERPRINTS"] ?? "");
+const fingerprintSet = new Set(configuredFingerprints.split(",").map((item) => item.trim().toLowerCase()).filter(Boolean));
+for (const fingerprint of MSK_APPROVED_FINGERPRINTS) fingerprintSet.add(fingerprint);
+process.env["MSK_EXTENSION_APPROVED_FINGERPRINTS"] = [...fingerprintSet].join(",");
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
