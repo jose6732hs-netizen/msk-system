@@ -182,8 +182,8 @@ export async function findLicenseByToken(token: string) {
 
 /**
  * Corrige automaticamente trials antigos cuja expiração ficou diferente da
- * validade visível do plano. Isso impede um FREE de 15 minutos de continuar
- * válido por 30 dias por causa de campos legados inconsistentes.
+ * validade original da própria licença. Se houver um snapshot/pending_duration_ms,
+ * ele sempre vence a configuração atual do plano — inclusive após reinício manual.
  */
 async function reconcileTrialDuration(license: Record<string, unknown>) {
   const type = String(license["type"] ?? "").toLowerCase();
@@ -194,23 +194,31 @@ async function reconcileTrialDuration(license: Record<string, unknown>) {
   if (!plan || !activatedAt) return license;
 
   try {
-    const resolved = resolvePlanDuration(plan);
-    if (resolved.lifetime || !resolved.milliseconds) return license;
+    const metadata = {
+      ...((license["metadata"] ?? {}) as Record<string, any>),
+    };
+    let durationMs = Number(metadata.pending_duration_ms ?? 0);
+    let durationLabel = String(metadata.plan_duration_label_snapshot ?? "").trim();
 
-    const expectedMs = new Date(activatedAt).getTime() + resolved.milliseconds;
+    if (!(durationMs > 0)) {
+      const resolved = resolvePlanDuration(plan);
+      if (resolved.lifetime || !resolved.milliseconds) return license;
+      durationMs = resolved.milliseconds;
+      durationLabel = resolved.label;
+      metadata.plan_duration_value_snapshot = resolved.value;
+      metadata.plan_duration_unit_snapshot = resolved.unit;
+      metadata.plan_duration_label_snapshot = resolved.label;
+      metadata.pending_duration_ms = resolved.milliseconds;
+    }
+
+    const expectedMs = new Date(activatedAt).getTime() + durationMs;
     const currentIso = license["expires_at"] as string | null;
     const currentMs = currentIso ? new Date(currentIso).getTime() : 0;
     const mismatch = !currentMs || Math.abs(currentMs - expectedMs) > 30_000;
     if (!mismatch) return license;
 
     const nextStatus = expectedMs <= Date.now() ? "expired" : "active";
-    const metadata = {
-      ...((license["metadata"] ?? {}) as Record<string, any>),
-      plan_duration_value_snapshot: resolved.value,
-      plan_duration_unit_snapshot: resolved.unit,
-      plan_duration_label_snapshot: resolved.label,
-      repaired_duration_at: new Date().toISOString(),
-    };
+    metadata.repaired_duration_at = new Date().toISOString();
 
     const expiresAt = new Date(expectedMs).toISOString();
     const { error } = await supabaseAdmin
@@ -226,7 +234,7 @@ async function reconcileTrialDuration(license: Record<string, unknown>) {
         license_id: license["id"] as string,
         user_id: license["user_id"] as string,
         event_type: "duration_reconciled",
-        metadata: { duration: resolved.label },
+        metadata: { duration: durationLabel || `${Math.round(durationMs / 60_000)} minutos` },
       });
     }
   } catch (error) {
