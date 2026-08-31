@@ -13,4 +13,11 @@ export async function installation(id: number) { const r = await fetch(`https://
 export async function instToken(id: number) { const r = await fetch(`https://api.github.com/app/installations/${id}/access_tokens`, { method: "POST", headers: { Authorization: `Bearer ${await appJwt()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }); if (!r.ok) throw new Error("GitHub installation token failed"); return String((await r.json()).token); }
 export async function gh(t: string, path: string, init: RequestInit = {}) { const r = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${t}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) } }); if (!r.ok) throw new Error(`GitHub ${r.status}: ${await r.text()}`); return r.status === 204 ? null : r.json(); }
 export async function validSession(pid: string, t: string) { if (!t) return false; const { data } = await db.from("msk_projects").select("session_token_hash").eq("lovable_project_id", pid).maybeSingle(); return !!data?.session_token_hash && data.session_token_hash === await sha(t); }
-export async function chooseRepo(id: number, name = "", preferred = "") { const t = await instToken(id), d = await gh(t, "/installation/repositories?per_page=100"), rs = d.repositories || [], p = preferred.toLowerCase().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/^\/+|\/+$/g, ""), w = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""); const repo = (p && rs.find((r: any) => String(r.full_name).toLowerCase() === p)) || (rs.length === 1 ? rs[0] : rs.find((r: any) => r.name.toLowerCase() === w || (w && r.name.toLowerCase().includes(w)))); return { token: t, repo, candidates: rs.map((r: any) => r.full_name) }; }
+export async function chooseRepo(id: number, _name = "", preferred = "") {
+  const t = await instToken(id);
+  const d = await gh(t, "/installation/repositories?per_page=100");
+  const rs = d.repositories || [];
+  const p = String(preferred || "").toLowerCase().replace(/^https:\/\/github\.com\//, "").replace(/\.git$/, "").replace(/^\/+|\/+$/g, "");
+  const repo = p ? rs.find((r: any) => String(r.full_name).toLowerCase() === p) : (rs.length === 1 ? rs[0] : null);
+  return { token: t, repo, candidates: rs.map((r: any) => r.full_name), exact_binding: !!p && !!repo };
+}
