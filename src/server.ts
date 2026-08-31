@@ -8,6 +8,7 @@ const MSK_APPROVED_BUILDS = [
   "3.4.49=96217c9c41c9022bb6624aa91836ea28e6f16c0568b875d71f489c42c4c6e278",
   "3.4.49=25ac5d5d3ea5a4670698c381d81047e7e19248efaf813deb06df07a048406fb4",
   "3.4.49=91a0bfc3aa2dbc1547da0fbf14dfcb724019b8229b972e87ddee86ec1bd4c0af",
+  "3.4.49=4e33986364c2eee30d1baa0f1e1079212a34b1a8576f45371313a87110dc1996",
 ];
 const approvedBuilds = String(process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] ?? "");
 const approvedSet = new Set(approvedBuilds.split(",").map((item) => item.trim()).filter(Boolean));
