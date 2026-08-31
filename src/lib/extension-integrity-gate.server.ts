@@ -18,7 +18,10 @@ const BUILTIN_APPROVED_RELEASES: Record<string, string[]> = {
     "5a7f0926ca36e3145dcba6e5c90777621fee1a228899376cd29d5c0992d1d559",
     "aed924f67beb41470b6b23d85957f2978ede55a28096d63f4f33e3e671534bd7",
   ],
-  "3.4.51": ["6615e430e11147b1c2761c501d2382da8c6fe43fc83baf175dec4a2254f54d1a"],
+  "3.4.51": [
+    "d92c73e192d52a0adb18412a08ca6ea0c654bd88d5572ddad1533f1486808af1",
+    "6615e430e11147b1c2761c501d2382da8c6fe43fc83baf175dec4a2254f54d1a",
+  ],
 };
 
 const installationSchema = z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/);
