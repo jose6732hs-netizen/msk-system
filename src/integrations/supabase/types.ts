@@ -1534,6 +1534,11 @@ export type Database = {
           first_extension_id: string | null
           id: string
           installation_id: string
+          integrity_enrolled_at: string | null
+          integrity_required: boolean
+          integrity_root: string | null
+          integrity_updated_at: string | null
+          integrity_version: string | null
           ip_address: string | null
           last_activity_at: string | null
           last_seen_at: string | null
@@ -1556,6 +1561,11 @@ export type Database = {
           first_extension_id?: string | null
           id?: string
           installation_id: string
+          integrity_enrolled_at?: string | null
+          integrity_required?: boolean
+          integrity_root?: string | null
+          integrity_updated_at?: string | null
+          integrity_version?: string | null
           ip_address?: string | null
           last_activity_at?: string | null
           last_seen_at?: string | null
@@ -1578,6 +1588,11 @@ export type Database = {
           first_extension_id?: string | null
           id?: string
           installation_id?: string
+          integrity_enrolled_at?: string | null
+          integrity_required?: boolean
+          integrity_root?: string | null
+          integrity_updated_at?: string | null
+          integrity_version?: string | null
           ip_address?: string | null
           last_activity_at?: string | null
           last_seen_at?: string | null

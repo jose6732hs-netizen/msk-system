@@ -40,6 +40,8 @@ import { Route as ApiExtensionErrorsRouteImport } from './routes/api/extension/e
 import { Route as ApiExtensionEventsRouteImport } from './routes/api/extension/events'
 import { Route as ApiExtensionGithubDownloadRouteImport } from './routes/api/extension/github-download'
 import { Route as ApiExtensionHeartbeatRouteImport } from './routes/api/extension/heartbeat'
+import { Route as ApiExtensionIntegrityRouteImport } from './routes/api/extension/integrity'
+import { Route as ApiExtensionSessionRouteImport } from './routes/api/extension/session'
 import { Route as ApiExtensionVersionRouteImport } from './routes/api/extension/version'
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
@@ -228,6 +230,16 @@ const ApiExtensionGithubDownloadRoute =
 const ApiExtensionHeartbeatRoute = ApiExtensionHeartbeatRouteImport.update({
   id: '/api/extension/heartbeat',
   path: '/api/extension/heartbeat',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionIntegrityRoute = ApiExtensionIntegrityRouteImport.update({
+  id: '/api/extension/integrity',
+  path: '/api/extension/integrity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionSessionRoute = ApiExtensionSessionRouteImport.update({
+  id: '/api/extension/session',
+  path: '/api/extension/session',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiExtensionVersionRoute = ApiExtensionVersionRouteImport.update({
@@ -432,6 +444,8 @@ export interface FileRoutesByFullPath {
   '/api/extension/events': typeof ApiExtensionEventsRoute
   '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
+  '/api/extension/integrity': typeof ApiExtensionIntegrityRoute
+  '/api/extension/session': typeof ApiExtensionSessionRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
@@ -494,6 +508,8 @@ export interface FileRoutesByTo {
   '/api/extension/events': typeof ApiExtensionEventsRoute
   '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
+  '/api/extension/integrity': typeof ApiExtensionIntegrityRoute
+  '/api/extension/session': typeof ApiExtensionSessionRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
@@ -558,6 +574,8 @@ export interface FileRoutesById {
   '/api/extension/events': typeof ApiExtensionEventsRoute
   '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
+  '/api/extension/integrity': typeof ApiExtensionIntegrityRoute
+  '/api/extension/session': typeof ApiExtensionSessionRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
@@ -622,6 +640,8 @@ export interface FileRouteTypes {
     | '/api/extension/events'
     | '/api/extension/github-download'
     | '/api/extension/heartbeat'
+    | '/api/extension/integrity'
+    | '/api/extension/session'
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
@@ -684,6 +704,8 @@ export interface FileRouteTypes {
     | '/api/extension/events'
     | '/api/extension/github-download'
     | '/api/extension/heartbeat'
+    | '/api/extension/integrity'
+    | '/api/extension/session'
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
@@ -747,6 +769,8 @@ export interface FileRouteTypes {
     | '/api/extension/events'
     | '/api/extension/github-download'
     | '/api/extension/heartbeat'
+    | '/api/extension/integrity'
+    | '/api/extension/session'
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
@@ -806,6 +830,8 @@ export interface RootRouteChildren {
   ApiExtensionEventsRoute: typeof ApiExtensionEventsRoute
   ApiExtensionGithubDownloadRoute: typeof ApiExtensionGithubDownloadRoute
   ApiExtensionHeartbeatRoute: typeof ApiExtensionHeartbeatRoute
+  ApiExtensionIntegrityRoute: typeof ApiExtensionIntegrityRoute
+  ApiExtensionSessionRoute: typeof ApiExtensionSessionRoute
   ApiExtensionVersionRoute: typeof ApiExtensionVersionRoute
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
@@ -1054,6 +1080,20 @@ declare module '@tanstack/react-router' {
       path: '/api/extension/heartbeat'
       fullPath: '/api/extension/heartbeat'
       preLoaderRoute: typeof ApiExtensionHeartbeatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/integrity': {
+      id: '/api/extension/integrity'
+      path: '/api/extension/integrity'
+      fullPath: '/api/extension/integrity'
+      preLoaderRoute: typeof ApiExtensionIntegrityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/session': {
+      id: '/api/extension/session'
+      path: '/api/extension/session'
+      fullPath: '/api/extension/session'
+      preLoaderRoute: typeof ApiExtensionSessionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extension/version': {
@@ -1328,6 +1368,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionEventsRoute: ApiExtensionEventsRoute,
   ApiExtensionGithubDownloadRoute: ApiExtensionGithubDownloadRoute,
   ApiExtensionHeartbeatRoute: ApiExtensionHeartbeatRoute,
+  ApiExtensionIntegrityRoute: ApiExtensionIntegrityRoute,
+  ApiExtensionSessionRoute: ApiExtensionSessionRoute,
   ApiExtensionVersionRoute: ApiExtensionVersionRoute,
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
