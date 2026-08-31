@@ -17,10 +17,24 @@ async function invokeAiSettings(
   payload: Record<string, unknown> = {},
 ) {
   await assertAdmin(context.supabase, context.userId);
-  const { data, error } = await context.supabase.functions.invoke("msk-api", {
+  const { data, error } = await context.supabase.functions.invoke("msk-ai-settings", {
     body: { action, ...payload },
   });
-  if (error) throw new Error(error.message || "Falha ao acessar a configuração da IA.");
+
+  if (error) {
+    let detail = error.message || "Falha ao acessar a configuração da IA.";
+    const response = (error as any)?.context;
+    if (response && typeof response.json === "function") {
+      try {
+        const body = await response.json();
+        detail = String(body?.error || body?.message || detail);
+      } catch {
+        // Mantém a mensagem original quando o corpo não for JSON.
+      }
+    }
+    throw new Error(detail);
+  }
+
   if (data?.error) throw new Error(String(data.error));
   return data;
 }
