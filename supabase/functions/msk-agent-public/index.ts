@@ -21,14 +21,39 @@ const normalizeIntent = (value: unknown) => String(value ?? "")
   .replace(/\s+/g, " ")
   .trim();
 
-const isSimpleConversation = (value: unknown) => {
+const hasEditIntent = (value: unknown) => {
   const text = normalizeIntent(value);
-  if (!text || text.split(" ").length > 10) return false;
+  if (!text) return false;
 
-  const editIntent = /\b(mud(?:a|e|ar)|alter(?:a|e|ar)|troc(?:a|e|ar)|corrij(?:a|ir)|adicion(?:a|e|ar)|remov(?:a|e|er)|cri(?:a|e|ar)|fac(?:a|er)|implement(?:a|e|ar)|edit(?:a|e|ar)|ajust(?:a|e|ar)|coloqu(?:e|ar)|tir(?:a|e|ar)|exclu(?:a|ir)|delet(?:a|e|ar)|renome(?:ia|ie|ar))\b/.test(text);
-  if (editIntent) return false;
+  // Pedido explícito de implementação/alteração.
+  if (/\b(mud(?:a|e|ar)|alter(?:a|e|ar)|troc(?:a|e|ar)|corrij(?:a|ir)|adicion(?:a|e|ar)|remov(?:a|e|er)|cri(?:a|e|ar)|fac(?:a|e|er)|implement(?:a|e|ar)|edit(?:a|e|ar)|ajust(?:a|e|ar)|coloqu(?:e|ar)|tir(?:a|e|ar)|exclu(?:a|ir)|delet(?:a|e|ar)|renome(?:ia|ie|ar)|configur(?:a|e|ar)|integr(?:a|e|ar)|conect(?:a|e|ar)|desenvolv(?:a|e|er)|mont(?:a|e|ar)|atualiz(?:a|e|ar)|apliqu(?:e|ar)|substitu(?:a|ir)|arrum(?:a|e|ar)|consert(?:a|e|ar)|ger(?:a|e|ar)|refator(?:a|e|ar)|otimiz(?:a|e|ar)|migr(?:a|e|ar)|prote(?:ja|ger)|bloque(?:ia|ie|ar)|liber(?:a|e|ar)|salv(?:a|e|ar)|cadastr(?:a|e|ar))\b/.test(text)) return true;
 
-  return /^(oi+|ola+|opa+|ei+|hey+|hello+|e ai|bom dia|boa tarde|boa noite|tudo bem|tudo certo|como vai|ta pronto|esta pronto|vc ta pronto|voce ta pronto)(\s+(msk|agente))?(\s+(tudo bem|tudo certo|ta pronto|esta pronto))?$/.test(text);
+  // Intenção natural: "quero um checkout", "preciso de login", etc.
+  if (/\b(quero|preciso|necessito)\b.{0,32}\b(checkout|login|cadastro|dashboard|painel|pagina|site|sistema|saas|api|endpoint|banco|database|tabela|rls|webhook|pix|pagamento|assinatura|licenca|componente|botao|formulario|rota|funcao|edge function)\b/.test(text)) return true;
+
+  // Relato claro de bug também é trabalho de desenvolvimento.
+  if (/\b(nao funciona|parou de funcionar|quebrou|esta quebrado|ta quebrado|deu erro|esta dando erro|ta dando erro|bug|falha)\b/.test(text)) return true;
+
+  return false;
+};
+
+const quickConversationReply = (value: unknown) => {
+  const text = normalizeIntent(value);
+  if (!text) return "";
+
+  if (/^(oi+|ola+|opa+|ei+|hey+|hello+|e ai|bom dia|boa tarde|boa noite)(\s+(msk|agente))?$/.test(text)) {
+    return "Oii! Tudo certo. Sou o MSK Desenvolvedor e estou pronto para trabalhar no seu projeto. Pode me dizer o que você quer criar, corrigir ou alterar.";
+  }
+  if (/^(obrigad[oa]|muito obrigad[oa]|valeu|vlw|tmj|agradeco|agradecido|thanks)(\s+.*)?$/.test(text)) {
+    return "Por nada! Estou à disposição para continuar desenvolvendo seu projeto. Pode mandar a próxima alteração quando quiser.";
+  }
+  if (/^(entendi|beleza|blz|show|certo|ok|okay|perfeito|top|massa|fechou|combinado|saquei)(\s+.*)?$/.test(text)) {
+    return "Perfeito. Pode mandar a próxima etapa. Vou tratar tudo pelo lado de desenvolvimento e preservar o que já está funcionando no projeto.";
+  }
+  if (/^(tudo bem|tudo certo|como vai|ta pronto|esta pronto|voce ta pronto|vc ta pronto)$/.test(text)) {
+    return "Tudo certo e pronto por aqui. Posso trabalhar em código, interface, APIs, banco de dados, autenticação, checkout, multiusuário e demais partes do seu projeto.";
+  }
+  return "";
 };
 
 const sanitize = (data: any, upstreamStatus: number) => {
@@ -89,9 +114,11 @@ Deno.serve(async (req: Request) => {
     try { parsed = body ? JSON.parse(body) : {}; } catch { parsed = {}; }
 
     const command = String(parsed?.original_command || parsed?.message || parsed?.command || "").trim();
-    const simpleConversation = action === "run" && isSimpleConversation(command);
+    const conversational = action === "run" && !!command && !hasEditIntent(command);
+    const quickReply = conversational ? quickConversationReply(command) : "";
 
-    const upstreamAction = simpleConversation ? "status" : action;
+    // Conversa curta só precisa validar a sessão/projeto; conversa aberta usa a IA em modo desenvolvedor.
+    const upstreamAction = quickReply ? "status" : conversational ? "chat" : action;
     const upstream = await fetch(`${supabaseUrl}/functions/v1/msk-agent?action=${encodeURIComponent(upstreamAction)}`, {
       method: "POST",
       headers,
@@ -103,22 +130,44 @@ Deno.serve(async (req: Request) => {
     try { data = text ? JSON.parse(text) : {}; }
     catch { data = { error: "O MSK não conseguiu concluir esta operação agora. Tente novamente." }; }
 
-    if (simpleConversation && upstream.ok) {
-      const reply = "Oii! Estou pronto para mexer no seu projeto. Me diga o que você quer alterar.";
+    if (quickReply && upstream.ok) {
       return json({
         ok: true,
         connected: data?.connected !== false,
         repository: data?.repository || "",
         mode: "chat",
         no_edit: true,
-        assistant_message: reply,
-        message: reply,
+        developer_mode: true,
+        assistant_message: quickReply,
+        message: quickReply,
+        model: "MSK-IA",
+        provider: "MSK",
+      }, 200);
+    }
+
+    if (conversational && !upstream.ok) {
+      // Nunca deixa conversa simples sem retorno, mas também não finge que editou código.
+      const fallback = "Entendi. Estou aqui como desenvolvedor do seu projeto. Posso te orientar e, quando você pedir uma alteração concreta, trabalho nos arquivos, código e banco de dados sem marcar nada como concluído antes da aplicação real.";
+      return json({
+        ok: true,
+        connected: data?.connected !== false,
+        mode: "chat",
+        no_edit: true,
+        developer_mode: true,
+        degraded: true,
+        assistant_message: fallback,
+        message: fallback,
         model: "MSK-IA",
         provider: "MSK",
       }, 200);
     }
 
     const publicData = sanitize(data, upstream.status);
+    if (conversational && publicData && typeof publicData === "object") {
+      publicData.mode = "chat";
+      publicData.no_edit = true;
+      publicData.developer_mode = true;
+    }
     return json(publicData, upstream.status);
   } catch (error) {
     console.error("MSK public gateway internal error", error instanceof Error ? error.message : "unknown");
