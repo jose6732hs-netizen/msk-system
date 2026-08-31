@@ -46,19 +46,37 @@ const mskDirectEnsureInstallationId = async () => {
 /* MSK_DIRECT_AGENT_TRANSPORT_V1 */
 const mskDirectAgentSessionKey = projectId => `mskDirectSession:${projectId}`;
 const mskDirectSanitizeClientError = (data = {}, status = 0) => {
-  const source = data && typeof data === 'object' ? data : {};
+  const source = data && typeof data === 'object' ? { ...data } : {};
   const raw = `${String(source?.code || '')} ${String(source?.error || '')} ${String(source?.message || '')}`;
   const internalGithubFailure = /GITHUB_APP_PRIVATE_KEY_INVALID|GITHUB_APP_CREDENTIALS_INVALID|PRIVATE\s*KEY|chave\s+privada|ASN\.?1|PKCS|RSA\s+PRIVATE|GITHUB_APP_PRIVATE_KEY|incorrect length|constructed/i.test(raw);
-  if (!internalGithubFailure) return source;
-  return {
-    ...source,
-    ok: false,
-    connected: false,
-    status: Number(status || source?.status || 500),
-    code: 'GITHUB_TEMPORARILY_UNAVAILABLE',
-    error: 'Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes.',
-    message: 'Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes.'
-  };
+  const internalAiFailure = /Nenhuma API da IA foi configurada|Cadastre a chave no painel|BAI_API_KEY|api_key_ciphertext|MSK_TOKEN_ENCRYPTION_KEY|B\.AI\s*\d{3}|MSK_AI_UNAVAILABLE_INTERNAL/i.test(raw);
+
+  // Nunca expor fornecedor/modelo interno ao cliente. A interface pública usa somente a marca MSK IA.
+  if (Object.prototype.hasOwnProperty.call(source, 'provider')) source.provider = 'MSK';
+  if (Object.prototype.hasOwnProperty.call(source, 'model')) source.model = 'MSK-IA';
+
+  if (internalGithubFailure) {
+    return {
+      ...source,
+      ok: false,
+      connected: false,
+      status: Number(status || source?.status || 500),
+      code: 'GITHUB_TEMPORARILY_UNAVAILABLE',
+      error: 'Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes.',
+      message: 'Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes.'
+    };
+  }
+  if (internalAiFailure) {
+    return {
+      ...source,
+      ok: false,
+      status: Number(status || source?.status || 500),
+      code: 'MSK_AI_TEMPORARILY_UNAVAILABLE',
+      error: 'A inteligência MSK está temporariamente indisponível. Tente novamente em instantes.',
+      message: 'A inteligência MSK está temporariamente indisponível. Tente novamente em instantes.'
+    };
+  }
+  return source;
 };
 const mskDirectAgentApi = async (action, payload = {}) => {
   const projectId = String(payload.lovable_project_id || '').trim();
@@ -67,6 +85,9 @@ const mskDirectAgentApi = async (action, payload = {}) => {
   const saved = projectId ? await chrome.storage.local.get(mskDirectAgentSessionKey(projectId)) : {};
   const sessionToken = projectId ? String(saved[mskDirectAgentSessionKey(projectId)] || '') : '';
   const license = await mskDirectActiveLicense().catch(() => null);
+  // GitHub direto não depende de login separado do painel MSK.
+  // A autorização acontece na conta GitHub do próprio cliente e a sessão de
+  // escrita nasce somente após o callback oficial do GitHub.
   if (!license) {
     return { ok: false, status: 401, connected: false, code: 'LICENSE_REQUIRED', error: 'Valide sua licença MSK para conectar o GitHub.' };
   }
@@ -78,7 +99,7 @@ const mskDirectAgentApi = async (action, payload = {}) => {
     ...(sessionToken ? { 'x-msk-session': sessionToken } : {})
   };
   const timeout = action === 'run' ? 180000 : 30000;
-  const functionName = (action === 'connect' || action === 'status') ? 'msk-agent-license' : 'msk-agent';
+  const functionName = (action === 'connect' || action === 'status' || action === 'bind-existing') ? 'msk-agent-license' : 'msk-agent-public';
   const response = await mskDirectFetchWithTimeout(`${config.supabaseUrl}/functions/v1/${functionName}?action=${encodeURIComponent(action)}`, {
     method: 'POST',
     headers,
