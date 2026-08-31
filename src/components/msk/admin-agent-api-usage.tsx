@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FilterChips } from "@/components/msk/filter-chips";
 import { AnimatedNumber } from "@/components/msk/animated-number";
+import { AdminAgentAiSettings } from "@/components/msk/admin-agent-ai-settings";
 import { agentUsageOverview } from "@/lib/agent-usage.functions";
 
 const fmt = (v?: string | null) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
@@ -128,6 +129,8 @@ export function AdminAgentApiUsageTab() {
           </Button>
         </div>
       </div>
+
+      <AdminAgentAiSettings />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Metric label="Comandos enviados" value={m?.total_calls ?? 0} Icon={Bot} />
