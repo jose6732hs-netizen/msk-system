@@ -6,6 +6,7 @@ import { renderErrorPage } from "./lib/error-page";
 const MSK_APPROVED_BUILDS = [
   "3.4.49=0e6a4f54b0529b0a7a418821ad52082d5a4e78bbc35aa9d3ac8de9d2e3ba48a9",
   "3.4.49=96217c9c41c9022bb6624aa91836ea28e6f16c0568b875d71f489c42c4c6e278",
+  "3.4.49=25ac5d5d3ea5a4670698c381d81047e7e19248efaf813deb06df07a048406fb4",
 ];
 const approvedBuilds = String(process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] ?? "");
 const approvedSet = new Set(approvedBuilds.split(",").map((item) => item.trim()).filter(Boolean));
