@@ -9,7 +9,9 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const env = (name: string) => { const value = Deno.env.get(name); if (!value) throw new Error(`Secret ausente: ${name}`); return value; };
 const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"));
 const enc = new TextEncoder();
+const dec = new TextDecoder();
 const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64url = (value: string) => Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=")), c => c.charCodeAt(0));
 const sha256 = async (value: string) => b64url(new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(value))));
 const hmac = async (value: string) => {
   const key = await crypto.subtle.importKey("raw", enc.encode(env("MSK_STATE_SECRET")), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -18,6 +20,13 @@ const hmac = async (value: string) => {
 const makeState = async (projectId: string, returnUrl: string, repository: string, userId: string) => {
   const payload = b64url(enc.encode(JSON.stringify({ projectId, returnUrl, repository, userId, exp: Date.now() + 15 * 60_000 })));
   return `${payload}.${await hmac(payload)}`;
+};
+const readState = async (state: string) => {
+  const [payload, signature] = String(state || "").split(".");
+  if (!payload || !signature || signature !== await hmac(payload)) throw new Error("STATE_INVALID");
+  const data = JSON.parse(dec.decode(fromB64url(payload)));
+  if (!data?.projectId || !data?.userId || Number(data?.exp || 0) < Date.now()) throw new Error("STATE_EXPIRED");
+  return data as { projectId: string; returnUrl: string; repository?: string; userId: string; exp: number };
 };
 const identityFromLicense = async (req: Request) => {
   const token = (req.headers.get("authorization") || req.headers.get("x-msk-license") || "").replace(/^Bearer\s+/i, "").trim();
@@ -48,7 +57,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
   const action = new URL(req.url).searchParams.get("action") || "status";
-  if (action === "health") return json({ ok: true, service: "msk-agent-license", version: "1.1.0", license_identity: true });
+  if (action === "health") return json({ ok: true, service: "msk-agent-license", version: "1.2.0", license_identity: true, bind_existing: true });
 
   const identity = await identityFromLicense(req);
   if (!identity) return json({ ok: false, connected: false, code: "LICENSE_REQUIRED", error: "Valide uma licença MSK ativa para conectar o GitHub." }, 401);
@@ -64,8 +73,39 @@ Deno.serve(async (req) => {
     if (!project?.github_installation_id) return json({ ok: true, connected: false });
     const session = req.headers.get("x-msk-session") || "";
     const repository = project.github_owner && project.github_repo ? `${project.github_owner}/${project.github_repo}` : "";
-    if (!session || !await validSession(projectId, session)) return json({ ok: true, connected: false, installation_known: true, needs_session_recovery: true, repository });
+    if (!session || !await validSession(projectId, session)) return json({ ok: true, connected: false, installation_known: true, needs_session_recovery: true, existing_installation_id: Number(project.github_installation_id), repository });
     return json({ ok: true, connected: true, installation_known: true, repository });
+  }
+
+  if (action === "bind-existing") {
+    const installationId = Number(body?.installation_id || 0);
+    const recoveryState = String(body?.recovery_state || "").trim();
+    if (!Number.isInteger(installationId) || installationId <= 0) return json({ ok: false, connected: false, code: "INSTALLATION_INVALID", error: "Instalação GitHub inválida." }, 400);
+    if (!recoveryState) return json({ ok: false, connected: false, code: "RECOVERY_STATE_REQUIRED", error: "Confirmação segura da conexão ausente." }, 401);
+    let state: { projectId: string; returnUrl: string; repository?: string; userId: string; exp: number };
+    try { state = await readState(recoveryState); }
+    catch { return json({ ok: false, connected: false, code: "RECOVERY_STATE_INVALID", error: "A confirmação segura do GitHub expirou. Clique em conectar novamente." }, 401); }
+    if (state.projectId !== projectId || state.userId !== userId) return json({ ok: false, connected: false, code: "RECOVERY_IDENTITY_MISMATCH", error: "A autorização GitHub não corresponde à licença e ao projeto atuais." }, 403);
+
+    try {
+      const coreUrl = `${env("SUPABASE_URL")}/functions/v1/msk-agent?installation_id=${encodeURIComponent(String(installationId))}&setup_action=recover&state=${encodeURIComponent(recoveryState)}`;
+      const coreResponse = await fetch(coreUrl, { method: "GET", redirect: "manual" });
+      if (coreResponse.status >= 300 && coreResponse.status < 400) {
+        const location = String(coreResponse.headers.get("location") || "");
+        const match = location.match(/[#&]msk_session=([^&]+)/);
+        const sessionToken = match ? decodeURIComponent(match[1]) : "";
+        if (!sessionToken) return json({ ok: false, connected: false, code: "SESSION_NOT_RETURNED", error: "A conexão foi autorizada, mas a sessão do projeto não foi concluída." }, 502);
+        const { data: linked } = await db.from("msk_projects").select("github_owner,github_repo,github_installation_id").eq("lovable_project_id", projectId).maybeSingle();
+        const repository = linked?.github_owner && linked?.github_repo ? `${linked.github_owner}/${linked.github_repo}` : normalizeRepo(state.repository || body?.repository_url || "");
+        return json({ ok: true, connected: true, recovered_existing_installation: true, installation_id: Number(linked?.github_installation_id || installationId), session_token: sessionToken, repository });
+      }
+      const detail = await coreResponse.text().catch(() => "");
+      console.error("MSK GitHub bind-existing falhou no core", coreResponse.status, detail.slice(0, 500));
+      return json({ ok: false, connected: false, code: "GITHUB_CONNECTION_TEMPORARY_FAILURE", error: "Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes." }, 502);
+    } catch (error) {
+      console.error("MSK GitHub bind-existing indisponível", error instanceof Error ? error.message : "unknown");
+      return json({ ok: false, connected: false, code: "GITHUB_CONNECTION_TEMPORARY_FAILURE", error: "Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes." }, 502);
+    }
   }
 
   if (action !== "connect") return json({ ok: false, code: "ACTION_NOT_SUPPORTED" }, 400);
