@@ -13,7 +13,10 @@ const GATE_PROTOCOL = "msk-integrity-v2";
 const GATE_TTL_MS = 10 * 60_000;
 const BUILTIN_APPROVED_RELEASES: Record<string, string[]> = {
   "3.4.48": ["ad36dc984a7b88a776fc2ed0fc1ae47671a84cadc74cd7e6b15c3e1ca0da2403"],
-  "3.4.49": ["7ebc665b750e8b7988f433e806819e45a9c7e47a3e378befa636f3d71305f2c2"],
+  "3.4.49": [
+    "7ebc665b750e8b7988f433e806819e45a9c7e47a3e378befa636f3d71305f2c2",
+    "5a7f0926ca36e3145dcba6e5c90777621fee1a228899376cd29d5c0992d1d559",
+  ],
 };
 
 const installationSchema = z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/);
