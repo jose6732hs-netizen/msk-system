@@ -1,28 +1,45 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logEvent } from "./license.server";
 
+const PAGE = 1000;
+const MAX_ROWS = 10000;
+
+async function fetchAll<T>(build: () => any): Promise<T[]> {
+  const rows: T[] = [];
+  for (let from = 0; from < MAX_ROWS; from += PAGE) {
+    const { data, error } = await build().range(from, from + PAGE - 1);
+    if (error) throw error;
+    const page = (data ?? []) as T[];
+    rows.push(...page);
+    if (page.length < PAGE) break;
+  }
+  return rows;
+}
+
 export async function loadAdminOverview(search: string, userSearch: string = "") {
   const term = search.trim();
   const uTerm = userSearch.trim();
 
-  let licenseQuery = supabaseAdmin
-    .from("licenses")
-    .select(
-      "id,user_id,status,type,expires_at,activated_at,created_at,transaction_id,max_devices,token_preview,token_last4,last_validation,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
-    )
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (term) licenseQuery = licenseQuery.ilike("token_last4", `%${term.slice(-4)}%`);
-  const { data: licensesRaw, error: licenseError } = await licenseQuery;
-  if (licenseError) throw licenseError;
+  const licensesRaw = await fetchAll<any>(() => {
+    let q = supabaseAdmin
+      .from("licenses")
+      .select(
+        "id,user_id,status,type,expires_at,activated_at,created_at,transaction_id,max_devices,token_preview,token_last4,last_validation,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
+      )
+      .order("created_at", { ascending: false });
+    if (term) q = q.ilike("token_last4", `%${term.slice(-4)}%`);
+    return q;
+  });
 
-  let profileQuery = supabaseAdmin
-    .from("profiles")
-    .select("id,name,email,created_at,phone")
-    .order("created_at", { ascending: false })
-    .limit(100);
-  if (uTerm) profileQuery = profileQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
-  const { data: users } = await profileQuery;
+  const users = await fetchAll<any>(() => {
+    let q = supabaseAdmin
+      .from("profiles")
+      .select("id,name,email,created_at,phone")
+      .order("created_at", { ascending: false });
+    if (uTerm) q = q.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
+    return q;
+  });
+
 
   const ownerIds = [...new Set((licensesRaw ?? []).map((l: any) => l.user_id).filter(Boolean))];
   const { data: owners } = ownerIds.length
