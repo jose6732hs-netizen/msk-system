@@ -30,6 +30,7 @@ import { NotificationSettings } from "@/components/msk/notification-settings";
 import { Bell } from "lucide-react";
 import { MskLogo } from "@/components/msk/logo";
 import { adminLicenseAction, adminOverview, isAdmin, adminUserAction } from "@/lib/admin.functions";
+import { adminResetLicenseTimer } from "@/lib/admin-license-reset.functions";
 import { AdminWalletsTab, AdminWithdrawalsTab } from "@/components/msk/admin-wallets";
 import { CountUp } from "@/components/msk/animated-number";
 import { FilterChips } from "@/components/msk/filter-chips";
@@ -199,6 +200,7 @@ function Admin() {
   const checkAdmin = useServerFn(isAdmin);
   const overviewFn = useServerFn(adminOverview);
   const actionFn = useServerFn(adminLicenseAction);
+  const resetTimerFn = useServerFn(adminResetLicenseTimer);
   const userActionFn = useServerFn(adminUserAction);
   const [search, setSearch] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -241,6 +243,17 @@ function Admin() {
     try {
       await actionFn({ data: { licenseId, action: action === "block" ? "revoke" : action, ...(action === "extend" ? { days: 30 } : {}) } });
       toast.success(action === "block" ? "Licença bloqueada e acesso removido." : action === "revoke" ? "Extensão desligada com sucesso." : "Ação aplicada.");
+      qc.invalidateQueries({ queryKey: ["admin-overview"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  }
+
+  async function restartTimer(licenseId: string) {
+    if (!window.confirm("Reiniciar o contador desta licença usando a duração original dela?")) return;
+    try {
+      const result = await resetTimerFn({ data: { licenseId } });
+      toast.success(`Tempo reiniciado: ${result.durationLabel}.`);
       qc.invalidateQueries({ queryKey: ["admin-overview"] });
     } catch (e) {
       toast.error((e as Error).message);
@@ -437,7 +450,7 @@ function Admin() {
                                   <span className="font-bold text-destructive">Validade não definida</span>
                                 )}
                               </td>
-                              <td className="p-4 text-right"><div className="flex justify-end gap-1"><Button size="icon" variant="ghost" className="h-8 w-8 text-cyan-400" title="Copiar Dados de Entrega" onClick={() => { setIssued({ token: "Carregando...", email: l.profiles?.email || "", licenseId: l.id }); setActiveTab("tokens"); }}><MessageSquare className="h-4 w-4" /></Button>{l.status !== "revoked" ? <><Button size="icon" variant="ghost" className="h-8 w-8 text-primary" title="Estender 30 dias" onClick={() => act(l.id, "extend")}><Clock className="h-4 w-4" /></Button><Button size="sm" variant="destructive" className="h-8 px-2 text-[10px] font-bold uppercase" onClick={() => act(l.id, "block")}>Bloquear</Button></> : null}</div></td>
+                              <td className="p-4 text-right"><div className="flex flex-wrap justify-end gap-1"><Button size="icon" variant="ghost" className="h-8 w-8 text-cyan-400" title="Copiar Dados de Entrega" onClick={() => { setIssued({ token: "Carregando...", email: l.profiles?.email || "", licenseId: l.id }); setActiveTab("tokens"); }}><MessageSquare className="h-4 w-4" /></Button>{!isLifetime ? <Button size="sm" variant="outline" className="h-8 px-2 text-[10px] font-black uppercase" title="Reiniciar usando a duração original da licença" onClick={() => restartTimer(l.id)}><Clock className="mr-1 h-3.5 w-3.5" />Reiniciar</Button> : null}{l.status !== "revoked" ? <><Button size="icon" variant="ghost" className="h-8 w-8 text-primary" title="Estender 30 dias" onClick={() => act(l.id, "extend")}><Clock className="h-4 w-4" /></Button><Button size="sm" variant="destructive" className="h-8 px-2 text-[10px] font-bold uppercase" onClick={() => act(l.id, "block")}>Bloquear</Button></> : null}</div></td>
                             </tr>
                           );
                         })}
