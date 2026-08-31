@@ -1,19 +1,19 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
 
 const cors = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Origin": "https://msksystem.online",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
   "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...cors, "Content-Type": "application/json" },
+    headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 
 const required = (name: string) => {
-  const value = Deno.env.get(name);
+  const value = Deno.env.get(name)?.trim();
   if (!value) throw new Error(`Secret ausente no servidor: ${name}`);
   return value;
 };
@@ -23,6 +23,11 @@ const supabaseUrl = required("SUPABASE_URL");
 const db = createClient(supabaseUrl, serviceRole, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+
+// O painel do SaaS autentica em outro projeto Supabase. Esta chave é publicável
+// e serve apenas para validar o JWT do administrador e aplicar RLS naquele projeto.
+const SAAS_SUPABASE_URL = "https://zjrrymncmiyftyogejjr.supabase.co";
+const SAAS_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_T4c9lObE149Nozgc9xQqvg_C46uHzYA";
 const encoder = new TextEncoder();
 
 const b64url = (bytes: Uint8Array) =>
@@ -43,24 +48,13 @@ const fromB64url = (value: string) =>
   );
 
 async function encryptionKey() {
-  const configured = Deno.env.get("MSK_TOKEN_ENCRYPTION_KEY")?.trim();
-  let raw: Uint8Array;
-
-  if (configured) {
-    raw = /^[A-Za-z0-9_-]{43,44}$/.test(configured)
-      ? fromB64url(configured)
-      : encoder.encode(configured);
-    if (raw.length !== 32) {
-      throw new Error("MSK_TOKEN_ENCRYPTION_KEY deve possuir exatamente 32 bytes.");
-    }
-  } else {
-    const digest = await crypto.subtle.digest(
-      "SHA-256",
-      encoder.encode(`msk-ai-settings:v1:${serviceRole}`),
-    );
-    raw = new Uint8Array(digest);
+  const configured = required("MSK_TOKEN_ENCRYPTION_KEY");
+  const raw = /^[A-Za-z0-9_-]{43,44}$/.test(configured)
+    ? fromB64url(configured)
+    : encoder.encode(configured);
+  if (raw.length !== 32) {
+    throw new Error("MSK_TOKEN_ENCRYPTION_KEY_INVALID");
   }
-
   return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
 }
 
@@ -73,25 +67,35 @@ async function encrypt(value: string) {
       encoder.encode(value),
     ),
   );
+  // Compatível com msk-agent/ai.ts: 12 bytes de IV + ciphertext em base64url.
   return b64url(new Uint8Array([...iv, ...cipher]));
 }
 
-async function currentAdmin(req: Request) {
+function bearer(req: Request) {
   const authorization = req.headers.get("authorization") || "";
-  const token = authorization.replace(/^Bearer\s+/i, "").trim();
-  if (!token) return null;
+  return authorization.replace(/^Bearer\s+/i, "").trim();
+}
 
-  const { data, error } = await db.auth.getUser(token);
+async function currentAdmin(req: Request) {
+  const token = bearer(req);
+  if (!token || token.split(".").length !== 3) return null;
+
+  const saas = createClient(SAAS_SUPABASE_URL, SAAS_SUPABASE_PUBLISHABLE_KEY, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data, error } = await saas.auth.getUser(token);
   if (error || !data.user) return null;
 
-  const { data: roles, error: rolesError } = await db
+  const { data: roles, error: rolesError } = await saas
     .from("user_roles")
     .select("role")
     .eq("user_id", data.user.id)
     .in("role", ["admin", "super_admin"]);
 
   if (rolesError || !roles?.length) return null;
-  return data.user;
+  return { id: data.user.id, roles: roles.map((row: any) => String(row.role)) };
 }
 
 async function validateBaiKey(apiKey: string) {
@@ -124,15 +128,15 @@ async function validateBaiKey(apiKey: string) {
 
     if (!response.ok) {
       const providerMessage = String(
-        body?.error?.message || body?.message || `B.AI respondeu HTTP ${response.status}`,
+        body?.error?.message || body?.message || `A IA respondeu HTTP ${response.status}`,
       ).slice(0, 300);
       const error = new Error(providerMessage);
-      (error as any).status = [401, 403].includes(response.status) ? 400 : 502;
+      (error as any).status = [401, 403] .includes(response.status) ? 400 : 502;
       throw error;
     }
   } catch (error: any) {
     if (error?.name === "AbortError") {
-      const timeoutError = new Error("A B.AI demorou demais para validar a chave. Tente novamente.");
+      const timeoutError = new Error("A IA demorou demais para validar a chave. Tente novamente.");
       (timeoutError as any).status = 504;
       throw timeoutError;
     }
@@ -181,23 +185,27 @@ Deno.serve(async (req: Request) => {
       const now = new Date().toISOString();
       const last4 = apiKey.slice(-4);
 
-      const { data: saved, error } = await db.from("msk_ai_settings").upsert(
-        {
-          id: "default",
-          provider: "B.AI",
-          model: "deepseek-v4-flash",
-          api_base_url: "https://api.b.ai/v1/chat/completions",
-          api_key_ciphertext: ciphertext,
-          api_key_last4: last4,
-          active: true,
-          updated_by: admin.id,
-          updated_at: now,
-        },
-        { onConflict: "id" },
-      ).select("id,provider,model,api_key_ciphertext,api_key_last4,active,updated_at").single();
+      const { data: saved, error } = await db
+        .from("msk_ai_settings")
+        .upsert(
+          {
+            id: "default",
+            provider: "B.AI",
+            model: "deepseek-v4-flash",
+            api_base_url: "https://api.b.ai/v1/chat/completions",
+            api_key_ciphertext: ciphertext,
+            api_key_last4: last4,
+            active: true,
+            updated_by: admin.id,
+            updated_at: now,
+          },
+          { onConflict: "id" },
+        )
+        .select("id,provider,model,api_key_ciphertext,api_key_last4,active,updated_at")
+        .single();
       if (error) throw error;
       if (!saved?.active || !saved.api_key_ciphertext || saved.api_key_last4 !== last4) {
-        const persistenceError = new Error("A chave foi validada, mas o banco não confirmou a gravação. Tente novamente.");
+        const persistenceError = new Error("A chave foi validada, mas o banco não confirmou a gravação.");
         (persistenceError as any).status = 500;
         throw persistenceError;
       }
@@ -220,10 +228,14 @@ Deno.serve(async (req: Request) => {
 
     return json({ error: "Ação não reconhecida." }, 400);
   } catch (error: any) {
-    console.error("msk-ai-settings", error?.message || error);
+    const raw = String(error?.message || "Falha interna ao configurar a IA.");
+    console.error("msk-ai-settings", raw);
     const status = Number(error?.status || 500);
+    const safeMessage = /MSK_TOKEN_ENCRYPTION_KEY|Secret ausente/i.test(raw)
+      ? "A configuração segura da IA está temporariamente indisponível."
+      : raw.slice(0, 500);
     return json(
-      { error: String(error?.message || "Falha interna ao configurar a IA.").slice(0, 500) },
+      { error: safeMessage },
       status >= 400 && status <= 599 ? status : 500,
     );
   }
