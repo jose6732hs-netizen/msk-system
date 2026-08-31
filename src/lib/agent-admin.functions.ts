@@ -1,7 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
+
+const AGENT_AI_SETTINGS_URL =
+  process.env.MSK_AGENT_AI_SETTINGS_URL?.trim() ||
+  "https://iybjfmhqbblrppqoodyf.supabase.co/functions/v1/msk-ai-settings";
+const AGENT_SUPABASE_PUBLISHABLE_KEY =
+  process.env.MSK_AGENT_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  "sb_publishable_-aERipV8XmdiDq9UMERZUA_OIyOeyzD";
 
 export const agentAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -22,28 +30,37 @@ function normalizeStatus(data: unknown) {
     configured: !!row?.configured,
     provider: String(row?.provider || "B.AI"),
     model: String(row?.model || "deepseek-v4-flash"),
-    keyMasked: row?.key_masked ? String(row.key_masked) : null,
-    updatedAt: row?.updated_at ? String(row.updated_at) : null,
+    keyMasked: row?.keyMasked
+      ? String(row.keyMasked)
+      : row?.key_masked
+        ? String(row.key_masked)
+        : null,
+    updatedAt: row?.updatedAt
+      ? String(row.updatedAt)
+      : row?.updated_at
+        ? String(row.updated_at)
+        : null,
   };
 }
 
-async function validateBaiKey(apiKey: string) {
+async function agentAiRequest(action: string, payload: Record<string, unknown> = {}) {
+  const request = getRequest();
+  const authorization = request?.headers?.get("authorization")?.trim() || "";
+  if (!authorization.startsWith("Bearer ")) {
+    throw new Error("Sessão administrativa inválida. Entre novamente no painel.");
+  }
+
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
+  const timer = setTimeout(() => controller.abort(), 20_000);
   try {
-    const response = await fetch("https://api.b.ai/v1/chat/completions", {
+    const response = await fetch(AGENT_AI_SETTINGS_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: authorization,
+        apikey: AGENT_SUPABASE_PUBLISHABLE_KEY,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: "deepseek-v4-flash",
-        messages: [{ role: "user", content: "Reply only OK" }],
-        max_tokens: 8,
-        temperature: 0,
-        stream: false,
-      }),
+      body: JSON.stringify({ action, ...payload }),
       signal: controller.signal,
     });
 
@@ -56,14 +73,14 @@ async function validateBaiKey(apiKey: string) {
     }
 
     if (!response.ok) {
-      const providerMessage = String(
-        body?.error?.message || body?.message || `A IA respondeu HTTP ${response.status}`,
-      ).slice(0, 300);
-      throw new Error(providerMessage);
+      throw new Error(
+        String(body?.error || body?.message || "O backend do MSK Agente não confirmou a operação.").slice(0, 400),
+      );
     }
+    return body || {};
   } catch (error: any) {
     if (error?.name === "AbortError") {
-      throw new Error("A IA demorou demais para validar a chave. Tente novamente.");
+      throw new Error("O backend do MSK Agente demorou demais para responder. Tente novamente.");
     }
     throw error;
   } finally {
@@ -75,9 +92,7 @@ export const agentAiSettingsStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
-    const { data, error } = await (context.supabase as any).rpc("msk_ai_settings_status");
-    if (error) throw error;
-    return normalizeStatus(data);
+    return normalizeStatus(await agentAiRequest("ai-global-status"));
   });
 
 export const agentAiSettingsSave = createServerFn({ method: "POST" })
@@ -87,20 +102,12 @@ export const agentAiSettingsSave = createServerFn({ method: "POST" })
     await assertAdmin(context.supabase, context.userId);
     const apiKey = data.apiKey.trim();
 
-    // Valida a credencial no servidor antes de substituir a configuração atual.
-    await validateBaiKey(apiKey);
-
-    const { data: saved, error } = await (context.supabase as any).rpc("msk_ai_settings_save", {
-      p_api_key: apiKey,
-      p_provider: "B.AI",
-      p_model: "deepseek-v4-flash",
-      p_base_url: "https://api.b.ai/v1/chat/completions",
-    });
-    if (error) throw error;
-
+    // A validação e a criptografia acontecem no mesmo backend que executa a IA.
+    // Assim o painel não pode exibir "API aplicada" enquanto o agente usa outro banco.
+    const saved = await agentAiRequest("ai-global-save", { apiKey });
     const normalized = normalizeStatus(saved);
     if (!normalized.configured || !normalized.keyMasked) {
-      throw new Error("A chave foi validada, mas o banco não confirmou a gravação.");
+      throw new Error("A chave foi validada, mas o backend do MSK Agente não confirmou a gravação.");
     }
     return { ok: true, ...normalized };
   });
@@ -109,7 +116,6 @@ export const agentAiSettingsDelete = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
-    const { error } = await (context.supabase as any).rpc("msk_ai_settings_delete");
-    if (error) throw error;
+    await agentAiRequest("ai-global-delete");
     return { ok: true, configured: false };
   });
