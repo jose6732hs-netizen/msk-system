@@ -16,6 +16,7 @@ const BUILTIN_APPROVED_RELEASES: Record<string, string[]> = {
   "3.4.49": [
     "7ebc665b750e8b7988f433e806819e45a9c7e47a3e378befa636f3d71305f2c2",
     "5a7f0926ca36e3145dcba6e5c90777621fee1a228899376cd29d5c0992d1d559",
+    "aed924f67beb41470b6b23d85957f2978ede55a28096d63f4f33e3e671534bd7",
   ],
 };
 
