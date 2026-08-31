@@ -1,17 +1,101 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { assertAdmin, assertSuperAdmin } from "./admin-guard";
 
 const userId = z.string().uuid();
-const installationId = z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/).optional().nullable();
+const requiredInstallationId = z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/);
+const installationId = requiredInstallationId.optional().nullable();
+
+function cloneAlertSignature(row: any) {
+  return JSON.stringify([
+    String(row?.version ?? ""),
+    String(row?.extension_id ?? ""),
+    String(row?.suspicion_reason ?? ""),
+    String(row?.block_reason ?? ""),
+    row?.blocked === true ? "blocked" : "open",
+  ]);
+}
 
 export const extensionRemoteAdminOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
     const { loadRemoteControlAdmin } = await import("./extension-remote-control.server");
-    return (await loadRemoteControlAdmin()) as any;
+    const overview = (await loadRemoteControlAdmin()) as any;
+    const suspicious = Array.isArray(overview?.suspicious) ? overview.suspicious : [];
+
+    if (!suspicious.length) return overview;
+
+    const ids = [...new Set(
+      suspicious
+        .map((row: any) => String(row?.installation_id ?? ""))
+        .filter((id: string) => requiredInstallationId.safeParse(id).success),
+    )];
+
+    if (!ids.length) return overview;
+
+    const { data: rows } = await (supabaseAdmin as any)
+      .from("extension_installations")
+      .select("installation_id,metadata")
+      .in("installation_id", ids);
+
+    const hiddenByInstallation = new Map<string, string>();
+    for (const row of rows ?? []) {
+      const metadata = row?.metadata && typeof row.metadata === "object" ? row.metadata : {};
+      const dismissal = metadata?.admin_clone_alert_dismissal;
+      if (dismissal?.signature) {
+        hiddenByInstallation.set(String(row.installation_id), String(dismissal.signature));
+      }
+    }
+
+    return {
+      ...overview,
+      suspicious: suspicious.filter((row: any) => {
+        const installation = String(row?.installation_id ?? "");
+        return hiddenByInstallation.get(installation) !== cloneAlertSignature(row);
+      }),
+    };
+  });
+
+export const extensionRemoteAdminDismissCloneAlert = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ installationId: requiredInstallationId }).parse(input))
+  .handler(async ({ context, data }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+
+    const { data: row, error: readError } = await (supabaseAdmin as any)
+      .from("extension_installations")
+      .select("id,installation_id,version,extension_id,suspicion_reason,block_reason,blocked,metadata")
+      .eq("installation_id", data.installationId)
+      .maybeSingle();
+
+    if (readError) throw readError;
+    if (!row) throw new Error("Instalação não encontrada.");
+
+    const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata)
+      ? { ...row.metadata }
+      : {};
+
+    metadata.admin_clone_alert_dismissal = {
+      signature: cloneAlertSignature(row),
+      hidden_at: new Date().toISOString(),
+      hidden_by: context.userId,
+    };
+
+    const { error } = await (supabaseAdmin as any)
+      .from("extension_installations")
+      .update({ metadata })
+      .eq("id", row.id);
+
+    if (error) throw error;
+
+    return {
+      ok: true,
+      installationId: data.installationId,
+      securityStatePreserved: true,
+    };
   });
 
 export const extensionRemoteAdminSendMessage = createServerFn({ method: "POST" })
@@ -81,7 +165,7 @@ export const extensionRemoteAdminMarkRepliesRead = createServerFn({ method: "POS
 export const extensionRemoteAdminBlockInstallation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({
-    installationId: z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/),
+    installationId: requiredInstallationId,
     blocked: z.boolean(),
     reason: z.string().trim().max(300).optional().nullable(),
   }).parse(input))
