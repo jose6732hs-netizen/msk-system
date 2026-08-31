@@ -1,7 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { assertSuperAdmin } from "./admin-guard";
+import { assertAdmin, assertSuperAdmin } from "./admin-guard";
+
+export const extensionGlobalMessageRecipients = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { listExtensionMessageRecipients } = await import("./extension-global-message.server");
+    return listExtensionMessageRecipients();
+  });
 
 export const extensionGlobalBroadcastMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
