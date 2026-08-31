@@ -3,7 +3,7 @@ import "./lib/error-capture";
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
 
-const MSK_CURRENT_BUILD = "3.4.49=53e79b87511dcde6dace0e83f2efc0a12490640fdec51356c41ea4a92ebaf962";
+const MSK_CURRENT_BUILD = "3.4.49=0e6a4f54b0529b0a7a418821ad52082d5a4e78bbc35aa9d3ac8de9d2e3ba48a9";
 const approvedBuilds = String(process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] ?? "");
 if (!approvedBuilds.split(",").map((item) => item.trim()).includes(MSK_CURRENT_BUILD)) {
   process.env["MSK_EXTENSION_APPROVED_INTEGRITY_ROOTS"] = [approvedBuilds, MSK_CURRENT_BUILD]
