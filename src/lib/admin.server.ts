@@ -42,10 +42,14 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
 
 
   const ownerIds = [...new Set((licensesRaw ?? []).map((l: any) => l.user_id).filter(Boolean))];
-  const { data: owners } = ownerIds.length
-    ? await supabaseAdmin.from("profiles").select("id,name,email").in("id", ownerIds)
-    : { data: [] as any[] };
+  const owners: any[] = [];
+  for (let i = 0; i < ownerIds.length; i += 200) {
+    const chunk = ownerIds.slice(i, i + 200);
+    const { data } = await supabaseAdmin.from("profiles").select("id,name,email").in("id", chunk);
+    owners.push(...(data ?? []));
+  }
   const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o]));
+
 
   const { licensePurpose, licenseRoleFromSlug } = await import("./license-purpose");
 
