@@ -47,15 +47,34 @@ const fromB64url = (value: string) =>
     (c) => c.charCodeAt(0),
   );
 
-async function encryptionKey() {
-  const configured = required("MSK_TOKEN_ENCRYPTION_KEY");
-  const raw = /^[A-Za-z0-9_-]{43,44}$/.test(configured)
-    ? fromB64url(configured)
-    : encoder.encode(configured);
-  if (raw.length !== 32) {
-    throw new Error("MSK_TOKEN_ENCRYPTION_KEY_INVALID");
+async function encryptionMaterial() {
+  const configured = Deno.env.get("MSK_TOKEN_ENCRYPTION_KEY")?.trim() || "";
+  if (configured) {
+    const candidate = /^[A-Za-z0-9_-]{43,44}$/.test(configured)
+      ? fromB64url(configured)
+      : encoder.encode(configured);
+    if (candidate.length === 32) return candidate;
   }
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt"]);
+
+  // Compatibilidade segura: o projeto já possui MSK_STATE_SECRET para assinar
+  // estados do GitHub. Derivamos uma chave AES separada por domínio, sem expor
+  // nem reutilizar diretamente o segredo original.
+  const stateSecret = required("MSK_STATE_SECRET");
+  const derived = await crypto.subtle.digest(
+    "SHA-256",
+    encoder.encode(`msk-ai-settings:v1:${stateSecret}`),
+  );
+  return new Uint8Array(derived);
+}
+
+async function encryptionKey() {
+  return crypto.subtle.importKey(
+    "raw",
+    await encryptionMaterial(),
+    "AES-GCM",
+    false,
+    ["encrypt"],
+  );
 }
 
 async function encrypt(value: string) {
@@ -231,7 +250,7 @@ Deno.serve(async (req: Request) => {
     const raw = String(error?.message || "Falha interna ao configurar a IA.");
     console.error("msk-ai-settings", raw);
     const status = Number(error?.status || 500);
-    const safeMessage = /MSK_TOKEN_ENCRYPTION_KEY|Secret ausente/i.test(raw)
+    const safeMessage = /MSK_(?:TOKEN_ENCRYPTION_KEY|STATE_SECRET)|Secret ausente/i.test(raw)
       ? "A configuração segura da IA está temporariamente indisponível."
       : raw.slice(0, 500);
     return json(
