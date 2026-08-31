@@ -9,9 +9,30 @@ const pkcs1 = (r: Uint8Array) => wrap(48, join(new Uint8Array([2, 1, 0]), new Ui
 const b64bytes = (v: string) => Uint8Array.from(atob(v.replace(/\s/g, "")), c => c.charCodeAt(0));
 async function appKey() { let v = env("GITHUB_APP_PRIVATE_KEY").trim().replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n"); const m = v.match(/-----BEGIN ([A-Z ]*PRIVATE KEY)-----([\s\S]*?)-----END \1-----/); try { const alg = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" } as const; if (m) { const raw = b64bytes(m[2]); return await crypto.subtle.importKey("pkcs8", m[1] === "RSA PRIVATE KEY" ? pkcs1(raw) : raw, alg, false, ["sign"]); } return await crypto.subtle.importKey("pkcs8", b64bytes(v), alg, false, ["sign"]); } catch (e) { console.error("MSK GitHub key invalid", e instanceof Error ? e.name : "invalid"); throw new Error("GITHUB_APP_CREDENTIALS_INVALID"); } }
 async function appJwt() { const n = Math.floor(Date.now() / 1000), h = b64(enc.encode(JSON.stringify({ alg: "RS256", typ: "JWT" }))), p = b64(enc.encode(JSON.stringify({ iat: n - 30, exp: n + 540, iss: env("GITHUB_APP_ID") }))), u = `${h}.${p}`; return `${u}.${b64(new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", await appKey(), enc.encode(u))))}`; }
-export async function installation(id: number) { const r = await fetch(`https://api.github.com/app/installations/${id}`, { headers: { Authorization: `Bearer ${await appJwt()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }); if (r.status === 404) return null; if (!r.ok) throw new Error(`GitHub installation ${r.status}`); const d = await r.json(); return d?.suspended_at ? null : d; }
-export async function instToken(id: number) { const r = await fetch(`https://api.github.com/app/installations/${id}/access_tokens`, { method: "POST", headers: { Authorization: `Bearer ${await appJwt()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }); if (!r.ok) throw new Error("GitHub installation token failed"); return String((await r.json()).token); }
-export async function gh(t: string, path: string, init: RequestInit = {}) { const r = await fetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${t}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) } }); if (!r.ok) throw new Error(`GitHub ${r.status}: ${await r.text()}`); return r.status === 204 ? null : r.json(); }
+
+async function timedFetch(url: string, init: RequestInit = {}, timeoutMs = 18000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try { return await fetch(url, { ...init, signal: controller.signal }); }
+  catch (e) { if (e instanceof Error && e.name === "AbortError") throw new Error("GITHUB_REQUEST_TIMEOUT"); throw e; }
+  finally { clearTimeout(timer); }
+}
+
+export async function installation(id: number) { const r = await timedFetch(`https://api.github.com/app/installations/${id}`, { headers: { Authorization: `Bearer ${await appJwt()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }, 15000); if (r.status === 404) return null; if (!r.ok) throw new Error(`GitHub installation ${r.status}`); const d = await r.json(); return d?.suspended_at ? null : d; }
+export async function instToken(id: number) { const r = await timedFetch(`https://api.github.com/app/installations/${id}/access_tokens`, { method: "POST", headers: { Authorization: `Bearer ${await appJwt()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }, 18000); if (!r.ok) throw new Error("GitHub installation token failed"); return String((await r.json()).token); }
+export async function gh(t: string, path: string, init: RequestInit = {}) {
+  const method = String(init.method || "GET").toUpperCase();
+  const request = () => timedFetch(`https://api.github.com${path}`, { ...init, headers: { Authorization: `Bearer ${t}`, Accept: "application/vnd.github+json", "Content-Type": "application/json", "X-GitHub-Api-Version": "2022-11-28", ...(init.headers || {}) } }, method === "GET" ? 18000 : 22000);
+  let r: Response;
+  try { r = await request(); }
+  catch (e) {
+    if (method === "GET" && e instanceof Error && e.message === "GITHUB_REQUEST_TIMEOUT") r = await request();
+    else throw e;
+  }
+  if (method === "GET" && [502, 503, 504].includes(r.status)) r = await request();
+  if (!r.ok) throw new Error(`GitHub ${r.status}: ${await r.text()}`);
+  return r.status === 204 ? null : r.json();
+}
 export async function validSession(pid: string, t: string) { if (!t) return false; const { data } = await db.from("msk_projects").select("session_token_hash").eq("lovable_project_id", pid).maybeSingle(); return !!data?.session_token_hash && data.session_token_hash === await sha(t); }
 export async function chooseRepo(id: number, _name = "", preferred = "") {
   const t = await instToken(id);
