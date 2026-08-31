@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { extensionSecurityPreflight, handleExtensionSecuritySession } from "@/lib/extension-device-security.server";
+import { hardeningPreflight, handleHardeningSession } from "@/lib/extension-hardening-v1.server";
 
 export const Route = createFileRoute("/api/extension/session")({
   server: {
     handlers: {
-      OPTIONS: ({ request }) => extensionSecurityPreflight(request),
-      POST: ({ request }) => handleExtensionSecuritySession(request),
+      OPTIONS: ({ request }) => hardeningPreflight(request),
+      POST: ({ request }) => handleHardeningSession(request),
     },
   },
 });
