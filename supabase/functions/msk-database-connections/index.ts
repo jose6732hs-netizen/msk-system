@@ -59,6 +59,63 @@ function schemaFor(credentials: Record<string, unknown>) {
   return { fields: keys.map(name => ({ name, secret: secretKeys.test(name) })), has_secrets: keys.some(name => secretKeys.test(name)) };
 }
 
+async function autoConnectProvider(provider: string, ctx: any) {
+  const { user, project, projectId } = ctx;
+  const { data: existing } = await db.from("msk_database_connections")
+    .select("id,provider,name,is_default,status,status_code,latency_ms,last_checked_at,created_at,updated_at,credential_schema")
+    .eq("user_id", user.id).eq("lovable_project_id", projectId).eq("provider", provider)
+    .order("is_default", { ascending: false }).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  if (existing && ["connected","linked"].includes(String(existing.status || ""))) {
+    return { ok: true, automatic: true, connected: existing.status === "connected", linked: existing.status === "linked", connection: publicRow(existing) };
+  }
+
+  if (provider === "lovable_cloud") {
+    const credentials = { project_id: projectId };
+    const result: any = await testLovableCloud(credentials, projectId);
+    const row = {
+      user_id: user.id, lovable_project_id: projectId, provider, name: "Lovable Cloud",
+      credentials_ciphertext: await encrypt(credentials), credential_schema: schemaFor(credentials), is_default: !existing,
+      status: result.status, status_code: result.code, latency_ms: result.latency_ms ?? null,
+      last_checked_at: new Date().toISOString(), last_error_at: null,
+    };
+    const { data, error } = await db.from("msk_database_connections").upsert(row, { onConflict: "user_id,lovable_project_id,provider,name" })
+      .select("id,provider,name,is_default,status,status_code,latency_ms,last_checked_at,created_at,updated_at,credential_schema").single();
+    if (error) throw error;
+    return {
+      ok: true, automatic: true, linked: true, connection: publicRow(data), test: result,
+      lovable_url: `https://lovable.dev/projects/${projectId}`,
+      message: "Lovable Cloud vinculado automaticamente ao projeto atual."
+    };
+  }
+
+  const projectRef = String(project?.supabase_project_ref || "").trim();
+  const oauthClientId = String(Deno.env.get("MSK_SUPABASE_OAUTH_CLIENT_ID") || "").trim();
+  const oauthRedirectUri = String(Deno.env.get("MSK_SUPABASE_OAUTH_REDIRECT_URI") || "").trim();
+  if (oauthClientId && oauthRedirectUri) {
+    const statePayload = {
+      v: 1, user_id: user.id, lovable_project_id: projectId, provider: "supabase",
+      project_ref: projectRef || null, nonce: crypto.randomUUID(), exp: Date.now() + 10 * 60_000
+    };
+    const state = await encrypt(statePayload);
+    const u = new URL("https://api.supabase.com/v1/oauth/authorize");
+    u.searchParams.set("client_id", oauthClientId);
+    u.searchParams.set("response_type", "code");
+    u.searchParams.set("redirect_uri", oauthRedirectUri);
+    u.searchParams.set("state", state);
+    return {
+      ok: true, automatic: true, authorization_required: true, authorize_url: u.toString(),
+      provider: "supabase", project_ref: projectRef || null,
+      message: "Autorize o MSK no Supabase para concluir a conexão automática."
+    };
+  }
+
+  return {
+    ok: true, automatic: true, manual_required: true, provider: "supabase", project_ref: projectRef || null,
+    dashboard_url: projectRef ? `https://supabase.com/dashboard/project/${projectRef}` : "https://supabase.com/dashboard/projects",
+    message: "A conexão automática Supabase está pronta, mas o OAuth App do MSK ainda precisa estar configurado no servidor. Use a conexão manual segura neste card."
+  };
+}
+
 async function projectContext(req: Request, body: any) {
   const user = await identity(req); if (!user) return { error: json({ ok: false, code: "AUTH_REQUIRED", error: "Valide sua licença MSK." }, 401) };
   const projectId = String(body?.lovable_project_id || "").trim();
@@ -120,6 +177,11 @@ Deno.serve(async (req: Request) => {
   try {
     const ctx: any = await projectContext(req, body); if (ctx.error) return ctx.error;
     const { user, projectId } = ctx;
+    if (action === "auto") {
+      const provider = String(body?.provider || "").trim();
+      if (!["supabase","lovable_cloud"].includes(provider)) return json({ ok:false, code:"DATABASE_PROVIDER_INVALID", error:"Provedor de banco inválido." }, 400);
+      return json(await autoConnectProvider(provider, ctx));
+    }
     if (action === "list" || action === "status") {
       const { data, error } = await db.from("msk_database_connections").select("id,provider,name,is_default,status,status_code,latency_ms,last_checked_at,created_at,updated_at,credential_schema").eq("user_id", user.id).eq("lovable_project_id", projectId).order("is_default", { ascending: false }).order("updated_at", { ascending: false });
       if (error) throw error;
