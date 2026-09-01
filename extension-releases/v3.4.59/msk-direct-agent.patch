@@ -1,0 +1,52 @@
+--- MSK-Agente-v3.4.58/msk-direct-agent.js
++++ MSK-Agente-v3.4.59/msk-direct-agent.js
+@@ -874,6 +874,20 @@
+     return response;
+   };
+ 
++  const formatAgentFailure = (source = {}, fallback = 'A execução não pôde ser concluída.') => {
++    const message = String(source?.error || source?.message || fallback).trim() || fallback;
++    const code = String(source?.error_code || source?.code || 'INTERNAL_ERROR').trim().toUpperCase();
++    const stage = String(source?.error_stage || source?.stage || '').trim().toLowerCase();
++    const errorId = String(source?.last_error_id || source?.error_id || '').trim();
++    const retryCount = Number(source?.retry_count);
++    const lines = [`❌ ${message}`, `Código: ${code}`];
++    if (stage) lines.push(`Etapa: ${stage}`);
++    if (Number.isFinite(retryCount) && retryCount > 0) lines.push(`Tentativas automáticas: ${retryCount + 1}`);
++    if (errorId) lines.push(`ID de diagnóstico: ${errorId}`);
++    if (source?.retryable === true) lines.push('A falha é temporária e pode ser tentada novamente com segurança.');
++    return lines.join('\n');
++  };
++
+   const startTaskProgressPolling = (projectId, taskId, executionCard) => {
+@@ -891,7 +905,10 @@
+         });
+         const task = result?.task || null;
+         const status = String(task?.status || '').toLowerCase();
+-        const detail = String(task?.progress_message || '').trim();
++        let detail = String(task?.progress_message || '').trim();
++        const retryCount = Number(task?.retry_count || 0);
++        if (!detail && status === 'self_correcting' && retryCount > 0) detail = `⚠️ Corrigindo automaticamente · tentativa ${retryCount + 1}/3...`;
++        if (!detail && status === 'no_changes_retry' && retryCount > 0) detail = `⚠️ Nenhuma mudança válida. Nova tentativa segura ${retryCount + 1}/3...`;
+         if (activeStatuses.has(status)) executionCard.setStage?.(status, detail);
+@@ -909,7 +926,7 @@
+           return;
+         }
+         if (status === 'failed') {
+-          executionCard.fail?.(task?.error || 'A execução não pôde ser concluída.');
++          executionCard.fail?.(formatAgentFailure(task, 'A execução não pôde ser concluída.'));
+           active = false;
+           return;
+         }
+@@ -1092,10 +1109,9 @@
+ 
+       if (!response?.ok) {
+         pendingClarification = null;
+-        const code = String(response?.code || 'MSK_AGENT_ERROR').toUpperCase();
+         const failureText = needsGithubRecovery(response)
+           ? 'O GitHub ainda não está pronto para editar este projeto. Clique em “Conectar GitHub” uma vez para concluir a autorização.'
+-          : `❌ ${response?.error || 'A solicitação não pôde ser concluída.'}\nCódigo: ${code}`;
++          : formatAgentFailure(response, 'A solicitação não pôde ser concluída.');
+         executionCard?.fail(failureText);
+         addMessage(failureText, 'error');
+         return;
