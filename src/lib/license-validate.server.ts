@@ -310,10 +310,9 @@ export async function handleValidation(
   // O snapshot da licença manda; a tabela plans cobre licenças antigas.
   const maxDevices = Math.max(
     1,
-    Number(snapshot.maxDevices ?? 0) ||
-      Number(license.max_devices ?? 0) ||
-      Number(license.plans?.max_devices ?? 0) ||
-      1,
+    Number(snapshot.maxDevices ?? 0) || 0,
+    Number(license.max_devices ?? 0) || 0,
+    Number(license.plans?.max_devices ?? 0) || 0,
   );
   if (Number(license.max_devices ?? 0) !== maxDevices) {
     await supabaseAdmin
