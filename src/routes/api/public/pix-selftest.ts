@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/public/pix-selftest")({
           const { AtomoPayService } = await import("@/lib/payments/atomo-pay.server");
           const svc: any = await AtomoPayService.create();
           const created: any = await svc["call"]("POST", "/products", {
-            title: `MSK Premium ${Date.now()}`,
+            title: `MSK Premium ${Date.now()}`, cover: "https://msksystem.online/favicon.png", sale_page: "https://msksystem.online",
             payment_type: 1, product_type: "digital", delivery_type: 1, id_category: 1, amount: 8495,
           });
           const prod = created?.data ?? created;
