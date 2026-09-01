@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logEvent } from "./license.server";
 import { durationLabelFromMs, resolvePlanDuration } from "./plan-duration";
 
-function durationFromSnapshot(metadata: Record<string, any>) {
+function durationFromSnapshot(metadata: any) {
   const pendingMs = Number(metadata.pending_duration_ms ?? 0);
   if (pendingMs > 0) return pendingMs;
 

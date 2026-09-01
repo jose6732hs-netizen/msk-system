@@ -5,10 +5,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
 
 const AGENT_AI_SETTINGS_URL =
-  process.env.MSK_AGENT_AI_SETTINGS_URL?.trim() ||
+  process.env['MSK_AGENT_AI_SETTINGS_URL']?.trim() ||
   "https://iybjfmhqbblrppqoodyf.supabase.co/functions/v1/msk-ai-settings";
 const AGENT_SUPABASE_PUBLISHABLE_KEY =
-  process.env.MSK_AGENT_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  process.env['MSK_AGENT_SUPABASE_PUBLISHABLE_KEY']?.trim() ||
   "sb_publishable_-aERipV8XmdiDq9UMERZUA_OIyOeyzD";
 
 export const agentAdminOverview = createServerFn({ method: "GET" })
@@ -19,9 +19,9 @@ export const agentAdminOverview = createServerFn({ method: "GET" })
     return loadAgentAdmin();
   });
 
-function firstRow(data: unknown): Record<string, any> | null {
+function firstRow(data: unknown): any {
   if (Array.isArray(data)) return (data[0] as Record<string, any> | undefined) ?? null;
-  return data && typeof data === "object" ? (data as Record<string, any>) : null;
+  return data && typeof data === "object" ? (data as any) : null;
 }
 
 function normalizeStatus(data: unknown) {

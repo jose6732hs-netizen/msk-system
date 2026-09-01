@@ -194,7 +194,7 @@ async function reconcileTrialDuration(license: Record<string, unknown>) {
   if (!plan || !activatedAt) return license;
 
   try {
-    const metadata = {
+    const metadata: any = {
       ...((license["metadata"] ?? {}) as Record<string, any>),
     };
     let durationMs = Number(metadata.pending_duration_ms ?? 0);

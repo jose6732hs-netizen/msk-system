@@ -44,7 +44,7 @@ export class SigiloPayService {
     callbackUrl?: string | undefined;
     metadata?: Record<string, unknown> | undefined;
   }) {
-    const raw = await callGateway<Record<string, any>>(this.creds, "POST", "/gateway/pix/receive", {
+    const raw: any = await callGateway<any>(this.creds, "POST", "/gateway/pix/receive", {
       identifier: input.identifier,
       amount: toReais(input.amountCents),
       client: {
@@ -71,8 +71,8 @@ export class SigiloPayService {
       ...(input.callbackUrl ? { callbackUrl: input.callbackUrl } : {}),
     });
 
-    const data = (raw?.data ?? raw ?? {}) as Record<string, any>;
-    const pix = (data.pix ?? raw?.pix ?? {}) as Record<string, any>;
+    const data: any = (raw?.data ?? raw ?? {}) as any;
+    const pix: any = (data.pix ?? raw?.pix ?? {}) as any;
     const code =
       pix.code ??
       pix.payload ??

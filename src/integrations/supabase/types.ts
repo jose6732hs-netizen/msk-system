@@ -1934,6 +1934,39 @@ export type Database = {
           },
         ]
       }
+      extension_security_replay: {
+        Row: {
+          action: string
+          counter: number
+          created_at: string
+          id: string
+          installation_id: string
+          session_jti: string
+          target: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          counter: number
+          created_at?: string
+          id?: string
+          installation_id: string
+          session_jti: string
+          target: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          counter?: number
+          created_at?: string
+          id?: string
+          installation_id?: string
+          session_jti?: string
+          target?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       invoices: {
         Row: {
           amount: number
@@ -2175,6 +2208,140 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      msk_ai_global_training: {
+        Row: {
+          ai_acknowledgement: string | null
+          category: string
+          created_at: string
+          created_by: string | null
+          disabled_at: string | null
+          id: string
+          instruction: string
+          metadata: Json
+          priority: number
+          published_at: string | null
+          published_by: string | null
+          scope: string
+          status: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          ai_acknowledgement?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          disabled_at?: string | null
+          id?: string
+          instruction: string
+          metadata?: Json
+          priority?: number
+          published_at?: string | null
+          published_by?: string | null
+          scope?: string
+          status?: string
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          ai_acknowledgement?: string | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          disabled_at?: string | null
+          id?: string
+          instruction?: string
+          metadata?: Json
+          priority?: number
+          published_at?: string | null
+          published_by?: string | null
+          scope?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      msk_ai_global_training_audit: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          id: string
+          snapshot: Json
+          training_id: string | null
+          version: number | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          training_id?: string | null
+          version?: number | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          id?: string
+          snapshot?: Json
+          training_id?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msk_ai_global_training_audit_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "msk_ai_global_training"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msk_ai_settings: {
+        Row: {
+          active: boolean
+          api_base_url: string
+          api_key_ciphertext: string | null
+          api_key_last4: string | null
+          created_at: string
+          id: string
+          model: string
+          provider: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          api_base_url?: string
+          api_key_ciphertext?: string | null
+          api_key_last4?: string | null
+          created_at?: string
+          id?: string
+          model?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          api_base_url?: string
+          api_key_ciphertext?: string | null
+          api_key_last4?: string | null
+          created_at?: string
+          id?: string
+          model?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       notification_finance: {
         Row: {
@@ -3132,6 +3299,484 @@ export type Database = {
         }
         Relationships: []
       }
+      security_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          actor_type: string
+          created_at: string
+          id: string
+          installation_id: string | null
+          metadata: Json
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string
+          id?: string
+          installation_id?: string | null
+          metadata?: Json
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          actor_type?: string
+          created_at?: string
+          id?: string
+          installation_id?: string | null
+          metadata?: Json
+          reason?: string | null
+        }
+        Relationships: []
+      }
+      security_blocks: {
+        Row: {
+          block_type: string
+          build_id: string | null
+          created_at: string
+          evidence: Json
+          expires_at: string | null
+          id: string
+          installation_id: string | null
+          license_id: string | null
+          message_hidden_at: string | null
+          message_hidden_by: string | null
+          reason: string
+          released_at: string | null
+          released_by: string | null
+          user_id: string | null
+        }
+        Insert: {
+          block_type: string
+          build_id?: string | null
+          created_at?: string
+          evidence?: Json
+          expires_at?: string | null
+          id?: string
+          installation_id?: string | null
+          license_id?: string | null
+          message_hidden_at?: string | null
+          message_hidden_by?: string | null
+          reason: string
+          released_at?: string | null
+          released_by?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          block_type?: string
+          build_id?: string | null
+          created_at?: string
+          evidence?: Json
+          expires_at?: string | null
+          id?: string
+          installation_id?: string | null
+          license_id?: string | null
+          message_hidden_at?: string | null
+          message_hidden_by?: string | null
+          reason?: string
+          released_at?: string | null
+          released_by?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_blocks_build_id_fkey"
+            columns: ["build_id"]
+            isOneToOne: false
+            referencedRelation: "security_builds"
+            referencedColumns: ["build_id"]
+          },
+          {
+            foreignKeyName: "security_blocks_installation_id_fkey"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "security_installations"
+            referencedColumns: ["installation_id"]
+          },
+          {
+            foreignKeyName: "security_blocks_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_builds: {
+        Row: {
+          active: boolean
+          block_reason: string | null
+          blocked_at: string | null
+          build_fingerprint: string | null
+          build_id: string
+          created_at: string
+          integrity_manifest: Json
+          manifest_hash: string | null
+          minimum_supported_version: string | null
+          public_signing_key_id: string | null
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          active?: boolean
+          block_reason?: string | null
+          blocked_at?: string | null
+          build_fingerprint?: string | null
+          build_id: string
+          created_at?: string
+          integrity_manifest?: Json
+          manifest_hash?: string | null
+          minimum_supported_version?: string | null
+          public_signing_key_id?: string | null
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          active?: boolean
+          block_reason?: string | null
+          blocked_at?: string | null
+          build_fingerprint?: string | null
+          build_id?: string
+          created_at?: string
+          integrity_manifest?: Json
+          manifest_hash?: string | null
+          minimum_supported_version?: string | null
+          public_signing_key_id?: string | null
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      security_installation_ips: {
+        Row: {
+          country: string | null
+          first_seen_at: string
+          id: string
+          installation_id: string
+          ip: string
+          last_seen_at: string
+          metadata: Json
+          region: string | null
+        }
+        Insert: {
+          country?: string | null
+          first_seen_at?: string
+          id?: string
+          installation_id: string
+          ip: string
+          last_seen_at?: string
+          metadata?: Json
+          region?: string | null
+        }
+        Update: {
+          country?: string | null
+          first_seen_at?: string
+          id?: string
+          installation_id?: string
+          ip?: string
+          last_seen_at?: string
+          metadata?: Json
+          region?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_installation_ips_installation_id_fkey"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "security_installations"
+            referencedColumns: ["installation_id"]
+          },
+        ]
+      }
+      security_installations: {
+        Row: {
+          authorized_devices: number
+          block_reason: string | null
+          blocked_at: string | null
+          blocked_by: string | null
+          browser_name: string | null
+          browser_version: string | null
+          build_id: string | null
+          created_at: string
+          extension_id: string | null
+          extension_version: string | null
+          first_seen_at: string
+          id: string
+          incident_code: string | null
+          installation_id: string
+          integrity_manifest_version: string | null
+          integrity_status: string
+          last_integrity_check: string | null
+          last_ip: string | null
+          last_seen_at: string
+          last_validation: string | null
+          license_id: string | null
+          message_hidden_at: string | null
+          message_hidden_block_reason: string | null
+          message_hidden_by: string | null
+          message_hidden_incident_code: string | null
+          metadata: Json
+          os_family: string | null
+          session_required: boolean
+          trust_status: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          authorized_devices?: number
+          block_reason?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          browser_name?: string | null
+          browser_version?: string | null
+          build_id?: string | null
+          created_at?: string
+          extension_id?: string | null
+          extension_version?: string | null
+          first_seen_at?: string
+          id?: string
+          incident_code?: string | null
+          installation_id: string
+          integrity_manifest_version?: string | null
+          integrity_status?: string
+          last_integrity_check?: string | null
+          last_ip?: string | null
+          last_seen_at?: string
+          last_validation?: string | null
+          license_id?: string | null
+          message_hidden_at?: string | null
+          message_hidden_block_reason?: string | null
+          message_hidden_by?: string | null
+          message_hidden_incident_code?: string | null
+          metadata?: Json
+          os_family?: string | null
+          session_required?: boolean
+          trust_status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          authorized_devices?: number
+          block_reason?: string | null
+          blocked_at?: string | null
+          blocked_by?: string | null
+          browser_name?: string | null
+          browser_version?: string | null
+          build_id?: string | null
+          created_at?: string
+          extension_id?: string | null
+          extension_version?: string | null
+          first_seen_at?: string
+          id?: string
+          incident_code?: string | null
+          installation_id?: string
+          integrity_manifest_version?: string | null
+          integrity_status?: string
+          last_integrity_check?: string | null
+          last_ip?: string | null
+          last_seen_at?: string
+          last_validation?: string | null
+          license_id?: string | null
+          message_hidden_at?: string | null
+          message_hidden_block_reason?: string | null
+          message_hidden_by?: string | null
+          message_hidden_incident_code?: string | null
+          metadata?: Json
+          os_family?: string | null
+          session_required?: boolean
+          trust_status?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_installations_build_id_fkey"
+            columns: ["build_id"]
+            isOneToOne: false
+            referencedRelation: "security_builds"
+            referencedColumns: ["build_id"]
+          },
+          {
+            foreignKeyName: "security_installations_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_integrity_events: {
+        Row: {
+          affected_file: string | null
+          created_at: string
+          event_type: string
+          expected_build: string | null
+          expected_hash: string | null
+          id: string
+          installation_id: string
+          ip_address: string | null
+          license_id: string | null
+          metadata: Json
+          received_build: string | null
+          received_hash: string | null
+          severity: string
+          user_id: string | null
+        }
+        Insert: {
+          affected_file?: string | null
+          created_at?: string
+          event_type: string
+          expected_build?: string | null
+          expected_hash?: string | null
+          id?: string
+          installation_id: string
+          ip_address?: string | null
+          license_id?: string | null
+          metadata?: Json
+          received_build?: string | null
+          received_hash?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Update: {
+          affected_file?: string | null
+          created_at?: string
+          event_type?: string
+          expected_build?: string | null
+          expected_hash?: string | null
+          id?: string
+          installation_id?: string
+          ip_address?: string | null
+          license_id?: string | null
+          metadata?: Json
+          received_build?: string | null
+          received_hash?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_integrity_events_installation_id_fkey"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "security_installations"
+            referencedColumns: ["installation_id"]
+          },
+          {
+            foreignKeyName: "security_integrity_events_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_nonces: {
+        Row: {
+          expires_at: string
+          id: string
+          installation_id: string
+          ip: string | null
+          issued_at: string
+          metadata: Json
+          purpose: string
+          used_at: string | null
+        }
+        Insert: {
+          expires_at?: string
+          id?: string
+          installation_id: string
+          ip?: string | null
+          issued_at?: string
+          metadata?: Json
+          purpose?: string
+          used_at?: string | null
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          installation_id?: string
+          ip?: string | null
+          issued_at?: string
+          metadata?: Json
+          purpose?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
+      security_sessions: {
+        Row: {
+          build_id: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          installation_id: string
+          ip: string | null
+          issued_at: string
+          last_seen_at: string | null
+          license_id: string | null
+          metadata: Json
+          revoked_at: string | null
+          session_id: string
+          user_id: string | null
+        }
+        Insert: {
+          build_id?: string | null
+          created_at?: string
+          expires_at: string
+          id?: string
+          installation_id: string
+          ip?: string | null
+          issued_at?: string
+          last_seen_at?: string | null
+          license_id?: string | null
+          metadata?: Json
+          revoked_at?: string | null
+          session_id: string
+          user_id?: string | null
+        }
+        Update: {
+          build_id?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          installation_id?: string
+          ip?: string | null
+          issued_at?: string
+          last_seen_at?: string | null
+          license_id?: string | null
+          metadata?: Json
+          revoked_at?: string | null
+          session_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_sessions_build_id_fkey"
+            columns: ["build_id"]
+            isOneToOne: false
+            referencedRelation: "security_builds"
+            referencedColumns: ["build_id"]
+          },
+          {
+            foreignKeyName: "security_sessions_installation_id_fkey"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "security_installations"
+            referencedColumns: ["installation_id"]
+          },
+          {
+            foreignKeyName: "security_sessions_license_id_fkey"
+            columns: ["license_id"]
+            isOneToOne: false
+            referencedRelation: "licenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean
@@ -3600,11 +4245,171 @@ export type Database = {
         Returns: undefined
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      msk_ai_global_training_runtime: {
+        Args: never
+        Returns: {
+          category: string
+          id: string
+          instruction: string
+          priority: number
+          published_at: string
+          title: string
+          version: number
+        }[]
+      }
+      msk_ai_settings_decrypt: {
+        Args: never
+        Returns: {
+          api_base_url: string
+          api_key: string
+          model: string
+          provider: string
+        }[]
+      }
+      msk_ai_settings_delete: { Args: never; Returns: boolean }
+      msk_ai_settings_save: {
+        Args: {
+          p_api_key: string
+          p_base_url?: string
+          p_model?: string
+          p_provider?: string
+        }
+        Returns: {
+          configured: boolean
+          key_masked: string
+          model: string
+          provider: string
+          updated_at: string
+        }[]
+      }
+      msk_ai_settings_status: {
+        Args: never
+        Returns: {
+          configured: boolean
+          key_masked: string
+          model: string
+          provider: string
+          updated_at: string
+        }[]
+      }
       presence_heartbeat: {
         Args: { _session_id: string; _user_id?: string }
         Returns: number
       }
       presence_online_count: { Args: never; Returns: number }
+      security_admin_build_action: {
+        Args: { p_action: string; p_build_id: string; p_reason?: string }
+        Returns: Json
+      }
+      security_admin_dismiss_message: {
+        Args: {
+          p_block_id?: string
+          p_installation_id: string
+          p_scope?: string
+        }
+        Returns: Json
+      }
+      security_admin_installation_action: {
+        Args: {
+          p_action: string
+          p_evidence?: Json
+          p_installation_id: string
+          p_reason?: string
+        }
+        Returns: Json
+      }
+      security_create_session: {
+        Args: {
+          p_build_id: string
+          p_installation_id: string
+          p_ip?: string
+          p_metadata?: Json
+          p_session_id: string
+          p_token_hash: string
+          p_ttl_seconds?: number
+        }
+        Returns: {
+          code: string
+          created: boolean
+          expires_at: string
+          resolved_license_id: string
+          resolved_user_id: string
+        }[]
+      }
+      security_device_context: {
+        Args: { p_installation_id: string; p_token_hash: string }
+        Returns: {
+          resolved_license_id: string
+          resolved_user_id: string
+          stored_extension_id: string
+          stored_public_key_hash: string
+          stored_public_key_jwk: Json
+        }[]
+      }
+      security_issue_nonce: {
+        Args: { p_installation_id: string; p_ip?: string; p_purpose?: string }
+        Returns: {
+          expires_at: string
+          nonce: string
+        }[]
+      }
+      security_precheck: {
+        Args: { p_installation_id: string; p_token_hash: string }
+        Returns: {
+          allowed: boolean
+          build_id: string
+          code: string
+          enrolled: boolean
+          resolved_license_id: string
+          resolved_user_id: string
+          session_required: boolean
+          trust_status: string
+        }[]
+      }
+      security_register_handshake: {
+        Args: {
+          p_browser_name?: string
+          p_browser_version?: string
+          p_build_fingerprint: string
+          p_build_id: string
+          p_extension_id: string
+          p_extension_version: string
+          p_installation_id: string
+          p_integrity_manifest_version?: string
+          p_integrity_ok: boolean
+          p_ip?: string
+          p_manifest_hash: string
+          p_metadata?: Json
+          p_nonce: string
+          p_os_family?: string
+          p_token_hash: string
+        }
+        Returns: {
+          code: string
+          max_devices: number
+          ok: boolean
+          resolved_build_id: string
+          resolved_license_id: string
+          resolved_trust_status: string
+          resolved_user_id: string
+        }[]
+      }
+      security_validate_session: {
+        Args: {
+          p_build_id: string
+          p_installation_id: string
+          p_session_id: string
+          p_token_hash: string
+        }
+        Returns: {
+          allowed: boolean
+          code: string
+          resolved_license_id: string
+          resolved_user_id: string
+          trust_status: string
+        }[]
+      }
     }
     Enums: {
       app_role:

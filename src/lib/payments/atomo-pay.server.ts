@@ -66,7 +66,7 @@ export class AtomoPayService {
     return this.creds.webhookSecret;
   }
 
-  private async call<T>(method: "GET" | "POST" | "PUT", path: string, body?: unknown): Promise<T> {
+  private async call<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
     const sep = path.includes("?") ? "&" : "?";
     const url = `${this.creds.baseUrl}${path}${sep}api_token=${encodeURIComponent(this.creds.secretKey)}`;
     const res = await fetch(url, {
