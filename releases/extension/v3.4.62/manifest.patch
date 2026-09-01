@@ -1,0 +1,7 @@
+--- v3.4.61/manifest.json
++++ v3.4.62/manifest.json
+@@
+-  "version": "3.4.61",
+-  "description": "MSK Agente com pre-flight automático, PromptBuilder minimalista, bloqueio preventivo, erros estruturados e GitHub resiliente.",
++  "version": "3.4.62",
++  "description": "MSK Agente com comando exato do cliente, pre-flight automático, PromptBuilder minimalista, erros estruturados e GitHub resiliente.",
