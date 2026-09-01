@@ -1,17 +1,336 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-const U=Deno.env.get("SUPABASE_URL")||"",S=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"",db=createClient(U,S),enc=new TextEncoder();
-const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, apikey, content-type, x-msk-license, x-msk-session","Access-Control-Allow-Methods":"GET,POST,OPTIONS"};
-const json=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{...cors,"Content-Type":"application/json","Cache-Control":"no-store"}}),now=()=>new Date().toISOString(),sleep=(ms:number)=>new Promise(r=>setTimeout(r,ms));
-const b64=(x:Uint8Array)=>btoa(String.fromCharCode(...x)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""),b64b=(v:string)=>Uint8Array.from(atob(v.replace(/\s/g,"")),c=>c.charCodeAt(0));
-const dl=(n:number)=>n<128?new Uint8Array([n]):(()=>{const a:number[]=[];for(let v=n;v>0;v>>>=8)a.unshift(v&255);return new Uint8Array([128|a.length,...a])})(),join=(...p:Uint8Array[])=>{const o=new Uint8Array(p.reduce((s,x)=>s+x.length,0));let n=0;for(const x of p){o.set(x,n);n+=x.length}return o},wrap=(t:number,v:Uint8Array)=>join(new Uint8Array([t]),dl(v.length),v),pkcs1=(r:Uint8Array)=>wrap(48,join(new Uint8Array([2,1,0]),new Uint8Array([48,13,6,9,42,134,72,134,247,13,1,1,1,5,0]),wrap(4,r)));
-async function appKey(){const v=(Deno.env.get("GITHUB_APP_PRIVATE_KEY")||"").trim().replace(/\\r\\n/g,"\n").replace(/\\n/g,"\n"),m=v.match(/-----BEGIN ([A-Z ]*PRIVATE KEY)-----([\s\S]*?)-----END \1-----/);if(!m)throw new Error("GITHUB_APP_CREDENTIALS_INVALID");const alg={name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"}as const,raw=b64b(m[2]);return crypto.subtle.importKey("pkcs8",m[1]==="RSA PRIVATE KEY"?pkcs1(raw):raw,alg,false,["sign"])}
-async function appJwt(){const id=Deno.env.get("GITHUB_APP_ID")||"";if(!id)throw new Error("GITHUB_APP_CREDENTIALS_INVALID");const n=Math.floor(Date.now()/1000),h=b64(enc.encode(JSON.stringify({alg:"RS256",typ:"JWT"}))),p=b64(enc.encode(JSON.stringify({iat:n-30,exp:n+540,iss:id}))),u=`${h}.${p}`;return`${u}.${b64(new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5",await appKey(),enc.encode(u))))}`}
-async function tf(url:string,init:RequestInit={},ms=4500){const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);try{return await fetch(url,{...init,signal:c.signal})}finally{clearTimeout(t)}}
-async function installation(id:number){const r=await tf(`https://api.github.com/app/installations/${id}`,{headers:{Authorization:`Bearer ${await appJwt()}`,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}});if(r.status===404)return null;if(!r.ok)throw new Error(`GITHUB_INSTALLATION_${r.status}`);return r.json()}
-async function instToken(id:number){let last=0;for(let a=1;a<=3;a++){const r=await tf(`https://api.github.com/app/installations/${id}/access_tokens`,{method:"POST",headers:{Authorization:`Bearer ${await appJwt()}`,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}});if(r.ok)return String((await r.json()).token||"");last=r.status;if(![408,429,500,502,503,504].includes(last)||a===3)break;await sleep(250*(2**(a-1)))}throw new Error(last===401?"GITHUB_TOKEN_EXPIRED":`GITHUB_TOKEN_FAILED_${last}`)}
-const authToken=(r:Request)=>(r.headers.get("authorization")||r.headers.get("x-msk-license")||"").replace(/^Bearer\s+/i,"").trim();
-async function identity(r:Request){const t=authToken(r);if(!t||t.startsWith("sb_publishable_"))return null;const a=await db.auth.getUser(t);if(!a.error&&a.data.user)return{id:a.data.user.id};for(const o of["https://msksystem.online","https://msk-system.lovable.app"]){try{const x=await tf(`${o}/api/extension/license-identity`,{method:"POST",headers:{Authorization:`Bearer ${t}`,"Content-Type":"application/json"},body:"{}"},3000),d=await x.json().catch(()=>({}));if(x.ok&&d?.ok&&d?.active&&/^[0-9a-f-]{36}$/i.test(String(d.user_id||"")))return{id:String(d.user_id)}}catch{}}return null}
-const normRepo=(v:unknown)=>{const x=String(v||"").trim().replace(/^https:\/\/github\.com\//i,"").replace(/\.git$/i,"").replace(/[?#].*$/,"").replace(/^\/+|\/+$/g,"");return/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(x)?x:""},sha=async(v:string)=>b64(new Uint8Array(await crypto.subtle.digest("SHA-256",enc.encode(v))));
-async function health(){const s:any={github_api:{status:"down",connected:false,write_authorized:false}};try{const{error}=await db.from("msk_projects").select("lovable_project_id",{head:true,count:"exact"}).limit(1);s.database={status:error?"down":"up"}}catch{s.database={status:"down"}}try{const{count,error}=await db.from("msk_tasks").select("id",{head:true,count:"exact"}).in("status",["locating_files","analyzing","editing","self_correcting","validating","committing","verifying","finalizing"]);s.task_runtime={status:error?"degraded":Number(count||0)>20?"degraded":"up",active:Number(count||0)}}catch{s.task_runtime={status:"degraded"}}try{const{data,error}=await db.from("msk_ai_settings").select("active,api_key_ciphertext").eq("id","default").maybeSingle();const ok=!error&&(!!data?.api_key_ciphertext||!!Deno.env.get("BAI_API_KEY"))&&data?.active!==false;s.ai_provider={status:ok?"up":"down",model:"MSK-IA",configured:ok}}catch{s.ai_provider={status:"degraded",model:"MSK-IA"}}return{services:s,timestamp:now()}}
-async function preflight(req:Request,body:any){const blockers:any[]=[],warnings:any[]=[],h=await health(),u=await identity(req);if(!u)return{ready:false,blockers:[{code:"AUTH_REQUIRED",message:"Valide sua licença MSK para continuar.",action:"Validar licença"}],warnings,services:h.services,context:null,timestamp:now()};const pid=String(body?.lovable_project_id||"").trim();if(!/^[0-9a-f-]{36}$/i.test(pid))return{ready:false,blockers:[{code:"PROJECT_ID_INVALID",message:"Abra um projeto Lovable válido antes de enviar comandos."}],warnings,services:h.services,context:{user_id:u.id},timestamp:now()};const{data:p,error:pe}=await db.from("msk_projects").select("lovable_project_id,user_id,github_installation_id,github_owner,github_repo,github_default_branch,session_token_hash").eq("lovable_project_id",pid).maybeSingle();if(pe)blockers.push({code:"DATABASE_UNAVAILABLE",message:"Não foi possível confirmar o projeto no banco agora.",action:"Tentar novamente"});if(p?.user_id&&String(p.user_id)!==u.id)blockers.push({code:"PROJECT_OWNERSHIP_MISMATCH",message:"Este projeto pertence a outra licença MSK."});const iid=Number(p?.github_installation_id||0),stored=p?.github_owner&&p?.github_repo?`${p.github_owner}/${p.github_repo}`:"",requested=normRepo(body?.repository_url||body?.repository||""),candidate=requested||stored;if(!iid)blockers.push({code:"GITHUB_AUTH_REQUIRED",message:"Conecte o GitHub antes de enviar uma edição.",action:"Conectar GitHub"});if(!candidate)blockers.push({code:"NO_REPOSITORY_SELECTED",message:"O projeto ainda não possui um repositório GitHub confirmado.",action:"Conectar GitHub"});const sess=String(req.headers.get("x-msk-session")||"").trim(),validSess=!!sess&&!!p?.session_token_hash&&await sha(sess)===String(p.session_token_hash);if(iid&&candidate&&!validSess)blockers.push({code:"MSK_SESSION_REQUIRED",message:"A sessão de edição precisa ser renovada. Clique em verificar novamente.",action:"Verificar novamente"});if(h.services.database?.status==="down"&&!blockers.some(x=>x.code==="DATABASE_UNAVAILABLE"))blockers.push({code:"DATABASE_UNAVAILABLE",message:"O banco do agente está indisponível no momento.",action:"Tentar novamente"});if(h.services.ai_provider?.status==="down")blockers.push({code:"AI_PROVIDER_UNAVAILABLE",message:"A inteligência MSK está temporariamente indisponível.",action:"Tentar novamente"});if(h.services.task_runtime?.status==="degraded")warnings.push({code:"QUEUE_BUSY",message:"Há várias tarefas ativas. A edição pode levar mais tempo."});let selected:any=null,connected=false,tokenValid=false,write=false,prWrite=false;if(iid&&candidate&&!blockers.some(x=>["PROJECT_OWNERSHIP_MISMATCH","DATABASE_UNAVAILABLE"].includes(x.code))){try{const ins=await installation(iid);if(!ins||ins?.suspended_at)blockers.push({code:"GITHUB_AUTH_REQUIRED",message:"A instalação GitHub não está ativa. Reconecte o GitHub.",action:"Reconectar GitHub"});else{const perm=ins?.permissions||{},contents=String(perm.contents||"none").toLowerCase(),prs=String(perm.pull_requests||"none").toLowerCase();write=["write","admin"].includes(contents);prWrite=["write","admin"].includes(prs);if(!write)blockers.push({code:"GITHUB_WRITE_PERMISSION_REQUIRED",message:"A GitHub App MSK está conectada, mas falta Contents: write.",action:"Revisar permissões"});const tok=await instToken(iid);tokenValid=!!tok;const rr=await tf(`https://api.github.com/repos/${candidate}`,{headers:{Authorization:`Bearer ${tok}`,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}});if(rr.status===401)blockers.push({code:"GITHUB_TOKEN_EXPIRED",message:"A autorização do GitHub não é mais válida.",action:"Reconectar GitHub"});else if(rr.status===403)blockers.push({code:"GITHUB_REPOSITORY_ACCESS_DENIED",message:"A instalação MSK não consegue acessar este repositório.",action:"Revisar permissões"});else if(rr.status===404)blockers.push({code:"GITHUB_REPOSITORY_NOT_AUTHORIZED",message:"O repositório não está incluído na instalação atual da GitHub App MSK.",action:"Revisar repositórios"});else if(!rr.ok)blockers.push({code:"GITHUB_REPOSITORY_UNAVAILABLE",message:"O repositório conectado não pôde ser confirmado agora.",action:"Tentar novamente"});else{connected=true;const repo=await rr.json(),full=String(repo.full_name||candidate),same=stored.toLowerCase()===full.toLowerCase(),branch=String((same?p.github_default_branch:"")||repo.default_branch||"main");if(!same){const{error}=await db.from("msk_projects").update({github_owner:String(repo?.owner?.login||full.split("/")[0]),github_repo:String(repo?.name||full.split("/")[1]),github_default_branch:branch,updated_at:new Date().toISOString()}).eq("lovable_project_id",pid).eq("user_id",u.id);if(error)blockers.push({code:"PROJECT_REPOSITORY_SYNC_FAILED",message:"O repositório foi validado, mas o vínculo do projeto ainda não pôde ser atualizado.",action:"Tentar novamente"});else warnings.push({code:"PROJECT_REPOSITORY_REBOUND",message:`Vínculo do projeto atualizado para ${full}.`})}const br=await tf(`https://api.github.com/repos/${full}/branches/${encodeURIComponent(branch)}`,{headers:{Authorization:`Bearer ${tok}`,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}});let prot=false;if(br.ok)prot=!!(await br.json())?.protected;else if(br.status===404)blockers.push({code:"BRANCH_NOT_FOUND",message:`A branch ${branch} não existe no repositório.`,action:"Revisar projeto"});else if(br.status===403)blockers.push({code:"GITHUB_BRANCH_ACCESS_DENIED",message:`A instalação GitHub não consegue consultar a branch ${branch}.`,action:"Revisar permissões"});if(prot){if(prWrite)warnings.push({code:"BRANCH_PROTECTED",message:`A branch ${branch} é protegida. A MSK usará branch/PR automaticamente.`});else blockers.push({code:"GITHUB_PULL_REQUEST_PERMISSION_REQUIRED",message:`A branch ${branch} é protegida e a GitHub App precisa de Pull requests: write.`,action:"Revisar permissões"})}selected={full_name:full,default_branch:branch,permissions:{contents,pull_requests:prs,write},branch_editable:write&&!prot,protected:prot,force_pr:prot}}}}catch(e){const m=String((e as any)?.message||"");blockers.push({code:m.includes("TOKEN")?"GITHUB_TOKEN_EXPIRED":"GITHUB_UNAVAILABLE",message:"Não foi possível confirmar a conexão GitHub agora.",action:"Tentar novamente"})}}const gb=blockers.some(x=>/^(GITHUB_|NO_REPOSITORY_SELECTED|MSK_SESSION_REQUIRED|PROJECT_REPOSITORY_SYNC_FAILED)/.test(String(x.code||"")));h.services.github_api={status:connected&&tokenValid&&write&&!gb?"up":"down",connected,token_valid:tokenValid,write_authorized:write,pull_request_authorized:prWrite};return{ready:blockers.length===0,blockers,warnings,services:h.services,context:{user_id:u.id,has_github_connection:!!iid&&connected,has_valid_token:tokenValid,has_valid_session:validSess,github_write_authorized:write,github_pull_request_authorized:prWrite,repositories_linked:candidate?1:0,selected_repository:selected,branch_editable:selected?.branch_editable===true,force_pr:selected?.force_pr===true},timestamp:now()}}
-Deno.serve(async(req:Request)=>{if(req.method==="OPTIONS")return new Response("ok",{headers:cors});const url=new URL(req.url),a=url.searchParams.get("action")||(req.method==="GET"?"health":"preflight");if(a==="health")return json(await health());if(a!=="preflight")return json({ready:false,blockers:[{code:"ACTION_NOT_SUPPORTED",message:"Ação de pre-flight inválida."}],warnings:[]},400);const b=req.method==="POST"?await req.json().catch(()=>({})):Object.fromEntries(url.searchParams.entries()),r=await preflight(req,b);return json(r,r.ready?200:409)});
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const db = createClient(SUPABASE_URL, SERVICE_ROLE);
+const enc = new TextEncoder();
+
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-msk-license, x-msk-session",
+  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+};
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" },
+});
+const nowIso = () => new Date().toISOString();
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const circuits = new Map<string, { failures: number; openUntil: number }>();
+function circuit(name: string) { return circuits.get(name) || { failures: 0, openUntil: 0 }; }
+function success(name: string) { circuits.set(name, { failures: 0, openUntil: 0 }); }
+function failure(name: string) {
+  const current = circuit(name);
+  const failures = current.failures + 1;
+  circuits.set(name, { failures, openUntil: failures >= 3 ? Date.now() + 15_000 : 0 });
+}
+async function timedFetch(name: string, url: string, init: RequestInit = {}, timeoutMs = 4500) {
+  const current = circuit(name);
+  if (current.openUntil > Date.now()) throw new Error(`${name}_CIRCUIT_OPEN`);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, { ...init, signal: controller.signal });
+    if (response.status >= 500) failure(name); else success(name);
+    return response;
+  } catch (error) {
+    failure(name);
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const b64bytes = (value: string) => Uint8Array.from(atob(value.replace(/\s/g, "")), c => c.charCodeAt(0));
+const derLen = (n: number) => n < 128 ? new Uint8Array([n]) : (() => {
+  const a: number[] = [];
+  for (let v = n; v > 0; v >>>= 8) a.unshift(v & 255);
+  return new Uint8Array([128 | a.length, ...a]);
+})();
+const join = (...parts: Uint8Array[]) => {
+  const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let at = 0;
+  for (const part of parts) { out.set(part, at); at += part.length; }
+  return out;
+};
+const wrap = (tag: number, value: Uint8Array) => join(new Uint8Array([tag]), derLen(value.length), value);
+const pkcs1 = (raw: Uint8Array) => wrap(48, join(new Uint8Array([2, 1, 0]), new Uint8Array([48, 13, 6, 9, 42, 134, 72, 134, 247, 13, 1, 1, 1, 5, 0]), wrap(4, raw)));
+
+async function appKey() {
+  const value = (Deno.env.get("GITHUB_APP_PRIVATE_KEY") || "").trim().replace(/\\r\\n/g, "\n").replace(/\\n/g, "\n");
+  const match = value.match(/-----BEGIN ([A-Z ]*PRIVATE KEY)-----([\s\S]*?)-----END \1-----/);
+  if (!match) throw new Error("GITHUB_APP_CREDENTIALS_INVALID");
+  const alg = { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" } as const;
+  const raw = b64bytes(match[2]);
+  return crypto.subtle.importKey("pkcs8", match[1] === "RSA PRIVATE KEY" ? pkcs1(raw) : raw, alg, false, ["sign"]);
+}
+async function appJwt() {
+  const appId = Deno.env.get("GITHUB_APP_ID") || "";
+  if (!appId) throw new Error("GITHUB_APP_CREDENTIALS_INVALID");
+  const now = Math.floor(Date.now() / 1000);
+  const head = b64(enc.encode(JSON.stringify({ alg: "RS256", typ: "JWT" })));
+  const payload = b64(enc.encode(JSON.stringify({ iat: now - 30, exp: now + 540, iss: appId })));
+  const unsigned = `${head}.${payload}`;
+  const signature = b64(new Uint8Array(await crypto.subtle.sign("RSASSA-PKCS1-v1_5", await appKey(), enc.encode(unsigned))));
+  return `${unsigned}.${signature}`;
+}
+
+async function installation(id: number) {
+  const response = await timedFetch("github", `https://api.github.com/app/installations/${id}`, {
+    headers: { Authorization: `Bearer ${await appJwt()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok) throw new Error(`GITHUB_INSTALLATION_${response.status}`);
+  return response.json();
+}
+
+async function installationToken(id: number) {
+  let last = 0;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await timedFetch("github", `https://api.github.com/app/installations/${id}/access_tokens`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await appJwt()}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+    });
+    if (response.ok) return String((await response.json()).token || "");
+    last = response.status;
+    if (![408, 429, 500, 502, 503, 504].includes(last) || attempt === 3) break;
+    await sleep(250 * (2 ** (attempt - 1)));
+  }
+  throw new Error(last === 401 ? "GITHUB_TOKEN_EXPIRED" : `GITHUB_TOKEN_FAILED_${last}`);
+}
+
+const authToken = (req: Request) => (req.headers.get("authorization") || req.headers.get("x-msk-license") || "").replace(/^Bearer\s+/i, "").trim();
+async function identity(req: Request) {
+  const token = authToken(req);
+  if (!token || token.startsWith("sb_publishable_")) return null;
+  const auth = await db.auth.getUser(token);
+  if (!auth.error && auth.data.user) return { id: auth.data.user.id };
+  for (const origin of ["https://msksystem.online", "https://msk-system.lovable.app"]) {
+    try {
+      const response = await timedFetch("license", `${origin}/api/extension/license-identity`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: "{}",
+      }, 3000);
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data?.ok && data?.active && /^[0-9a-f-]{36}$/i.test(String(data.user_id || ""))) return { id: String(data.user_id) };
+    } catch {}
+  }
+  return null;
+}
+
+const normalizeRepo = (value: unknown) => {
+  const repo = String(value || "").trim()
+    .replace(/^https:\/\/github\.com\//i, "")
+    .replace(/\.git$/i, "")
+    .replace(/[?#].*$/, "")
+    .replace(/^\/+|\/+$/g, "");
+  return /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo) ? repo : "";
+};
+const sha = async (value: string) => b64(new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(value))));
+
+function mapPersistenceProbe(code: string) {
+  const upper = String(code || "").toUpperCase();
+  if (upper === "42501") return { code: "RLS_VIOLATION", message: "O banco recusou a criação da tarefa pela política de acesso." };
+  if (upper === "23502") return { code: "NOT_NULL_VIOLATION", message: "Um campo obrigatório da tarefa não está disponível." };
+  if (upper === "42P01") return { code: "TABLE_NOT_FOUND", message: "A tabela necessária para registrar tarefas não existe." };
+  if (upper === "42703" || upper === "PGRST204") return { code: "DATABASE_SCHEMA_MISMATCH", message: "O schema do banco não corresponde à versão do agente." };
+  if (upper === "23503") return { code: "FOREIGN_KEY_VIOLATION", message: "O projeto da tarefa não corresponde a um registro válido." };
+  if (upper === "22P02") return { code: "DATABASE_VALUE_INVALID", message: "Um valor obrigatório da tarefa está em formato inválido." };
+  if (["40001", "40P01", "53300", "57P01", "57P02", "57P03"].includes(upper)) return { code: "DATABASE_TEMPORARILY_UNAVAILABLE", message: "O banco está temporariamente indisponível." };
+  if (upper === "PROJECT_OWNERSHIP_MISMATCH") return { code: upper, message: "O projeto não pertence à conta MSK atual." };
+  return { code: "DATABASE_WRITE_CHECK_FAILED", message: "O banco não confirmou a capacidade de registrar novas tarefas." };
+}
+
+async function health() {
+  const services: Record<string, any> = { github_api: { status: "down", connected: false, write_authorized: false } };
+  try {
+    const { error } = await db.from("msk_projects").select("lovable_project_id", { head: true, count: "exact" }).limit(1);
+    services.database = { status: error ? "down" : "up", write_ready: false };
+  } catch {
+    services.database = { status: "down", write_ready: false };
+  }
+  try {
+    const { count, error } = await db.from("msk_tasks").select("id", { head: true, count: "exact" }).in("status", ["locating_files", "analyzing", "editing", "self_correcting", "validating", "committing", "verifying", "finalizing"]);
+    services.task_runtime = { status: error ? "degraded" : Number(count || 0) > 20 ? "degraded" : "up", active: Number(count || 0) };
+  } catch {
+    services.task_runtime = { status: "degraded" };
+  }
+  try {
+    const { data, error } = await db.from("msk_ai_settings").select("active,api_key_ciphertext").eq("id", "default").maybeSingle();
+    const configured = !error && (!!data?.api_key_ciphertext || !!Deno.env.get("BAI_API_KEY")) && data?.active !== false;
+    services.ai_provider = { status: configured ? "up" : "down", model: "MSK-IA", configured };
+  } catch {
+    services.ai_provider = { status: "degraded", model: "MSK-IA" };
+  }
+  return { services, timestamp: nowIso() };
+}
+
+async function preflight(req: Request, body: any) {
+  const blockers: any[] = [];
+  const warnings: any[] = [];
+  const healthState = await health();
+  const user = await identity(req);
+  if (!user) return { ready: false, blockers: [{ code: "AUTH_REQUIRED", message: "Valide sua licença MSK para continuar.", action: "Validar licença" }], warnings, services: healthState.services, context: null, timestamp: nowIso() };
+
+  const projectId = String(body?.lovable_project_id || "").trim();
+  if (!/^[0-9a-f-]{36}$/i.test(projectId)) return { ready: false, blockers: [{ code: "PROJECT_ID_INVALID", message: "Abra um projeto Lovable válido antes de enviar comandos." }], warnings, services: healthState.services, context: { user_id: user.id }, timestamp: nowIso() };
+
+  const { data: project, error: projectError } = await db.from("msk_projects")
+    .select("lovable_project_id,user_id,github_installation_id,github_owner,github_repo,github_default_branch,session_token_hash")
+    .eq("lovable_project_id", projectId)
+    .maybeSingle();
+
+  if (projectError) blockers.push({ code: "DATABASE_UNAVAILABLE", message: "Não foi possível confirmar o projeto no banco agora.", action: "Tentar novamente" });
+  if (project?.user_id && String(project.user_id) !== user.id) blockers.push({ code: "PROJECT_OWNERSHIP_MISMATCH", message: "Este projeto pertence a outra licença MSK." });
+
+  let persistenceReady = false;
+  if (!projectError && !blockers.some(item => item.code === "PROJECT_OWNERSHIP_MISMATCH")) {
+    const { data: probe, error: probeError } = await db.rpc("msk_task_persistence_probe", { p_project_id: projectId, p_user_id: user.id });
+    if (probeError) {
+      blockers.push({ code: "DATABASE_WRITE_CHECK_FAILED", message: "Não foi possível testar a gravação de tarefas no banco.", action: "Tentar novamente" });
+      healthState.services.database = { status: "down", write_ready: false, database_code: String((probeError as any)?.code || "") };
+    } else if (probe?.ok !== true) {
+      const mapped = mapPersistenceProbe(String(probe?.code || ""));
+      blockers.push({ ...mapped, action: "Tentar novamente" });
+      healthState.services.database = { status: "down", write_ready: false, database_code: String(probe?.code || "") };
+    } else {
+      persistenceReady = true;
+      healthState.services.database = { status: "up", write_ready: true, code: "DATABASE_WRITE_READY" };
+    }
+  }
+
+  const installationId = Number(project?.github_installation_id || 0);
+  const storedRepo = project?.github_owner && project?.github_repo ? `${project.github_owner}/${project.github_repo}` : "";
+  const requestedRepo = normalizeRepo(body?.repository_url || body?.repository || "");
+  const candidateRepo = requestedRepo || storedRepo;
+  if (!installationId) blockers.push({ code: "GITHUB_AUTH_REQUIRED", message: "Conecte o GitHub antes de enviar uma edição.", action: "Conectar GitHub" });
+  if (!candidateRepo) blockers.push({ code: "NO_REPOSITORY_SELECTED", message: "O projeto ainda não possui um repositório GitHub confirmado.", action: "Conectar GitHub" });
+
+  const session = String(req.headers.get("x-msk-session") || "").trim();
+  const validSession = !!session && !!project?.session_token_hash && await sha(session) === String(project.session_token_hash);
+  if (installationId && candidateRepo && !validSession) blockers.push({ code: "MSK_SESSION_REQUIRED", message: "A sessão de edição precisa ser renovada. Clique em verificar novamente.", action: "Verificar novamente" });
+
+  if (healthState.services.ai_provider?.status === "down") blockers.push({ code: "AI_PROVIDER_UNAVAILABLE", message: "A inteligência MSK está temporariamente indisponível.", action: "Tentar novamente" });
+  if (healthState.services.task_runtime?.status === "degraded") warnings.push({ code: "QUEUE_BUSY", message: "Há várias tarefas ativas. A edição pode levar mais tempo." });
+
+  let selectedRepository: any = null;
+  let connected = false;
+  let tokenValid = false;
+  let writeAuthorized = false;
+  let pullRequestAuthorized = false;
+
+  if (installationId && candidateRepo && !blockers.some(item => ["PROJECT_OWNERSHIP_MISMATCH", "DATABASE_UNAVAILABLE"].includes(item.code))) {
+    try {
+      const installationData = await installation(installationId);
+      if (!installationData || installationData?.suspended_at) {
+        blockers.push({ code: "GITHUB_AUTH_REQUIRED", message: "A instalação GitHub não está ativa. Reconecte o GitHub.", action: "Reconectar GitHub" });
+      } else {
+        const permissions = installationData?.permissions || {};
+        const contents = String(permissions.contents || "none").toLowerCase();
+        const pullRequests = String(permissions.pull_requests || "none").toLowerCase();
+        writeAuthorized = ["write", "admin"].includes(contents);
+        pullRequestAuthorized = ["write", "admin"].includes(pullRequests);
+        if (!writeAuthorized) blockers.push({ code: "GITHUB_WRITE_PERMISSION_REQUIRED", message: "A GitHub App MSK está conectada, mas falta Contents: write.", action: "Revisar permissões" });
+
+        const token = await installationToken(installationId);
+        tokenValid = !!token;
+        const repoResponse = await timedFetch("github", `https://api.github.com/repos/${candidateRepo}`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+        });
+
+        if (repoResponse.status === 401) blockers.push({ code: "GITHUB_TOKEN_EXPIRED", message: "A autorização do GitHub não é mais válida.", action: "Reconectar GitHub" });
+        else if (repoResponse.status === 403) blockers.push({ code: "GITHUB_REPOSITORY_ACCESS_DENIED", message: "A instalação MSK não consegue acessar este repositório.", action: "Revisar permissões" });
+        else if (repoResponse.status === 404) blockers.push({ code: "GITHUB_REPOSITORY_NOT_AUTHORIZED", message: "O repositório não está incluído na instalação atual da GitHub App MSK.", action: "Revisar repositórios" });
+        else if (!repoResponse.ok) blockers.push({ code: "GITHUB_REPOSITORY_UNAVAILABLE", message: "O repositório conectado não pôde ser confirmado agora.", action: "Tentar novamente" });
+        else {
+          connected = true;
+          const repo = await repoResponse.json();
+          const fullName = String(repo.full_name || candidateRepo);
+          const sameRepo = storedRepo.toLowerCase() === fullName.toLowerCase();
+          const branch = String((sameRepo ? project?.github_default_branch : "") || repo.default_branch || "main");
+
+          if (!sameRepo) {
+            const { error } = await db.from("msk_projects").update({
+              github_owner: String(repo?.owner?.login || fullName.split("/")[0]),
+              github_repo: String(repo?.name || fullName.split("/")[1]),
+              github_default_branch: branch,
+              updated_at: new Date().toISOString(),
+            }).eq("lovable_project_id", projectId).eq("user_id", user.id);
+            if (error) blockers.push({ code: "PROJECT_REPOSITORY_SYNC_FAILED", message: "O repositório foi validado, mas o vínculo do projeto ainda não pôde ser atualizado.", action: "Tentar novamente" });
+            else warnings.push({ code: "PROJECT_REPOSITORY_REBOUND", message: `Vínculo do projeto atualizado para ${fullName}.` });
+          }
+
+          const branchResponse = await timedFetch("github", `https://api.github.com/repos/${fullName}/branches/${encodeURIComponent(branch)}`, {
+            headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" },
+          });
+          let protectedBranch = false;
+          if (branchResponse.ok) protectedBranch = !!(await branchResponse.json())?.protected;
+          else if (branchResponse.status === 404) blockers.push({ code: "BRANCH_NOT_FOUND", message: `A branch ${branch} não existe no repositório.`, action: "Revisar projeto" });
+          else if (branchResponse.status === 403) blockers.push({ code: "GITHUB_BRANCH_ACCESS_DENIED", message: `A instalação GitHub não consegue consultar a branch ${branch}.`, action: "Revisar permissões" });
+
+          if (protectedBranch) {
+            if (pullRequestAuthorized) warnings.push({ code: "BRANCH_PROTECTED", message: `A branch ${branch} é protegida. A MSK usará branch/PR automaticamente.` });
+            else blockers.push({ code: "GITHUB_PULL_REQUEST_PERMISSION_REQUIRED", message: `A branch ${branch} é protegida e a GitHub App precisa de Pull requests: write.`, action: "Revisar permissões" });
+          }
+
+          selectedRepository = {
+            full_name: fullName,
+            default_branch: branch,
+            permissions: { contents, pull_requests: pullRequests, write: writeAuthorized },
+            branch_editable: writeAuthorized && !protectedBranch,
+            protected: protectedBranch,
+            force_pr: protectedBranch,
+          };
+        }
+      }
+    } catch (error) {
+      const message = String((error as any)?.message || "");
+      const code = message.includes("CIRCUIT_OPEN") ? "GITHUB_CIRCUIT_OPEN" : message.includes("TOKEN") ? "GITHUB_TOKEN_EXPIRED" : "GITHUB_UNAVAILABLE";
+      blockers.push({ code, message: code === "GITHUB_CIRCUIT_OPEN" ? "O GitHub está temporariamente em proteção de circuito. Tente novamente em alguns segundos." : "Não foi possível confirmar a conexão GitHub agora.", action: "Tentar novamente" });
+    }
+  }
+
+  const githubBlocked = blockers.some(item => /^(GITHUB_|NO_REPOSITORY_SELECTED|MSK_SESSION_REQUIRED|PROJECT_REPOSITORY_SYNC_FAILED)/.test(String(item.code || "")));
+  healthState.services.github_api = {
+    status: connected && tokenValid && writeAuthorized && !githubBlocked ? "up" : "down",
+    connected,
+    token_valid: tokenValid,
+    write_authorized: writeAuthorized,
+    pull_request_authorized: pullRequestAuthorized,
+  };
+
+  return {
+    ready: blockers.length === 0,
+    blockers,
+    warnings,
+    services: healthState.services,
+    context: {
+      user_id: user.id,
+      database_write_ready: persistenceReady,
+      has_github_connection: !!installationId && connected,
+      has_valid_token: tokenValid,
+      has_valid_session: validSession,
+      github_write_authorized: writeAuthorized,
+      github_pull_request_authorized: pullRequestAuthorized,
+      repositories_linked: candidateRepo ? 1 : 0,
+      selected_repository: selectedRepository,
+      branch_editable: selectedRepository?.branch_editable === true,
+      force_pr: selectedRepository?.force_pr === true,
+    },
+    timestamp: nowIso(),
+  };
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const url = new URL(req.url);
+  const action = url.searchParams.get("action") || (req.method === "GET" ? "health" : "preflight");
+  if (action === "health") return json(await health());
+  if (action !== "preflight") return json({ ready: false, blockers: [{ code: "ACTION_NOT_SUPPORTED", message: "Ação de pre-flight inválida." }], warnings: [] }, 400);
+  const body = req.method === "POST" ? await req.json().catch(() => ({})) : Object.fromEntries(url.searchParams.entries());
+  const result = await preflight(req, body);
+  return json(result, result.ready ? 200 : 409);
+});
