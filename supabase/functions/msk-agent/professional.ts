@@ -15,12 +15,38 @@ export const normalizeRepo = (value: string) => String(value || "")
 
 export const isHighRiskCommand = (command: string) => /\b(auth|login|senha|password|token|sess[aã]o|rls|supabase|banco|database|migration|checkout|pagamento|pix|cart[aã]o|webhook|licen[cç]a|assinatura|tenant|admin|service.?role|api.?key|secret)\b/i.test(command);
 
+function shortlistCandidates(paths: string[], command: string, max = 80) {
+  const terms = String(command || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .split(/[^a-z0-9_-]+/)
+    .filter((term) => term.length >= 3);
+
+  return paths
+    .filter((path) => !/(^|\/)(node_modules|dist|build|coverage)(\/|$)/i.test(path))
+    .map((path) => {
+      const p = path.toLowerCase();
+      let score = 0;
+      for (const term of terms) if (p.includes(term)) score += 12;
+      if (/src\/(routes|pages)\//.test(p)) score += 8;
+      if (/src\/components\//.test(p)) score += 6;
+      if (/\.(tsx|jsx|css|scss|ts|js)$/.test(p)) score += 4;
+      if (/(index|home|landing|hero|app|main|layout|styles?|theme)/.test(p)) score += 4;
+      if (/readme|lock\.json$|\.test\.|\.spec\./.test(p)) score -= 10;
+      return { path, score };
+    })
+    .sort((a, b) => b.score - a.score || a.path.localeCompare(b.path))
+    .slice(0, max)
+    .map((item) => item.path);
+}
+
 export const selectionPrompt = (command: string, paths: string[], repository: string) =>
   encodePromptEnvelope({
     operation: "interpretation",
     command,
     repository,
-    candidates: paths,
+    candidates: shortlistCandidates(paths, command),
   });
 
 export const editPrompt = (
