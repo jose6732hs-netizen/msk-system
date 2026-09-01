@@ -25,7 +25,7 @@ type AtomoCatalog = { productHash: string; offerHash: string };
 type AtomoPixCatalog = AtomoCatalog & { unitPrice: number; quantity: number };
 
 /** Acima deste ticket a AtomoPay envia a oferta para análise manual. */
-const SAFE_OFFER_MAX = 13000;
+const SAFE_OFFER_MAX = 7000;
 /** Ticket mínimo aceito pela AtomoPay. */
 const MIN_OFFER_PRICE = 500;
 
@@ -42,6 +42,9 @@ function splitCandidates(amount: number): { unit: number; quantity: number }[] {
     if (unit > SAFE_OFFER_MAX || unit < MIN_OFFER_PRICE) continue;
     out.push({ unit, quantity });
   }
+  // Ofertas de ticket baixo são aprovadas automaticamente pela AtomoPay:
+  // tenta primeiro os cortes menores.
+  out.sort((a, b) => a.unit - b.unit);
   if (out.length === 0) out.push({ unit: amount, quantity: 1 });
   return out;
 }
@@ -199,7 +202,7 @@ export class AtomoPayService {
       })) as any;
       offerHash = String((createdOffer?.data ?? createdOffer)?.hash ?? "");
     }
-    if (!offerHash) throw new Error("ATOMOPAY_CATALOG_OFFER_MISSING");
+    if (!offerHash) throw new Error("ATOMOPAY_OFERTA_PENDENTE_APROVACAO");
 
     await supabaseAdmin.from("app_settings").upsert(
       {
@@ -290,6 +293,15 @@ export class AtomoPayService {
       if (!hash) continue;
       // Oferta criada em análise (status 2) não gera PIX: tenta o próximo corte.
       if (!offerApproved(createdOffer)) continue;
+      // Confirma no catálogo: a aprovação só vale quando persistida na AtomoPay.
+      const checkRaw = (await this.call<Record<string, any>>(
+        "GET",
+        `/products/${encodeURIComponent(productHash)}`,
+      ).catch(() => null)) as any;
+      const check = checkRaw?.data ?? checkRaw ?? {};
+      const checkOffers: any[] = Array.isArray(check?.offers) ? check.offers : [];
+      const persisted = checkOffers.find((offer) => String(offer?.hash ?? "") === hash);
+      if (persisted && !offerApproved(persisted)) continue;
       offerHash = hash;
       unitPrice = candidate.unit;
       quantity = candidate.quantity;
