@@ -13,6 +13,7 @@ import { AdminExtensionTab } from "@/components/msk/admin-extension";
 import { AdminClonerTab } from "@/components/msk/admin-cloner";
 import { AdminAgentTab } from "@/components/msk/admin-agent";
 import { AdminAgentApiUsageTab } from "@/components/msk/admin-agent-api-usage";
+import { AdminAgentAiSettings } from "@/components/msk/admin-agent-ai-settings";
 import { AdminAffiliatesTab } from "@/components/msk/admin-affiliates";
 import { AdminTokenGenerator } from "@/components/msk/admin-token-generator";
 import { AdminTrackingTab } from "@/components/msk/admin-tracking";
@@ -70,6 +71,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
           { value: "agent_api", label: "API do Agente" },
         ],
       },
+      { value: "ai_training", label: "IA & Treinamento", Icon: Zap },
       { value: "users", label: "Usuários", Icon: Users },
     ],
   },
@@ -469,6 +471,7 @@ function Admin() {
                 {activeTab === "cloner" && <AdminClonerTab />}
                 {activeTab === "agent" && <AdminAgentTab />}
                 {activeTab === "agent_api" && <AdminAgentApiUsageTab />}
+                {activeTab === "ai_training" && <AdminAgentAiSettings />}
                 {activeTab === "wallets" && <AdminWalletsTab />}
                 {activeTab === "withdrawals" && <AdminWithdrawalsTab />}
                 {activeTab === "push" && <AdminPushTestsTab />}
