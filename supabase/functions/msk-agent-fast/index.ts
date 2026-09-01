@@ -147,6 +147,15 @@ Deno.serve(async (req: Request) => {
           payload: parsedBody,
         });
       }
+      if (code === "TASK_PERSISTENCE_FAILED") {
+        return json({
+          ...data,
+          code: "DATABASE_PERSISTENCE_ERROR",
+          stage: data?.stage || "request",
+          retryable: false,
+          error: "O banco recusou o registro da tarefa. O evento foi registrado para diagnóstico.",
+        }, upstream.status || 500);
+      }
     }
 
     return new Response(text, {
