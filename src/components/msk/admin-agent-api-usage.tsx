@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import CountUp from "@/components/msk/animated-number";
 import { FilterChips } from "@/components/msk/filter-chips";
 import { AdminAgentAiSettings } from "@/components/msk/admin-agent-ai-settings";
+import { AdminAgentErrors } from "@/components/msk/admin-agent-errors";
 import { agentUsageAnalytics, agentHealth } from "@/lib/agent-usage.functions";
 
 const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
@@ -218,6 +219,8 @@ export function AdminAgentApiUsageTab() {
           </div>
         </div>
       </Card>
+
+      <AdminAgentErrors days={Number(days)} />
 
       {/* FILTROS */}
       <div className="flex flex-wrap items-center gap-3">
