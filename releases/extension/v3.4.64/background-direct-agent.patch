@@ -1,0 +1,48 @@
+--- background-direct-agent.js (v3.4.63)
++++ background-direct-agent.js (v3.4.64)
+@@
+ const mskDirectConfig = () => globalThis.MSK_CONFIG || {};
++const mskDirectSleep = ms => new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms) || 0)));
+@@
+-  const sessionToken = projectId ? String(saved[mskDirectAgentSessionKey(projectId)] || '') : '';
++  let sessionToken = projectId ? String(saved[mskDirectAgentSessionKey(projectId)] || '') : '';
+@@
+   const headers = {
+@@
+   };
++
++  // Sincroniza conexão/sessão real antes do pre-flight.
++  if (action === 'preflight' && projectId) {
++    await mskDirectAgentApi('status', {
++      lovable_project_id: projectId,
++      repository_url: String(payload?.repository_url || ''),
++      project_name: String(payload?.project_name || '')
++    }).catch(() => null);
++    const refreshed = await chrome.storage.local.get(mskDirectAgentSessionKey(projectId)).catch(() => ({}));
++    sessionToken = String(refreshed?.[mskDirectAgentSessionKey(projectId)] || sessionToken || '');
++    if (sessionToken) headers['x-msk-session'] = sessionToken;
++  }
+@@
+-  let response = await mskDirectFetchWithTimeout(...);
++  let response = null;
++  let transportError = null;
++  const maxTransportAttempts = (action === 'preflight' || action === 'health') ? 2 : 1;
++  for (let attempt = 1; attempt <= maxTransportAttempts; attempt++) {
++    try {
++      response = await mskDirectFetchWithTimeout(`${config.supabaseUrl}/functions/v1/${functionName}?action=${encodeURIComponent(action)}`, {
++        method: 'POST', headers, body: JSON.stringify(payload)
++      }, timeout);
++      break;
++    } catch (error) {
++      transportError = error;
++      if (attempt < maxTransportAttempts) await mskDirectSleep(350 * attempt);
++    }
++  }
++  if (!response && (action === 'preflight' || action === 'health')) {
++    return {
++      ok: false, ready: false, status: 503, code: 'PREFLIGHT_TRANSPORT_UNAVAILABLE',
++      blockers: [{ code: 'PREFLIGHT_TRANSPORT_UNAVAILABLE', message: 'Não consegui consultar o pre-flight MSK agora. Verifique a conexão e tente novamente.' }],
++      warnings: [], services: {}, error: 'Não consegui consultar o pre-flight MSK agora.'
++    };
++  }
++  if (!response) throw transportError || new Error('Falha de transporte MSK.');
