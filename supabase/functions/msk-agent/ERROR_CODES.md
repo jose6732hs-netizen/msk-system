@@ -4,6 +4,20 @@ O agente não deve retornar `MSK_AGENT_ERROR`. Falhas conhecidas recebem código
 
 | Código | Etapa típica | Retry | Significado / ação |
 |---|---|---:|---|
+| `TASK_PAYLOAD_INVALID` | request | não | O gateway rejeitou o payload antes da persistência. Corrigir campos obrigatórios/tipos. |
+| `RLS_VIOLATION` | request | não | PostgreSQL `42501`/RLS recusou a operação. Revisar autorização/política. |
+| `NOT_NULL_VIOLATION` | request | não | PostgreSQL `23502`: faltou campo obrigatório no registro. |
+| `TABLE_NOT_FOUND` | request | não | PostgreSQL `42P01`: migration/tabela necessária ausente. |
+| `DATABASE_SCHEMA_MISMATCH` | request | não | `42703`/`PGRST204`: runtime e schema estão desalinhados. |
+| `FOREIGN_KEY_VIOLATION` | request | não | PostgreSQL `23503`: projeto/registro relacionado inválido ou removido. |
+| `UNIQUE_VIOLATION` | request | sim | PostgreSQL `23505`: conflito de identificador/idempotência. |
+| `DATABASE_VALUE_INVALID` | request | não | PostgreSQL `22P02`: formato de valor incompatível com o schema. |
+| `DATABASE_TEMPORARILY_UNAVAILABLE` | request | sim | Deadlock/serialização/limite/indisponibilidade temporária (`40001`, `40P01`, `53300`, `57P0x`). |
+| `DATABASE_NETWORK_UNAVAILABLE` | request | sim | Timeout ou falha de rede com o banco. |
+| `POSTGREST_ERROR` | request | não | Erro PostgREST não coberto por mapeamento mais específico. |
+| `DATABASE_PERSISTENCE_ERROR` | request | não | Erro de banco ainda não classificado; SQLSTATE/contexto ficam no backend. |
+| `DATABASE_WRITE_CHECK_FAILED` | preflight | sim | O probe real de INSERT não pôde confirmar capacidade de gravação. |
+| `DATABASE_WRITE_READY` | preflight | — | Probe transacional passou; nenhuma linha de teste é mantida. |
 | `AGENT_TARGET_NOT_FOUND` | locating_files | sim | O alvo não foi localizado com confiança. Repetir busca controlada ou pedir um esclarecimento objetivo. |
 | `AGENT_NO_EDITABLE_FILES` | locating_files | não | O repositório não possui arquivos compatíveis com o executor atual. |
 | `NO_CHANGES_APPLIED` | editing/validating | sim | A saída não produziu alteração real. Reprocessar mantendo o mesmo pedido e alvo. |
@@ -30,13 +44,17 @@ O agente não deve retornar `MSK_AGENT_ERROR`. Falhas conhecidas recebem código
 | `GITHUB_BIND_FAILED` | auth | não | Falha ao persistir vínculo projeto/instalação. |
 | `COMMIT_VERIFICATION_FAILED` | verifying | sim | O SHA final do branch não corresponde ao commit que o agente criou. Nunca marcar como concluído. |
 | `TASK_PROCESSING_TIMEOUT` | qualquer etapa ativa | sim | A tarefa excedeu o limite seguro e foi encerrada sem falso sucesso. |
-| `TASK_PERSISTENCE_FAILED` | request | não | A tarefa não pôde ser persistida antes da execução. |
+| `TASK_PERSISTENCE_FAILED` | request | não | Código legado de encapsulamento. O runtime deve remapear o erro original para um código de banco específico antes de responder. |
 | `PROJECT_REPOSITORY_MISMATCH` | repository | não | Tentativa de operar em repositório diferente do vinculado ao projeto. |
 | `INTERNAL_ERROR` | unknown | não | Exceção ainda não classificada. Consultar `error_id` em `msk_agent_errors` e criar mapeamento específico se recorrente. |
 
+## Persistência e RLS
+
+O executor usa `SUPABASE_SERVICE_ROLE_KEY`, portanto o backend pode contornar RLS. A autorização é feita manualmente antes da gravação: identidade/licença, propriedade do `lovable_project_id`, instalação GitHub, repositório e sessão MSK. O pre-flight chama `msk_task_persistence_probe`, que tenta um `INSERT` real em `msk_tasks` dentro de um bloco transacional e força rollback; isso valida constraints/triggers/schema sem deixar tarefa de teste no banco.
+
 ## Dados registrados
 
-`msk_agent_errors` guarda `task_id`, usuário/projeto, repositório, branch, etapa, código, mensagem, stack no servidor, flag retryable, tentativa e contexto sanitizado. Tokens, chaves, senhas, assinaturas e sessões são removidos do contexto antes de persistir.
+`msk_agent_errors` guarda `task_id`, usuário/projeto, repositório, branch, etapa, código, mensagem, stack no servidor, flag retryable, tentativa e contexto sanitizado. O gateway também registra o payload de execução de forma estruturada imediatamente antes do pre-flight/persistência. Tokens, chaves, senhas, assinaturas, sessões e ciphertexts são removidos do contexto antes de persistir/logar.
 
 ## Regra de segurança
 
