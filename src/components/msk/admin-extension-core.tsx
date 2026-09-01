@@ -241,6 +241,98 @@ export function AdminExtensionTab() {
       <ExtensionChannels />
 
 
+      <div id="extension-upload" className="scroll-mt-24 rounded-3xl border border-border/60 bg-card/30 p-5 md:p-6 transition">
+        <div className="mb-5">
+          <h3 className="text-sm font-semibold">Publicar nova versão</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            O nome, o canal e a versão informados aqui passam a ser a fonte dos cards abaixo.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-name">Nome da extensão</Label>
+              <Input
+                id="ext-name"
+                placeholder="Ex.: MSK Principal"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-channel">Canal de destino</Label>
+              <select
+                id="ext-channel"
+                value={selectedChannelSlug}
+                onChange={(e) => setChannelSlug(e.target.value)}
+                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/40"
+              >
+                {channels.length === 0 ? (
+                  <option value="m3k-principal">Canal principal</option>
+                ) : (
+                  channels.map((channel) => (
+                    <option key={channel.id} value={channel.slug}>
+                      {String(channel.channel_number).padStart(2, "0")} · {channel.display_name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-version">Versão</Label>
+              <Input
+                id="ext-version"
+                placeholder="1.4.2"
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="ext-file">Arquivo .zip da extensão</Label>
+              <div className="flex flex-col gap-2">
+                <Input
+                  id="ext-file"
+                  ref={inputRef}
+                  type="file"
+                  accept=".zip,application/zip"
+                  className="cursor-pointer file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:text-primary-foreground file:px-3 file:py-1 file:mr-2"
+                  onChange={(e) => {
+                    const next = e.target.files?.[0] ?? null;
+                    setFile(next);
+                    if (next && !displayName.trim()) setDisplayName(fileDisplayName(next.name));
+                  }}
+                />
+                {file && (
+                  <p className="text-xs font-bold text-primary animate-pulse">
+                    Selecionado: {file.name} — {human(file.size)}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ext-notes">Notas da versão (changelog)</Label>
+            <Textarea
+              id="ext-notes"
+              rows={10}
+              placeholder="O que mudou nesta versão..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <Button variant="neon" className="mt-5" onClick={upload} disabled={busy}>
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+          Enviar e publicar ZIP
+        </Button>
+      </div>
+
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -333,98 +425,6 @@ export function AdminExtensionTab() {
             ))}
           </div>
         )}
-      </div>
-
-      <div id="extension-upload" className="scroll-mt-24 rounded-3xl border border-border/60 bg-card/30 p-5 md:p-6 transition">
-        <div className="mb-5">
-          <h3 className="text-sm font-semibold">Publicar nova versão</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            O nome, o canal e a versão informados aqui passam a ser a fonte do card acima.
-          </p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="ext-name">Nome da extensão</Label>
-              <Input
-                id="ext-name"
-                placeholder="Ex.: MSK Principal"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="ext-channel">Canal de destino</Label>
-              <select
-                id="ext-channel"
-                value={selectedChannelSlug}
-                onChange={(e) => setChannelSlug(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-1 focus:ring-primary/40"
-              >
-                {channels.length === 0 ? (
-                  <option value="m3k-principal">Canal principal</option>
-                ) : (
-                  channels.map((channel) => (
-                    <option key={channel.id} value={channel.slug}>
-                      {String(channel.channel_number).padStart(2, "0")} · {channel.display_name}
-                    </option>
-                  ))
-                )}
-              </select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="ext-version">Versão</Label>
-              <Input
-                id="ext-version"
-                placeholder="1.4.2"
-                value={version}
-                onChange={(e) => setVersion(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="ext-file">Arquivo .zip da extensão</Label>
-              <div className="flex flex-col gap-2">
-                <Input
-                  id="ext-file"
-                  ref={inputRef}
-                  type="file"
-                  accept=".zip,application/zip"
-                  className="cursor-pointer file:cursor-pointer file:rounded-lg file:border-0 file:bg-primary file:text-primary-foreground file:px-3 file:py-1 file:mr-2"
-                  onChange={(e) => {
-                    const next = e.target.files?.[0] ?? null;
-                    setFile(next);
-                    if (next && !displayName.trim()) setDisplayName(fileDisplayName(next.name));
-                  }}
-                />
-                {file && (
-                  <p className="text-xs font-bold text-primary animate-pulse">
-                    Selecionado: {file.name} — {human(file.size)}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="ext-notes">Notas da versão (changelog)</Label>
-            <Textarea
-              id="ext-notes"
-              rows={10}
-              placeholder="O que mudou nesta versão..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <Button variant="neon" className="mt-5" onClick={upload} disabled={busy}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-          Enviar e publicar ZIP
-        </Button>
       </div>
     </div>
   );
