@@ -67,16 +67,21 @@ function retryError(extra: string) {
   return lines.join("\n").slice(0, 5000) || "A saída anterior não passou na validação do backend.";
 }
 
+function exactClientCommand(command: string) {
+  return clean(command, 12000);
+}
+
 export class PromptBuilder {
   static interpretation(envelope: PromptEnvelope): BuiltPrompt {
     return {
       operation: "interpretation",
       jsonMode: true,
       system: [
-        "Você interpreta pedidos de edição de código.",
-        "Retorne somente JSON com intent, confidence, requires_input, question, options, summary, target_files, edits e validation.",
+        "Interprete o pedido de edição e retorne somente JSON.",
+        "Campos: intent, confidence, requires_input, question, options, summary, target_files, edits, validation.",
       ].join("\n"),
-      user: `Comando: ${clean(envelope.command, 12000)}\nCandidatos:\n${candidatesBlock(envelope.candidates)}`,
+      assistantContext: envelope.candidates?.length ? `Arquivos candidatos:\n${candidatesBlock(envelope.candidates)}` : undefined,
+      user: exactClientCommand(envelope.command),
     };
   }
 
@@ -85,37 +90,40 @@ export class PromptBuilder {
     return {
       operation: "planning",
       jsonMode: true,
-      system: [
-        "Gere um plano mínimo de edição em JSON para implementar exatamente o pedido.",
-        "Retorne somente {\"steps\":[{\"action\":\"...\",\"files\":[\"...\"]}],\"summary\":\"...\"}.",
-      ].join("\n"),
-      user: `Comando: ${clean(envelope.command, 12000)}\nArquivos relevantes:\n${paths}`,
+      system: "Gere um plano mínimo em JSON para executar exatamente o pedido.",
+      assistantContext: paths ? `Arquivos relevantes:\n${paths}` : undefined,
+      user: exactClientCommand(envelope.command),
     };
   }
 
   static edit(envelope: PromptEnvelope, plan?: string): BuiltPrompt {
+    const technicalContext = [
+      plan ? `Plano técnico:\n${clean(plan, 7000)}` : "",
+      filesBlock(envelope.files),
+    ].filter(Boolean).join("\n\n");
     return {
       operation: "edit",
       jsonMode: true,
       system: [
-        "Você executa edição de código apenas para atender ao comando, usando os arquivos fornecidos e criando novos somente quando indispensável.",
-        "Retorne somente JSON: {\"summary\":\"...\",\"reply\":\"...\",\"changes\":[{\"path\":\"...\",\"content\":\"arquivo completo\",\"create\":false}]}.",
-        "Não use markdown, TODO, placeholders ou conteúdo truncado.",
+        "Edite somente o necessário e retorne JSON com summary, reply e changes.",
+        "Cada change deve conter path, content completo e create. Sem markdown, TODO ou conteúdo truncado.",
       ].join("\n"),
-      assistantContext: plan ? clean(plan, 7000) : undefined,
-      user: `Comando: ${clean(envelope.command, 12000)}\n${filesBlock(envelope.files)}`,
+      assistantContext: technicalContext || undefined,
+      user: exactClientCommand(envelope.command),
     };
   }
 
   static selfHealing(envelope: PromptEnvelope, validationError: string): BuiltPrompt {
+    const technicalContext = [
+      `Erro de validação:\n${retryError(validationError)}`,
+      filesBlock(envelope.files),
+    ].filter(Boolean).join("\n\n");
     return {
       operation: "self_healing",
       jsonMode: true,
-      system: [
-        "Corrija somente a causa do erro de validação mantendo o pedido e o alvo originais.",
-        "Retorne novas mudanças no mesmo JSON de edição, sem ampliar o escopo.",
-      ].join("\n"),
-      user: `Erro: ${retryError(validationError)}\nComando original: ${clean(envelope.command, 12000)}\n${filesBlock(envelope.files)}`,
+      system: "Corrija somente o erro detectado, sem ampliar o escopo, e retorne o mesmo JSON de edição.",
+      assistantContext: technicalContext,
+      user: exactClientCommand(envelope.command),
     };
   }
 
@@ -123,11 +131,9 @@ export class PromptBuilder {
     return {
       operation: "validation",
       jsonMode: true,
-      system: [
-        "Compare o pedido com o antes/depois e verifique apenas correspondência semântica e escopo.",
-        "Retorne somente JSON {\"ok\":true,\"issues\":[]} ou {\"ok\":false,\"issues\":[\"motivo\"]}.",
-      ].join("\n"),
-      user: `Comando: ${clean(command, 12000)}\nRepositório: ${clean(repository, 300)}\n${clean(beforeAfter, 70000)}`,
+      system: "Verifique se a alteração corresponde ao pedido e ao escopo. Retorne somente JSON com ok e issues.",
+      assistantContext: `Repositório: ${clean(repository, 300)}\n${clean(beforeAfter, 70000)}`,
+      user: exactClientCommand(command),
     };
   }
 
@@ -135,11 +141,8 @@ export class PromptBuilder {
     return {
       operation: "chat",
       jsonMode: false,
-      system: [
-        "Você é o assistente técnico do MSK Agente.",
-        "Responda em português do Brasil e não afirme que editou ou commitou código em uma chamada de conversa.",
-      ].join("\n"),
-      user: clean(message, 12000),
+      system: "Responda em português do Brasil. Não afirme que editou código em uma chamada apenas de conversa.",
+      user: exactClientCommand(message),
     };
   }
 }
