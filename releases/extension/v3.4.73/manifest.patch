@@ -1,0 +1,13 @@
+--- /mnt/data/msk_3472/manifest.json	2026-09-01 07:20:50.559814144 +0000
++++ /mnt/data/msk_3473/manifest.json	2026-09-01 07:37:33.543056502 +0000
+@@ -1,8 +1,8 @@
+ {
+   "manifest_version": 3,
+   "name": "MSK Agente — Guardião Lovable",
+-  "version": "3.4.72",
+-  "description": "MSK Agente v3.4.72 — finalização com prova independente, checkpoints, skills, saúde 24h e transporte resiliente.",
++  "version": "3.4.73",
++  "description": "MSK Agente v3.4.73 — finalização garantida, tarefas longas resilientes, chat ancorado, preview atualizável e conexões de banco seguras.",
+   "permissions": [
+     "storage",
+     "activeTab",
