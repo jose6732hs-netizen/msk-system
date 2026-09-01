@@ -1,0 +1,173 @@
+--- v3.4.71/background-direct-agent.js
++++ v3.4.72/background-direct-agent.js
+@@ -114,15 +114,16 @@
+   }
+ 
+   const vaultAction = String(action || '').startsWith('vault-') ? String(action).slice(6) : '';
++  const controlAction = ['proof', 'skill-check', 'health-metrics', 'satisfaction-check'].includes(String(action || ''));
+   const runCommandText = String(payload?.original_command || payload?.command || payload?.message || '');
+   const runHasAttachments = Array.isArray(payload?.attachments) && payload.attachments.length > 0;
+   const runHasLongDocumentation = action === 'run' && runCommandText.length > 9000 && /(?:documenta[cç][aã]o|endpoint|headers?|payload|webhook|\b(?:GET|POST|PUT|PATCH|DELETE)\s+\/)/i.test(runCommandText);
+-  const timeout = vaultAction ? (vaultAction === 'analyze' || vaultAction === 'submit' ? 60000 : 30000) : (action === 'run' ? (payload?.simple_fast_edit === true ? 120000 : 240000) : (action === 'preflight' || action === 'health' ? 12000 : 30000));
+-  const functionName = vaultAction ? 'msk-agent-vault' : ((action === 'preflight' || action === 'health') ? 'msk-agent-preflight' : ((action === 'connect' || action === 'status' || action === 'bind-existing') ? 'msk-agent-license' : (action === 'run' ? ((runHasAttachments || runHasLongDocumentation) ? 'msk-agent-public' : 'msk-agent-fast') : 'msk-agent-public')));
+-  const backendAction = vaultAction || action;
++  const timeout = vaultAction ? (vaultAction === 'analyze' || vaultAction === 'submit' ? 60000 : 30000) : controlAction ? 35000 : (action === 'run' ? (payload?.simple_fast_edit === true ? 120000 : 240000) : (action === 'preflight' || action === 'health' ? 12000 : 30000));
++  const functionName = vaultAction ? 'msk-agent-vault' : controlAction ? 'msk-agent-proof' : ((action === 'preflight' || action === 'health') ? 'msk-agent-preflight' : ((action === 'connect' || action === 'status' || action === 'bind-existing') ? 'msk-agent-license' : (action === 'run' ? ((runHasAttachments || runHasLongDocumentation) ? 'msk-agent-public' : 'msk-agent-fast') : 'msk-agent-public')));
++  const backendAction = vaultAction || (action === 'health-metrics' ? 'health' : action);
+   let response = null;
+   let transportError = null;
+-  const safeTransportRetry = ['preflight', 'health', 'status', 'task-status', 'vault-status', 'vault-list'].includes(action);
++  const safeTransportRetry = ['preflight', 'health', 'status', 'task-status', 'proof', 'skill-check', 'health-metrics', 'satisfaction-check', 'vault-status', 'vault-list'].includes(action);
+@@ -418,7 +419,11 @@
+     MSK_CREDENTIAL_VAULT_SUBMIT_V1: 'vault-submit',
+     MSK_CREDENTIAL_VAULT_STATUS_V1: 'vault-status',
+     MSK_CREDENTIAL_VAULT_LIST_V1: 'vault-list',
+-    MSK_CREDENTIAL_VAULT_DELETE_V1: 'vault-delete'
++    MSK_CREDENTIAL_VAULT_DELETE_V1: 'vault-delete',
++    MSK_DIRECT_AGENT_PROOF_V1: 'proof',
++    MSK_DIRECT_AGENT_SKILL_CHECK_V1: 'skill-check',
++    MSK_DIRECT_AGENT_HEALTH_METRICS_V1: 'health-metrics',
++    MSK_DIRECT_AGENT_SATISFACTION_CHECK_V1: 'satisfaction-check'
+   };
+--- v3.4.71/msk-direct-agent.js
++++ v3.4.72/msk-direct-agent.js
+@@ -864,8 +864,8 @@
+-        if (status === 'completed') {
+-          executionCard.setStage?.('completed');
++        if (status === 'completed' || status === 'completed_no_change') {
++          executionCard.setStage?.('completed', status === 'completed_no_change' ? '✅ Estado atual já atende ao pedido · nenhum commit necessário.' : '');
+@@ -895,9 +895,22 @@
++  const verifyTaskCompletionProof = async (projectId, taskId, commitSha = '') => {
++    if (!projectId || !taskId) return { ok: false, code: 'COMPLETION_PROOF_MISSING' };
++    return send({
++      type: 'MSK_DIRECT_AGENT_PROOF_V1',
++      payload: { lovable_project_id: projectId, task_id: taskId, commit_sha: String(commitSha || '') }
++    }).catch(error => ({
++      ok: false,
++      code: 'PROOF_SERVICE_UNAVAILABLE',
++      retryable: true,
++      error: error?.message || 'A prova final ficou temporariamente indisponível.'
++    }));
++  };
++
+   const reconcileTaskAfterTransport = async (projectId, taskId, executionCard) => {
+-    const terminal = new Set(['completed', 'failed', 'awaiting_approval', 'awaiting_input', 'awaiting_credentials', 'cancelled']);
++    const terminal = new Set(['completed', 'completed_no_change', 'failed', 'awaiting_approval', 'awaiting_input', 'awaiting_credentials', 'cancelled']);
+@@ -913,24 +926,32 @@
+-        if (status === 'completed') {
+-          const summary = String(task?.summary || 'Alteração concluída e confirmada pelo agente.').trim();
+-          const shortCommit = summary.match(/\bCommit:\s*([0-9a-f]{7,40})\b/i)?.[1] || '';
++        if (status === 'completed' || status === 'completed_no_change') {
++          const proof = await verifyTaskCompletionProof(projectId, taskId);
++          if (proof?.ok) {
++            return { ...proof, completed: status === 'completed', recovered_from_task_status: true, task_status_verified: true, task_id: taskId, repository: proof.repository || result?.repository || currentRepository || '', branch: proof.branch || task?.branch_name || '', summary: proof.summary || task?.summary || '', assistant_message: proof.summary || task?.summary || '' };
++          }
++          if (proof?.retryable === true && attempt < 83) {
++            await new Promise(resolve => setTimeout(resolve, attempt < 8 ? 700 : 1400));
++            continue;
++          }
+           return {
+-            ok: true,
+-            completed: true,
+-            direct_commit: true,
+-            recovered_from_task_status: true,
+-            task_status_verified: true,
+-            execution_verified: true,
+-            commit_verified: true,
+-            commit_sha: shortCommit,
++            ok: false,
++            code: proof?.code || 'COMPLETION_PROOF_FAILED',
++            stage: 'verifying',
++            retryable: proof?.retryable === true,
+             task_id: taskId,
+-            repository: result?.repository || currentRepository || '',
+-            branch: task?.branch_name || '',
+-            summary,
+-            assistant_message: summary,
+-            validation: { content_changed: true, semantic: true, commit_verified: true, recovered: true }
++            error: proof?.error || 'A edição terminou, mas a prova final ainda não foi confirmada.'
+           };
+@@ -1309,6 +1330,15 @@
++      const skillAssessment = await send({ type: 'MSK_DIRECT_AGENT_SKILL_CHECK_V1', payload: { lovable_project_id: projectId, command: exactClientCommand } }).catch(() => null);
++      const detectedSkill = skillAssessment?.primary || null;
++      const effectiveSimpleFastEdit = simpleFastEdit && detectedSkill?.risk_level !== 'sensitive' && detectedSkill?.validation_rules?.prefer_complex_edit !== true;
++      if (detectedSkill?.label) executionCard?.setStage?.('analyzing', `🧩 Skill detectada: ${detectedSkill.label} · validando escopo...`);
+@@ -1324,8 +1354,12 @@
+-        mode: 'FAST_EDIT',
+-        simple_fast_edit: simpleFastEdit,
++        mode: effectiveSimpleFastEdit ? 'FAST_EDIT' : 'COMPLEX_EDIT',
++        simple_fast_edit: effectiveSimpleFastEdit,
++        detected_skill: detectedSkill?.skill_key || '',
++        detected_skill_rules: detectedSkill?.validation_rules || {},
++        active_skill_name: skill?.name || '',
++        active_skill_custom: skill?.custom === true,
+@@ -1358,6 +1392,23 @@
++      if (!response?.ok && String(response?.code || '') === 'NO_CHANGES_APPLIED') {
++        executionCard?.setStage?.('validating', '🔎 Diff vazio · conferindo se o estado atual já atende ao pedido...');
++        const satisfaction = await send({ type: 'MSK_DIRECT_AGENT_SATISFACTION_CHECK_V1', payload: { lovable_project_id: projectId, task_id: taskId } }).catch(() => null);
++        if (satisfaction?.ok && satisfaction?.no_change_needed === true) {
++          response = { ...satisfaction, ok: true, completed: true, no_change_needed: true, task_id: String(satisfaction.task_id || taskId) };
++        }
++      }
+@@ -1423,16 +1474,45 @@
+-        const hasCommitEvidence = (!!String(response.commit_sha || '').trim() && response.commit_verified !== false && response.execution_verified !== false) || (response.recovered_from_task_status === true && response.task_status_verified === true && response.commit_verified === true && response.execution_verified === true);
++        const proof = await verifyTaskCompletionProof(projectId, String(response.task_id || taskId), String(response.commit_sha || ''));
++        if (proof?.no_change_needed === true) {
++          pendingClarification = null;
++          executionCard?.finish?.();
++          addMessage(String(proof.summary || 'O projeto já estava no estado solicitado. Nenhuma mudança ou commit foi necessário.'), 'assistant', { persist: true, projectId, card: true, tone: 'completed', title: 'NENHUMA MUDANÇA NECESSÁRIA', summary: String(proof.summary || 'O estado atual já atende ao pedido.').slice(0, 150), openLabel: 'Ver verificação', closeLabel: 'Ocultar verificação', progressSteps: EXECUTION_STEPS });
++          multimodal?.clear?.();
++          return;
++        }
++        if (!proof?.ok || proof?.proof_verified !== true) {
++          pendingClarification = null;
++          const failureText = `❌ A alteração chegou ao fim, mas a prova independente ainda não foi confirmada.\nCódigo: ${String(proof?.code || 'COMPLETION_PROOF_FAILED')}\nEtapa: verifying`;
++          executionCard?.fail?.(failureText);
++          addMessage(failureText, 'error');
++          return;
++        }
++        response = { ...response, ...proof, validation: { ...(response.validation || {}), ...(proof.validation || {}) } };
++        const hasCommitEvidence = response.proof_verified === true && response.commit_verified === true && response.execution_verified === true && Number(response.files_changed_count || 0) > 0 && response.validation?.content_changed === true && response.validation?.semantic === true && !!String(response.commit_sha || '').trim();
+--- v3.4.71/msk-preflight.js
++++ v3.4.72/msk-preflight.js
+@@ -71,6 +71,8 @@
++      #msk-root:not(.msk-gate-root) .msk-panel .msk-preflight-health{margin-top:6px;color:#8f9aa6;font-size:9px;line-height:1.3}
++      #msk-root:not(.msk-gate-root) .msk-panel .msk-preflight-health[data-alert="true"]{color:#ffd36d}
+@@ -156,8 +158,17 @@
+-    preflight.innerHTML = `<div class="msk-preflight-head"><span class="dot"></span><span>PRE-FLIGHT MSK</span></div><div class="msk-preflight-services">${serviceHtml}</div><div class="msk-preflight-message"></div><div class="msk-preflight-actions"></div>`;
++    preflight.innerHTML = `<div class="msk-preflight-head"><span class="dot"></span><span>PRE-FLIGHT MSK</span></div><div class="msk-preflight-services">${serviceHtml}</div><div class="msk-preflight-message"></div><div class="msk-preflight-health"></div><div class="msk-preflight-actions"></div>`;
++    const healthEl = preflight.querySelector('.msk-preflight-health');
++    const health = current.health && typeof current.health === 'object' ? current.health : null;
++    if (health) {
++      const total = Number(health.total_24h || 0), success = Number(health.success_24h || 0), errorRate = Number(health.error_rate_24h || 0);
++      healthEl.dataset.alert = health.alert === true ? 'true' : 'false';
++      healthEl.textContent = `Saúde 24h: ${success}/${total} concluídas · erros ${Number.isFinite(errorRate) ? errorRate.toFixed(2) : '0.00'}%${health.alert === true ? ' · ⚠️ atenção automática' : ''}`;
++    } else healthEl.textContent = '';
+@@ -199,10 +210,16 @@
+-    const result = await send({ type: 'MSK_DIRECT_AGENT_PREFLIGHT_V1', payload: { lovable_project_id: projectId, repository_url: repositoryUrl } });
++    const [result, metricsResult] = await Promise.all([
++      send({ type: 'MSK_DIRECT_AGENT_PREFLIGHT_V1', payload: { lovable_project_id: projectId, repository_url: repositoryUrl } }),
++      send({ type: 'MSK_DIRECT_AGENT_HEALTH_METRICS_V1', payload: { lovable_project_id: projectId } }).catch(() => null)
++    ]);
+@@ -213,6 +230,7 @@
++      health: metricsResult?.health || null,
+--- v3.4.71/manifest.json
++++ v3.4.72/manifest.json
+@@ -1,8 +1,8 @@
+-  "version": "3.4.71",
+-  "description": "MSK Agente v3.4.71 — transporte resiliente, documentação técnica compactada, Credential Vault e edição atômica.",
++  "version": "3.4.72",
++  "description": "MSK Agente v3.4.72 — finalização com prova independente, checkpoints, skills, saúde 24h e transporte resiliente.",
+--- v3.4.71/README.md
++++ v3.4.72/README.md
+@@ -1,3 +1,14 @@
++## v3.4.72 — Finalização garantida por evidência
++
++- Sucesso visual só aparece após prova independente no `msk-agent-proof`: commit real no GitHub, arquivos alterados, branch contendo o commit e checkpoints de validação.
++- Fluxos por Pull Request usam o `merge_commit_sha` real após merge confirmado.
++- `NO_CHANGES_APPLIED` só vira `completed_no_change` quando uma verificação separada confirma que uma edição visual simples já está satisfeita; tarefas sensíveis nunca usam esse atalho.
++- Checkpoints persistentes registram transições do pipeline sem armazenar comandos ou segredos.
++- Skills são detectadas por catálogo server-side; FAST_EDIT continua limitado e regras sensíveis forçam análise mais rigorosa.
++- O pre-flight mostra saúde das últimas 24h e alerta automático de taxa de erro sem bloquear o cliente apenas por métrica.
++- O caminho de documentação complexa passa por pre-flight no servidor antes da análise.
++- Transporte mutável continua sem retry cego: qualquer perda de resposta é reconciliada pelo mesmo `task_id`.
