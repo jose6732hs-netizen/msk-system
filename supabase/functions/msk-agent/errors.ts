@@ -1,4 +1,5 @@
 import { db } from "./common.ts";
+import { looksLikeDatabaseError, mapDatabaseErrorDescriptor } from "./database-errors.ts";
 
 export type AgentStage =
   | "request"
@@ -49,11 +50,70 @@ export class AgentError extends Error {
 
 const rawMessage = (error: unknown) => error instanceof Error ? error.message : String(error || "Falha inesperada");
 
+function sanitizeValue(value: unknown, depth = 0): unknown {
+  if (depth > 4) return "[truncated]";
+  if (value == null || typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value === "string") return value
+    .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [redacted]")
+    .slice(0, 2400);
+  if (Array.isArray(value)) return value.slice(0, 30).map(item => sanitizeValue(item, depth + 1));
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value as Record<string, unknown>).slice(0, 50)) {
+      if (/(authorization|api.?key|secret|token|password|private.?key|signature|session|ciphertext)/i.test(key)) out[key] = "[redacted]";
+      else out[key] = sanitizeValue(child, depth + 1);
+    }
+    return out;
+  }
+  return String(value).slice(0, 1000);
+}
+
+export function sanitizedContext(context: AgentErrorContext = {}) {
+  return sanitizeValue(context) as AgentErrorContext;
+}
+
+export function logStructured(
+  level: "info" | "warn" | "error",
+  event: string,
+  data: Record<string, unknown> = {},
+) {
+  const entry = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    service: "msk-agent",
+    event,
+    ...sanitizedContext(data),
+  });
+  if (level === "error") console.error(entry);
+  else if (level === "warn") console.warn(entry);
+  else console.log(entry);
+}
+
+export function mapDatabaseError(error: unknown, stage: AgentStage = "request"): AgentError {
+  const mapped = mapDatabaseErrorDescriptor(error);
+  return new AgentError(mapped.code, mapped.message, {
+    stage,
+    httpStatus: mapped.httpStatus,
+    retryable: mapped.retryable,
+    context: mapped.context,
+    cause: error,
+  });
+}
+
 export function mapErrorToAgentError(error: unknown, stage: AgentStage = "unknown"): AgentError {
   if (error instanceof AgentError) {
+    if (error.code === "TASK_PERSISTENCE_FAILED" && error.originalError) {
+      const mapped = mapDatabaseError(error.originalError, stage === "unknown" ? "request" : stage);
+      mapped.context = {
+        ...mapped.context,
+        wrapped_by: "TASK_PERSISTENCE_FAILED",
+      };
+      return mapped;
+    }
     if (error.stage === "unknown" && stage !== "unknown") error.stage = stage;
     return error;
   }
+
+  if (looksLikeDatabaseError(error)) return mapDatabaseError(error, stage === "unknown" ? "request" : stage);
 
   const raw = rawMessage(error);
   const upper = raw.toUpperCase();
@@ -98,26 +158,6 @@ export function mapErrorToAgentError(error: unknown, stage: AgentStage = "unknow
   );
 }
 
-function sanitizeValue(value: unknown, depth = 0): unknown {
-  if (depth > 3) return "[truncated]";
-  if (value == null || typeof value === "number" || typeof value === "boolean") return value;
-  if (typeof value === "string") return value.replace(/Bearer\s+[A-Za-z0-9._~+\/-]+/gi, "Bearer [redacted]").slice(0, 1200);
-  if (Array.isArray(value)) return value.slice(0, 20).map(item => sanitizeValue(item, depth + 1));
-  if (typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [key, child] of Object.entries(value as Record<string, unknown>).slice(0, 30)) {
-      if (/(authorization|api.?key|secret|token|password|private.?key|signature|session)/i.test(key)) out[key] = "[redacted]";
-      else out[key] = sanitizeValue(child, depth + 1);
-    }
-    return out;
-  }
-  return String(value).slice(0, 500);
-}
-
-export function sanitizedContext(context: AgentErrorContext = {}) {
-  return sanitizeValue(context) as AgentErrorContext;
-}
-
 export async function recordAgentError(input: {
   error: unknown;
   stage: AgentStage;
@@ -130,8 +170,32 @@ export async function recordAgentError(input: {
   context?: AgentErrorContext;
 }) {
   const mapped = mapErrorToAgentError(input.error, input.stage);
-  const stack = input.error instanceof Error ? String(input.error.stack || "").slice(0, 12000) : "";
-  const context = sanitizedContext({ ...mapped.context, ...(input.context || {}) });
+  const stack = input.error instanceof Error
+    ? String(input.error.stack || "").slice(0, 12000)
+    : input.error && typeof input.error === "object"
+      ? String(new Error(rawMessage((input.error as any)?.message || input.error)).stack || "").slice(0, 12000)
+      : "";
+  const originalError = input.error instanceof AgentError ? input.error.originalError : input.error;
+  const context = sanitizedContext({
+    ...mapped.context,
+    ...(input.context || {}),
+    original_error: originalError || undefined,
+  });
+
+  logStructured("error", "agent_failure", {
+    task_id: input.taskId || null,
+    user_id: input.userId || null,
+    lovable_project_id: input.projectId || null,
+    repository: input.repository || null,
+    branch_name: input.branchName || null,
+    stage: mapped.stage,
+    code: mapped.code,
+    retryable: mapped.retryable,
+    attempt: Math.max(0, Number(input.attempt || 0)),
+    context,
+    stack: stack || null,
+  });
+
   const { data, error } = await db.from("msk_agent_errors").insert({
     task_id: input.taskId || null,
     user_id: input.userId || null,
@@ -146,7 +210,16 @@ export async function recordAgentError(input: {
     attempt: Math.max(0, Number(input.attempt || 0)),
     context,
   }).select("id").maybeSingle();
-  if (error) console.error("MSK error log failed", error.message);
+
+  if (error) {
+    const fallback = mapDatabaseErrorDescriptor(error);
+    logStructured("error", "agent_error_log_persistence_failed", {
+      mapped_code: fallback.code,
+      database: fallback.context,
+      original_agent_code: mapped.code,
+      task_id: input.taskId || null,
+    });
+  }
   return { mapped, errorId: String(data?.id || "") };
 }
 
@@ -163,5 +236,5 @@ export async function acquireRepoLock(repoBranch: string, taskId: string, userId
 export async function releaseRepoLock(repoBranch: string, taskId: string) {
   if (!repoBranch || !taskId) return;
   const { error } = await db.from("msk_agent_locks").delete().eq("repo_branch", repoBranch).eq("task_id", taskId);
-  if (error) console.error("MSK lock release failed", error.message);
+  if (error) logStructured("warn", "repo_lock_release_failed", { repo_branch: repoBranch, task_id: taskId, error });
 }
