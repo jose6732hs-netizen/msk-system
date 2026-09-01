@@ -17,7 +17,7 @@ Deno.serve(async (req: Request) => {
   if (!base) return json({ ok: false, code: "MSK_UNAVAILABLE", error: "MSK indisponível." }, 503);
 
   const url = new URL(req.url);
-  const body = await req.text();
+  let body = await req.text();
   const headers = new Headers();
   for (const name of [
     "authorization", "apikey", "content-type", "x-msk-session", "x-msk-license",
@@ -33,6 +33,31 @@ Deno.serve(async (req: Request) => {
   if (!headers.has("content-type")) headers.set("content-type", "application/json");
 
   try {
+    if (url.searchParams.get("action") === "run") {
+      const preflight = await fetch(`${base}/functions/v1/msk-agent-preflight?action=preflight`, {
+        method: "POST",
+        headers,
+        body,
+      });
+      const preflightText = await preflight.text();
+      let preflightData: any = {};
+      try { preflightData = preflightText ? JSON.parse(preflightText) : {}; } catch {}
+      if (!preflight.ok || preflightData?.ready !== true) {
+        return new Response(preflightText || JSON.stringify({ ready: false, blockers: [{ code: "PREFLIGHT_FAILED", message: "O pre-flight não autorizou o envio." }], warnings: [] }), {
+          status: preflight.status || 409,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      if (preflightData?.context?.force_pr === true) {
+        try {
+          const parsed = JSON.parse(body || "{}");
+          parsed.direct_commit = false;
+          parsed.preflight_force_pr = true;
+          body = JSON.stringify(parsed);
+        } catch {}
+      }
+    }
+
     const upstream = await fetch(`${base}/functions/v1/msk-agent?${url.searchParams.toString()}`, {
       method: "POST",
       headers,
@@ -48,7 +73,7 @@ Deno.serve(async (req: Request) => {
       ok: false,
       code: "MSK_FAST_PROXY_ERROR",
       retryable: true,
-      error: "A rota rápida ficou temporariamente indisponível; tente novamente.",
+      error: "A rota de execução ficou temporariamente indisponível; tente novamente.",
     }, 503);
   }
 });
