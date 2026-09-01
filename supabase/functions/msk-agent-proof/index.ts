@@ -78,8 +78,10 @@ async function verifyProof(req, body){
   if(!commitVerified||!semantic) return json({ok:false,code:"COMPLETION_PROOF_FAILED",task_id:taskId,repository,branch,commit_sha:fullSha||candidate,files_changed_count:files.length,validation,error:"A conclusão ainda não possui todas as provas exigidas."},409);
   const commitUrl=String(commit?.html_url||`https://github.com/${repository}/commit/${fullSha}`);
   await db.from("msk_task_proofs").upsert({task_id:taskId,user_id:user.id,lovable_project_id:projectId,repository,branch_name:branch,commit_sha:fullSha,commit_url:commitUrl,files_changed_count:files.length,files,validation,commit_verified:true,branch_contains_commit:true,verified_at:new Date().toISOString(),updated_at:new Date().toISOString()},{onConflict:"task_id"});
-  await db.from("msk_tasks").update({status:"verification_pending",error:null,error_code:null,error_stage:null,updated_at:new Date().toISOString()}).eq("id",taskId).eq("user_id",user.id);
-  return json({ok:true,proof_verified:true,execution_verified:true,commit_verified:true,ui_ack_required:true,status:"verification_pending",task_id:taskId,repository,branch,commit_sha:fullSha,commit_url:commitUrl,files_changed_count:files.length,files,validation,summary:task.summary||"Alteração confirmada."});
+  const uiAckCapable=body?.ui_ack_capable===true;
+  const nextStatus=uiAckCapable?"verification_pending":"completed";
+  await db.from("msk_tasks").update({status:nextStatus,error:null,error_code:null,error_stage:null,updated_at:new Date().toISOString()}).eq("id",taskId).eq("user_id",user.id);
+  return json({ok:true,proof_verified:true,execution_verified:true,commit_verified:true,ui_ack_required:uiAckCapable,status:nextStatus,task_id:taskId,repository,branch,commit_sha:fullSha,commit_url:commitUrl,files_changed_count:files.length,files,validation,summary:task.summary||"Alteração confirmada."});
 }
 
 const decodeContent=value=>{try{return new TextDecoder().decode(Uint8Array.from(atob(String(value||"").replace(/\n/g,"")),c=>c.charCodeAt(0)));}catch{return "";}};
