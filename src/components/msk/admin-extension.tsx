@@ -39,6 +39,7 @@ export function AdminExtensionTab() {
       {product === "extension" ? (
         <div className="space-y-5">
           <AdminExtensionSecurity />
+          <AdminExtensionErrors />
           <AdminExtensionMessages />
           <AdminExtensionCore />
         </div>
