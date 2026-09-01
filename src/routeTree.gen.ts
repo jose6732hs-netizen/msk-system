@@ -35,18 +35,26 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent/chat'
 import { Route as ApiExtensionControlRouteImport } from './routes/api/extension/control'
+import { Route as ApiExtensionDeviceAuthorizeRouteImport } from './routes/api/extension/device-authorize'
 import { Route as ApiExtensionDownloadRouteImport } from './routes/api/extension/download'
 import { Route as ApiExtensionErrorsRouteImport } from './routes/api/extension/errors'
 import { Route as ApiExtensionEventsRouteImport } from './routes/api/extension/events'
 import { Route as ApiExtensionGithubDownloadRouteImport } from './routes/api/extension/github-download'
+import { Route as ApiExtensionGithubSessionRouteImport } from './routes/api/extension/github-session'
+import { Route as ApiExtensionGlobalTrainingRouteImport } from './routes/api/extension/global-training'
 import { Route as ApiExtensionHeartbeatRouteImport } from './routes/api/extension/heartbeat'
 import { Route as ApiExtensionIntegrityRouteImport } from './routes/api/extension/integrity'
+import { Route as ApiExtensionLicenseIdentityRouteImport } from './routes/api/extension/license-identity'
 import { Route as ApiExtensionSessionRouteImport } from './routes/api/extension/session'
 import { Route as ApiExtensionVersionRouteImport } from './routes/api/extension/version'
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
+import { Route as ApiPublicPixSelftestRouteImport } from './routes/api/public/pix-selftest'
 import { Route as ApiPublicPresenceRouteImport } from './routes/api/public/presence'
+import { Route as ApiSecurityChallengeRouteImport } from './routes/api/security/challenge'
+import { Route as ApiSecurityHandshakeRouteImport } from './routes/api/security/handshake'
+import { Route as ApiSecurityHeartbeatRouteImport } from './routes/api/security/heartbeat'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
 import { Route as ApiPublicCmsUploadRouteImport } from './routes/api/public/cms.upload'
 import { Route as ApiPublicCronReconcilePaymentsRouteImport } from './routes/api/public/cron/reconcile-payments'
@@ -206,6 +214,12 @@ const ApiExtensionControlRoute = ApiExtensionControlRouteImport.update({
   path: '/api/extension/control',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExtensionDeviceAuthorizeRoute =
+  ApiExtensionDeviceAuthorizeRouteImport.update({
+    id: '/api/extension/device-authorize',
+    path: '/api/extension/device-authorize',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiExtensionDownloadRoute = ApiExtensionDownloadRouteImport.update({
   id: '/api/extension/download',
   path: '/api/extension/download',
@@ -227,6 +241,18 @@ const ApiExtensionGithubDownloadRoute =
     path: '/api/extension/github-download',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiExtensionGithubSessionRoute =
+  ApiExtensionGithubSessionRouteImport.update({
+    id: '/api/extension/github-session',
+    path: '/api/extension/github-session',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiExtensionGlobalTrainingRoute =
+  ApiExtensionGlobalTrainingRouteImport.update({
+    id: '/api/extension/global-training',
+    path: '/api/extension/global-training',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiExtensionHeartbeatRoute = ApiExtensionHeartbeatRouteImport.update({
   id: '/api/extension/heartbeat',
   path: '/api/extension/heartbeat',
@@ -237,6 +263,12 @@ const ApiExtensionIntegrityRoute = ApiExtensionIntegrityRouteImport.update({
   path: '/api/extension/integrity',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExtensionLicenseIdentityRoute =
+  ApiExtensionLicenseIdentityRouteImport.update({
+    id: '/api/extension/license-identity',
+    path: '/api/extension/license-identity',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiExtensionSessionRoute = ApiExtensionSessionRouteImport.update({
   id: '/api/extension/session',
   path: '/api/extension/session',
@@ -262,9 +294,29 @@ const ApiPublicOpenapiRoute = ApiPublicOpenapiRouteImport.update({
   path: '/api/public/openapi',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPixSelftestRoute = ApiPublicPixSelftestRouteImport.update({
+  id: '/api/public/pix-selftest',
+  path: '/api/public/pix-selftest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPresenceRoute = ApiPublicPresenceRouteImport.update({
   id: '/api/public/presence',
   path: '/api/public/presence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSecurityChallengeRoute = ApiSecurityChallengeRouteImport.update({
+  id: '/api/security/challenge',
+  path: '/api/security/challenge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSecurityHandshakeRoute = ApiSecurityHandshakeRouteImport.update({
+  id: '/api/security/handshake',
+  path: '/api/security/handshake',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSecurityHeartbeatRoute = ApiSecurityHeartbeatRouteImport.update({
+  id: '/api/security/heartbeat',
+  path: '/api/security/heartbeat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExtRuntimeManifestRoute = ExtRuntimeManifestRouteImport.update({
@@ -439,18 +491,26 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/device-authorize': typeof ApiExtensionDeviceAuthorizeRoute
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
   '/api/extension/events': typeof ApiExtensionEventsRoute
   '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
+  '/api/extension/github-session': typeof ApiExtensionGithubSessionRoute
+  '/api/extension/global-training': typeof ApiExtensionGlobalTrainingRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
   '/api/extension/integrity': typeof ApiExtensionIntegrityRoute
+  '/api/extension/license-identity': typeof ApiExtensionLicenseIdentityRoute
   '/api/extension/session': typeof ApiExtensionSessionRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
+  '/api/security/challenge': typeof ApiSecurityChallengeRoute
+  '/api/security/handshake': typeof ApiSecurityHandshakeRoute
+  '/api/security/heartbeat': typeof ApiSecurityHeartbeatRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
@@ -503,18 +563,26 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/device-authorize': typeof ApiExtensionDeviceAuthorizeRoute
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
   '/api/extension/events': typeof ApiExtensionEventsRoute
   '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
+  '/api/extension/github-session': typeof ApiExtensionGithubSessionRoute
+  '/api/extension/global-training': typeof ApiExtensionGlobalTrainingRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
   '/api/extension/integrity': typeof ApiExtensionIntegrityRoute
+  '/api/extension/license-identity': typeof ApiExtensionLicenseIdentityRoute
   '/api/extension/session': typeof ApiExtensionSessionRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
+  '/api/security/challenge': typeof ApiSecurityChallengeRoute
+  '/api/security/handshake': typeof ApiSecurityHandshakeRoute
+  '/api/security/heartbeat': typeof ApiSecurityHeartbeatRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
@@ -569,18 +637,26 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/device-authorize': typeof ApiExtensionDeviceAuthorizeRoute
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
   '/api/extension/events': typeof ApiExtensionEventsRoute
   '/api/extension/github-download': typeof ApiExtensionGithubDownloadRoute
+  '/api/extension/github-session': typeof ApiExtensionGithubSessionRoute
+  '/api/extension/global-training': typeof ApiExtensionGlobalTrainingRoute
   '/api/extension/heartbeat': typeof ApiExtensionHeartbeatRoute
   '/api/extension/integrity': typeof ApiExtensionIntegrityRoute
+  '/api/extension/license-identity': typeof ApiExtensionLicenseIdentityRoute
   '/api/extension/session': typeof ApiExtensionSessionRoute
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
+  '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
+  '/api/security/challenge': typeof ApiSecurityChallengeRoute
+  '/api/security/handshake': typeof ApiSecurityHandshakeRoute
+  '/api/security/heartbeat': typeof ApiSecurityHeartbeatRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
@@ -635,18 +711,26 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
     | '/api/extension/control'
+    | '/api/extension/device-authorize'
     | '/api/extension/download'
     | '/api/extension/errors'
     | '/api/extension/events'
     | '/api/extension/github-download'
+    | '/api/extension/github-session'
+    | '/api/extension/global-training'
     | '/api/extension/heartbeat'
     | '/api/extension/integrity'
+    | '/api/extension/license-identity'
     | '/api/extension/session'
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
+    | '/api/public/pix-selftest'
     | '/api/public/presence'
+    | '/api/security/challenge'
+    | '/api/security/handshake'
+    | '/api/security/heartbeat'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
@@ -699,18 +783,26 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
     | '/api/extension/control'
+    | '/api/extension/device-authorize'
     | '/api/extension/download'
     | '/api/extension/errors'
     | '/api/extension/events'
     | '/api/extension/github-download'
+    | '/api/extension/github-session'
+    | '/api/extension/global-training'
     | '/api/extension/heartbeat'
     | '/api/extension/integrity'
+    | '/api/extension/license-identity'
     | '/api/extension/session'
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
+    | '/api/public/pix-selftest'
     | '/api/public/presence'
+    | '/api/security/challenge'
+    | '/api/security/handshake'
+    | '/api/security/heartbeat'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
@@ -764,18 +856,26 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
     | '/api/extension/control'
+    | '/api/extension/device-authorize'
     | '/api/extension/download'
     | '/api/extension/errors'
     | '/api/extension/events'
     | '/api/extension/github-download'
+    | '/api/extension/github-session'
+    | '/api/extension/global-training'
     | '/api/extension/heartbeat'
     | '/api/extension/integrity'
+    | '/api/extension/license-identity'
     | '/api/extension/session'
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/openapi'
+    | '/api/public/pix-selftest'
     | '/api/public/presence'
+    | '/api/security/challenge'
+    | '/api/security/handshake'
+    | '/api/security/heartbeat'
     | '/ext/runtime/manifest'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
@@ -825,18 +925,26 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
   ApiExtensionControlRoute: typeof ApiExtensionControlRoute
+  ApiExtensionDeviceAuthorizeRoute: typeof ApiExtensionDeviceAuthorizeRoute
   ApiExtensionDownloadRoute: typeof ApiExtensionDownloadRoute
   ApiExtensionErrorsRoute: typeof ApiExtensionErrorsRoute
   ApiExtensionEventsRoute: typeof ApiExtensionEventsRoute
   ApiExtensionGithubDownloadRoute: typeof ApiExtensionGithubDownloadRoute
+  ApiExtensionGithubSessionRoute: typeof ApiExtensionGithubSessionRoute
+  ApiExtensionGlobalTrainingRoute: typeof ApiExtensionGlobalTrainingRoute
   ApiExtensionHeartbeatRoute: typeof ApiExtensionHeartbeatRoute
   ApiExtensionIntegrityRoute: typeof ApiExtensionIntegrityRoute
+  ApiExtensionLicenseIdentityRoute: typeof ApiExtensionLicenseIdentityRoute
   ApiExtensionSessionRoute: typeof ApiExtensionSessionRoute
   ApiExtensionVersionRoute: typeof ApiExtensionVersionRoute
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
+  ApiPublicPixSelftestRoute: typeof ApiPublicPixSelftestRoute
   ApiPublicPresenceRoute: typeof ApiPublicPresenceRoute
+  ApiSecurityChallengeRoute: typeof ApiSecurityChallengeRoute
+  ApiSecurityHandshakeRoute: typeof ApiSecurityHandshakeRoute
+  ApiSecurityHeartbeatRoute: typeof ApiSecurityHeartbeatRoute
   ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
   ApiPublicCronReconcilePaymentsRoute: typeof ApiPublicCronReconcilePaymentsRoute
   ApiPublicCronRenewLicensesRoute: typeof ApiPublicCronRenewLicensesRoute
@@ -1047,6 +1155,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtensionControlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/extension/device-authorize': {
+      id: '/api/extension/device-authorize'
+      path: '/api/extension/device-authorize'
+      fullPath: '/api/extension/device-authorize'
+      preLoaderRoute: typeof ApiExtensionDeviceAuthorizeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/extension/download': {
       id: '/api/extension/download'
       path: '/api/extension/download'
@@ -1075,6 +1190,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExtensionGithubDownloadRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/extension/github-session': {
+      id: '/api/extension/github-session'
+      path: '/api/extension/github-session'
+      fullPath: '/api/extension/github-session'
+      preLoaderRoute: typeof ApiExtensionGithubSessionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/global-training': {
+      id: '/api/extension/global-training'
+      path: '/api/extension/global-training'
+      fullPath: '/api/extension/global-training'
+      preLoaderRoute: typeof ApiExtensionGlobalTrainingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/extension/heartbeat': {
       id: '/api/extension/heartbeat'
       path: '/api/extension/heartbeat'
@@ -1087,6 +1216,13 @@ declare module '@tanstack/react-router' {
       path: '/api/extension/integrity'
       fullPath: '/api/extension/integrity'
       preLoaderRoute: typeof ApiExtensionIntegrityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/license-identity': {
+      id: '/api/extension/license-identity'
+      path: '/api/extension/license-identity'
+      fullPath: '/api/extension/license-identity'
+      preLoaderRoute: typeof ApiExtensionLicenseIdentityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extension/session': {
@@ -1124,11 +1260,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicOpenapiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/pix-selftest': {
+      id: '/api/public/pix-selftest'
+      path: '/api/public/pix-selftest'
+      fullPath: '/api/public/pix-selftest'
+      preLoaderRoute: typeof ApiPublicPixSelftestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/presence': {
       id: '/api/public/presence'
       path: '/api/public/presence'
       fullPath: '/api/public/presence'
       preLoaderRoute: typeof ApiPublicPresenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/security/challenge': {
+      id: '/api/security/challenge'
+      path: '/api/security/challenge'
+      fullPath: '/api/security/challenge'
+      preLoaderRoute: typeof ApiSecurityChallengeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/security/handshake': {
+      id: '/api/security/handshake'
+      path: '/api/security/handshake'
+      fullPath: '/api/security/handshake'
+      preLoaderRoute: typeof ApiSecurityHandshakeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/security/heartbeat': {
+      id: '/api/security/heartbeat'
+      path: '/api/security/heartbeat'
+      fullPath: '/api/security/heartbeat'
+      preLoaderRoute: typeof ApiSecurityHeartbeatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ext/runtime/manifest': {
@@ -1363,18 +1527,26 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
   ApiExtensionControlRoute: ApiExtensionControlRoute,
+  ApiExtensionDeviceAuthorizeRoute: ApiExtensionDeviceAuthorizeRoute,
   ApiExtensionDownloadRoute: ApiExtensionDownloadRoute,
   ApiExtensionErrorsRoute: ApiExtensionErrorsRoute,
   ApiExtensionEventsRoute: ApiExtensionEventsRoute,
   ApiExtensionGithubDownloadRoute: ApiExtensionGithubDownloadRoute,
+  ApiExtensionGithubSessionRoute: ApiExtensionGithubSessionRoute,
+  ApiExtensionGlobalTrainingRoute: ApiExtensionGlobalTrainingRoute,
   ApiExtensionHeartbeatRoute: ApiExtensionHeartbeatRoute,
   ApiExtensionIntegrityRoute: ApiExtensionIntegrityRoute,
+  ApiExtensionLicenseIdentityRoute: ApiExtensionLicenseIdentityRoute,
   ApiExtensionSessionRoute: ApiExtensionSessionRoute,
   ApiExtensionVersionRoute: ApiExtensionVersionRoute,
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
+  ApiPublicPixSelftestRoute: ApiPublicPixSelftestRoute,
   ApiPublicPresenceRoute: ApiPublicPresenceRoute,
+  ApiSecurityChallengeRoute: ApiSecurityChallengeRoute,
+  ApiSecurityHandshakeRoute: ApiSecurityHandshakeRoute,
+  ApiSecurityHeartbeatRoute: ApiSecurityHeartbeatRoute,
   ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
   ApiPublicCronReconcilePaymentsRoute: ApiPublicCronReconcilePaymentsRoute,
   ApiPublicCronRenewLicensesRoute: ApiPublicCronRenewLicensesRoute,

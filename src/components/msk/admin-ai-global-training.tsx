@@ -280,7 +280,7 @@ export function AdminAiGlobalTraining() {
           <div className="flex items-center gap-2"><History className="h-4 w-4 text-primary" /><span className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">Treinamentos e versões</span></div>
           <div className="flex flex-wrap gap-1.5">
             {[["all","Todos"],["active","Ativos"],["draft","Rascunhos"],["disabled","Desativados"],["archived","Arquivados"]].map(([value,label]) => (
-              <button key={value} type="button" onClick={() => setFilter(value)} className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-widest transition ${filter === value ? "border-primary/50 bg-primary/10 text-primary" : "border-white/10 text-muted-foreground hover:text-foreground"}`}>{label}</button>
+              <button key={value} type="button" onClick={() => setFilter(value as string)} className={`rounded-full border px-3 py-1 text-[0.58rem] font-black uppercase tracking-widest transition ${filter === value ? "border-primary/50 bg-primary/10 text-primary" : "border-white/10 text-muted-foreground hover:text-foreground"}`}>{label}</button>
             ))}
           </div>
         </div>
