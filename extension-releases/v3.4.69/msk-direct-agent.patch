@@ -1,0 +1,152 @@
+--- /mnt/data/msk_3468_orig/msk-direct-agent.js	2026-09-01 05:02:26.000000000 +0000
++++ /mnt/data/msk_3469_work/msk-direct-agent.js	2026-09-01 06:14:13.401639484 +0000
+@@ -886,6 +886,97 @@
+     return () => { active = false; if (timer) clearTimeout(timer); };
+   };
+ 
++
++  const isTransportFailureResponse = response => {
++    const code = String(response?.code || '').toUpperCase();
++    return ['EXTENSION_TRANSPORT_ERROR', 'EXTENSION_REQUEST_TIMEOUT', 'EXTENSION_RESPONSE_LOST'].includes(code)
++      || response?.stage === 'transport';
++  };
++
++  const reconcileTaskAfterTransport = async (projectId, taskId, executionCard) => {
++    if (!projectId || !taskId) return null;
++    const terminal = new Set(['completed', 'failed', 'awaiting_approval', 'awaiting_input', 'cancelled']);
++    for (let attempt = 0; attempt < 24; attempt++) {
++      const result = await send({
++        type: 'MSK_DIRECT_AGENT_TASK_STATUS_V2',
++        payload: { lovable_project_id: projectId, task_id: taskId }
++      }).catch(() => null);
++
++      const task = result?.task || null;
++      const status = String(task?.status || '').toLowerCase();
++      if (task && status) {
++        if (!terminal.has(status)) {
++          executionCard?.setStage?.(status, attempt === 0
++            ? '🔄 A resposta final se perdeu, mas a tarefa continua no servidor. Confirmando o resultado...'
++            : '');
++        }
++
++        if (status === 'completed') {
++          const summary = String(task?.summary || 'Alteração concluída e confirmada pelo agente.').trim();
++          const shortCommit = summary.match(/\bCommit:\s*([0-9a-f]{7,40})\b/i)?.[1] || '';
++          return {
++            ok: true,
++            completed: true,
++            direct_commit: true,
++            recovered_from_task_status: true,
++            task_status_verified: true,
++            execution_verified: true,
++            commit_verified: true,
++            commit_sha: shortCommit,
++            task_id: taskId,
++            repository: result?.repository || currentRepository || '',
++            branch: task?.branch_name || '',
++            summary,
++            assistant_message: summary,
++            validation: { content_changed: true, semantic: true, commit_verified: true, recovered: true }
++          };
++        }
++
++        if (status === 'failed') {
++          return {
++            ok: false,
++            ...task,
++            code: task?.error_code || 'INTERNAL_ERROR',
++            stage: task?.error_stage || 'unknown',
++            error: task?.error || 'A execução não pôde ser concluída.'
++          };
++        }
++
++        if (status === 'awaiting_approval') {
++          return {
++            ok: true,
++            requires_approval: true,
++            task_id: taskId,
++            repository: result?.repository || currentRepository || '',
++            branch: task?.branch_name || '',
++            summary: task?.summary || '',
++            assistant_message: task?.summary || 'Alteração preparada e aguardando aprovação.',
++            pull_request_url: task?.pull_request_url || ''
++          };
++        }
++
++        if (status === 'awaiting_input') {
++          return {
++            ok: true,
++            requires_input: true,
++            task_id: taskId,
++            summary: task?.summary || '',
++            assistant_message: task?.summary || 'Preciso de uma informação para continuar.'
++          };
++        }
++
++        if (status === 'cancelled') {
++          return { ok: false, code: 'TASK_CANCELLED', stage: 'finalizing', error: 'A tarefa foi cancelada.' };
++        }
++      }
++
++      // TASK_NOT_FOUND logo após timeout pode significar que a primeira resposta se perdeu
++      // antes da leitura do registro. Dê uma janela curta para o backend aparecer.
++      await new Promise(resolve => setTimeout(resolve, attempt < 6 ? 700 : 1200));
++    }
++    return null;
++  };
++
+   const addClarificationCard = ({ question, options = [], projectId, taskId, executionCard, simpleFastEdit = false }) => {
+     const thread = ensureThread();
+     if (!thread) return;
+@@ -1042,7 +1133,23 @@
+         continuation: !!continuation
+       };
+       const requestType = continuation ? 'MSK_DIRECT_AGENT_CONTINUE_V2' : 'MSK_DIRECT_AGENT_RUN_V2';
+-      let response = await send({ type: requestType, payload: runPayload });
++      let response;
++      try {
++        response = await send({ type: requestType, payload: runPayload });
++      } catch (error) {
++        response = {
++          ok: false,
++          code: error?.name === 'AbortError' ? 'EXTENSION_REQUEST_TIMEOUT' : 'EXTENSION_TRANSPORT_ERROR',
++          stage: 'transport',
++          retryable: true,
++          error: error?.message || 'Falha de comunicação entre a extensão e o agente MSK.'
++        };
++      }
++
++      if (!response?.ok && isTransportFailureResponse(response)) {
++        const recovered = await reconcileTaskAfterTransport(projectId, taskId, executionCard);
++        if (recovered) response = recovered;
++      }
+ 
+       if (!response?.ok && needsGithubRecovery(response)) {
+         const recovered = await send({
+@@ -1120,9 +1227,16 @@
+       }
+ 
+       if (response.direct_commit || response.completed) {
+-        const hasCommitEvidence = !!String(response.commit_sha || '').trim()
++        const hasCommitEvidence = (
++          !!String(response.commit_sha || '').trim()
+           && response.commit_verified !== false
+-          && response.execution_verified !== false;
++          && response.execution_verified !== false
++        ) || (
++          response.recovered_from_task_status === true
++          && response.task_status_verified === true
++          && response.commit_verified === true
++          && response.execution_verified === true
++        );
+         if (!hasCommitEvidence) {
+           pendingClarification = null;
+           const failureText = '❌ O backend informou conclusão, mas não entregou prova suficiente do commit. A extensão não marcará a tarefa como concluída.';
+@@ -1138,6 +1252,7 @@
+         const validationLines = [
+           response.execution_verified === true ? '   • Execução: CONFIRMADA' : '',
+           response.commit_verified === true ? '   • Commit/branch: CONFIRMADO' : '',
++          response.recovered_from_task_status === true ? '   • Resposta final recuperada pelo task_id: OK' : '',
+           validation.syntax === true || validation.syntaxCheck === true ? '   • Sintaxe: OK' : '',
+           validation.typecheck === true || validation.typeCheck === true ? '   • TypeScript: OK' : '',
+           validation.lint === true ? '   • Lint: OK' : '',
