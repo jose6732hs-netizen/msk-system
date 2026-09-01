@@ -245,7 +245,7 @@ export function AdminExtensionTab() {
         <div className="mb-5">
           <h3 className="text-sm font-semibold">Publicar nova versão</h3>
           <p className="mt-1 text-xs text-muted-foreground">
-            O nome, o canal e a versão informados aqui passam a ser a fonte do card acima.
+            O nome, o canal e a versão informados aqui passam a ser a fonte dos cards abaixo.
           </p>
         </div>
 
