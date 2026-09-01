@@ -288,7 +288,7 @@ export function AdminExtensionErrors() {
                   <span
                     className={cn(
                       "rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-widest",
-                      severityStyle[row.severity] ?? severityStyle.info,
+                      severityStyle[row.severity] ?? severityStyle["info"],
                     )}
                   >
                     {row.severity}
