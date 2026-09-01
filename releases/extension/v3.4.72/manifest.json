@@ -1,0 +1,14 @@
+{
+  "version": "3.4.72",
+  "description": "MSK Agente v3.4.72 — finalização com prova independente, checkpoints, skills, saúde 24h e transporte resiliente.",
+  "integrity_root": "d434bdae6d6695be5254416bf24a5f58700225779802647e2010ba4af22d7caf",
+  "zip_sha256": "af4d30f97917faa243608a72874ca0cbab4747a620d350f66299f5b61ffcb385",
+  "protected_files": 91,
+  "backend": {
+    "msk-agent": "v30 ACTIVE",
+    "msk-agent-public": "v12 ACTIVE",
+    "msk-agent-proof": "v2 ACTIVE",
+    "msk-agent-preflight": "v4 ACTIVE",
+    "msk-agent-vault": "v1 ACTIVE"
+  }
+}
