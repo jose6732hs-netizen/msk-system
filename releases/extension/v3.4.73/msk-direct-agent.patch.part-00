@@ -1,0 +1,130 @@
+--- /mnt/data/msk_3472/msk-direct-agent.js	2026-09-01 07:25:32.423227729 +0000
++++ /mnt/data/msk_3473/msk-direct-agent.js	2026-09-01 07:46:16.342199179 +0000
+@@ -165,18 +165,44 @@
+   const ensureThread = () => {
+     const root = chatRoot();
+     if (!root) return null;
++    const composer = root.querySelector('.msk-input')?.closest('form, .msk-input-wrap, .msk-compose, .msk-footer')
++      || root.querySelector(':scope > .msk-footer, :scope > form, :scope > .msk-compose');
+     let thread = root.querySelector(':scope > .msk-direct-thread');
+     if (!thread) {
+       thread = document.createElement('section');
+       thread.className = 'msk-direct-thread';
+       thread.setAttribute('aria-live', 'polite');
+-      const firstInput = root.querySelector('.msk-input')?.closest('form, .msk-input-wrap, .msk-compose, .msk-footer');
+-      if (firstInput?.parentElement === root) root.insertBefore(thread, firstInput);
+-      else root.appendChild(thread);
+     }
++    // O histórico MSK fica SEMPRE imediatamente acima do composer. Assim a
++    // mensagem mais recente nunca aparece perdida no topo do painel.
++    if (composer?.parentElement === root) {
++      if (thread.parentElement !== root || thread.nextElementSibling !== composer) root.insertBefore(thread, composer);
++    } else if (thread.parentElement !== root) root.appendChild(thread);
+     return thread;
+   };
+ 
++  const refreshLovablePreview = async () => {
++    const candidates = [...document.querySelectorAll('button,[role="button"]')].filter(button => {
++      if (button.closest('#msk-root')) return false;
++      const text = `${button.textContent || ''} ${button.getAttribute('aria-label') || ''} ${button.getAttribute('title') || ''}`.replace(/\s+/g, ' ').trim();
++      return /(refresh|reload|recarregar|atualizar).{0,35}(preview|pr[eé]via)|(preview|pr[eé]via).{0,35}(refresh|reload|recarregar|atualizar)/i.test(text);
++    });
++    if (candidates[0]) { candidates[0].click(); return { ok: true, method: 'lovable-button' }; }
++    const frame = [...document.querySelectorAll('iframe')].find(node => {
++      if (node.closest('#msk-root')) return false;
++      const rect = node.getBoundingClientRect();
++      return rect.width > 180 && rect.height > 120 && !!String(node.src || '').trim();
++    });
++    if (frame) {
++      const src = frame.src;
++      frame.src = 'about:blank';
++      await new Promise(resolve => setTimeout(resolve, 80));
++      frame.src = src;
++      return { ok: true, method: 'iframe-reload' };
++    }
++    return { ok: false, error: 'Não encontrei o preview aberto nesta tela do Lovable.' };
++  };
++
+   const addMessage = (text, state = 'assistant', options = {}) => {
+     const thread = ensureThread();
+     const value = sanitizeClientVisibleText(String(text || '').trim());
+@@ -246,6 +272,21 @@
+         if (opening) rootScroll(thread);
+       });
+       actions.appendChild(toggle);
++      if (options.refreshPreview === true) {
++        const refresh = document.createElement('button');
++        refresh.type = 'button';
++        refresh.className = 'msk-direct-card-toggle msk-direct-preview-refresh';
++        refresh.textContent = '↻ Atualizar Preview';
++        refresh.addEventListener('click', async () => {
++          const previous = refresh.textContent;
++          refresh.disabled = true;
++          refresh.textContent = '↻ Atualizando…';
++          const result = await refreshLovablePreview().catch(() => ({ ok: false }));
++          refresh.textContent = result?.ok ? '✓ Preview atualizado' : '⚠ Preview não encontrado';
++          setTimeout(() => { refresh.disabled = false; refresh.textContent = previous; }, 2200);
++        });
++        actions.appendChild(refresh);
++      }
+       row.append(head);
+       if (progressBlock) row.append(progressBlock);
+       row.append(preview, actions, details);
+@@ -256,7 +297,7 @@
+       row.append(head, content);
+     }
+     thread.appendChild(row);
+-    try { thread.scrollTop = thread.scrollHeight; rootScroll(thread); } catch {}
++    try { thread.scrollTop = thread.scrollHeight; rootScroll(thread); setTimeout(() => rootScroll(thread), 40); } catch {}
+ 
+     if (options.persist && options.projectId && ['user', 'assistant'].includes(state)) {
+       const meta = options.card ? {
+@@ -267,10 +308,12 @@
+         open_label: options.openLabel || '',
+         close_label: options.closeLabel || '',
+         ...(Array.isArray(options.progressSteps) ? { progress_steps: options.progressSteps.map(String) } : {}),
++        ...(options.refreshPreview === true ? { refresh_preview: true } : {}),
+         ...(options.historyContent ? { history_content: String(options.historyContent) } : {})
+       } : (options.historyContent ? { history_content: String(options.historyContent) } : {});
+       remember(options.projectId, state, value, meta).catch(() => {});
+     }
++    return row;
+   };
+ 
+   const EXECUTION_STEPS = [
+@@ -429,7 +472,20 @@
+ 
+   const rootScroll = node => {
+     const root = chatRoot();
+-    if (root && root !== node) root.scrollTop = root.scrollHeight;
++    const thread = node?.classList?.contains('msk-direct-thread') ? node : ensureThread();
++    try { if (thread) thread.scrollTop = thread.scrollHeight; } catch {}
++    let cursor = root;
++    for (let depth = 0; cursor && depth < 5; depth++, cursor = cursor.parentElement) {
++      try { if (cursor.scrollHeight > cursor.clientHeight + 8) cursor.scrollTop = cursor.scrollHeight; } catch {}
++    }
++    requestAnimationFrame(() => {
++      try {
++        const liveRoot = chatRoot();
++        if (liveRoot) liveRoot.scrollTop = liveRoot.scrollHeight;
++        const input = liveRoot?.querySelector('.msk-input');
++        input?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
++      } catch {}
++    });
+   };
+ 
+   const injectStyle = () => {
+@@ -445,9 +501,24 @@
+       #msk-root .msk-connect.msk-gpt,
+       #msk-root .msk-connect.msk-grok{display:none!important}
+       #msk-root .msk-quick > .msk-direct-chat-wrap,
+-      #msk-root .msk-quick > .msk-direct-github-wrap{display:flex!important}
++      #msk-root .msk-quick > .msk-direct-github-wrap,
++      #msk-root .msk-quick > .msk-direct-db-wrap{display:flex!important}
+       #msk-root .msk-direct-github-wrap > *:not(.msk-direct-github):not(.msk-connect-caption){display:none!important}
+       #msk-root .msk-direct-github{position:relative!important;display:grid!important;place-items:center!important;width:54px!important;height:54px!important;min-width:54px!important;min-height:54px!important;padding:11px!important;border:1px solid #343b43!important;border-radius:50%!important;background:radial-gradient(circle at 34% 28%,#20262d 0,#0d1117 58%,#06080b 100%)!important;color:#fff!important;box-shadow:0 8px 22px rgba(0,0,0,.34)!important}
++
++      #msk-root .msk-direct-db-wrap > *:not(.msk-direct-db):not(.msk-connect-caption){display:none!important}
++      #msk-root .msk-direct-db{position:relative!important;display:grid!important;place-items:center!important;width:54px!important;height:54px!important;min-width:54px!important;min-height:54px!important;padding:11px!important;border:1px solid rgba(62,207,142,.35)!important;border-radius:50%!important;background:radial-gradient(circle at 34% 28%,rgba(62,207,142,.2),#101719 62%,#06080b)!important;color:#fff!important;box-shadow:0 8px 22px rgba(0,0,0,.34)!important}
++      #msk-root .msk-direct-db img{width:29px!important;height:29px!important;object-fit:contain!important}
++      #msk-root .msk-direct-
