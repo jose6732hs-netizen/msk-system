@@ -306,21 +306,42 @@ export async function handleValidation(
     }
   }
 
+  // Limite de dispositivos do token = limite do plano comprado.
+  // O snapshot da licença manda; a tabela plans cobre licenças antigas.
+  const maxDevices = Math.max(
+    1,
+    Number(snapshot.maxDevices ?? 0) ||
+      Number(license.max_devices ?? 0) ||
+      Number(license.plans?.max_devices ?? 0) ||
+      1,
+  );
+  if (Number(license.max_devices ?? 0) !== maxDevices) {
+    await supabaseAdmin
+      .from("licenses")
+      .update({ max_devices: maxDevices } as never)
+      .eq("id", license.id);
+    license.max_devices = maxDevices;
+  }
+
+  const { count: activeDevices } = await supabaseAdmin
+    .from("license_devices")
+    .select("id", { count: "exact", head: true })
+    .eq("license_id", license.id)
+    .eq("status", "active");
+  let devicesUsed = activeDevices ?? 0;
+
   if (!device && license.status === "active") {
-    const { count } = await supabaseAdmin
-      .from("license_devices")
-      .select("id", { count: "exact", head: true })
-      .eq("license_id", license.id)
-      .eq("status", "active");
-    const used = count ?? 0;
-    if (license.max_devices > 0 && used >= license.max_devices) {
+    const used = devicesUsed;
+    if (used >= maxDevices) {
       return respond(
         {
           success: false,
           valid: false,
           error: "DEVICE_LIMIT",
           code: "DEVICE_LIMIT",
-          message: "Limite de dispositivos atingido para esta licença.",
+          max_devices: maxDevices,
+          devices_used: used,
+          message: `Limite de ${maxDevices} dispositivo(s) atingido para esta licença.`,
         },
         403,
       );
@@ -338,7 +359,10 @@ export async function handleValidation(
       } as never)
       .select("id,status")
       .single();
-    if (!devErr) device = newDev as DeviceRow;
+    if (!devErr) {
+      device = newDev as DeviceRow;
+      devicesUsed += 1;
+    }
   }
 
   if (!device || device.status !== "active") {
@@ -392,8 +416,8 @@ export async function handleValidation(
       product_name: productBinding.product?.name ?? null,
       expires_at: license.expires_at,
       activated_at: license.activated_at ?? null,
-      max_devices: snapshot.maxDevices ?? license.max_devices,
-      devices_used: 1,
+      max_devices: maxDevices,
+      devices_used: Math.max(1, devicesUsed),
       features: active ? snapshot.features : LOCKED,
       role: snapshot.role,
     },

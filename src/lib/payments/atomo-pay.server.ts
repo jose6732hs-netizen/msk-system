@@ -13,13 +13,38 @@ import type { AmploCustomer, AmploSplit } from "./amplo-pay.server";
 
 const CATALOG_KEY = "atomopay_catalog";
 
+type AtomoOfferEntry = { hash: string; unit: number; quantity: number };
+
 type AtomoCatalogState = {
   productHash?: string;
   offerHash?: string;
-  offersByAmount?: Record<string, string>;
+  offersByAmount?: Record<string, string | AtomoOfferEntry>;
 };
 
 type AtomoCatalog = { productHash: string; offerHash: string };
+type AtomoPixCatalog = AtomoCatalog & { unitPrice: number; quantity: number };
+
+/** Acima deste ticket a AtomoPay envia a oferta para análise manual. */
+const SAFE_OFFER_MAX = 13000;
+/** Ticket mínimo aceito pela AtomoPay. */
+const MIN_OFFER_PRICE = 500;
+
+/**
+ * Frações possíveis do valor total: unidade × quantidade = total exato,
+ * sempre dentro dos limites aceitos automaticamente pela AtomoPay.
+ */
+function splitCandidates(amount: number): { unit: number; quantity: number }[] {
+  const out: { unit: number; quantity: number }[] = [];
+  if (amount <= SAFE_OFFER_MAX) out.push({ unit: amount, quantity: 1 });
+  for (let quantity = 2; quantity <= 200; quantity += 1) {
+    if (amount % quantity !== 0) continue;
+    const unit = amount / quantity;
+    if (unit > SAFE_OFFER_MAX || unit < MIN_OFFER_PRICE) continue;
+    out.push({ unit, quantity });
+  }
+  if (out.length === 0) out.push({ unit: amount, quantity: 1 });
+  return out;
+}
 
 function onlyDigits(v: string | undefined | null) {
   return String(v ?? "").replace(/\D+/g, "");
@@ -37,6 +62,14 @@ function sanitizeProviderText(value: string) {
 function offerPrice(offer: any) {
   return Number(offer?.price ?? offer?.amount ?? offer?.value ?? 0);
 }
+
+/** status 1 = liberada; status 2 = aguardando aprovação manual. */
+function offerApproved(offer: any) {
+  const status = offer?.status;
+  if (status === undefined || status === null) return true;
+  return Number(status) === 1;
+}
+
 
 function customerData(customer: AmploCustomer) {
   const phone = onlyDigits(customer.phone);
@@ -182,9 +215,13 @@ export class AtomoPayService {
 
   /**
    * Para PIX, resolve uma oferta compatível com o valor exato da cobrança.
-   * Evita reutilizar uma oferta de preço diferente em compras maiores.
+   *
+   * A AtomoPay coloca ofertas de ticket alto em análise manual (status 2) e
+   * recusa a transação com HTTP 403. Para que TODAS as ofertas do MSK gerem
+   * PIX, o valor é fracionado em N unidades de ticket baixo (mesma oferta,
+   * quantidade > 1), o que resulta no mesmo total cobrado.
    */
-  private async ensurePixCatalogForAmount(amountCents: number): Promise<AtomoCatalog> {
+  private async ensurePixCatalogForAmount(amountCents: number): Promise<AtomoPixCatalog> {
     const amount = Math.max(1, Math.round(amountCents));
     const amountKey = String(amount);
     const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
@@ -197,8 +234,21 @@ export class AtomoPayService {
     const cached = (saved?.value ?? {}) as AtomoCatalogState;
     let productHash = String(envProduct ?? cached.productHash ?? "");
 
-    const cachedOffer = cached.offersByAmount?.[amountKey];
-    if (productHash && cachedOffer) return { productHash, offerHash: cachedOffer };
+    const cachedEntry = cached.offersByAmount?.[amountKey];
+    if (productHash && cachedEntry) {
+      if (typeof cachedEntry === "string") {
+        if (amount <= SAFE_OFFER_MAX) {
+          return { productHash, offerHash: cachedEntry, unitPrice: amount, quantity: 1 };
+        }
+      } else if (cachedEntry?.hash && cachedEntry.unit * cachedEntry.quantity === amount) {
+        return {
+          productHash,
+          offerHash: cachedEntry.hash,
+          unitPrice: cachedEntry.unit,
+          quantity: cachedEntry.quantity,
+        };
+      }
+    }
 
     if (!productHash) {
       const base = await this.ensureCatalog();
@@ -216,22 +266,42 @@ export class AtomoPayService {
         ? product.offer
         : [];
 
-    let offerHash = String(
-      offers.find((offer) => offer?.hash && offerPrice(offer) === amount)?.hash ?? "",
-    );
+    let offerHash = "";
+    let unitPrice = amount;
+    let quantity = 1;
 
-    if (!offerHash) {
+    for (const candidate of splitCandidates(amount)) {
+      const approved = offers.find(
+        (offer) => offer?.hash && offerPrice(offer) === candidate.unit && offerApproved(offer),
+      );
+      if (approved) {
+        offerHash = String(approved.hash);
+        unitPrice = candidate.unit;
+        quantity = candidate.quantity;
+        break;
+      }
+
       const created = (await this.createOffer(productHash, {
-        title: `MSK ${amount} centavos`,
-        amount,
-      })) as any;
+        title: `MSK unit ${candidate.unit}`,
+        amount: candidate.unit,
+      }).catch(() => null)) as any;
       const createdOffer = created?.data ?? created;
-      offerHash = String(createdOffer?.hash ?? createdOffer?.offer_hash ?? "");
+      const hash = String(createdOffer?.hash ?? createdOffer?.offer_hash ?? "");
+      if (!hash) continue;
+      // Oferta criada em análise (status 2) não gera PIX: tenta o próximo corte.
+      if (!offerApproved(createdOffer)) continue;
+      offerHash = hash;
+      unitPrice = candidate.unit;
+      quantity = candidate.quantity;
+      break;
     }
 
     if (!offerHash) throw new Error("ATOMOPAY_CATALOG_OFFER_MISSING");
 
-    const offersByAmount = { ...(cached.offersByAmount ?? {}), [amountKey]: offerHash };
+    const offersByAmount = {
+      ...(cached.offersByAmount ?? {}),
+      [amountKey]: { hash: offerHash, unit: unitPrice, quantity },
+    };
     await supabaseAdmin.from("app_settings").upsert(
       {
         key: CATALOG_KEY,
@@ -246,8 +316,9 @@ export class AtomoPayService {
       { onConflict: "key" },
     );
 
-    return { productHash, offerHash };
+    return { productHash, offerHash, unitPrice, quantity };
   }
+
 
   async createPix(input: {
     identifier: string;
@@ -263,21 +334,26 @@ export class AtomoPayService {
     const catalog = await this.ensurePixCatalogForAmount(amount);
     const customer = customerData(input.customer);
 
+    const title = String(input.items[0]?.title ?? "MSK SISTEM").slice(0, 60);
     const body: Record<string, unknown> = {
       amount,
       offer_hash: catalog.offerHash,
       payment_method: "pix",
       customer,
-      cart: input.items.map((i) => ({
-        product_hash: catalog.productHash,
-        offer_hash: catalog.offerHash,
-        title: i.title,
-        cover: null,
-        price: Math.round(i.unitPrice),
-        quantity: i.quantity,
-        operation_type: 1,
-        tangible: false,
-      })),
+      // O carrinho precisa refletir a oferta usada: unidade × quantidade = total.
+      cart: [
+        {
+          product_hash: catalog.productHash,
+          offer_hash: catalog.offerHash,
+          title,
+          cover: null,
+          price: catalog.unitPrice,
+          quantity: catalog.quantity,
+          operation_type: 1,
+          tangible: false,
+        },
+      ],
+
       expire_in_days: 1,
       transaction_origin: "api",
       ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
