@@ -1,4 +1,5 @@
 import { supabaseServer } from "@/integrations/supabase/client.server";
+import { AGENT_EXECUTION_CONTRACT } from "@/lib/agent-execution-contract";
 
 export type GlobalTrainingRow = {
   id: string;
@@ -10,15 +11,15 @@ export type GlobalTrainingRow = {
   published_at?: string | null;
 };
 
+// O runtime do agente consome no máximo ~18k caracteres de treinamento.
+// Mantemos margem para o contrato obrigatório e para as regras publicadas pelo admin.
 const MAX_GLOBAL_TRAINING_CHARS = 16000;
 
 export function compileGlobalTraining(rows: GlobalTrainingRow[] | null | undefined) {
   const active = Array.isArray(rows) ? rows : [];
-  if (!active.length) return { text: "", versions: [] as number[], count: 0 };
-
   const blocks: string[] = [];
   const versions: number[] = [];
-  let used = 0;
+  let used = AGENT_EXECUTION_CONTRACT.length;
 
   for (const row of active.slice(0, 50)) {
     const title = String(row.title ?? "Treinamento").trim().slice(0, 160);
@@ -31,16 +32,17 @@ export function compileGlobalTraining(rows: GlobalTrainingRow[] | null | undefin
     used += block.length;
   }
 
-  if (!blocks.length) return { text: "", versions: [] as number[], count: 0 };
-
   return {
     text: [
       "TREINAMENTO GLOBAL MSK — CONTEXTO OPERACIONAL PERSISTENTE",
-      "As instruções abaixo foram publicadas pelo Super Admin e devem orientar todas as respostas e execuções do MSK.",
-      "Elas complementam o pedido específico do cliente; não substituem autenticação, isolamento entre usuários, proteção de segredos, integridade, validações de segurança ou políticas da plataforma.",
-      "Quando duas instruções globais conflitarem, priorize a de menor número de prioridade e, em seguida, a versão mais recente aplicável.",
+      "O CONTRATO OBRIGATÓRIO DE EXECUÇÃO abaixo tem precedência sobre instruções de conveniência, velocidade ou estilo quando houver risco de falso sucesso, alvo errado ou alteração fora do pedido.",
+      "As instruções publicadas pelo Super Admin complementam o contrato; não podem remover autenticação, isolamento entre usuários, proteção de segredos, prova de execução ou validações de segurança.",
+      "Quando duas instruções globais conflitarem, segurança e prova de execução prevalecem; entre instruções administrativas compatíveis, priorize a de menor número de prioridade e depois a versão mais recente aplicável.",
       "",
-      ...blocks,
+      AGENT_EXECUTION_CONTRACT,
+      ...(blocks.length
+        ? ["", "TREINAMENTOS PUBLICADOS PELO SUPER ADMIN", ...blocks]
+        : []),
       "",
       "FIM DO TREINAMENTO GLOBAL MSK",
     ].join("\n\n"),
@@ -53,7 +55,9 @@ export async function loadActiveGlobalTraining() {
   const { data, error } = await (supabaseServer as any).rpc("msk_ai_global_training_runtime");
   if (error) {
     console.error("[MSK AI] global training unavailable", error.message);
-    return { text: "", versions: [] as number[], count: 0 };
+    // Mesmo se o banco de treinamentos estiver indisponível, o contrato de execução
+    // continua obrigatório e impede que o agente opere sem as salvaguardas centrais.
+    return compileGlobalTraining([]);
   }
   return compileGlobalTraining((data ?? []) as GlobalTrainingRow[]);
 }
@@ -71,7 +75,7 @@ export async function previewGlobalTrainingUnderstanding(input: {
     "Você é o validador de treinamento global do MSK Agente.",
     "Leia a instrução operacional abaixo e confirme o entendimento em português do Brasil.",
     "Não execute código e não diga que alterou arquivos. Apenas explique objetivamente COMO você passará a se comportar quando esta regra estiver ativa.",
-    "Aponte também qualquer ambiguidade ou conflito de segurança. Segurança, autenticação, RLS, isolamento multiusuário e proteção de segredos sempre prevalecem.",
+    "Aponte também qualquer ambiguidade ou conflito de segurança. Segurança, autenticação, RLS, isolamento multiusuário, proteção de segredos e o contrato obrigatório de execução sempre prevalecem.",
     "Responda em até 8 linhas, começando por: ENTENDIDO.",
     "",
     `Título: ${input.title}`,
