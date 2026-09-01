@@ -71,6 +71,13 @@ function exactClientCommand(command: string) {
   return clean(command, 12000);
 }
 
+const EDIT_FORMAT = [
+  "Retorne JSON com summary, reply e changes.",
+  "Para alteração pequena em arquivo existente, prefira change com {path, find, replace}; find deve ser trecho EXATO e único do arquivo.",
+  "Para reescrita ampla use {path, content, create:false}. Para novo arquivo use {path, content, create:true}.",
+  "Não use markdown, diff, TODO, reticências ou conteúdo truncado.",
+].join("\n");
+
 export class PromptBuilder {
   static interpretation(envelope: PromptEnvelope): BuiltPrompt {
     return {
@@ -79,6 +86,7 @@ export class PromptBuilder {
       system: [
         "Interprete o pedido de edição e retorne somente JSON.",
         "Campos: intent, confidence, requires_input, question, options, summary, target_files, edits, validation.",
+        "Erros ortográficos simples não devem impedir a identificação do alvo quando o contexto estiver claro.",
       ].join("\n"),
       assistantContext: envelope.candidates?.length ? `Arquivos candidatos:\n${candidatesBlock(envelope.candidates)}` : undefined,
       user: exactClientCommand(envelope.command),
@@ -104,10 +112,7 @@ export class PromptBuilder {
     return {
       operation: "edit",
       jsonMode: true,
-      system: [
-        "Edite somente o necessário e retorne JSON com summary, reply e changes.",
-        "Cada change deve conter path, content completo e create. Sem markdown, TODO ou conteúdo truncado.",
-      ].join("\n"),
+      system: `Edite somente o necessário.\n${EDIT_FORMAT}`,
       assistantContext: technicalContext || undefined,
       user: exactClientCommand(envelope.command),
     };
@@ -121,7 +126,7 @@ export class PromptBuilder {
     return {
       operation: "self_healing",
       jsonMode: true,
-      system: "Corrija somente o erro detectado, sem ampliar o escopo, e retorne o mesmo JSON de edição.",
+      system: `Corrija somente o erro detectado, sem ampliar o escopo.\n${EDIT_FORMAT}`,
       assistantContext: technicalContext,
       user: exactClientCommand(envelope.command),
     };
