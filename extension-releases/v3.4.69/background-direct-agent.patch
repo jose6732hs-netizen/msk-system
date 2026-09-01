@@ -1,0 +1,23 @@
+--- /mnt/data/msk_3468_orig/background-direct-agent.js	2026-09-01 05:01:40.000000000 +0000
++++ /mnt/data/msk_3469_work/background-direct-agent.js	2026-09-01 06:14:42.038074524 +0000
+@@ -113,7 +113,7 @@
+     if (sessionToken) headers['x-msk-session'] = sessionToken;
+   }
+ 
+-  const timeout = action === 'run' ? (payload?.simple_fast_edit === true ? 48000 : 120000) : (action === 'preflight' || action === 'health' ? 12000 : 30000);
++  const timeout = action === 'run' ? (payload?.simple_fast_edit === true ? 90000 : 165000) : (action === 'preflight' || action === 'health' ? 12000 : 30000);
+   const functionName = (action === 'preflight' || action === 'health') ? 'msk-agent-preflight' : ((action === 'connect' || action === 'status' || action === 'bind-existing') ? 'msk-agent-license' : (action === 'run' ? 'msk-agent-fast' : 'msk-agent-public'));
+   let response = null;
+   let transportError = null;
+@@ -408,8 +408,10 @@
+     code: error?.name === 'AbortError' ? 'EXTENSION_REQUEST_TIMEOUT' : 'EXTENSION_TRANSPORT_ERROR',
+     stage: 'transport',
+     retryable: true,
++    response_lost: action === 'run',
++    task_id: action === 'run' ? String(message?.payload?.task_id || '') : '',
+     error: error?.name === 'AbortError'
+-      ? 'A comunicação com o agente excedeu o tempo seguro.'
++      ? 'A resposta final do agente excedeu a janela de transporte.'
+       : (error?.message || 'Falha de comunicação entre a extensão e o agente MSK.')
+   }));
+   return true;
