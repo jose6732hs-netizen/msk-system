@@ -30,63 +30,50 @@ function normalizeStatus(data: unknown) {
     configured: !!row?.configured,
     provider: String(row?.provider || "B.AI"),
     model: String(row?.model || "deepseek-v4-flash"),
-    keyMasked: row?.keyMasked
-      ? String(row.keyMasked)
-      : row?.key_masked
-        ? String(row.key_masked)
-        : null,
-    updatedAt: row?.updatedAt
-      ? String(row.updatedAt)
-      : row?.updated_at
-        ? String(row.updated_at)
-        : null,
+    keyMasked: row?.keyMasked ? String(row.keyMasked) : row?.key_masked ? String(row.key_masked) : null,
+    updatedAt: row?.updatedAt ? String(row.updatedAt) : row?.updated_at ? String(row.updated_at) : null,
   };
 }
 
 async function agentAiRequest(action: string, payload: Record<string, unknown> = {}) {
   const request = getRequest();
   const authorization = request?.headers?.get("authorization")?.trim() || "";
-  if (!authorization.startsWith("Bearer ")) {
-    throw new Error("Sessão administrativa inválida. Entre novamente no painel.");
-  }
-
+  if (!authorization.startsWith("Bearer ")) throw new Error("Sessão administrativa inválida. Entre novamente no painel.");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20_000);
   try {
     const response = await fetch(AGENT_AI_SETTINGS_URL, {
       method: "POST",
-      headers: {
-        Authorization: authorization,
-        apikey: AGENT_SUPABASE_PUBLISHABLE_KEY,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: authorization, apikey: AGENT_SUPABASE_PUBLISHABLE_KEY, "Content-Type": "application/json" },
       body: JSON.stringify({ action, ...payload }),
       signal: controller.signal,
     });
-
     const raw = await response.text();
     let body: any = null;
-    try {
-      body = raw ? JSON.parse(raw) : null;
-    } catch {
-      body = null;
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        String(body?.error || body?.message || "O backend do MSK Agente não confirmou a operação.").slice(0, 400),
-      );
-    }
+    try { body = raw ? JSON.parse(raw) : null; } catch { body = null; }
+    if (!response.ok) throw new Error(String(body?.error || body?.message || "O backend do MSK Agente não confirmou a operação.").slice(0, 400));
     return body || {};
   } catch (error: any) {
-    if (error?.name === "AbortError") {
-      throw new Error("O backend do MSK Agente demorou demais para responder. Tente novamente.");
-    }
+    if (error?.name === "AbortError") throw new Error("O backend do MSK Agente demorou demais para responder. Tente novamente.");
     throw error;
-  } finally {
-    clearTimeout(timer);
-  }
+  } finally { clearTimeout(timer); }
 }
+
+export const agentErrorAnalytics = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ days: z.number().int().min(1).max(90).default(7) }).parse(data ?? {}))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    return agentAiRequest("agent-errors", { days: data.days });
+  });
+
+export const agentErrorDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ errorId: z.string().uuid() }).parse(data))
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    return agentAiRequest("agent-error-detail", { errorId: data.errorId });
+  });
 
 export const agentAiSettingsStatus = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -101,14 +88,9 @@ export const agentAiSettingsSave = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const apiKey = data.apiKey.trim();
-
-    // A validação e a criptografia acontecem no mesmo backend que executa a IA.
-    // Assim o painel não pode exibir "API aplicada" enquanto o agente usa outro banco.
     const saved = await agentAiRequest("ai-global-save", { apiKey });
     const normalized = normalizeStatus(saved);
-    if (!normalized.configured || !normalized.keyMasked) {
-      throw new Error("A chave foi validada, mas o backend do MSK Agente não confirmou a gravação.");
-    }
+    if (!normalized.configured || !normalized.keyMasked) throw new Error("A chave foi validada, mas o backend do MSK Agente não confirmou a gravação.");
     return { ok: true, ...normalized };
   });
 
