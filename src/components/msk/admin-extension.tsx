@@ -3,6 +3,7 @@ import { Package, Radio } from "lucide-react";
 import { AdminExtensionTab as AdminExtensionCore } from "./admin-extension-core";
 import { AdminExtensionMessages } from "./admin-extension-messages";
 import { AdminExtensionSecurity } from "./admin-extension-security";
+import { AdminExtensionErrors } from "./admin-extension-errors";
 import { AdminLiveTab } from "./admin-live";
 
 export function AdminExtensionTab() {
@@ -38,6 +39,7 @@ export function AdminExtensionTab() {
       {product === "extension" ? (
         <div className="space-y-5">
           <AdminExtensionSecurity />
+          <AdminExtensionErrors />
           <AdminExtensionMessages />
           <AdminExtensionCore />
         </div>

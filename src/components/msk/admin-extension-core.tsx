@@ -240,7 +240,7 @@ export function AdminExtensionTab() {
     <div className="space-y-8">
       <ExtensionChannels />
 
-      <div className="rounded-3xl border border-border/60 bg-card/30 p-5 md:p-6">
+      <div id="extension-upload" className="scroll-mt-24 rounded-3xl border border-border/60 bg-card/30 p-5 md:p-6 transition">
         <div className="mb-5">
           <h3 className="text-sm font-semibold">Publicar nova versão</h3>
           <p className="mt-1 text-xs text-muted-foreground">
