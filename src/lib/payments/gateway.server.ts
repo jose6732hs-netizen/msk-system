@@ -18,6 +18,14 @@ export type GatewayConfig = { primary: ProviderId; failover: boolean };
 
 const CONFIG_KEY = "payment_gateway";
 
+/**
+ * Teto de ticket observado em produção por provedor (centavos).
+ * Acima disso o gateway recusa a cobrança, então ele é tentado por último.
+ */
+const PROVIDER_MAX_AMOUNT_CENTS: Partial<Record<ProviderId, number>> = {
+  sigilopay: 13000,
+};
+
 export async function getGatewayConfig(): Promise<GatewayConfig> {
   const { data } = await supabaseAdmin
     .from("app_settings")
@@ -115,7 +123,14 @@ export async function createPixWithFailover(
   },
   preferred?: ProviderId | null,
 ) {
-  const { order, failover } = await resolveProviderOrder(preferred);
+  const { order: baseOrder, failover } = await resolveProviderOrder(preferred);
+  // Tickets altos: provedores com limite conhecido de valor vão para o fim da
+  // fila, para que a cobrança não falhe antes de tentar um gateway compatível.
+  const order = [...baseOrder].sort((a, b) => {
+    const penalty = (p: ProviderId) =>
+      input.amountCents > (PROVIDER_MAX_AMOUNT_CENTS[p] ?? Number.POSITIVE_INFINITY) ? 1 : 0;
+    return penalty(a) - penalty(b);
+  });
   const { absoluteUrl } = await import("../app-url.server");
   const errors: string[] = [];
   let attempted = 0;
