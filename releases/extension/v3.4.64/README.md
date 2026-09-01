@@ -14,11 +14,17 @@ Correção focada no bug de conexão/validação do pre-flight.
 - O chat só é liberado quando `ready=true`.
 - Após retorno do OAuth do GitHub, a conexão e o pre-flight são rechecados automaticamente.
 - O painel continua restrito ao popup iOS operacional.
+- O repositório atual do Lovable tem prioridade sobre cache local antigo.
+- Se o repositório salvo no banco estiver desatualizado, o pre-flight valida o repositório atual pela mesma instalação GitHub e corrige o vínculo antes de liberar o chat.
 
 ## Backend
-- `msk-agent-preflight` v2 ACTIVE no Supabase.
+- `msk-agent-preflight` v3 ACTIVE no Supabase.
 - Código versionado em `supabase/functions/msk-agent-preflight/index.ts`.
+- Verificação de escrita usa `contents: write` da GitHub App.
+- Verificação de PR usa `pull_requests: write` quando a branch é protegida.
 
 ## Build
 - Extensão: 3.4.64
 - Arquivos protegidos: 88
+- Integrity root: `3845b29ce09856c38592d1f7478dd63d26888c7bb59a8363319230bccc2b77c4`
+- ZIP SHA-256: `4a02e672c691a3b6553e142b4e673f36c14098f2987f6fb516f85b130bc0d425`
