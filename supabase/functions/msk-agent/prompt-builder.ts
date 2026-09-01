@@ -22,7 +22,6 @@ export type BuiltPrompt = {
 };
 
 const PREFIX = "__MSK_PROMPT_V1__";
-
 const clean = (value: unknown, max = 120000) => String(value ?? "").trim().slice(0, max);
 
 export function isComplexCommand(command: string, files: PromptFile[] = [], highRisk = false) {
@@ -56,11 +55,14 @@ function filesBlock(files: PromptFile[] = []) {
 }
 
 function candidatesBlock(candidates: string[] = []) {
-  return candidates.slice(0, 1200).join("\n");
+  return candidates.slice(0, 100).join("\n");
 }
 
 function retryError(extra: string) {
-  const lines = clean(extra, 6000).split("\n").map((line) => line.trim()).filter(Boolean);
+  const text = clean(extra, 6000);
+  const inline = text.match(/Corrija somente:\s*([\s\S]+)$/i)?.[1]?.trim();
+  if (inline) return inline.slice(0, 5000);
+  const lines = text.split("\n").map((line) => line.trim()).filter(Boolean);
   if (lines[0]?.toUpperCase().includes("AUTO-CORREÇÃO") || lines[0]?.toUpperCase().includes("AUTO-CORRECAO")) lines.shift();
   return lines.join("\n").slice(0, 5000) || "A saída anterior não passou na validação do backend.";
 }
@@ -96,7 +98,7 @@ export class PromptBuilder {
       operation: "edit",
       jsonMode: true,
       system: [
-        "Você executa edição de código somente nos arquivos fornecidos e apenas para atender ao comando.",
+        "Você executa edição de código apenas para atender ao comando, usando os arquivos fornecidos e criando novos somente quando indispensável.",
         "Retorne somente JSON: {\"summary\":\"...\",\"reply\":\"...\",\"changes\":[{\"path\":\"...\",\"content\":\"arquivo completo\",\"create\":false}]}.",
         "Não use markdown, TODO, placeholders ou conteúdo truncado.",
       ].join("\n"),
