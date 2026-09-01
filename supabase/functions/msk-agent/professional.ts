@@ -13,13 +13,26 @@ export const normalizeRepo = (value: string) => String(value || "")
   .replace(/^\/+|\/+$/g, "")
   .toLowerCase();
 
-export const isHighRiskCommand = (command: string) => /\b(auth|login|senha|password|token|sess[aã]o|rls|supabase|banco|database|migration|checkout|pagamento|pix|cart[aã]o|webhook|licen[cç]a|assinatura|tenant|admin|service.?role|api.?key|secret)\b/i.test(command);
+const normalizeCommand = (value: string) => String(value || "")
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLowerCase();
+
+function isVisualOnlyRequest(command: string) {
+  const q = normalizeCommand(command);
+  const visualProperty = /\b(cor|color|text[oi]|texto|text|copy|fonte|font|fundo|background|layout|estilo|style|tamanho|borda|sombra|hover|azul|asul|vermelh[oa]?|verde|roxo|rosa|preto|branco|cinza|amarelo|laranja|claro|escuro)\b/.test(q);
+  const editVerb = /\b(mud[ea]|mudar|troqu[ea]|trocar|alter[ea]|alterar|deix[ea]|deixar|coloqu[ea]|colocar|ajust[ea]|ajustar)\b/.test(q);
+  const technicalSensitive = /\b(api|webhook|token|senha|password|secret|chave secreta|rls|migration|banco|database|supabase|service.?role|credencial)\b/.test(q);
+  return visualProperty && editVerb && !technicalSensitive;
+}
+
+export const isHighRiskCommand = (command: string) => {
+  if (isVisualOnlyRequest(command)) return false;
+  return /\b(auth|login|senha|password|token|sess[aã]o|rls|supabase|banco|database|migration|checkout|pagamento|pix|cart[aã]o|webhook|licen[cç]a|assinatura|tenant|admin|service.?role|api.?key|secret)\b/i.test(command);
+};
 
 function shortlistCandidates(paths: string[], command: string, max = 80) {
-  const terms = String(command || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
+  const terms = normalizeCommand(command)
     .split(/[^a-z0-9_-]+/)
     .filter((term) => term.length >= 3);
 
@@ -67,6 +80,23 @@ const ALLOWED_NEW = /^(src|app|pages|components|lib|server|api|supabase|public|s
 const ALLOWED_EXT = /\.(tsx?|jsx?|css|scss|html|json|sql|md|mjs|cjs)$/i;
 const PLACEHOLDER = /(TODO\s*:?\s*(implement|implementar)|FIXME|restante do c[oó]digo|existing code|previous code|same as before|\.\.\.\s*(rest|restante)|seu c[oó]digo aqui)/i;
 
+function firstString(raw: any, keys: string[]) {
+  for (const key of keys) if (typeof raw?.[key] === "string") return raw[key] as string;
+  return undefined;
+}
+
+function countOccurrences(content: string, needle: string) {
+  if (!needle) return 0;
+  let count = 0;
+  let at = 0;
+  while ((at = content.indexOf(needle, at)) >= 0) {
+    count += 1;
+    at += Math.max(1, needle.length);
+    if (count > 2) break;
+  }
+  return count;
+}
+
 export function validateChanges(rawChanges: any[], files: Array<{ path: string; content: string }>, allPaths: string[]) {
   const existing = new Map(allPaths.map(p => [p.toLowerCase(), p]));
   const analyzed = new Map(files.map(f => [f.path.toLowerCase(), f]));
@@ -74,17 +104,25 @@ export function validateChanges(rawChanges: any[], files: Array<{ path: string; 
   const result: Array<{ path: string; content: string; create: boolean }> = [];
 
   for (const raw of Array.isArray(rawChanges) ? rawChanges : []) {
-    const requested = String(raw?.path || "").trim().replace(/\\/g, "/");
+    const requested = String(raw?.path || raw?.file || raw?.file_path || raw?.filename || "").trim().replace(/\\/g, "/");
     const lower = requested.toLowerCase();
     if (!requested || requested.startsWith("/") || requested.includes("..") || seen.has(lower)) continue;
-
-    const content = typeof raw?.content === "string" ? raw.content : "";
-    if (!content.trim() || PLACEHOLDER.test(content)) continue;
 
     const canonical = existing.get(lower);
     if (canonical) {
       const original = analyzed.get(lower);
-      if (!original || content === original.content) continue;
+      if (!original) continue;
+
+      let content = typeof raw?.content === "string" ? raw.content : "";
+      if (!content.trim()) {
+        const find = firstString(raw, ["find", "search", "old", "before", "from"]);
+        const replace = firstString(raw, ["replace", "replacement", "new", "after", "to"]);
+        if (typeof find !== "string" || typeof replace !== "string" || !find || find === replace) continue;
+        if (countOccurrences(original.content, find) !== 1) continue;
+        content = original.content.replace(find, replace);
+      }
+
+      if (!content.trim() || PLACEHOLDER.test(content) || content === original.content) continue;
       if (original.content.length > 800 && content.length < Math.max(200, Math.floor(original.content.length * .25))) continue;
       if (content.length > Math.max(250000, original.content.length * 6)) continue;
       seen.add(lower);
@@ -92,6 +130,8 @@ export function validateChanges(rawChanges: any[], files: Array<{ path: string; 
       continue;
     }
 
+    const content = typeof raw?.content === "string" ? raw.content : "";
+    if (!content.trim() || PLACEHOLDER.test(content)) continue;
     if (raw?.create !== true || !ALLOWED_NEW.test(requested) || !ALLOWED_EXT.test(requested)) continue;
     if (/(^|\/)(\.env|node_modules|dist|build|coverage)(\/|$)/i.test(requested)) continue;
     if (/package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$/i.test(requested)) continue;
