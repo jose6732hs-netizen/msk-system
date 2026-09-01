@@ -1,0 +1,13 @@
+--- /mnt/data/msk_3468_orig/manifest.json	2026-09-01 05:55:20.000000000 +0000
++++ /mnt/data/msk_3469_work/manifest.json	2026-09-01 06:15:11.802331101 +0000
+@@ -1,8 +1,8 @@
+ {
+   "manifest_version": 3,
+   "name": "MSK Agente — Guardião Lovable",
+-  "version": "3.4.68",
+-  "description": "MSK Agente v3.4.68 — edição atômica resiliente, comando exato, pre-flight sem INSERT e correção de NO_CHANGES_APPLIED.",
++  "version": "3.4.69",
++  "description": "MSK Agente v3.4.69 — reconciliação pós-transporte, edição atômica, comando exato e pre-flight sem INSERT.",
+   "permissions": [
+     "storage",
+     "activeTab",
