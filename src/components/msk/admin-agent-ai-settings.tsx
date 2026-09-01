@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, ShieldCheck, Trash2 } from "lucide-react";
+import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, Network, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminAiGlobalTraining } from "@/components/msk/admin-ai-global-training";
+import { AdminAiProviders } from "@/components/msk/admin-ai-providers";
 import {
   agentAiSettingsDelete,
   agentAiSettingsSave,
@@ -19,7 +20,8 @@ export function AdminAgentAiSettings() {
   const saveFn = useServerFn(agentAiSettingsSave);
   const deleteFn = useServerFn(agentAiSettingsDelete);
   const [apiKey, setApiKey] = useState("");
-  const [section, setSection] = useState<"api" | "training">("api");
+  const [section, setSection] = useState<"api" | "providers" | "training">("api");
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-ai-settings"],
@@ -60,6 +62,13 @@ export function AdminAgentAiSettings() {
         </button>
         <button
           type="button"
+          onClick={() => setSection("providers")}
+          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition ${section === "providers" ? "border-cyan-400/50 bg-cyan-500/10 text-cyan-300" : "border-transparent text-muted-foreground hover:border-white/10 hover:text-foreground"}`}
+        >
+          <Network className="h-4 w-4" /> Multi-APIs (OpenAI · Groq · Gemini)
+        </button>
+        <button
+          type="button"
           onClick={() => setSection("training")}
           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-[0.65rem] font-black uppercase tracking-widest transition ${section === "training" ? "border-fuchsia-400/50 bg-fuchsia-500/10 text-fuchsia-300" : "border-transparent text-muted-foreground hover:border-white/10 hover:text-foreground"}`}
         >
@@ -67,7 +76,7 @@ export function AdminAgentAiSettings() {
         </button>
       </div>
 
-      {section === "training" ? <AdminAiGlobalTraining /> : (
+      {section === "training" ? <AdminAiGlobalTraining /> : section === "providers" ? <AdminAiProviders /> : (
         <section className="rounded-[1.75rem] border border-primary/25 bg-gradient-to-br from-primary/[0.08] via-background to-background p-5 sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex min-w-0 gap-3">
