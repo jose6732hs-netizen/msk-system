@@ -23,8 +23,11 @@ const CONFIG_KEY = "payment_gateway";
  * Acima disso o gateway recusa a cobrança, então ele é tentado por último.
  */
 const PROVIDER_MAX_AMOUNT_CENTS: Partial<Record<ProviderId, number>> = {
-  sigilopay: 13000,
+  sigilopay: 14990,
 };
+
+/** Acima disso a cobrança é considerada ticket alto. */
+const HIGH_TICKET_CENTS = 15000;
 
 export async function getGatewayConfig(): Promise<GatewayConfig> {
   const { data } = await supabaseAdmin
@@ -129,7 +132,14 @@ export async function createPixWithFailover(
   const order = [...baseOrder].sort((a, b) => {
     const penalty = (p: ProviderId) =>
       input.amountCents > (PROVIDER_MAX_AMOUNT_CENTS[p] ?? Number.POSITIVE_INFINITY) ? 1 : 0;
-    return penalty(a) - penalty(b);
+    const diff = penalty(a) - penalty(b);
+    if (diff !== 0) return diff;
+    // Ticket alto: a AtomoPay é o provedor preferido (a SigiloPay recusa
+    // valores altos na adquirente).
+    if (input.amountCents > HIGH_TICKET_CENTS) {
+      return (a === "atomopay" ? 0 : 1) - (b === "atomopay" ? 0 : 1);
+    }
+    return 0;
   });
   const { absoluteUrl } = await import("../app-url.server");
   const errors: string[] = [];
@@ -170,6 +180,12 @@ export async function createPixWithFailover(
     }
   }
 
+  if (errors.some((e) => /aguardando aprova/i.test(e) || /OFERTA_PENDENTE/i.test(e))) {
+    throw new Error(
+      "PIX_VALOR_BLOQUEADO — A AtomoPay está com a oferta deste valor aguardando aprovação. " +
+        `Aprove a oferta de R$ ${(input.amountCents / 100).toFixed(2).replace(".", ",")} no painel da AtomoPay para liberar a cobrança. (${errors.join(" | ")})`,
+    );
+  }
   throw new Error(`GATEWAY_INDISPONIVEL — ${errors.join(" | ")}`);
 
 }
