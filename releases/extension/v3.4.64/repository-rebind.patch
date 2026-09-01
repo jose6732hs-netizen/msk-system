@@ -1,0 +1,28 @@
+# v3.4.64 — live Lovable repository resolution
+
+- O background tenta o repositório atual via API do Lovable antes do cache local.
+- O cache local virou apenas fallback (`storage-fallback`).
+- O content script pede `force_refresh: true` antes do pre-flight.
+- Se o backend validar um repositório diferente do vínculo salvo, `msk-agent-preflight` v3 atualiza `msk_projects` antes de liberar o chat.
+
+Trechos principais:
+
+```js
+const resolved = await send({
+  type: 'MSK_LOVABLE_PROJECT_REPOSITORY',
+  payload: { lovable_project_id: projectId, force_refresh: true }
+});
+```
+
+```js
+if (existing) return { ok: true, repository: existing, source: 'storage-fallback' };
+```
+
+Backend:
+
+```ts
+const requested = normRepo(body?.repository_url || body?.repository || '');
+const candidate = requested || stored;
+// após validar o repositório pela mesma instalação GitHub:
+await db.from('msk_projects').update({ github_owner, github_repo, github_default_branch }).eq('lovable_project_id', pid).eq('user_id', u.id);
+```
