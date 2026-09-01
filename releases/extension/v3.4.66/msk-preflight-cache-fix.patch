@@ -1,0 +1,7 @@
+--- a/msk-preflight.js
++++ b/msk-preflight.js
+@@
+-    cache.set(key, normalized);
++    if (normalized.ready === true) cache.set(key, normalized);
++    else cache.delete(key);
+     render(normalized);
