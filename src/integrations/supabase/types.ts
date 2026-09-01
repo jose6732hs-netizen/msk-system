@@ -2304,6 +2304,54 @@ export type Database = {
           },
         ]
       }
+      msk_ai_providers: {
+        Row: {
+          api_base_url: string
+          api_key_ciphertext: string | null
+          api_key_last4: string | null
+          created_at: string
+          enabled: boolean
+          id: string
+          is_primary: boolean
+          label: string
+          last_checked_at: string | null
+          last_status: string | null
+          model: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          api_base_url: string
+          api_key_ciphertext?: string | null
+          api_key_last4?: string | null
+          created_at?: string
+          enabled?: boolean
+          id: string
+          is_primary?: boolean
+          label: string
+          last_checked_at?: string | null
+          last_status?: string | null
+          model?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          api_base_url?: string
+          api_key_ciphertext?: string | null
+          api_key_last4?: string | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_primary?: boolean
+          label?: string
+          last_checked_at?: string | null
+          last_status?: string | null
+          model?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       msk_ai_settings: {
         Row: {
           active: boolean
@@ -4256,6 +4304,42 @@ export type Database = {
           published_at: string
           title: string
           version: number
+        }[]
+      }
+      msk_ai_providers_decrypt: {
+        Args: { p_id: string }
+        Returns: {
+          api_base_url: string
+          api_key: string
+          id: string
+          model: string
+        }[]
+      }
+      msk_ai_providers_delete: { Args: { p_id: string }; Returns: boolean }
+      msk_ai_providers_save: {
+        Args: {
+          p_api_key?: string
+          p_base_url?: string
+          p_id: string
+          p_model?: string
+        }
+        Returns: boolean
+      }
+      msk_ai_providers_set_primary: { Args: { p_id: string }; Returns: boolean }
+      msk_ai_providers_status: {
+        Args: never
+        Returns: {
+          api_base_url: string
+          configured: boolean
+          enabled: boolean
+          id: string
+          is_primary: boolean
+          key_masked: string
+          label: string
+          last_checked_at: string
+          last_status: string
+          model: string
+          updated_at: string
         }[]
       }
       msk_ai_settings_decrypt: {
