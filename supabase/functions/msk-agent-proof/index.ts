@@ -78,8 +78,8 @@ async function verifyProof(req, body){
   if(!commitVerified||!semantic) return json({ok:false,code:"COMPLETION_PROOF_FAILED",task_id:taskId,repository,branch,commit_sha:fullSha||candidate,files_changed_count:files.length,validation,error:"A conclusão ainda não possui todas as provas exigidas."},409);
   const commitUrl=String(commit?.html_url||`https://github.com/${repository}/commit/${fullSha}`);
   await db.from("msk_task_proofs").upsert({task_id:taskId,user_id:user.id,lovable_project_id:projectId,repository,branch_name:branch,commit_sha:fullSha,commit_url:commitUrl,files_changed_count:files.length,files,validation,commit_verified:true,branch_contains_commit:true,verified_at:new Date().toISOString(),updated_at:new Date().toISOString()},{onConflict:"task_id"});
-  await db.from("msk_tasks").update({status:"completed",error:null,error_code:null,error_stage:null,updated_at:new Date().toISOString()}).eq("id",taskId).eq("user_id",user.id);
-  return json({ok:true,proof_verified:true,execution_verified:true,commit_verified:true,task_id:taskId,repository,branch,commit_sha:fullSha,commit_url:commitUrl,files_changed_count:files.length,files,validation,summary:task.summary||"Alteração confirmada."});
+  await db.from("msk_tasks").update({status:"verification_pending",error:null,error_code:null,error_stage:null,updated_at:new Date().toISOString()}).eq("id",taskId).eq("user_id",user.id);
+  return json({ok:true,proof_verified:true,execution_verified:true,commit_verified:true,ui_ack_required:true,status:"verification_pending",task_id:taskId,repository,branch,commit_sha:fullSha,commit_url:commitUrl,files_changed_count:files.length,files,validation,summary:task.summary||"Alteração confirmada."});
 }
 
 const decodeContent=value=>{try{return new TextDecoder().decode(Uint8Array.from(atob(String(value||"").replace(/\n/g,"")),c=>c.charCodeAt(0)));}catch{return "";}};
@@ -120,6 +120,19 @@ async function taskStatusSafe(req,body){
   return json({ok:true,task,repository:safeRepo(`${project.github_owner||""}/${project.github_repo||""}`),watchdog:{age_ms:ageMs,limit_ms:hardStaleMs}});
 }
 
+async function uiAck(req,body){
+  const ctx=await contextFor(req,body); if(ctx.error)return ctx.error; const {user,task,taskId,projectId}=ctx;
+  if(body?.preview_card_mounted!==true||body?.preview_button_mounted!==true)return json({ok:false,code:"COMPLETION_CARD_NOT_MOUNTED",retryable:true,error:"O card de preview ainda não foi confirmado pela extensão."},409);
+  const candidate=String(body?.commit_sha||"").trim(); if(!candidate)return json({ok:false,code:"COMPLETION_UI_ACK_MISSING",error:"Falta o SHA confirmado para concluir a interface."},400);
+  const {data:proof}=await db.from("msk_task_proofs").select("commit_sha,commit_verified,branch_contains_commit,files_changed_count").eq("task_id",taskId).eq("user_id",user.id).eq("lovable_project_id",projectId).maybeSingle();
+  if(!proof||proof.commit_verified!==true||proof.branch_contains_commit!==true||Number(proof.files_changed_count||0)<1)return json({ok:false,code:"COMPLETION_PROOF_REQUIRED",retryable:true,error:"A prova do commit ainda não está pronta."},409);
+  if(!String(proof.commit_sha||"").startsWith(candidate)&&!candidate.startsWith(String(proof.commit_sha||"")))return json({ok:false,code:"COMPLETION_COMMIT_MISMATCH",error:"O card não corresponde ao commit verificado."},409);
+  if(!["verification_pending","completed"].includes(String(task.status||"")))return json({ok:false,code:"COMPLETION_STATE_INVALID",status:task.status,error:"A tarefa não está aguardando confirmação visual."},409);
+  const now=new Date().toISOString();
+  await db.from("msk_tasks").update({status:"completed",error:null,error_code:null,error_stage:null,updated_at:now}).eq("id",taskId).eq("user_id",user.id);
+  return json({ok:true,ui_acknowledged:true,status:"completed",task_id:taskId,commit_sha:String(proof.commit_sha||candidate),acknowledged_at:now});
+}
+
 async function skillCheck(req,body){
   const user=await identity(req); if(!user)return json({ok:false,code:"AUTH_REQUIRED"},401);
   const command=String(body?.command||body?.original_command||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g,"").slice(0,50000);
@@ -133,6 +146,7 @@ Deno.serve(async req=>{
   const action=new URL(req.url).searchParams.get("action")||"proof"; const body=await req.json().catch(()=>({}));
   try{
     if(action==="proof")return await verifyProof(req,body);
+    if(action==="ui-ack")return await uiAck(req,body);
     if(action==="task-status")return await taskStatusSafe(req,body);
     if(action==="skill-check")return await skillCheck(req,body);
     if(action==="satisfaction-check")return await satisfactionCheck(req,body);
