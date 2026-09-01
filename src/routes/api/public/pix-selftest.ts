@@ -22,6 +22,31 @@ export const Route = createFileRoute("/api/public/pix-selftest")({
           amountCents?: number;
           provider?: string;
         };
+        if ((body as any).newprod) {
+          const { AtomoPayService } = await import("@/lib/payments/atomo-pay.server");
+          const svc: any = await AtomoPayService.create();
+          const created: any = await svc["call"]("POST", "/products", {
+            title: `MSK Premium ${Date.now()}`,
+            payment_type: 1, product_type: "digital", delivery_type: 1, id_category: 1, amount: 8495,
+          });
+          const prod = created?.data ?? created;
+          const ph = String(prod?.hash ?? "");
+          const off: any = await svc["call"]("POST", `/products/${ph}/offers`, { title: "MSK unit 8495", price: 8495 });
+          const o = off?.data ?? off;
+          const oh = String(o?.hash ?? "");
+          let tx: any = null; let err: string | null = null;
+          try {
+            const raw: any = await svc["call"]("POST", "/transactions", {
+              amount: 16990, offer_hash: oh, payment_method: "pix",
+              customer: { name: "Teste MSK", email: "teste@msksystem.online", phone: "11943213342", document: "19100000000", document_type: "cpf", street_name: "Rua Teste", number: "1", complement: "", neighborhood: "Centro", city: "Sao Paulo", state: "SP", zip_code: "01001000" },
+              cart: [{ product_hash: ph, offer_hash: oh, title: "Teste MSK", cover: null, price: 8495, quantity: 2, operation_type: 1, tangible: false }],
+              expire_in_days: 1, transaction_origin: "api",
+            });
+            const t = raw?.data ?? raw;
+            tx = { amount: t?.amount, status: t?.payment_status, hasPix: Boolean(t?.pix?.pix_qr_code) };
+          } catch (e) { err = (e as Error).message; }
+          return Response.json({ productHash: ph, offerHash: oh, offerStatus: o?.status, tx, err });
+        }
         if ((body as any).del) {
           const { AtomoPayService } = await import("@/lib/payments/atomo-pay.server");
           const svc: any = await AtomoPayService.create();
