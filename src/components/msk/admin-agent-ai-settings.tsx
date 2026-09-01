@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, ShieldCheck, Trash2 } from "lucide-react";
+import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, Network, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminAiGlobalTraining } from "@/components/msk/admin-ai-global-training";
+import { AdminAiProviders } from "@/components/msk/admin-ai-providers";
 import {
   agentAiSettingsDelete,
   agentAiSettingsSave,
@@ -19,7 +20,8 @@ export function AdminAgentAiSettings() {
   const saveFn = useServerFn(agentAiSettingsSave);
   const deleteFn = useServerFn(agentAiSettingsDelete);
   const [apiKey, setApiKey] = useState("");
-  const [section, setSection] = useState<"api" | "training">("api");
+  const [section, setSection] = useState<"api" | "providers" | "training">("api");
+
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-ai-settings"],
