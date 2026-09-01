@@ -1,0 +1,88 @@
+db[data-connected="true"]{box-shadow:0 0 0 1px rgba(62,207,142,.26),0 0 24px rgba(62,207,142,.22)!important}
++      #msk-root .msk-direct-db-manager{gap:8px!important}
++      #msk-root .msk-direct-db-list,#msk-root .msk-direct-db-form{display:flex;flex-direction:column;gap:7px}
++      #msk-root .msk-direct-db-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 9px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.035)}
++      #msk-root .msk-direct-db-item-main{display:flex;flex-direction:column;gap:2px;min-width:0} #msk-root .msk-direct-db-item-main span{font-size:9px;opacity:.7}
++      #msk-root .msk-direct-db-item-actions{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
++      #msk-root .msk-direct-db-item-actions button,#msk-root .msk-direct-db-save{border:1px solid rgba(62,207,142,.28);border-radius:10px;background:rgba(62,207,142,.09);color:#eafff5;padding:6px 8px;font-size:9px;cursor:pointer}
++      #msk-root .msk-direct-db-input{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);border-radius:11px;background:rgba(0,0,0,.26);color:#fff;padding:8px 9px;font-size:10px;outline:none}
++      #msk-root .msk-direct-db-dynamic{display:flex;flex-direction:column;gap:6px}
++      #msk-root .msk-direct-db-form-status,#msk-root .msk-direct-db-empty{font-size:9px;line-height:1.35;opacity:.78}
+       #msk-root .msk-direct-github:hover{border-color:#f0f6fc!important;box-shadow:0 0 0 2px rgba(240,246,252,.11),0 8px 24px rgba(0,0,0,.4)!important}
+       #msk-root .msk-direct-github:disabled{cursor:wait!important;filter:saturate(.65)!important}
+       #msk-root .msk-direct-github img{display:block!important;width:31px!important;height:31px!important;object-fit:contain!important;filter:none!important}
+@@ -546,7 +617,8 @@
+       tone: item.tone || (item.role === 'user' ? 'sent' : 'question'),
+       openLabel: item.open_label || (item.role === 'user' ? 'Ver mensagem completa' : 'Ver resposta completa'),
+       closeLabel: item.close_label || (item.role === 'user' ? 'Ocultar mensagem' : 'Ocultar resposta'),
+-      progressSteps: Array.isArray(item.progress_steps) ? item.progress_steps : undefined
++      progressSteps: Array.isArray(item.progress_steps) ? item.progress_steps : undefined,
++      refreshPreview: item.refresh_preview === true
+     } : {});
+   };
+ 
+@@ -561,12 +633,12 @@
+ 
+     root.querySelectorAll('.msk-connect.msk-gpt, .msk-connect.msk-grok').forEach(button => {
+       const wrap = button.closest('.msk-connect-wrap');
+-      if (wrap && !wrap.classList.contains('msk-direct-chat-wrap') && !wrap.classList.contains('msk-direct-github-wrap')) wrap.remove();
++      if (wrap && !wrap.classList.contains('msk-direct-chat-wrap') && !wrap.classList.contains('msk-direct-github-wrap') && !wrap.classList.contains('msk-direct-db-wrap')) wrap.remove();
+       else button.remove();
+     });
+ 
+     root.querySelectorAll('button, [role="button"]').forEach(button => {
+-      if (button.closest('.msk-direct-github-wrap, .msk-direct-chat-wrap')) return;
++      if (button.closest('.msk-direct-github-wrap, .msk-direct-chat-wrap, .msk-direct-db-wrap')) return;
+       const cls = String(button.className || '');
+       const text = String(button.textContent || '').replace(/\s+/g, ' ').trim();
+       const legacyProvider = /\b(chatgpt|gpt|grok)\b/i.test(text) || /\b(chatgpt|gpt|grok)\b/i.test(cls);
+@@ -751,6 +823,114 @@
+     return wrap.querySelector('.msk-direct-github');
+   };
+ 
++  const databaseStatusText = connection => {
++    const status = String(connection?.status || 'unknown');
++    if (status === 'connected') return 'Conectado';
++    if (status === 'linked') return 'Vinculado';
++    if (status === 'degraded') return 'Atenção';
++    if (status === 'error') return 'Erro';
++    return 'Não verificado';
++  };
++
++  const openDatabaseManager = async () => {
++    const projectId = await projectIdFromPage();
++    const thread = ensureThread();
++    if (!projectId || !thread) return addMessage('Não consegui identificar o projeto Lovable atual para conectar o banco.', 'error');
++    thread.querySelector('.msk-direct-db-manager')?.remove();
++    const row = document.createElement('div');
++    row.className = 'msk-direct-message msk-direct-assistant msk-direct-compact-card msk-direct-db-manager';
++    const head = document.createElement('div'); head.className = 'msk-direct-message-head';
++    const title = document.createElement('strong'); title.textContent = 'MSK · CONEXÕES DE BANCO';
++    const pill = document.createElement('span'); pill.className = 'msk-direct-ai-badge'; pill.textContent = 'SEGURO';
++    head.append(title, pill);
++    const intro = document.createElement('div'); intro.className = 'msk-direct-card-preview';
++    intro.textContent = 'Conecte Supabase ou vincule Lovable Cloud ao projeto atual. Credenciais são criptografadas no backend e nunca voltam para o navegador.';
++    const list = document.createElement('div'); list.className = 'msk-direct-db-list';
++    const form = document.createElement('div'); form.className = 'msk-direct-db-form';
++    row.append(head, intro, list, form); thread.appendChild(row); rootScroll(thread);
++
++    const load = async () => {
++      list.textContent = 'Verificando conexões…';
++      const response = await send({ type: 'MSK_DATABASE_CONNECTION_LIST_V1', payload: { lovable_project_id: projectId } }).catch(() => null);
++      const connections = Array.isArray(response?.connections) ? response.connections : [];
++      list.textContent = '';
++      if (!connections.length) {
++        const empty = document.createElement('div'); empty.className = 'msk-direct-db-empty'; empty.textContent = 'Nenhuma conexão salva para este projeto.'; list.appendChild(empty);
++      }
++      for (const connection of connections) {
++        const item = document.createElement('div'); item.className = 'msk-direct-db-item';
++        const main = document.createElement('div'); main.className = 'msk-direct-db-item-main';
++        const label = document.createElement('strong'); label.textContent = `${connection.provider === 'supabase' ? 'Supabase' : 'Lovable Cloud'} · ${connection.name || 'Produção'}`;
++        const meta = document.createElement('span'); meta.textContent = `${databaseStatusText(connection)}${Number.isFinite(Number(connection.latency_ms)) ? ` · ${connection.latency_ms}ms` : ''}${connection.is_default ? ' · padrão' : ''}`;
++        main.append(label, meta);
++        const actions = document.createElement('div'); actions.className = 'msk-direct-db-item-actions';
++        const test = document.createElement('button'); test.type='button'; test.textContent='Testar';
++        test.onclick = async () => { test.disabled=true; test.textContent='Testando…'; const result=await send({type:'MSK_DATABASE_CONNECTION_TEST_V1',payload:{lovable_project_id:projectId,connection_id:connection.id}}).catch(()=>null); test.disabled=false; test.textContent=result?.ok?'✓ OK':'⚠ Falhou'; setTimeout(load,700); };
++        actions.appendChild(test);
++        if (!connection.is_default) { const def=document.createElement('button'); def.type='button'; def.textContent='Padrão'; def.onclick=async()=>{def.disabled=true;await send({type:'MSK_DATABASE_CONNECTION_DEFAULT_V1',payload:{lovable_project_id:projectId,connection_id:connection.id}}).catch(()=>null);await load();await refreshDatabaseButtonStatus();}; actions.appendChild(def); }
++        const del=docume
