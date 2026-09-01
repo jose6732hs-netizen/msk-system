@@ -94,43 +94,54 @@ export const aiProviderModels = createServerFn({ method: "POST" })
     }
 
     const base = row.api_base_url.replace(/\/+$/, "");
-    const url =
-      data.id === "gemini"
-        ? `${base}/models?key=${encodeURIComponent(row.api_key)}`
+    const isGemini = data.id === "gemini" && !/openai/i.test(base);
+    const headers: Record<string, string> = isGemini
+      ? {}
+      : { Authorization: `Bearer ${row.api_key}` };
+
+    const collected: string[] = [];
+    let pageToken: string | null = null;
+    let guard = 0;
+
+    do {
+      const url = isGemini
+        ? `${base}/models?key=${encodeURIComponent(row.api_key)}&pageSize=1000${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}`
         : `${base}/models`;
-    const headers: Record<string, string> =
-      data.id === "gemini" ? {} : { Authorization: `Bearer ${row.api_key}` };
 
-    let response: Response;
-    try {
-      response = await fetch(url, { headers });
-    } catch {
-      return { ok: false as const, error: "Não foi possível falar com o provedor." };
-    }
-    if (!response.ok) {
-      return {
-        ok: false as const,
-        error:
-          response.status === 401 || response.status === 403
-            ? "API key recusada pelo provedor."
-            : `Provedor respondeu HTTP ${response.status}.`,
-      };
-    }
+      let response: Response;
+      try {
+        response = await fetch(url, { headers });
+      } catch {
+        return { ok: false as const, error: "Não foi possível falar com o provedor." };
+      }
+      if (!response.ok) {
+        return {
+          ok: false as const,
+          error:
+            response.status === 401 || response.status === 403
+              ? "API key recusada pelo provedor."
+              : `Provedor respondeu HTTP ${response.status}.`,
+        };
+      }
 
-    const body = (await response.json()) as any;
-    const models: string[] =
-      data.id === "gemini"
-        ? (body?.models ?? [])
-            .filter((m: any) => (m?.supportedGenerationMethods ?? []).includes("generateContent"))
-            .map((m: any) => String(m?.name ?? "").replace(/^models\//, ""))
-        : (body?.data ?? []).map((m: any) => String(m?.id ?? ""));
+      const body = (await response.json()) as any;
+      if (isGemini) {
+        for (const m of body?.models ?? []) {
+          const methods: string[] = m?.supportedGenerationMethods ?? [];
+          if (methods.length && !methods.includes("generateContent")) continue;
+          collected.push(String(m?.name ?? "").replace(/^models\//, ""));
+        }
+        pageToken = body?.nextPageToken ?? null;
+      } else {
+        for (const m of body?.data ?? []) collected.push(String(m?.id ?? ""));
+        pageToken = null;
+      }
+      guard += 1;
+    } while (pageToken && guard < 20);
 
-    const list = Array.from(new Set(models.filter(Boolean))).sort();
-    await context.supabase.rpc("msk_ai_providers_save" as never, {
-      p_id: data.id,
-      p_api_key: null,
-      p_model: null,
-      p_base_url: null,
-    } as never);
+    const list = Array.from(new Set(collected.filter(Boolean))).sort((a, b) =>
+      a.localeCompare(b),
+    );
     return { ok: true as const, models: list };
   });
+

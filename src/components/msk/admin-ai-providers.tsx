@@ -23,7 +23,18 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
 
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(row.model ?? "");
-  const [models, setModels] = useState<string[]>([]);
+
+  const modelsQuery = useQuery({
+    queryKey: ["ai-provider-models", row.id, row.updated_at],
+    queryFn: () => modelsFn({ data: { id: row.id } }),
+    enabled: row.configured,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const fetched = modelsQuery.data?.ok ? modelsQuery.data.models : [];
+  const models = Array.from(
+    new Set([...(row.model ? [row.model] : []), ...(model ? [model] : []), ...fetched]),
+  ).sort((a, b) => a.localeCompare(b));
 
   const save = useMutation({
     mutationFn: () =>
@@ -42,18 +53,12 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const loadModels = useMutation({
-    mutationFn: () => modelsFn({ data: { id: row.id } }),
-    onSuccess: (res) => {
-      if (!res.ok) {
-        toast.error(res.error);
-        return;
-      }
-      setModels(res.models);
-      toast.success(`${res.models.length} modelos disponíveis em ${row.label}.`);
-    },
-    onError: (e: Error) => toast.error(e.message),
-  });
+  async function reloadModels() {
+    const res = await modelsQuery.refetch();
+    const value = res.data;
+    if (value && !value.ok) toast.error(value.error);
+    else if (value?.ok) toast.success(`${value.models.length} modelos disponíveis em ${row.label}.`);
+  }
 
   const setPrimary = useMutation({
     mutationFn: () => primaryFn({ data: { id: row.id } }),
@@ -150,10 +155,10 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
               variant="outline"
               size="icon"
               title="Buscar modelos disponíveis"
-              disabled={!row.configured || loadModels.isPending}
-              onClick={() => loadModels.mutate()}
+              disabled={!row.configured || modelsQuery.isFetching}
+              onClick={() => void reloadModels()}
             >
-              {loadModels.isPending ? (
+              {modelsQuery.isFetching ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <RefreshCw className="h-4 w-4" />
@@ -174,7 +179,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
           Salvar
         </Button>
         <span className="text-[0.65rem] text-muted-foreground">
-          Endpoint: <b className="text-foreground">{row.api_base_url}</b>
+          {fetched.length > 0 ? `${fetched.length} modelos · ` : ""}Endpoint: <b className="text-foreground">{row.api_base_url}</b>
         </span>
       </div>
     </section>
