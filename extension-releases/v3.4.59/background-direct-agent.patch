@@ -1,0 +1,39 @@
+--- MSK-Agente-v3.4.58/background-direct-agent.js
++++ MSK-Agente-v3.4.59/background-direct-agent.js
+@@ -61,9 +61,9 @@
+       ok: false,
+       connected: false,
+       status: Number(status || source?.status || 500),
+-      code: 'GITHUB_TEMPORARILY_UNAVAILABLE',
+-      error: 'Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes.',
+-      message: 'Não foi possível concluir a conexão com o GitHub agora. Tente novamente em instantes.'
++      code: /^GITHUB_[A-Z0-9_]+$/.test(String(source?.code || '')) ? String(source.code) : 'GITHUB_CONFIGURATION_ERROR',
++      error: 'A configuração segura do GitHub não pôde ser usada nesta operação.',
++      message: 'A configuração segura do GitHub não pôde ser usada nesta operação.'
+     };
+   }
+@@ -71,9 +71,9 @@
+       ...source,
+       ok: false,
+       status: Number(status || source?.status || 500),
+-      code: 'MSK_AI_TEMPORARILY_UNAVAILABLE',
+-      error: 'A inteligência MSK está temporariamente indisponível. Tente novamente em instantes.',
+-      message: 'A inteligência MSK está temporariamente indisponível. Tente novamente em instantes.'
++      code: /^AI_[A-Z0-9_]+$/.test(String(source?.code || '')) ? String(source.code) : 'AI_CONFIGURATION_ERROR',
++      error: 'A configuração interna da inteligência MSK não está disponível.',
++      message: 'A configuração interna da inteligência MSK não está disponível.'
+     };
+@@ -365,8 +365,13 @@
+     return mskDirectAgentApi(action, message.payload || {});
+   })().then(sendResponse).catch(error => sendResponse({
+     ok: false,
+-    status: 500,
+-    error: error?.message || 'Falha no agente MSK.'
++    status: 503,
++    code: error?.name === 'AbortError' ? 'EXTENSION_REQUEST_TIMEOUT' : 'EXTENSION_TRANSPORT_ERROR',
++    stage: 'transport',
++    retryable: true,
++    error: error?.name === 'AbortError'
++      ? 'A comunicação com o agente excedeu o tempo seguro.'
++      : (error?.message || 'Falha de comunicação entre a extensão e o agente MSK.')
+   }));
