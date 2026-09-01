@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "MSK Agente — Guardião Lovable",
+  "version": "3.4.76",
+  "description": "MSK Agente v3.4.76 — painel consolidado sem duplicações, 4 bolinhas com nomes inteiros, conexões seguras, commit comprovado e preview robusto.",
+  "permissions": ["storage","activeTab","scripting","tabs","windows","unlimitedStorage","alarms","downloads"],
+  "host_permissions": ["https://lovable.dev/*","https://msksystem.online/*","https://api.lovable.dev/*","https://lovable-api.com/*","https://github.com/*","https://iybjfmhqbblrppqoodyf.supabase.co/*"],
+  "background": {"service_worker":"background-wrapper.js","type":"module"},
+  "action": {"default_title":"Ativar Guardião MSK"},
+  "options_page":"options.html"
+}
