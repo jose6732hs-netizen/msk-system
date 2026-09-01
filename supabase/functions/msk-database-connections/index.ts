@@ -1,0 +1,158 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const db = createClient(SUPABASE_URL, SERVICE_ROLE);
+const enc = new TextEncoder();
+const dec = new TextDecoder();
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-msk-license, x-msk-session",
+  "Access-Control-Allow-Methods": "POST,OPTIONS",
+};
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
+const token = (req: Request) => (req.headers.get("authorization") || req.headers.get("x-msk-license") || "").replace(/^Bearer\s+/i, "").trim();
+const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64 = (value: string) => Uint8Array.from(atob(value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=")), c => c.charCodeAt(0));
+
+async function identity(req: Request) {
+  const t = token(req); if (!t || t.startsWith("sb_publishable_")) return null;
+  const direct = await db.auth.getUser(t); if (!direct.error && direct.data.user) return { id: direct.data.user.id };
+  for (const origin of ["https://msksystem.online", "https://msk-system.lovable.app"]) {
+    try {
+      const response = await fetch(`${origin}/api/extension/license-identity`, { method: "POST", headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" }, body: "{}" });
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && data?.ok && data?.active && /^[0-9a-f-]{36}$/i.test(String(data.user_id || ""))) return { id: String(data.user_id) };
+    } catch {}
+  }
+  return null;
+}
+
+async function keyMaterial() {
+  const configured = (Deno.env.get("MSK_DB_CONNECTION_KEY") || "").trim();
+  if (configured) {
+    const raw = /^[A-Za-z0-9_-]{43,44}$/.test(configured) ? unb64(configured) : enc.encode(configured);
+    if (raw.length === 32) return raw;
+  }
+  const root = (Deno.env.get("MSK_STATE_SECRET") || SERVICE_ROLE).trim();
+  if (!root) throw new Error("DB_CONNECTION_ENCRYPTION_KEY_MISSING");
+  return new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(`msk-db-connections:v1:${root}`)));
+}
+async function cryptoKey() { return crypto.subtle.importKey("raw", await keyMaterial(), "AES-GCM", false, ["encrypt", "decrypt"]); }
+async function encrypt(value: unknown) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const plain = enc.encode(JSON.stringify(value || {}));
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await cryptoKey(), plain));
+  const out = new Uint8Array(iv.length + cipher.length); out.set(iv); out.set(cipher, iv.length); return b64(out);
+}
+async function decrypt(value: string) {
+  const packed = unb64(String(value || "")); if (packed.length < 13) throw new Error("DB_CONNECTION_CIPHERTEXT_INVALID");
+  const plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: packed.slice(0, 12) }, await cryptoKey(), packed.slice(12));
+  return JSON.parse(dec.decode(plain));
+}
+
+const cleanName = (value: unknown) => String(value || "Produção").replace(/[\u0000-\u001F\u007F]/g, "").trim().slice(0, 80) || "Produção";
+const safeUrl = (value: unknown) => { try { const u = new URL(String(value || "").trim()); return u.protocol === "https:" ? u.toString().replace(/\/$/, "") : ""; } catch { return ""; } };
+const secretKeys = /(?:key|token|secret|password|credential|service_role|anon_key|api_key)/i;
+function schemaFor(credentials: Record<string, unknown>) {
+  const keys = Object.keys(credentials || {}).filter(k => credentials[k] != null && String(credentials[k]).trim() !== "");
+  return { fields: keys.map(name => ({ name, secret: secretKeys.test(name) })), has_secrets: keys.some(name => secretKeys.test(name)) };
+}
+
+async function projectContext(req: Request, body: any) {
+  const user = await identity(req); if (!user) return { error: json({ ok: false, code: "AUTH_REQUIRED", error: "Valide sua licença MSK." }, 401) };
+  const projectId = String(body?.lovable_project_id || "").trim();
+  if (!/^[0-9a-f-]{36}$/i.test(projectId)) return { error: json({ ok: false, code: "PROJECT_ID_INVALID", error: "Projeto Lovable inválido." }, 400) };
+  const { data: project } = await db.from("msk_projects").select("lovable_project_id,user_id,project_name,supabase_project_ref").eq("lovable_project_id", projectId).maybeSingle();
+  if (!project || (project.user_id && String(project.user_id) !== user.id)) return { error: json({ ok: false, code: "PROJECT_OWNERSHIP_MISMATCH", error: "Este projeto não pertence à conta MSK atual." }, 403) };
+  return { user, project, projectId };
+}
+
+async function testSupabase(credentials: any) {
+  const projectUrl = safeUrl(credentials?.project_url || credentials?.supabase_url || credentials?.url);
+  const key = String(credentials?.service_role_key || credentials?.anon_key || credentials?.api_key || "").trim();
+  if (!projectUrl || !key) return { success: false, status: "error", code: "SUPABASE_CREDENTIALS_REQUIRED", message: "Informe Project URL e uma chave Supabase válida." };
+  const started = performance.now();
+  try {
+    const response = await fetch(`${projectUrl}/rest/v1/`, { headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" }, signal: AbortSignal.timeout(9000) });
+    const latency = Math.round(performance.now() - started);
+    if (response.ok) return { success: true, status: "connected", code: "SUPABASE_CONNECTED", message: "Supabase conectado e autenticado.", latency_ms: latency, project_url: projectUrl };
+    if ([401, 403].includes(response.status)) return { success: false, status: "error", code: "SUPABASE_AUTH_REJECTED", message: "O Supabase recusou a chave informada.", latency_ms: latency };
+    return { success: false, status: "degraded", code: `SUPABASE_HTTP_${response.status}`, message: "O projeto respondeu, mas a API não confirmou a conexão.", latency_ms: latency };
+  } catch {
+    return { success: false, status: "error", code: "SUPABASE_UNREACHABLE", message: "Não foi possível alcançar o projeto Supabase." };
+  }
+}
+async function testLovableCloud(credentials: any, currentProjectId: string) {
+  const projectId = String(credentials?.project_id || currentProjectId || "").trim();
+  if (!projectId || projectId !== currentProjectId) return { success: false, status: "error", code: "LOVABLE_PROJECT_MISMATCH", message: "O Project ID não corresponde ao projeto Lovable atual." };
+  const apiUrl = safeUrl(credentials?.api_url || credentials?.url || "");
+  const apiKey = String(credentials?.api_key || credentials?.token || "").trim();
+  if (!apiUrl) return { success: true, status: "linked", code: "LOVABLE_PROJECT_LINKED", message: "Projeto Lovable Cloud vinculado. Nenhum endpoint externo de banco foi informado para teste de escrita.", project_id: projectId };
+  const started = performance.now();
+  try {
+    const response = await fetch(apiUrl, { method: "GET", headers: { Accept: "application/json", ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) }, signal: AbortSignal.timeout(9000) });
+    const latency = Math.round(performance.now() - started);
+    if (response.ok) return { success: true, status: "connected", code: "LOVABLE_CLOUD_ENDPOINT_CONNECTED", message: "Endpoint do Lovable Cloud respondeu com sucesso.", latency_ms: latency, project_id: projectId };
+    return { success: false, status: "degraded", code: `LOVABLE_CLOUD_HTTP_${response.status}`, message: "O projeto foi identificado, mas o endpoint informado não confirmou a conexão.", latency_ms: latency, project_id: projectId };
+  } catch {
+    return { success: false, status: "error", code: "LOVABLE_CLOUD_UNREACHABLE", message: "O projeto foi identificado, mas o endpoint informado não respondeu.", project_id: projectId };
+  }
+}
+async function testProvider(provider: string, credentials: any, projectId: string) {
+  return provider === "supabase" ? testSupabase(credentials) : testLovableCloud(credentials, projectId);
+}
+
+function publicRow(row: any) {
+  return {
+    id: row.id, provider: row.provider, name: row.name, is_default: row.is_default === true,
+    status: row.status, status_code: row.status_code || null, latency_ms: row.latency_ms ?? null,
+    last_checked_at: row.last_checked_at || null, created_at: row.created_at, updated_at: row.updated_at,
+    credential_schema: row.credential_schema || {},
+  };
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  if (req.method !== "POST") return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
+  const action = new URL(req.url).searchParams.get("action") || "list";
+  const body = await req.json().catch(() => ({}));
+  try {
+    const ctx: any = await projectContext(req, body); if (ctx.error) return ctx.error;
+    const { user, projectId } = ctx;
+    if (action === "list" || action === "status") {
+      const { data, error } = await db.from("msk_database_connections").select("id,provider,name,is_default,status,status_code,latency_ms,last_checked_at,created_at,updated_at,credential_schema").eq("user_id", user.id).eq("lovable_project_id", projectId).order("is_default", { ascending: false }).order("updated_at", { ascending: false });
+      if (error) throw error;
+      return json({ ok: true, connections: (data || []).map(publicRow), default_connection: (data || []).find((x: any) => x.is_default) ? publicRow((data || []).find((x: any) => x.is_default)) : null });
+    }
+    if (action === "connect") {
+      const provider = String(body?.provider || "").trim(); if (!['supabase','lovable_cloud'].includes(provider)) return json({ ok:false, code:'DATABASE_PROVIDER_INVALID', error:'Provedor de banco inválido.' },400);
+      const credentials = body?.credentials && typeof body.credentials === 'object' ? body.credentials : {};
+      const result: any = await testProvider(provider, credentials, projectId);
+      if (!result.success) return json({ ok:false, code:result.code, status:result.status, error:result.message, test:result },422);
+      const name = cleanName(body?.name); const isDefault = body?.is_default !== false;
+      const row = {
+        user_id:user.id, lovable_project_id:projectId, provider, name,
+        credentials_ciphertext:await encrypt(credentials), credential_schema:schemaFor(credentials), is_default:isDefault,
+        status:result.status, status_code:result.code, latency_ms:result.latency_ms ?? null, last_checked_at:new Date().toISOString(), last_error_at:null,
+      };
+      const { data, error } = await db.from("msk_database_connections").upsert(row,{onConflict:"user_id,lovable_project_id,provider,name"}).select("id,provider,name,is_default,status,status_code,latency_ms,last_checked_at,created_at,updated_at,credential_schema").single();
+      if (error) throw error;
+      return json({ ok:true, connection:publicRow(data), test:result });
+    }
+    const id = String(body?.connection_id || body?.id || '').trim(); if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ok:false,code:'DATABASE_CONNECTION_ID_INVALID'},400);
+    const { data:row } = await db.from("msk_database_connections").select("*").eq("id",id).eq("user_id",user.id).eq("lovable_project_id",projectId).maybeSingle();
+    if (!row) return json({ok:false,code:'DATABASE_CONNECTION_NOT_FOUND',error:'Conexão não encontrada.'},404);
+    if (action === "delete") { await db.from("msk_database_connections").delete().eq("id",id).eq("user_id",user.id); return json({ok:true,deleted:true}); }
+    if (action === "set-default") { const {error}=await db.from("msk_database_connections").update({is_default:true}).eq("id",id).eq("user_id",user.id); if(error)throw error; return json({ok:true,default:true}); }
+    if (action === "test") {
+      const credentials = await decrypt(row.credentials_ciphertext); const result:any = await testProvider(row.provider, credentials, projectId);
+      await db.from("msk_database_connections").update({status:result.status,status_code:result.code,latency_ms:result.latency_ms??null,last_checked_at:new Date().toISOString(),last_error_at:result.success?null:new Date().toISOString()}).eq("id",id).eq("user_id",user.id);
+      return json({ok:result.success,connection:{...publicRow(row),status:result.status,status_code:result.code,latency_ms:result.latency_ms??null,last_checked_at:new Date().toISOString()},test:result},result.success?200:422);
+    }
+    return json({ok:false,code:'ACTION_NOT_SUPPORTED'},400);
+  } catch (error) {
+    console.error(JSON.stringify({service:'msk-database-connections',event:'failure',message:error instanceof Error?error.message:'unknown'}));
+    return json({ok:false,code:'DATABASE_CONNECTION_SERVICE_ERROR',error:'Não foi possível concluir a operação de conexão agora.'},500);
+  }
+});
