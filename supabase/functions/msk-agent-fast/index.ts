@@ -17,7 +17,7 @@ Deno.serve(async (req: Request) => {
   if (!base) return json({ ok: false, code: "MSK_UNAVAILABLE", error: "MSK indisponível." }, 503);
 
   const url = new URL(req.url);
-  let body = await req.text();
+  const body = await req.text();
   const headers = new Headers();
   for (const name of [
     "authorization", "apikey", "content-type", "x-msk-session", "x-msk-license",
@@ -49,12 +49,16 @@ Deno.serve(async (req: Request) => {
         });
       }
       if (preflightData?.context?.force_pr === true) {
-        try {
-          const parsed = JSON.parse(body || "{}");
-          parsed.direct_commit = false;
-          parsed.preflight_force_pr = true;
-          body = JSON.stringify(parsed);
-        } catch {}
+        let directCommit = true;
+        try { directCommit = JSON.parse(body || "{}")?.direct_commit !== false; } catch {}
+        if (directCommit) {
+          return json({
+            ready: false,
+            blockers: [{ code: "BRANCH_PROTECTED", message: "A branch é protegida. Reenvie a tarefa em modo branch/PR.", action: "Usar Pull Request" }],
+            warnings: preflightData?.warnings || [],
+            context: preflightData?.context || null,
+          }, 409);
+        }
       }
     }
 
