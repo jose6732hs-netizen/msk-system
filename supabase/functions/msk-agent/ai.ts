@@ -91,12 +91,9 @@ async function resilientAI(r: Request, base: any, jsonMode: boolean) {
 }
 
 async function callBuiltPrompt(r: Request, built: BuiltPrompt, max = 4000) {
-  const messages: Array<{ role: "system" | "assistant" | "user"; content: string }> = [
-    { role: "system", content: built.system },
-  ];
+  const messages: Array<{ role: "system" | "assistant" | "user"; content: string }> = [{ role: "system", content: built.system }];
   if (built.assistantContext) messages.push({ role: "assistant", content: built.assistantContext });
   messages.push({ role: "user", content: built.user });
-
   const base: any = {
     model: "deepseek-v4-flash",
     messages,
@@ -110,7 +107,6 @@ async function callBuiltPrompt(r: Request, built: BuiltPrompt, max = 4000) {
   catch (error) { throw new AgentError("AI_RESPONSE_PARSE_ERROR", "A resposta da IA não era JSON HTTP válido.", { stage: "analyzing", retryable: true, httpStatus: 422, cause: error }); }
   const rawText = String(d.choices?.[0]?.message?.content || "").trim();
   if (!rawText) throw new AgentError("AI_EMPTY_RESPONSE", "A IA respondeu sem conteúdo utilizável.", { stage: "analyzing", retryable: true, httpStatus: 422 });
-
   try {
     return { id: String(d.id || ""), text: normalizeOperationResponse(rawText, built.operation) };
   } catch (error) {
@@ -120,7 +116,7 @@ async function callBuiltPrompt(r: Request, built: BuiltPrompt, max = 4000) {
 
 function legacyValidationPrompt(prompt: string): BuiltPrompt | null {
   if (!prompt.includes("VALIDAÇÃO SEMÂNTICA PRÉ-COMMIT")) return null;
-  const repo = prompt.match(/Repositório:\s*([^\n]+)/i)?.[1]?.trim() || "";
+  const repo = prompt.match(/(?:Repositório|Repo):\s*([^\n]+)/i)?.[1]?.trim() || "";
   const commandMatch = prompt.match(/Pedido:\s*([\s\S]*?)(?=\n--- ANTES|$)/i);
   const command = commandMatch?.[1]?.trim() || "";
   const marker = prompt.indexOf("--- ANTES");
@@ -137,30 +133,19 @@ function legacyChatPrompt(prompt: string): BuiltPrompt | null {
 export async function ask(r: Request, prompt: string, jsonMode = false, max = 4000) {
   const decoded = decodePromptEnvelope(prompt);
   if (decoded) {
-    if (decoded.envelope.operation === "interpretation") {
-      return callBuiltPrompt(r, PromptBuilder.interpretation(decoded.envelope), Math.min(max, 3000));
-    }
-
-    if (decoded.extra) {
-      return callBuiltPrompt(r, PromptBuilder.selfHealing(decoded.envelope, decoded.extra), max);
-    }
-
+    if (decoded.envelope.operation === "interpretation") return callBuiltPrompt(r, PromptBuilder.interpretation(decoded.envelope), Math.min(max, 3000));
+    if (decoded.extra) return callBuiltPrompt(r, PromptBuilder.selfHealing(decoded.envelope, decoded.extra), max);
     let plan: string | undefined;
-    if (decoded.envelope.complex) {
-      const planned = await callBuiltPrompt(r, PromptBuilder.planning(decoded.envelope), 2600);
-      plan = planned.text;
-    }
+    if (decoded.envelope.complex) plan = (await callBuiltPrompt(r, PromptBuilder.planning(decoded.envelope), 2600)).text;
     return callBuiltPrompt(r, PromptBuilder.edit(decoded.envelope, plan), max);
   }
 
   const validation = legacyValidationPrompt(prompt);
   if (validation) return callBuiltPrompt(r, validation, Math.min(max, 2800));
-
   const chat = legacyChatPrompt(prompt);
   if (chat) return callBuiltPrompt(r, chat, max);
 
-  // Compatibilidade para chamadas antigas que ainda não usam PromptBuilder.
-  // O treinamento global permanece apenas nesse caminho legado e não é injetado nas edições novas.
+  // Compatibilidade apenas para chamadas antigas ainda fora do novo pipeline.
   const training = await globalTraining(r);
   const effectivePrompt = training ? `${training}\n\n${prompt}` : prompt;
   const base: any = {
