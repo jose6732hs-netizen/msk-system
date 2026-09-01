@@ -1,0 +1,33 @@
+--- v3.4.61/msk-direct-agent.js
++++ v3.4.62/msk-direct-agent.js
+@@
+-  const professionalFocus = command => {
+-    // regras locais extensas por categoria
+-  };
+-
+-  const buildProfessionalPrompt = (command, skill) => {
+-    // montava PEDIDO DO CLIENTE + skill + comportamento + regras + objetivo final
+-  };
++  // Regras de execução ficam exclusivamente no backend. A extensão envia apenas o comando exato do cliente.
+@@
+-    const attachmentNote = attachments.length
+-      ? `\n\nANEXOS DO CLIENTE: ${attachments.length} arquivo(s) serão lidos pela camada multimodal segura antes da análise de código: ${attachments.map(item => item.name).join(', ')}`
+-      : '';
+-    const reinforcedPrompt = buildProfessionalPrompt(command, skill) + attachmentNote;
++    // O comando enviado ao motor deve permanecer exatamente como o cliente digitou.
++    // Regras, segurança, contexto técnico e validação pertencem ao backend.
++    const exactClientCommand = command;
+@@
+-    addMessage(reinforcedPrompt, 'user', {
++    addMessage(exactClientCommand, 'user', {
+@@
+-        command: reinforcedPrompt,
+-        client_original_command: command,
+-        original_command: command,
+-        reinforced_command: reinforcedPrompt,
+-        active_skill: skill ? { name: skill.name, prompt: skill.prompt, custom: !!skill.custom } : null,
+-        history: apiHistory,
++        command: exactClientCommand,
++        client_original_command: exactClientCommand,
++        original_command: exactClientCommand,
+         attachments,
