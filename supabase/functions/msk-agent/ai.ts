@@ -1,6 +1,7 @@
 import { db, enc, dec, unb64, identity, globalTraining } from "./common.ts";
 import { gh } from "./github.ts";
 import { AgentError } from "./errors.ts";
+import { PromptBuilder, decodePromptEnvelope, normalizeOperationResponse, type BuiltPrompt } from "./prompt-builder.ts";
 
 async function material() {
   const configured = (Deno.env.get("MSK_TOKEN_ENCRYPTION_KEY") || "").trim();
@@ -89,11 +90,79 @@ async function resilientAI(r: Request, base: any, jsonMode: boolean) {
   throw new AgentError("AI_UPSTREAM_REJECTED", "O provedor de IA recusou a solicitação.", { stage: "analyzing", retryable: false, httpStatus: 502, context: { upstreamStatus: lastStatus, detail: lastError } });
 }
 
+async function callBuiltPrompt(r: Request, built: BuiltPrompt, max = 4000) {
+  const messages: Array<{ role: "system" | "assistant" | "user"; content: string }> = [
+    { role: "system", content: built.system },
+  ];
+  if (built.assistantContext) messages.push({ role: "assistant", content: built.assistantContext });
+  messages.push({ role: "user", content: built.user });
+
+  const base: any = {
+    model: "deepseek-v4-flash",
+    messages,
+    max_tokens: Math.max(256, Math.min(Number(max || 4000), 18000)),
+    temperature: 0,
+    stream: false,
+  };
+  const x = await resilientAI(r, base, built.jsonMode);
+  let d: any;
+  try { d = await x.json(); }
+  catch (error) { throw new AgentError("AI_RESPONSE_PARSE_ERROR", "A resposta da IA não era JSON HTTP válido.", { stage: "analyzing", retryable: true, httpStatus: 422, cause: error }); }
+  const rawText = String(d.choices?.[0]?.message?.content || "").trim();
+  if (!rawText) throw new AgentError("AI_EMPTY_RESPONSE", "A IA respondeu sem conteúdo utilizável.", { stage: "analyzing", retryable: true, httpStatus: 422 });
+
+  try {
+    return { id: String(d.id || ""), text: normalizeOperationResponse(rawText, built.operation) };
+  } catch (error) {
+    throw new AgentError("AI_RESPONSE_PARSE_ERROR", "A IA retornou dados fora do schema esperado para esta etapa.", { stage: built.operation === "edit" || built.operation === "self_healing" ? "editing" : "analyzing", retryable: true, httpStatus: 422, cause: error, context: { operation: built.operation } });
+  }
+}
+
+function legacyValidationPrompt(prompt: string): BuiltPrompt | null {
+  if (!prompt.includes("VALIDAÇÃO SEMÂNTICA PRÉ-COMMIT")) return null;
+  const repo = prompt.match(/Repositório:\s*([^\n]+)/i)?.[1]?.trim() || "";
+  const commandMatch = prompt.match(/Pedido:\s*([\s\S]*?)(?=\n--- ANTES|$)/i);
+  const command = commandMatch?.[1]?.trim() || "";
+  const marker = prompt.indexOf("--- ANTES");
+  const beforeAfter = marker >= 0 ? prompt.slice(marker) : prompt;
+  return PromptBuilder.validation(command, repo, beforeAfter);
+}
+
+function legacyChatPrompt(prompt: string): BuiltPrompt | null {
+  if (!prompt.includes("MODO CONSULTA")) return null;
+  const match = prompt.match(/Cliente(?:\/contexto)?:\s*([\s\S]*)$/i);
+  return PromptBuilder.chat(match?.[1]?.trim() || prompt);
+}
+
 export async function ask(r: Request, prompt: string, jsonMode = false, max = 4000) {
+  const decoded = decodePromptEnvelope(prompt);
+  if (decoded) {
+    if (decoded.envelope.operation === "interpretation") {
+      return callBuiltPrompt(r, PromptBuilder.interpretation(decoded.envelope), Math.min(max, 3000));
+    }
+
+    if (decoded.extra) {
+      return callBuiltPrompt(r, PromptBuilder.selfHealing(decoded.envelope, decoded.extra), max);
+    }
+
+    let plan: string | undefined;
+    if (decoded.envelope.complex) {
+      const planned = await callBuiltPrompt(r, PromptBuilder.planning(decoded.envelope), 2600);
+      plan = planned.text;
+    }
+    return callBuiltPrompt(r, PromptBuilder.edit(decoded.envelope, plan), max);
+  }
+
+  const validation = legacyValidationPrompt(prompt);
+  if (validation) return callBuiltPrompt(r, validation, Math.min(max, 2800));
+
+  const chat = legacyChatPrompt(prompt);
+  if (chat) return callBuiltPrompt(r, chat, max);
+
+  // Compatibilidade para chamadas antigas que ainda não usam PromptBuilder.
+  // O treinamento global permanece apenas nesse caminho legado e não é injetado nas edições novas.
   const training = await globalTraining(r);
-  const effectivePrompt = training
-    ? `${training}\n\nCONTEXTO E PEDIDO ATUAL — execute respeitando o treinamento global, o histórico do projeto, a skill escolhida e as regras de segurança:\n${prompt}`
-    : prompt;
+  const effectivePrompt = training ? `${training}\n\n${prompt}` : prompt;
   const base: any = {
     model: "deepseek-v4-flash",
     messages: [{ role: "user", content: effectivePrompt }],
@@ -126,7 +195,7 @@ export const parse = (s: string) => {
       if (Array.isArray(parsed)) return { files: parsed };
       if (parsed && typeof parsed === "object") {
         if (!Array.isArray(parsed.files)) {
-          const alias = parsed.file_paths || parsed.paths || parsed.arquivos || parsed.selected_files || parsed.selectedFiles;
+          const alias = parsed.target_files || parsed.file_paths || parsed.paths || parsed.arquivos || parsed.selected_files || parsed.selectedFiles;
           if (Array.isArray(alias)) parsed.files = alias;
         }
         if (!Array.isArray(parsed.changes)) {
