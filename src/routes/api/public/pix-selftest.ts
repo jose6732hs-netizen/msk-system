@@ -47,6 +47,17 @@ export const Route = createFileRoute("/api/public/pix-selftest")({
           } catch (e) { err = (e as Error).message; }
           return Response.json({ productHash: ph, offerHash: oh, offerStatus: o?.status, tx, err });
         }
+        if ((body as any).put) {
+          const { AtomoPayService } = await import("@/lib/payments/atomo-pay.server");
+          const svc: any = await AtomoPayService.create();
+          const out: any = {};
+          const [h, price] = String((body as any).put).split(":");
+          for (const m of ["PUT", "PATCH"]) {
+            try { out[m] = await svc["call"](m, `/products/sq1cm4jzxh/offers/${h}`, { title: `MSK unit ${price}`, price: Number(price) }); break; }
+            catch (e) { out[m] = (e as Error).message; }
+          }
+          return Response.json(out);
+        }
         if ((body as any).del) {
           const { AtomoPayService } = await import("@/lib/payments/atomo-pay.server");
           const svc: any = await AtomoPayService.create();
