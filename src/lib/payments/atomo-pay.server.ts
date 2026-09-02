@@ -141,10 +141,14 @@ export class AtomoPayService {
   }
 
   createProduct(input: { title: string; amount: number; salePage?: string; cover?: string }) {
+    const cover = input.cover || DEFAULT_PRODUCT_COVER;
+    const salePage = input.salePage || "https://msksystem.online/planos";
     return this.call<Record<string, unknown>>("POST", "/products", {
       title: input.title,
-      ...(input.cover ? { cover: input.cover } : {}),
-      ...(input.salePage ? { sale_page: input.salePage } : {}),
+      cover,
+      image: cover,
+      product_image: cover,
+      sale_page: salePage,
       payment_type: 1,
       product_type: "digital",
       delivery_type: 1,
