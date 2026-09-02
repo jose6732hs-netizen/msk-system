@@ -1,13 +1,4 @@
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadCredentialsFor, type GatewayCredentials } from "./credentials.server";
-
-const CATALOG_KEY = "atomopay_catalog";
-
-type CatalogState = {
-  productHash?: string;
-  offerHash?: string;
-  offersByAmount?: Record<string, string>;
-};
 
 type CustomerInput = {
   name: string;
@@ -23,6 +14,10 @@ type CardInput = {
   expYear: number;
   cvv: string;
 };
+
+function unwrap(value: any) {
+  return value?.data ?? value ?? {};
+}
 
 function digits(value: string | null | undefined) {
   return String(value ?? "").replace(/\D+/g, "");
@@ -63,87 +58,6 @@ async function callAtomo<T>(
   }
 }
 
-function unwrap(value: any) {
-  return value?.data ?? value ?? {};
-}
-
-function offerPrice(offer: any) {
-  return Number(offer?.price ?? offer?.amount ?? offer?.value ?? 0);
-}
-
-async function resolveCatalogForAmount(creds: GatewayCredentials, amountCents: number) {
-  const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
-  const { data: row } = await supabaseAdmin
-    .from("app_settings")
-    .select("value")
-    .eq("key", CATALOG_KEY)
-    .maybeSingle();
-  const cached = (row?.value ?? {}) as CatalogState;
-  let productHash = String(envProduct ?? cached.productHash ?? "");
-
-  if (!productHash) {
-    const listed = unwrap(await callAtomo<any>(creds, "GET", "/products"));
-    const products = Array.isArray(listed) ? listed : (listed?.products ?? listed?.data ?? []);
-    const product = products.find((item: any) =>
-      String(item?.title ?? item?.name ?? "").trim().toUpperCase() === "MSK SISTEM",
-    );
-    productHash = String(product?.hash ?? product?.product_hash ?? "");
-  }
-  if (!productHash) throw new Error("ATOMOPAY_CATALOG_PRODUCT_MISSING");
-
-  const amountKey = String(Math.round(amountCents));
-  const cachedOffer = cached.offersByAmount?.[amountKey];
-  if (cachedOffer) return { productHash, offerHash: cachedOffer };
-
-  const productRaw = unwrap(
-    await callAtomo<any>(creds, "GET", `/products/${encodeURIComponent(productHash)}`),
-  );
-  const offers = Array.isArray(productRaw?.offers)
-    ? productRaw.offers
-    : Array.isArray(productRaw?.offer)
-      ? productRaw.offer
-      : [];
-  const matching = offers.find(
-    (offer: any) => offer?.hash && offerPrice(offer) === Math.round(amountCents),
-  );
-  let offerHash = String(matching?.hash ?? "");
-
-  if (!offerHash) {
-    const createdRaw = unwrap(
-      await callAtomo<any>(
-        creds,
-        "POST",
-        `/products/${encodeURIComponent(productHash)}/offers`,
-        {
-          title: `MSK ${Math.round(amountCents)} centavos`,
-          // A API da Átomo usa price na oferta. O uso anterior de amount
-          // fazia a criação falhar e impedia o cartão de chegar em /transactions.
-          price: Math.round(amountCents),
-        },
-      ),
-    );
-    offerHash = String(createdRaw?.hash ?? createdRaw?.offer_hash ?? "");
-  }
-  if (!offerHash) throw new Error("ATOMOPAY_CATALOG_OFFER_MISSING");
-
-  const offersByAmount = { ...(cached.offersByAmount ?? {}), [amountKey]: offerHash };
-  await supabaseAdmin.from("app_settings").upsert(
-    {
-      key: CATALOG_KEY,
-      value: {
-        ...cached,
-        productHash,
-        offerHash,
-        offersByAmount,
-      } as never,
-      updated_at: new Date().toISOString(),
-    } as never,
-    { onConflict: "key" },
-  );
-
-  return { productHash, offerHash };
-}
-
 export async function createAtomoCardTransaction(input: {
   identifier: string;
   amountCents: number;
@@ -157,7 +71,11 @@ export async function createAtomoCardTransaction(input: {
   if (!creds) throw new Error("GATEWAY_NAO_CONFIGURADO");
 
   const amount = Math.round(input.amountCents);
-  const catalog = await resolveCatalogForAmount(creds, amount);
+  // Usa exatamente o mesmo catálogo aprovado do PIX (com split unidade × quantidade).
+  // Antes o cartão lia o cache em formato antigo e enviava um offer_hash inválido,
+  // o que fazia a AtomoPay responder HTTP 400 genérico.
+  const { AtomoPayService } = await import("./atomo-pay.server");
+  const catalog = await new AtomoPayService(creds).resolveApprovedCatalog(amount);
   const pan = digits(input.card.number);
   const cvv = digits(input.card.cvv);
   const phone = digits(input.customer.phone);
@@ -191,8 +109,8 @@ export async function createAtomoCardTransaction(input: {
         offer_hash: catalog.offerHash,
         title: "MSK SISTEM",
         cover: null,
-        price: amount,
-        quantity: 1,
+        price: catalog.unitPrice,
+        quantity: catalog.quantity,
         operation_type: 1,
         tangible: false,
       },
