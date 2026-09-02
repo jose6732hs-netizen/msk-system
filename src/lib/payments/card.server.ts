@@ -124,8 +124,16 @@ export async function payTransactionWithCard(input: {
   transactionId: string;
   installments: number;
   card: CardInput;
+  payer?: { name?: string; email?: string; document?: string; phone?: string };
 }): Promise<CardResult> {
+  const { onlyDigits, isValidDocument, isValidPhoneBR } = await import("../br");
+  const payerDocument = onlyDigits(input.payer?.document ?? "");
+  const payerPhone = onlyDigits(input.payer?.phone ?? "");
+  if (payerDocument && !isValidDocument(payerDocument)) throw new Error("CPF/CNPJ inválido.");
+  if (payerPhone && !isValidPhoneBR(payerPhone)) throw new Error("Telefone inválido. Use DDD + número.");
+
   const { data: tx } = await supabaseAdmin
+
     .from("transactions")
     .select("id,identifier,user_id,amount,status,method,metadata,provider_transaction_id,pix_code,purpose")
     .eq("id", input.transactionId)
