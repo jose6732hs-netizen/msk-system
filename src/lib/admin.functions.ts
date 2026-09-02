@@ -396,3 +396,21 @@ export const adminSaveAtomoSettings = createServerFn({ method: "POST" })
     });
     return saved;
   });
+
+/** Espelha todos os planos/ofertas do MSK como produtos na AtomoPay. */
+export const adminSyncAtomoCatalog = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { syncAllPlansToAtomo } = await import("./payments/atomo-catalog-sync.server");
+    return syncAllPlansToAtomo();
+  });
+
+/** Lista o espelhamento atual MSK → AtomoPay. */
+export const adminAtomoCatalogMap = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { getAtomoCatalogMap } = await import("./payments/atomo-catalog-sync.server");
+    return getAtomoCatalogMap();
+  });
