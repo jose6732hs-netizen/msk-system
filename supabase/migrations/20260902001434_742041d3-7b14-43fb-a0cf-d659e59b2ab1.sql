@@ -1,0 +1,1 @@
+alter table public.msk_agent_secrets add column if not exists metadata jsonb not null default '{}'::jsonb;

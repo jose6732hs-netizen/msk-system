@@ -2295,6 +2295,7 @@ export type Database = {
           id: string
           key_name: string
           lovable_project_id: string
+          metadata: Json
           provider: string | null
           updated_at: string
           user_id: string
@@ -2306,6 +2307,7 @@ export type Database = {
           id?: string
           key_name: string
           lovable_project_id: string
+          metadata?: Json
           provider?: string | null
           updated_at?: string
           user_id: string
@@ -2317,6 +2319,7 @@ export type Database = {
           id?: string
           key_name?: string
           lovable_project_id?: string
+          metadata?: Json
           provider?: string | null
           updated_at?: string
           user_id?: string
