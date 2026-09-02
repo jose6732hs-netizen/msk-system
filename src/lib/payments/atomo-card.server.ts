@@ -1,4 +1,3 @@
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadCredentialsFor, type GatewayCredentials } from "./credentials.server";
 
 type CustomerInput = {
