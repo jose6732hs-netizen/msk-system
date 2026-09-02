@@ -72,11 +72,14 @@ function exactClientCommand(command: string) {
 }
 
 const EDIT_FORMAT = [
-  "Retorne JSON com summary, reply e changes.",
-  "Para alteração pequena em arquivo existente, prefira change com {path, find, replace}; find deve ser trecho EXATO e único do arquivo.",
-  "Para reescrita ampla use {path, content, create:false}. Para novo arquivo use {path, content, create:true}.",
-  "Não use markdown, diff, TODO, reticências ou conteúdo truncado.",
+  "Retorne JSON com summary, reply e changes. changes NUNCA pode ser vazio.",
+  "Use exatamente um dos caminhos de arquivo enviados no contexto, sem inventar caminho.",
+  "Para alteração pequena em arquivo existente, prefira change com {path, find, replace}; find deve ser copiado LITERALMENTE do conteúdo enviado (mesma indentação) e ser único no arquivo.",
+  "Se não tiver certeza de que o find é literal e único, devolva {path, content, create:false} com o arquivo COMPLETO já alterado.",
+  "Para novo arquivo use {path, content, create:true}.",
+  "O conteúdo final precisa ser diferente do original. Não use markdown, diff, TODO, reticências ou conteúdo truncado.",
 ].join("\n");
+
 
 export class PromptBuilder {
   static interpretation(envelope: PromptEnvelope): BuiltPrompt {

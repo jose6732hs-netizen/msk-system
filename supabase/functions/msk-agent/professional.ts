@@ -97,44 +97,85 @@ function countOccurrences(content: string, needle: string) {
   return count;
 }
 
-export function validateChanges(rawChanges: any[], files: Array<{ path: string; content: string }>, allPaths: string[]) {
+const escapeRe = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Aplica find/replace com tolerância: exato -> aparado -> espaçamento flexível.
+// A IA quase nunca reproduz a indentação exata do arquivo e isso derrubava a
+// edição inteira em NO_CHANGES_APPLIED.
+function applyAtomicEdit(original: string, find: string, replace: string): { content?: string; reason?: string } {
+  const exact = countOccurrences(original, find);
+  if (exact === 1) return { content: original.replace(find, replace) };
+  if (exact > 1) return { reason: `trecho "find" aparece mais de uma vez; inclua mais contexto único` };
+
+  const trimmed = find.trim();
+  if (trimmed && trimmed !== find) {
+    const trimmedCount = countOccurrences(original, trimmed);
+    if (trimmedCount === 1) return { content: original.replace(trimmed, replace.trim()) };
+    if (trimmedCount > 1) return { reason: `trecho "find" aparece mais de uma vez; inclua mais contexto único` };
+  }
+
+  const flexible = new RegExp(trimmed.split(/\s+/).map(escapeRe).join("\\s+"), "g");
+  const matches = original.match(flexible);
+  if (matches?.length === 1) return { content: original.replace(flexible, () => replace.trim()) };
+  if ((matches?.length || 0) > 1) return { reason: `trecho "find" aparece mais de uma vez; inclua mais contexto único` };
+  return { reason: `trecho "find" não existe no arquivo; copie o texto exato do conteúdo enviado ou devolva o arquivo completo em "content"` };
+}
+
+export function validateChanges(
+  rawChanges: any[],
+  files: Array<{ path: string; content: string }>,
+  allPaths: string[],
+  rejections: string[] = [],
+) {
   const existing = new Map(allPaths.map(p => [p.toLowerCase(), p]));
   const analyzed = new Map(files.map(f => [f.path.toLowerCase(), f]));
   const seen = new Set<string>();
   const result: Array<{ path: string; content: string; create: boolean }> = [];
+  const reject = (path: string, reason: string) => { if (rejections.length < 8) rejections.push(`${path || "(sem caminho)"}: ${reason}`); };
 
   for (const raw of Array.isArray(rawChanges) ? rawChanges : []) {
     const requested = String(raw?.path || raw?.file || raw?.file_path || raw?.filename || "").trim().replace(/\\/g, "/");
     const lower = requested.toLowerCase();
-    if (!requested || requested.startsWith("/") || requested.includes("..") || seen.has(lower)) continue;
+    if (!requested || requested.startsWith("/") || requested.includes("..") || seen.has(lower)) {
+      reject(requested, "caminho ausente, absoluto, inseguro ou duplicado");
+      continue;
+    }
 
     const canonical = existing.get(lower);
     if (canonical) {
       const original = analyzed.get(lower);
-      if (!original) continue;
+      if (!original) { reject(requested, "arquivo não estava entre os analisados nesta execução"); continue; }
 
       let content = typeof raw?.content === "string" ? raw.content : "";
       if (!content.trim()) {
         const find = firstString(raw, ["find", "search", "old", "before", "from"]);
         const replace = firstString(raw, ["replace", "replacement", "new", "after", "to"]);
-        if (typeof find !== "string" || typeof replace !== "string" || !find || find === replace) continue;
-        if (countOccurrences(original.content, find) !== 1) continue;
-        content = original.content.replace(find, replace);
+        if (typeof find !== "string" || typeof replace !== "string" || !find || find === replace) {
+          reject(requested, "sem \"content\" e sem par válido de \"find\"/\"replace\" diferentes");
+          continue;
+        }
+        const applied = applyAtomicEdit(original.content, find, replace);
+        if (!applied.content) { reject(requested, applied.reason || "find/replace não pôde ser aplicado"); continue; }
+        content = applied.content;
       }
 
-      if (!content.trim() || PLACEHOLDER.test(content) || content === original.content) continue;
-      if (original.content.length > 800 && content.length < Math.max(200, Math.floor(original.content.length * .25))) continue;
-      if (content.length > Math.max(250000, original.content.length * 6)) continue;
+      if (!content.trim()) { reject(requested, "conteúdo final vazio"); continue; }
+      if (PLACEHOLDER.test(content)) { reject(requested, "conteúdo contém TODO/placeholder/trecho omitido"); continue; }
+      if (content === original.content) { reject(requested, "conteúdo idêntico ao original"); continue; }
+      if (original.content.length > 800 && content.length < Math.max(200, Math.floor(original.content.length * .25))) { reject(requested, "arquivo devolvido truncado; envie o arquivo completo"); continue; }
+      if (content.length > Math.max(250000, original.content.length * 6)) { reject(requested, "conteúdo desproporcionalmente grande"); continue; }
       seen.add(lower);
       result.push({ path: canonical, content, create: false });
       continue;
     }
 
     const content = typeof raw?.content === "string" ? raw.content : "";
-    if (!content.trim() || PLACEHOLDER.test(content)) continue;
-    if (raw?.create !== true || !ALLOWED_NEW.test(requested) || !ALLOWED_EXT.test(requested)) continue;
-    if (/(^|\/)(\.env|node_modules|dist|build|coverage)(\/|$)/i.test(requested)) continue;
-    if (/package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$/i.test(requested)) continue;
+    if (!content.trim()) { reject(requested, "arquivo novo sem conteúdo"); continue; }
+    if (PLACEHOLDER.test(content)) { reject(requested, "arquivo novo com TODO/placeholder"); continue; }
+    if (raw?.create !== true) { reject(requested, "arquivo não existe no repositório e \"create\" não foi true"); continue; }
+    if (!ALLOWED_NEW.test(requested) || !ALLOWED_EXT.test(requested)) { reject(requested, "pasta ou extensão não permitida para criação"); continue; }
+    if (/(^|\/)(\.env|node_modules|dist|build|coverage)(\/|$)/i.test(requested)) { reject(requested, "caminho protegido"); continue; }
+    if (/package-lock\.json$|yarn\.lock$|pnpm-lock\.yaml$/i.test(requested)) { reject(requested, "lockfile não pode ser editado"); continue; }
 
     seen.add(lower);
     result.push({ path: requested, content, create: true });
@@ -143,6 +184,7 @@ export function validateChanges(rawChanges: any[], files: Array<{ path: string; 
 
   return result.slice(0, 12);
 }
+
 
 export const professionalSummary = (summary: string, repository: string, files: string[], commitSha = "") =>
   `${String(summary || "Alteração concluída").replace(/\s+/g, " ").trim().slice(0, 800)}` +
