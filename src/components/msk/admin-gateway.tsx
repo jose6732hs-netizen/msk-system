@@ -89,6 +89,9 @@ export function AdminGatewayTab() {
 
       <AtomoMethodsCard />
 
+      <AtomoCatalogCard />
+
+
 
 
       {data.providers.map((p) => (
