@@ -51,7 +51,7 @@ async function loadMap(): Promise<MapState> {
     .select("value")
     .eq("key", MAP_KEY)
     .maybeSingle();
-  return ((data?.value ?? {}) as MapState) ?? {};
+  return (data?.value ?? {}) as MapState;
 }
 
 async function saveMap(state: MapState) {
