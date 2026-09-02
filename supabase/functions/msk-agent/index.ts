@@ -285,7 +285,7 @@ Deno.serve(async (req: Request) => {
       } catch (error) {
         console.warn("MSK file selection fallback", mapErrorToAgentError(error, "analyzing").code);
       }
-      chosen = resolveChosenFiles(paths, pick, cmd, fast ? 2 : 8);
+      chosen = resolveChosenFiles(paths, pick, cmd, fast ? 2 : 5);
     }
     if (!chosen.length) throw new AgentError("AGENT_TARGET_NOT_FOUND", "Não foi possível localizar com segurança o alvo do pedido.", { stage: "locating_files", retryable: true, httpStatus: 422 });
 
