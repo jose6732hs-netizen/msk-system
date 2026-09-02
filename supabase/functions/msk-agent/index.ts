@@ -264,7 +264,13 @@ Deno.serve(async (req: Request) => {
     stage = "locating_files";
     await taskPatch(taskId, { status: "locating_files" }, who.id);
     const tree = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/trees/${encodeURIComponent(branch).replace(/%2F/g, "/")}?recursive=1`);
-    const paths = (tree.tree || []).filter((x: any) => x.type === "blob" && /\.(tsx?|jsx?|css|scss|html|json|md|sql|mjs|cjs)$/.test(x.path)).slice(0, 1200).map((x: any) => String(x.path));
+    // Ignora blobs gigantes: eles nunca cabem no prompt e derrubam o worker por memória.
+    const MAX_BLOB_BYTES = 160000;
+    const paths = (tree.tree || [])
+      .filter((x: any) => x.type === "blob" && /\.(tsx?|jsx?|css|scss|html|json|md|sql|mjs|cjs)$/.test(x.path))
+      .filter((x: any) => !Number.isFinite(Number(x.size)) || Number(x.size) <= MAX_BLOB_BYTES)
+      .slice(0, 800)
+      .map((x: any) => String(x.path));
     if (!paths.length) throw new AgentError("AGENT_NO_EDITABLE_FILES", "Não existem arquivos editáveis compatíveis no repositório.", { stage: "locating_files", httpStatus: 422 });
 
     const fast = String(body.mode || "").toUpperCase() === "FAST_EDIT" && isSimpleVisualEdit(clientCmd);
