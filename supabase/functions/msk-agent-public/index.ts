@@ -342,7 +342,7 @@ Deno.serve(async (req: Request) => {
       }, 200);
     }
 
-    if (conversational && !upstream.ok) {
+    if (conversationalMode && !upstream.ok) {
       const fallback = attachments.length
         ? "Recebi seus anexos, mas a análise completa ficou temporariamente indisponível. Nenhuma alteração foi feita. Tente novamente para eu ler o material antes de mexer no projeto."
         : "Entendi. Estou aqui como desenvolvedor do seu projeto. Posso te orientar e manter o contexto da conversa; quando você pedir uma alteração concreta, trabalho nos arquivos, código e banco sem fingir que concluí antes do commit.";
@@ -366,7 +366,7 @@ Deno.serve(async (req: Request) => {
       publicData.attachment_context_used = true;
     }
     if (followup && publicData && typeof publicData === "object") publicData.contextual_followup = true;
-    if (conversational && publicData && typeof publicData === "object") {
+    if (conversationalMode && publicData && typeof publicData === "object") {
       publicData.mode = "chat";
       publicData.no_edit = true;
       publicData.developer_mode = true;
