@@ -6,9 +6,11 @@ import { Loader2, PlugZap, ShieldCheck, Star, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  adminAtomoCatalogMap,
   adminAtomoSettings,
   adminGatewaySettings,
   adminSaveAtomoSettings,
+  adminSyncAtomoCatalog,
   adminSaveGateway,
   adminSetGatewayPreference,
   adminTestGateway,
@@ -377,6 +379,79 @@ function AtomoMethodsCard() {
           />
         </label>
       </div>
+    </div>
+  );
+}
+
+/** Espelhamento das ofertas MSK como produtos dentro da conta AtomoPay. */
+function AtomoCatalogCard() {
+  const qc = useQueryClient();
+  const syncFn = useServerFn(adminSyncAtomoCatalog);
+  const mapFn = useServerFn(adminAtomoCatalogMap);
+  const [syncing, setSyncing] = useState(false);
+
+  const { data: rows } = useQuery({
+    queryKey: ["atomo-catalog-map"],
+    queryFn: () => mapFn(),
+  });
+
+  async function sync() {
+    setSyncing(true);
+    try {
+      const result = await syncFn({ data: {} });
+      await qc.invalidateQueries({ queryKey: ["atomo-catalog-map"] });
+      toast.success(
+        `${result.synced}/${result.total} ofertas espelhadas na AtomoPay` +
+          (result.pendingApproval ? ` · ${result.pendingApproval} em análise` : "") +
+          (result.failed ? ` · ${result.failed} com erro` : ""),
+      );
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  }
+
+  const list = rows ?? [];
+
+  return (
+    <div className="space-y-4 rounded-2xl border border-border/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Ofertas na AtomoPay</p>
+          <p className="text-xs text-muted-foreground">
+            Cria/atualiza cada plano ativo do MSK como produto e oferta dentro da sua conta AtomoPay
+            e pré-aprova os valores de PIX e cartão.
+          </p>
+        </div>
+        <Button size="sm" onClick={sync} disabled={syncing}>
+          {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Repeat className="mr-2 h-4 w-4" />}
+          Sincronizar ofertas
+        </Button>
+      </div>
+
+      {list.length === 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Nenhuma oferta espelhada ainda. Clique em “Sincronizar ofertas”.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {list.map((row) => (
+            <div
+              key={row.planId}
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/50 px-3 py-2 text-xs"
+            >
+              <span className="font-medium text-foreground">{row.name}</span>
+              <span className="text-muted-foreground">
+                R$ {Number(row.price).toFixed(2)} · oferta {String(row.offerHash).slice(0, 10)}…
+              </span>
+              <span className={row.approved ? "text-emerald-400" : "text-amber-400"}>
+                {row.approved ? "ativa" : "em análise"}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
