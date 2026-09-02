@@ -319,11 +319,12 @@ Deno.serve(async (req: Request) => {
       retryCount = attempt - 1;
       stage = attempt === 1 ? "editing" : "self_correcting";
       await taskPatch(taskId, { status: stage, retry_count: retryCount }, who.id);
+      const rejections: string[] = [];
       try {
         const prompt = attempt === 1 ? basePrompt : `${basePrompt}\n\nAUTO-CORREÇÃO CONTROLADA — tentativa ${attempt}/3. Corrija somente os problemas abaixo, sem ampliar o escopo e sem trocar o alvo.\n${feedback.slice(0, 5000)}`;
         const response = await ask(req, prompt, true, fast ? 12000 : highRisk ? 18000 : 16000);
         out = parse(response.text);
-        changes = validateChanges(out.changes, files, paths);
+        changes = validateChanges(out.changes, files, paths, rejections);
       } catch (error) {
         const mapped = mapErrorToAgentError(error, stage);
         feedback = `${mapped.code}: ${mapped.message}`;
@@ -332,13 +333,16 @@ Deno.serve(async (req: Request) => {
       }
 
       if (!changes.length) {
-        feedback = feedback || "NO_CHANGES_APPLIED: a saída não produziu alteração completa e válida.";
+        const detail = rejections.length ? `Motivos exatos da rejeição:\n- ${rejections.join("\n- ")}` : "A saída não trouxe nenhuma alteração utilizável.";
+        feedback = `NO_CHANGES_APPLIED: nenhuma alteração válida foi produzida.\n${detail}\nObrigatório na próxima tentativa: usar exatamente um dos caminhos analisados (${files.map(f => f.path).join(", ")}) e, se o "find" falhar novamente, devolver o arquivo inteiro em "content" já com a alteração aplicada.`;
         if (attempt < 3) {
           await taskPatch(taskId, { status: "no_changes_retry", retry_count: attempt }, who.id);
           continue;
         }
-        throw new AgentError("NO_CHANGES_APPLIED", "A IA não produziu uma alteração válida após as tentativas seguras.", { stage: "editing", retryable: true, httpStatus: 422 });
+        console.error("MSK no changes applied", JSON.stringify({ taskId, rejections: rejections.slice(0, 8) }));
+        throw new AgentError("NO_CHANGES_APPLIED", "A IA não produziu uma alteração válida após as tentativas seguras.", { stage: "editing", retryable: true, httpStatus: 422, context: { rejections: rejections.slice(0, 8), files: files.map(f => f.path) } });
       }
+
 
       stage = "validating";
       await taskPatch(taskId, { status: "validating", retry_count: retryCount }, who.id);
