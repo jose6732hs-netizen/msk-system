@@ -331,6 +331,13 @@ export class AtomoPayService {
     return { productHash, offerHash, unitPrice, quantity };
   }
 
+  /** Catálogo aprovado (com split de unidade/quantidade) para qualquer método. */
+  async resolveApprovedCatalog(amountCents: number): Promise<AtomoPixCatalog> {
+    return this.ensurePixCatalogForAmount(amountCents);
+  }
+
+
+
 
   async createPix(input: {
     identifier: string;
