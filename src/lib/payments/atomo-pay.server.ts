@@ -12,6 +12,8 @@ import {
 import type { AmploCustomer, AmploSplit } from "./amplo-pay.server";
 
 const CATALOG_KEY = "atomopay_catalog";
+/** A AtomoPay exige uma imagem de capa em todo produto cadastrado. */
+const DEFAULT_PRODUCT_COVER = "https://msksystem.online/favicon.png";
 
 type AtomoOfferEntry = { hash: string; unit: number; quantity: number };
 
