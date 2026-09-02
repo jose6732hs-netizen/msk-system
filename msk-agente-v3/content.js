@@ -1293,9 +1293,15 @@
     const label = guardianToggle?.querySelector("b");
     if (label) label.textContent = guardianEnabled ? "Guardião ON" : "Guardião OFF";
   };
-  window.addEventListener("scroll", positionOverlay, true);
-  window.addEventListener("resize", positionOverlay, true);
-  setInterval(positionOverlay, 600);
+  // Reposicionamento limitado a 1x por frame: evita travar a rolagem do Lovable.
+  let overlayFrame = 0;
+  const scheduleOverlay = () => {
+    if (overlayFrame) return;
+    overlayFrame = requestAnimationFrame(() => { overlayFrame = 0; positionOverlay(); });
+  };
+  window.addEventListener("scroll", scheduleOverlay, { capture: true, passive: true });
+  window.addEventListener("resize", scheduleOverlay, { passive: true });
+  setInterval(scheduleOverlay, 1200);
 
   let guardianApplyTimer = 0;
   const applyGuardian = () => {
