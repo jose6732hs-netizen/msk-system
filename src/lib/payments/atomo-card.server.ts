@@ -49,7 +49,11 @@ async function callAtomo<T>(
   if (!response.ok) {
     const safe = sanitizeProviderText(text);
     console.error(`[atomopay-card] ${method} ${path} falhou [${response.status}]`, safe);
-    throw new Error(`ATOMOPAY_HTTP_${response.status}: ${safe}`);
+    const error = new Error(`ATOMOPAY_HTTP_${response.status}: ${safe}`) as Error & {
+      httpStatus?: number;
+    };
+    error.httpStatus = response.status;
+    throw error;
   }
   try {
     return JSON.parse(text) as T;
@@ -57,6 +61,8 @@ async function callAtomo<T>(
     return {} as T;
   }
 }
+
+
 
 export async function createAtomoCardTransaction(input: {
   identifier: string;
