@@ -393,7 +393,13 @@ Deno.serve(async (req: Request) => {
         lovable_project_id: projectId,
         user_id: who.id,
         command: redactCommand(command),
+        original_command: redactCommand(command),
+        pending_command: redactCommand(command),
         status: "awaiting_credentials",
+        stage: "awaiting_credentials",
+        provider: analysis.provider,
+        repository: analysis.repository,
+        installation_id: Number(project.github_installation_id || 0) || null,
         summary: "Aguardando preenchimento seguro das credenciais.",
         credential_request: credentialRequest,
         error: null,
@@ -403,7 +409,17 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" });
       if (write.error) throw write.error;
+      await logTaskEvent({
+        taskId,
+        userId: who.id,
+        projectId,
+        stage: "awaiting_credentials",
+        status: "awaiting_credentials",
+        message: `Cofre MSK solicitou ${analysis.fields.length} campo(s) para ${analysis.provider}.`,
+        payload: { fields: analysis.fields.map((field: any) => field.key), repository: analysis.repository },
+      });
       return json({ ok: true, requires_credentials: true, task_id: taskId, status: "awaiting_credentials", credential_card: { taskId, ...credentialRequest } });
+
     }
 
     if (action === "status") {
