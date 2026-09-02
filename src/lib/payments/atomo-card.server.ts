@@ -157,7 +157,11 @@ export async function createAtomoCardTransaction(input: {
   if (!creds) throw new Error("GATEWAY_NAO_CONFIGURADO");
 
   const amount = Math.round(input.amountCents);
-  const catalog = await resolveCatalogForAmount(creds, amount);
+  // Usa exatamente o mesmo catálogo aprovado do PIX (com split unidade × quantidade).
+  // Antes o cartão lia o cache em formato antigo e enviava um offer_hash inválido,
+  // o que fazia a AtomoPay responder HTTP 400 genérico.
+  const { AtomoPayService } = await import("./atomo-pay.server");
+  const catalog = await new AtomoPayService(creds).resolveApprovedCatalog(amount);
   const pan = digits(input.card.number);
   const cvv = digits(input.card.cvv);
   const phone = digits(input.customer.phone);
