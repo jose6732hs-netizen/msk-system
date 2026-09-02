@@ -10,6 +10,14 @@ import { CARD_CONFIRMATION_PENDING, CARD_PUBLIC_ERROR } from "./public-messages"
 
 const cardSchema = z.object({
   transactionId: z.string().uuid(),
+  payer: z
+    .object({
+      name: z.string().max(120).optional(),
+      email: z.string().email().max(160).optional(),
+      document: z.string().max(20).optional(),
+      phone: z.string().max(20).optional(),
+    })
+    .optional(),
   installments: z.number().int().min(1).max(12),
   card: z.object({
     number: z.string().min(12).max(25),
@@ -46,10 +54,15 @@ export const payWithCard = createServerFn({ method: "POST" })
         transactionId: data.transactionId,
         installments: data.installments,
         card: data.card,
+        ...(data.payer ? { payer: data.payer } : {}),
       });
     } catch (error) {
       const safeMessage = safeCardLog(error);
       console.error("[payment][card] falha:", safeMessage);
+      // Erros de dados do pagador precisam chegar ao cliente para ele corrigir.
+      if (/^(Informe |CPF\/CNPJ inválido|Telefone inválido)/.test(safeMessage)) {
+        throw new Error(safeMessage);
+      }
       throw new Error(
         safeMessage === CARD_CONFIRMATION_PENDING
           ? CARD_CONFIRMATION_PENDING

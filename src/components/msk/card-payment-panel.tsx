@@ -7,6 +7,8 @@ import { getCardCheckoutOptions, payWithCard } from "@/lib/payments/card.functio
 import { cardBrand } from "@/lib/payments/atomo-status";
 import { CARD_CONFIRMATION_PENDING, CARD_PUBLIC_ERROR } from "@/lib/payments/public-messages";
 import { useSupportLink } from "@/lib/support-link";
+import { getBillingProfile } from "@/lib/account.functions";
+import { isValidDocument, isValidPhoneBR, maskDocument, maskPhone, onlyDigits } from "@/lib/br";
 
 const brl = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -35,6 +37,10 @@ export function CardPaymentPanel({
   const [number, setNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvv, setCvv] = useState("");
+  const [payerName, setPayerName] = useState("");
+  const [payerEmail, setPayerEmail] = useState("");
+  const [payerPhone, setPayerPhone] = useState("");
+  const [payerDocument, setPayerDocument] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const supportLink = useSupportLink("Olá! Tive um problema ao tentar realizar o pagamento com cartão. Podem me ajudar?");
@@ -58,6 +64,24 @@ export function CardPaymentPanel({
       alive = false;
     };
   }, [transactionId]);
+
+  // Preenche automaticamente os dados já salvos na conta do cliente.
+  useEffect(() => {
+    let alive = true;
+    void getBillingProfile()
+      .then((profile) => {
+        if (!alive || !profile) return;
+        setPayerName((v) => v || (profile.name ?? ""));
+        setPayerEmail((v) => v || (profile.email ?? ""));
+        setPayerDocument((v) => v || maskDocument(profile.document ?? ""));
+        setPayerPhone((v) => v || maskPhone(profile.phone ?? ""));
+        setHolderName((v) => v || (profile.name ?? "").toUpperCase());
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const plans = useMemo(() => options?.installments ?? [], [options]);
   const brand = useMemo(() => cardBrand(number), [number]);
@@ -99,6 +123,18 @@ export function CardPaymentPanel({
       setFeedback("Confira os dados do cartão.");
       return;
     }
+    if (payerName.trim().length < 3 || !/^\S+@\S+\.\S+$/.test(payerEmail.trim())) {
+      setFeedback("Confira o nome completo e o e-mail.");
+      return;
+    }
+    if (!isValidDocument(payerDocument)) {
+      setFeedback("CPF/CNPJ inválido.");
+      return;
+    }
+    if (!isValidPhoneBR(payerPhone)) {
+      setFeedback("Telefone inválido. Use DDD + número.");
+      return;
+    }
 
     lock.current = true;
     onPaymentStarted?.();
@@ -108,6 +144,12 @@ export function CardPaymentPanel({
       const res = await payWithCard({
         data: {
           transactionId,
+          payer: {
+            name: payerName.trim(),
+            email: payerEmail.trim(),
+            document: onlyDigits(payerDocument),
+            phone: onlyDigits(payerPhone),
+          },
           installments,
           card: { number: digits, holderName, expMonth, expYear, cvv },
         },
@@ -190,6 +232,68 @@ export function CardPaymentPanel({
       <p className="text-[10px] leading-relaxed text-muted-foreground">
         O acréscimo é aplicado somente ao pagamento no cartão. O preço-base do produto permanece o mesmo.
       </p>
+
+      <div className="space-y-3 rounded-2xl border border-white/10 bg-black/25 p-3.5">
+        <p className="text-[0.65rem] font-black uppercase tracking-[0.2em] text-muted-foreground">
+          Dados do cliente
+        </p>
+        <div>
+          <label htmlFor="payer-name" className="text-[0.65rem] font-bold uppercase text-muted-foreground">
+            Nome completo
+          </label>
+          <input
+            id="payer-name"
+            autoComplete="name"
+            value={payerName}
+            onChange={(e) => setPayerName(e.target.value)}
+            placeholder="Seu nome completo"
+            className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label htmlFor="payer-email" className="text-[0.65rem] font-bold uppercase text-muted-foreground">
+              E-mail
+            </label>
+            <input
+              id="payer-email"
+              type="email"
+              autoComplete="email"
+              value={payerEmail}
+              onChange={(e) => setPayerEmail(e.target.value)}
+              placeholder="voce@email.com"
+              className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="payer-phone" className="text-[0.65rem] font-bold uppercase text-muted-foreground">
+              Telefone com DDD
+            </label>
+            <input
+              id="payer-phone"
+              inputMode="tel"
+              autoComplete="tel-national"
+              value={payerPhone}
+              onChange={(e) => setPayerPhone(maskPhone(e.target.value))}
+              placeholder="(11) 90000-0000"
+              className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
+            />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="payer-doc" className="text-[0.65rem] font-bold uppercase text-muted-foreground">
+            CPF ou CNPJ
+          </label>
+          <input
+            id="payer-doc"
+            inputMode="numeric"
+            value={payerDocument}
+            onChange={(e) => setPayerDocument(maskDocument(e.target.value))}
+            placeholder="000.000.000-00"
+            className="mt-1 h-12 w-full rounded-xl border border-white/10 bg-black/40 px-3 text-base text-foreground outline-none focus:border-primary sm:h-11 sm:text-sm"
+          />
+        </div>
+      </div>
 
       <CreditCard3D brand={brand} number={number} holderName={holderName} expiry={expiry} />
 
