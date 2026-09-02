@@ -116,13 +116,15 @@ Deno.serve(async (req: Request) => {
           headers: { ...cors, "Content-Type": "application/json" },
         });
       }
-      if (preflightData?.context?.force_pr === true && parsedBody?.direct_commit !== false) {
-        return json({
-          ready: false,
-          blockers: [{ code: "BRANCH_PROTECTED", message: "A branch é protegida. Reenvie a tarefa em modo branch/PR.", action: "Usar Pull Request" }],
-          warnings: preflightData?.warnings || [],
-          context: preflightData?.context || null,
-        }, 409);
+      // Branch protegida NÃO muda o modo da tarefa aqui. O motor principal sempre
+      // tenta o PATCH direto e, somente se o GitHub rejeitar por proteção, cria PR
+      // temporário e faz squash automático para o branch padrão.
+      if (preflightData?.context?.force_pr === true) {
+        log("info", "protected_branch_delegated_to_atomic_engine", {
+          task_id: parsedBody.task_id || null,
+          lovable_project_id: parsedBody.lovable_project_id,
+          repository_url: parsedBody.repository_url || null,
+        });
       }
     }
 
