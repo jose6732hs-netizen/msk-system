@@ -20,21 +20,69 @@ async function decrypt(v: string) {
   return dec.decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, k, cipher));
 }
 
-async function key(r: Request) {
-  const u = await identity(r);
-  if (u) {
-    const { data } = await db.from("app_user_connections").select("connection_key_ciphertext,revoked_at").eq("user_id", u.id).eq("connector_id", "ai_bai").maybeSingle();
-    if (data?.connection_key_ciphertext && !data.revoked_at) {
-      try { return await decrypt(String(data.connection_key_ciphertext)); } catch (error) { console.warn("MSK user AI key decrypt failed", error instanceof Error ? error.name : "invalid"); }
+type ActiveAIConfig = {
+  apiKey: string;
+  provider: "bai" | "openrouter";
+  model: string;
+  baseUrl: string;
+};
+
+const BAI_BASE_URL = "https://api.b.ai/v1/chat/completions";
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+async function activeAI(r: Request): Promise<ActiveAIConfig> {
+  // A configuração global definida pelo painel admin é a fonte principal.
+  const { data: globalCfg, error: globalError } = await db
+    .from("msk_ai_settings")
+    .select("provider,model,api_base_url,api_key_ciphertext,active")
+    .eq("id", "default")
+    .maybeSingle();
+  if (globalError) console.warn("MSK global AI config read failed", globalError.message);
+
+  if (globalCfg?.active !== false && globalCfg?.api_key_ciphertext) {
+    try {
+      const provider: "bai" | "openrouter" = String(globalCfg.provider || "")
+        .toLowerCase()
+        .includes("openrouter") ? "openrouter" : "bai";
+      const fallbackModel = provider === "openrouter" ? "openai/gpt-5.5" : "deepseek-v4-flash";
+      const fallbackBaseUrl = provider === "openrouter" ? OPENROUTER_BASE_URL : BAI_BASE_URL;
+      return {
+        apiKey: await decrypt(String(globalCfg.api_key_ciphertext)),
+        provider,
+        model: String(globalCfg.model || fallbackModel).trim() || fallbackModel,
+        baseUrl: String(globalCfg.api_base_url || fallbackBaseUrl).trim() || fallbackBaseUrl,
+      };
+    } catch (error) {
+      console.warn("MSK global AI config decrypt failed", error instanceof Error ? error.name : "invalid");
     }
   }
-  const { data: g } = await db.from("msk_ai_settings").select("api_key_ciphertext,active").eq("id", "default").maybeSingle();
-  if (g?.api_key_ciphertext && g.active !== false) {
-    try { return await decrypt(String(g.api_key_ciphertext)); } catch (error) { console.warn("MSK global AI key decrypt failed", error instanceof Error ? error.name : "invalid"); }
+
+  // Compatibilidade: BYOK B.AI do usuário continua como fallback quando o admin
+  // ainda não definiu uma IA global ativa.
+  const u = await identity(r);
+  if (u) {
+    const { data } = await db.from("app_user_connections")
+      .select("connection_key_ciphertext,revoked_at")
+      .eq("user_id", u.id)
+      .eq("connector_id", "ai_bai")
+      .maybeSingle();
+    if (data?.connection_key_ciphertext && !data.revoked_at) {
+      try {
+        return {
+          apiKey: await decrypt(String(data.connection_key_ciphertext)),
+          provider: "bai",
+          model: "deepseek-v4-flash",
+          baseUrl: BAI_BASE_URL,
+        };
+      } catch (error) {
+        console.warn("MSK user AI key decrypt failed", error instanceof Error ? error.name : "invalid");
+      }
+    }
   }
-  const f = Deno.env.get("BAI_API_KEY");
-  if (!f) throw new AgentError("AI_CONFIGURATION_ERROR", "A API da inteligência MSK não está configurada.", { stage: "auth", httpStatus: 503 });
-  return f;
+
+  const fallbackKey = Deno.env.get("BAI_API_KEY");
+  if (!fallbackKey) throw new AgentError("AI_CONFIGURATION_ERROR", "A API da inteligência MSK não está configurada.", { stage: "auth", httpStatus: 503 });
+  return { apiKey: fallbackKey, provider: "bai", model: "deepseek-v4-flash", baseUrl: BAI_BASE_URL };
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -44,16 +92,26 @@ async function requestAI(r: Request, body: any, timeoutMs = 26000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch("https://api.b.ai/v1/chat/completions", {
+    const cfg = await activeAI(r);
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${cfg.apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (cfg.provider === "openrouter") {
+      headers["HTTP-Referer"] = "https://msksystem.online";
+      headers["X-Title"] = "MSK Agente";
+    }
+    return await fetch(cfg.baseUrl, {
       method: "POST",
-      headers: { Authorization: `Bearer ${await key(r)}`, "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      headers,
+      body: JSON.stringify({ ...body, model: cfg.model }),
       signal: controller.signal,
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
       throw new AgentError("AI_REQUEST_TIMEOUT", "A IA demorou além do limite seguro de resposta.", { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
     }
+    if (error instanceof AgentError) throw error;
     throw new AgentError("AI_NETWORK_UNAVAILABLE", "A conexão com o provedor de IA ficou indisponível.", { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
   } finally {
     clearTimeout(timer);
