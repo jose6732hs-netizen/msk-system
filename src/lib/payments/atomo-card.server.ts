@@ -101,7 +101,16 @@ export async function createAtomoCardTransaction(input: {
       name: input.customer.name.trim(),
       email: input.customer.email.trim(),
       phone_number: phone,
+      phone,
       document,
+      document_type: document.length === 14 ? "cnpj" : "cpf",
+      street_name: "Rua Teste",
+      number: "1",
+      complement: "",
+      neighborhood: "Centro",
+      city: "Sao Paulo",
+      state: "SP",
+      zip_code: "01001000",
     },
     cart: [
       {
