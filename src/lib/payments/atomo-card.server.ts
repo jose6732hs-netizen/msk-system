@@ -1,14 +1,6 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadCredentialsFor, type GatewayCredentials } from "./credentials.server";
 
-const CATALOG_KEY = "atomopay_catalog";
-
-type CatalogState = {
-  productHash?: string;
-  offerHash?: string;
-  offersByAmount?: Record<string, string>;
-};
-
 type CustomerInput = {
   name: string;
   email: string;
@@ -61,14 +53,6 @@ async function callAtomo<T>(
   } catch {
     return {} as T;
   }
-}
-
-function unwrap(value: any) {
-  return value?.data ?? value ?? {};
-}
-
-function offerPrice(offer: any) {
-  return Number(offer?.price ?? offer?.amount ?? offer?.value ?? 0);
 }
 
 export async function createAtomoCardTransaction(input: {
