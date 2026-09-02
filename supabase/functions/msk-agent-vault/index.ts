@@ -481,9 +481,19 @@ Deno.serve(async (req: Request) => {
         envExample.changed ? ".env.example atualizado sem valores reais." : "As variáveis já estavam registradas em .env.example.",
         request.code_rewrite_recommended ? "O repositório contém indícios de credencial hardcoded; os valores novos não foram inseridos no código." : "Nenhum valor real foi inserido no código.",
       ].join(" ");
-      await db.from("msk_tasks").update({ status: "completed", summary, credential_request: nextRequest, error: null, error_code: null, error_stage: null, updated_at: now }).eq("id", taskId).eq("user_id", who.id);
+      await db.from("msk_tasks").update({ status: "completed", stage: "finalizing", summary, credential_request: nextRequest, pending_command: null, commit_sha: envExample.commit_sha || null, commit_url: envExample.commit_url || null, finished_at: now, error: null, error_code: null, error_stage: null, updated_at: now }).eq("id", taskId).eq("user_id", who.id);
+      await logTaskEvent({
+        taskId,
+        userId: who.id,
+        projectId,
+        stage: "credentials_saved",
+        status: "completed",
+        message: summary,
+        payload: { saved_keys: [...expected.keys()], env_example_updated: envExample.changed, secret_values_returned: false },
+      });
       console.log(JSON.stringify({ event: "credential_saved", task_id: taskId, user_id: who.id, project_id: projectId, keys: [...expected.keys()], provider: request.provider || "generic", env_example_updated: envExample.changed }));
       return json({ ok: true, completed: true, credential_saved: true, task_id: taskId, saved_keys: [...expected.keys()], secret_values_returned: false, summary, commit_sha: envExample.commit_sha, commit_url: envExample.commit_url });
+
     }
 
     if (action === "list") {
