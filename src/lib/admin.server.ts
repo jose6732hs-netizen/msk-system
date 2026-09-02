@@ -202,6 +202,14 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
       monthCommissions,
       conversions: paidTx.length,
       transactions: (payments ?? []).length,
+      cardTotal: cardTx.length,
+      cardApproved: cardPaid.length,
+      cardRevenue: sumAmt(cardPaid),
+      cardFailed: cardFailed.length,
+      cardPending: cardPending.length,
+      cardApprovalRate: cardTx.length ? (cardPaid.length / cardTx.length) * 100 : 0,
+      pixApproved: pixPaid.length,
+      pixRevenue: sumAmt(pixPaid),
     },
   };
 }
