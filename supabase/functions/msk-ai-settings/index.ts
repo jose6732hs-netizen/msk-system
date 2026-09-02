@@ -30,24 +30,56 @@ const PROVIDERS = {
     label: "B.AI",
     baseUrl: "https://api.b.ai/v1/chat/completions",
     defaultModel: "deepseek-v4-flash",
+    custom: false,
   },
   openrouter: {
     label: "OpenRouter",
     baseUrl: "https://openrouter.ai/api/v1/chat/completions",
     defaultModel: "openai/gpt-5.5",
+    custom: false,
+  },
+  omniroute: {
+    label: "OmniRoute",
+    baseUrl: "http://127.0.0.1:20128/v1/chat/completions",
+    defaultModel: "z-ai/glm-5.2",
+    custom: true,
   },
 } as const;
 type ProviderId = keyof typeof PROVIDERS;
 
 function normalizeProvider(value: unknown): ProviderId {
   const raw = String(value || "bai").trim().toLowerCase();
-  return raw === "openrouter" || raw === "open_router" ? "openrouter" : "bai";
+  if (raw.includes("omniroute") || raw === "omni_route") return "omniroute";
+  if (raw.includes("openrouter") || raw === "open_router") return "openrouter";
+  return "bai";
 }
 function normalizeModel(provider: ProviderId, value: unknown) {
   const model = String(value || "").trim();
   if (model && model.length <= 160 && /^[A-Za-z0-9._:/@+\-]+$/.test(model)) return model;
   return PROVIDERS[provider].defaultModel;
 }
+
+/** Aceita "https://host/v1" ou o endpoint completo e devolve raiz + endpoints OpenAI-compatible. */
+function resolveEndpoints(provider: ProviderId, value: unknown) {
+  const fallback = PROVIDERS[provider].baseUrl;
+  let raw = String(value || "").trim();
+  if (!PROVIDERS[provider].custom || !raw) raw = fallback;
+  raw = raw.replace(/\/+$/, "");
+  const root = raw.replace(/\/chat\/completions$/i, "");
+  let url: URL;
+  try { url = new URL(root); } catch {
+    const error = new Error("Base URL inválida. Use algo como http://127.0.0.1:20128/v1");
+    (error as any).status = 400;
+    throw error;
+  }
+  if (!/^https?:$/.test(url.protocol)) {
+    const error = new Error("Base URL precisa começar com http:// ou https://");
+    (error as any).status = 400;
+    throw error;
+  }
+  return { root, chatUrl: `${root}/chat/completions`, modelsUrl: `${root}/models` };
+}
+
 
 async function encryptionMaterial() {
   const configured = Deno.env.get("MSK_TOKEN_ENCRYPTION_KEY")?.trim() || "";
