@@ -1,6 +1,6 @@
 import { cors, json, env, db, dec, sha, identity, verifyDevice } from "./common.ts";
 import { makeState, readState, installation, instToken, gh, validSession, chooseRepo } from "./github.ts";
-import { ask, parse, b64utf, directCommit } from "./ai.ts";
+import { ask, parse, directCommit } from "./ai.ts";
 import { MSK_ENGINEERING_PROFILE, normalizeRepo, isHighRiskCommand, selectionPrompt, editPrompt, validateChanges, professionalSummary } from "./professional.ts";
 import { AgentError, type AgentStage, acquireRepoLock, mapErrorToAgentError, recordAgentError, releaseRepoLock } from "./errors.ts";
 
@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (req.method === "POST" && url.searchParams.get("action") === "health") {
-      return json({ ok: true, service: "msk-agent", version: "3.2.0-observable-reliable", device_guard: "staged", repository_isolation: "strict", resilient_ai: true, global_training: true, fast_edit: true, structured_errors: true, repo_lock: true, semantic_precommit: true });
+      return json({ ok: true, service: "msk-agent", version: "3.3.0-direct-main-preview", device_guard: "staged", repository_isolation: "strict", resilient_ai: true, global_training: true, fast_edit: true, structured_errors: true, repo_lock: true, semantic_precommit: true, atomic_git_data_commit: true, preview_pending: true });
     }
 
     if (req.method === "GET" && url.searchParams.get("installation_id") && url.searchParams.get("state")) {
@@ -230,15 +230,23 @@ Deno.serve(async (req: Request) => {
     if (!boundRepo) await db.from("msk_projects").update({ user_id: who.id, github_owner: selected.repo.owner.login, github_repo: selected.repo.name, github_default_branch: selected.repo.default_branch, updated_at: new Date().toISOString() }).eq("lovable_project_id", pid);
 
     if (action === "approve") {
+      // Compatibilidade somente para tarefas antigas que já possuíam PR antes desta versão.
       const id = String(body.task_id || "");
       const { data: task } = await db.from("msk_tasks").select("id,status,pull_request_url,summary").eq("id", id).eq("lovable_project_id", pid).eq("user_id", who.id).maybeSingle();
       if (!task?.pull_request_url) return json({ error: "Pull Request não encontrado.", code: "PULL_REQUEST_NOT_FOUND" }, 404);
       const number = Number(task.pull_request_url.match(/\/pull\/(\d+)/)?.[1]);
       stage = "committing";
+      const liveRepo = await gh(selected.token, `/repos/${selected.repo.owner.login}/${selected.repo.name}`);
+      const liveBranch = String(liveRepo?.default_branch || selected.repo.default_branch || "").trim();
+      const beforeRef = await gh(selected.token, `/repos/${selected.repo.owner.login}/${selected.repo.name}/git/ref/heads/${encodeURIComponent(liveBranch).replace(/%2F/g, "/")}`);
+      const beforeSha = String(beforeRef?.object?.sha || "");
       const merged = await gh(selected.token, `/repos/${selected.repo.owner.login}/${selected.repo.name}/pulls/${number}/merge`, { method: "PUT", body: JSON.stringify({ commit_title: `MSK: ${String(task.summary || "alteração aprovada").slice(0, 70)}`, merge_method: "squash" }) });
-      if (!merged?.merged) throw new AgentError("GITHUB_MERGE_REJECTED", String(merged?.message || "Merge recusado."), { stage: "committing", httpStatus: 409 });
-      await taskPatch(id, { status: "completed", error: null, error_code: null, error_stage: null }, who.id);
-      return json({ ok: true, completed: true, message: "Alteração aplicada no repositório correto.", repository: selectedRepo });
+      if (!merged?.merged || !merged?.sha) throw new AgentError("GITHUB_MERGE_REJECTED", String(merged?.message || "Merge recusado."), { stage: "committing", httpStatus: 409 });
+      const afterRef = await gh(selected.token, `/repos/${selected.repo.owner.login}/${selected.repo.name}/git/ref/heads/${encodeURIComponent(liveBranch).replace(/%2F/g, "/")}`);
+      const afterSha = String(afterRef?.object?.sha || "");
+      if (!afterSha || afterSha !== String(merged.sha) || afterSha === beforeSha) throw new AgentError("COMMIT_VERIFICATION_FAILED", "O PR antigo foi mesclado, mas o branch padrão não mudou para o SHA do merge.", { stage: "verifying", retryable: true, httpStatus: 409 });
+      await taskPatch(id, { status: "completed", branch_name: liveBranch, error: null, error_code: null, error_stage: null }, who.id);
+      return json({ ok: true, completed: true, preview_pending: true, branch: liveBranch, branch_used: liveBranch, commit_sha: afterSha, commit_url: `https://github.com/${selected.repo.owner.login}/${selected.repo.name}/commit/${afterSha}`, message: `Commit enviado para ${liveBranch} — atualize a prévia no Lovable`, repository: selectedRepo });
     }
 
     if (action !== "run") return json({ error: "Ação não suportada.", code: "ACTION_NOT_SUPPORTED" }, 400);
@@ -252,9 +260,16 @@ Deno.serve(async (req: Request) => {
 
     const owner = selected.repo.owner.login;
     const repoNameOnly = selected.repo.name;
-    const branch = selected.repo.default_branch;
+    const liveRepoAtStart = await gh(selected.token, `/repos/${owner}/${repoNameOnly}`);
+    let branch = String(liveRepoAtStart?.default_branch || selected.repo.default_branch || "").trim();
+    if (!branch) throw new AgentError("GITHUB_RESOURCE_NOT_FOUND", "O repositório não informou o branch padrão sincronizado pelo Lovable.", { stage: "repository", httpStatus: 404 });
     repository = `${owner}/${repoNameOnly}`;
     branchName = branch;
+
+    if (String(proj?.github_default_branch || "") !== branch) {
+      const branchUpdate = await db.from("msk_projects").update({ github_default_branch: branch, updated_at: new Date().toISOString() }).eq("lovable_project_id", pid).eq("user_id", who.id);
+      if (branchUpdate.error) console.warn("MSK default branch cache update failed", branchUpdate.error.message);
+    }
 
     stage = "locking";
     lockKey = `${normalizeRepo(repository)}#${branch}`;
@@ -343,7 +358,6 @@ Deno.serve(async (req: Request) => {
         throw new AgentError("NO_CHANGES_APPLIED", "A IA não produziu uma alteração válida após as tentativas seguras.", { stage: "editing", retryable: true, httpStatus: 422, context: { rejections: rejections.slice(0, 8), files: files.map(f => f.path) } });
       }
 
-
       stage = "validating";
       await taskPatch(taskId, { status: "validating", retry_count: retryCount }, who.id);
       validatePreCommit(changes, files);
@@ -362,53 +376,72 @@ Deno.serve(async (req: Request) => {
     const commitMessage = `MSK: ${String(out.summary || clientCmd).replace(/\s+/g, " ").slice(0, 70)}`;
     await taskPatch(taskId, { status: "finalizing", summary: String(out.summary || "").slice(0, 2000), retry_count: retryCount }, who.id);
 
-    if (body.direct_commit !== false) {
-      stage = "committing";
-      await taskPatch(taskId, { status: "committing" }, who.id);
-      // Toda alteração, por menor que seja, DEVE virar commit no branch principal
-      // para o Lovable exibir "Atualizar prévia". Em conflito, re-tenta com base
-      // atualizada antes de qualquer fallback de PR.
-      let lastConflict: any = null;
-      for (let commitAttempt = 1; commitAttempt <= 4; commitAttempt++) {
-        try {
-          const commit = await directCommit(selected.token, owner, repoNameOnly, branch, changes, commitMessage);
-          stage = "verifying";
-          await taskPatch(taskId, { status: "verifying", branch_name: branch }, who.id);
-          const ref = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(branch).replace(/%2F/g, "/")}`);
-          const headSha = String(ref?.object?.sha || "");
-          if (!commit?.sha || headSha !== String(commit.sha)) throw new AgentError("COMMIT_VERIFICATION_FAILED", "O SHA do branch não corresponde ao commit criado.", { stage: "verifying", retryable: true, httpStatus: 409, context: { expected: String(commit?.sha || ""), actual: headSha } });
-          const summary = professionalSummary(String(out.summary || "Alteração aplicada."), repository, changes.map(x => x.path), commit.sha);
-          await taskPatch(taskId, { status: "completed", branch_name: branch, summary, error: null, error_code: null, error_stage: null }, who.id);
-          return json({ ok: true, completed: true, direct_commit: true, assistant_message: String(out.reply || summary), summary, model: "MSK-IA", provider: "MSK", task_id: taskId, repository, repository_locked: true, branch, files: changes.map(x => x.path), files_changed_count: changes.length, commit_sha: commit.sha, commit_url: commit.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commit.sha}`, validation: { content_changed: true, semantic: true, commit_verified: true }, fast_edit: fast, commit_attempt: commitAttempt });
-        } catch (error) {
-          const mapped = mapErrorToAgentError(error, stage);
-          if (mapped.code !== "GITHUB_CONFLICT" && mapped.code !== "COMMIT_VERIFICATION_FAILED") throw mapped;
-          lastConflict = mapped;
-          console.warn("MSK direct commit retry", JSON.stringify({ taskId, attempt: commitAttempt, code: mapped.code }));
-          await new Promise(resolve => setTimeout(resolve, 350 * commitAttempt));
-        }
-      }
-      console.warn("MSK direct commit conflicts exhausted; preparing isolated PR", String(lastConflict?.code || "GITHUB_CONFLICT"));
+    // Releia o branch padrão imediatamente antes do commit. Nunca confie apenas no cache.
+    const liveRepoBeforeCommit = await gh(selected.token, `/repos/${owner}/${repoNameOnly}`);
+    const liveBranchBeforeCommit = String(liveRepoBeforeCommit?.default_branch || branch || "").trim();
+    if (!liveBranchBeforeCommit) throw new AgentError("GITHUB_RESOURCE_NOT_FOUND", "Não foi possível confirmar o branch padrão antes do commit.", { stage: "repository", httpStatus: 404 });
+    if (liveBranchBeforeCommit !== branch) {
+      branch = liveBranchBeforeCommit;
+      branchName = branch;
+      const branchUpdate = await db.from("msk_projects").update({ github_default_branch: branch, updated_at: new Date().toISOString() }).eq("lovable_project_id", pid).eq("user_id", who.id);
+      if (branchUpdate.error) console.warn("MSK default branch cache refresh failed", branchUpdate.error.message);
     }
 
     stage = "committing";
-    await taskPatch(taskId, { status: "committing" }, who.id);
-    const branchForPr = `msk/${taskId.slice(0, 8)}`;
-    const baseRef = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(branch).replace(/%2F/g, "/")}`);
-    await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/refs`, { method: "POST", body: JSON.stringify({ ref: `refs/heads/${branchForPr}`, sha: baseRef.object.sha }) });
-    for (const change of changes) {
-      const old = files.find(file => file.path === change.path);
-      await gh(selected.token, `/repos/${owner}/${repoNameOnly}/contents/${encodeURIComponent(change.path).replace(/%2F/g, "/")}`, { method: "PUT", body: JSON.stringify({ message: commitMessage, content: b64utf(change.content), branch: branchForPr, ...(old?.sha ? { sha: old.sha } : {}) }) });
+    await taskPatch(taskId, { status: "committing", branch_name: branch }, who.id);
+    const beforeRef = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(branch).replace(/%2F/g, "/")}`);
+    const beforeSha = String(beforeRef?.object?.sha || "");
+    if (!beforeSha) throw new AgentError("GITHUB_RESOURCE_NOT_FOUND", "O branch padrão não possui SHA antes do commit.", { stage: "committing", httpStatus: 404 });
+
+    const commit = await directCommit(selected.token, owner, repoNameOnly, branch, changes, commitMessage);
+    const usedBranch = String(commit?.branch || branch).trim();
+    if (!usedBranch) throw new AgentError("COMMIT_VERIFICATION_FAILED", "O commit não retornou o branch utilizado.", { stage: "verifying", retryable: true, httpStatus: 409 });
+    branch = usedBranch;
+    branchName = usedBranch;
+
+    if (String(proj?.github_default_branch || "") !== usedBranch) {
+      const branchUpdate = await db.from("msk_projects").update({ github_default_branch: usedBranch, updated_at: new Date().toISOString() }).eq("lovable_project_id", pid).eq("user_id", who.id);
+      if (branchUpdate.error) console.warn("MSK default branch final cache update failed", branchUpdate.error.message);
     }
 
     stage = "verifying";
-    await taskPatch(taskId, { status: "verifying", branch_name: branchForPr }, who.id);
-    const prRef = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(branchForPr).replace(/%2F/g, "/")}`);
-    if (!String(prRef?.object?.sha || "") || String(prRef.object.sha) === String(baseRef?.object?.sha || "")) throw new AgentError("COMMIT_VERIFICATION_FAILED", "O branch isolado não contém mudanças confirmadas.", { stage: "verifying", retryable: true, httpStatus: 409 });
-    const summary = professionalSummary(String(out.summary || "Alteração preparada."), repository, changes.map(x => x.path));
-    const pr = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/pulls`, { method: "POST", body: JSON.stringify({ title: commitMessage, head: branchForPr, base: branch, body: `Alteração preparada pelo MSK Agente.\n\n${summary}` }) });
-    await taskPatch(taskId, { status: "awaiting_approval", branch_name: branchForPr, pull_request_url: pr.html_url, summary, error: null, error_code: null, error_stage: null }, who.id);
-    return json({ ok: true, requires_approval: true, assistant_message: String(out.reply || summary), summary, model: "MSK-IA", provider: "MSK", repository, repository_locked: true, branch: branchForPr, files: changes.map(x => x.path), files_changed_count: changes.length, task_id: taskId, pull_request_url: pr.html_url, validation: { content_changed: true, semantic: true, branch_verified: true } });
+    await taskPatch(taskId, { status: "verifying", branch_name: usedBranch }, who.id);
+    const finalRef = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(usedBranch).replace(/%2F/g, "/")}`);
+    const finalSha = String(finalRef?.object?.sha || "");
+    const commitSha = String(commit?.sha || "");
+    if (!commitSha || !finalSha || finalSha !== commitSha || finalSha === beforeSha) {
+      throw new AgentError("COMMIT_VERIFICATION_FAILED", "A tarefa não será concluída: o SHA do branch padrão não mudou exatamente para o commit criado.", { stage: "verifying", retryable: true, httpStatus: 409, context: { branch: usedBranch, before: beforeSha, expected: commitSha, actual: finalSha } });
+    }
+
+    const summary = professionalSummary(String(out.summary || "Alteração aplicada."), repository, changes.map(x => x.path), commitSha);
+    await taskPatch(taskId, { status: "completed", branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);
+    const commitUrl = String(commit?.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commitSha}`);
+    const previewMessage = `Commit enviado para ${usedBranch} — atualize a prévia no Lovable`;
+    return json({
+      ok: true,
+      completed: true,
+      direct_commit: commit?.fallback_pr !== true,
+      fallback_pr: commit?.fallback_pr === true,
+      assistant_message: String(out.reply || summary),
+      summary,
+      model: "MSK-IA",
+      provider: "MSK",
+      task_id: taskId,
+      repository,
+      repository_locked: true,
+      branch: usedBranch,
+      branch_used: usedBranch,
+      files: changes.map(x => x.path),
+      files_changed_count: changes.length,
+      commit_sha: commitSha,
+      commit_url: commitUrl,
+      pull_request_url: String(commit?.pull_request_url || "") || undefined,
+      preview_pending: true,
+      preview_message: previewMessage,
+      validation: { content_changed: true, semantic: true, commit_verified: true, branch_changed: true },
+      fast_edit: fast,
+      commit_attempt: Number(commit?.commit_attempt || 1),
+    });
   } catch (error) {
     const mapped = mapErrorToAgentError(error, stage);
     const logged = await recordAgentError({ error, stage: mapped.stage, taskId: taskId || undefined, userId: taskUserId || undefined, projectId: projectId || undefined, repository: repository || undefined, branchName: branchName || undefined, attempt: retryCount, context: { taskId: taskId || null, repository: repository || null, branch: branchName || null } });
