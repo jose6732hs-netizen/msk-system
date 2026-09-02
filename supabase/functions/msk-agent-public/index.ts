@@ -45,6 +45,20 @@ const isSocialOnly = (value: unknown) => {
   return /^(oi+|ola+|opa+|ei+|hey+|hello+|e ai|bom dia|boa tarde|boa noite|obrigad[oa]|muito obrigad[oa]|valeu|vlw|tmj|entendi|beleza|blz|show|certo|ok|okay|perfeito|top|massa|fechou|combinado|saquei|tudo bem|tudo certo|como vai)(\s+(msk|agente))?$/.test(text);
 };
 
+// Pergunta pura (consulta) — só estas seguem para o modo conversa.
+// Qualquer outro pedido é tratado como edição real, com commit obrigatório.
+const isPureQuestion = (value: unknown) => {
+  const text = normalizeIntent(value);
+  if (!text) return false;
+  if (hasEditIntent(value)) return false;
+  if (text.split(" ").length > 30) return false;
+  return /^(como|o que|oque|qual|quais|quando|onde|por que|porque|pra que|voce (consegue|pode|sabe)|vc (consegue|pode|sabe)|da pra|de pra|explica|explique|me explica|resume|resuma|mostra|me mostra|existe|tem como|e possivel|eh possivel|status|ta ok|esta ok|funciona)\b/.test(text);
+};
+
+// Frases que indicam que a IA afirmou ter alterado o projeto sem commit real.
+const claimsApplied = (value: unknown) => /\b(apliqu(?:ei|ado)|alter(?:ei|ado)|atualiz(?:ei|ado)|modifiqu(?:ei|ado)|troqu(?:ei|ado)|ajust(?:ei|ado)|corrig(?:i|ido)|implement(?:ei|ado)|cri(?:ei|ado)|edit(?:ei|ado)|comit(?:ei|ado)|feito|pronto,? (?:esta|ta) (?:feito|alterado))\b/.test(normalizeIntent(value));
+
+
 const quickConversationReply = (value: unknown) => {
   const text = normalizeIntent(value);
   if (!text) return "";
