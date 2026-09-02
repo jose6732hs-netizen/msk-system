@@ -283,10 +283,25 @@ Deno.serve(async (req: Request) => {
     }
     if (!chosen.length) throw new AgentError("AGENT_TARGET_NOT_FOUND", "Não foi possível localizar com segurança o alvo do pedido.", { stage: "locating_files", retryable: true, httpStatus: 422 });
 
-    const files = await Promise.all(chosen.map(async (path: string) => {
+    // Download em série com orçamento total de conteúdo. O Promise.all com arquivos
+    // grandes estourava a memória do worker (WORKER_RESOURCE_LIMIT).
+    const CONTENT_BUDGET = 190000;
+    const files: Array<{ path: string; sha: string; content: string }> = [];
+    let usedBudget = 0;
+    for (const path of chosen) {
+      if (usedBudget >= CONTENT_BUDGET) break;
       const x = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/contents/${encodeURIComponent(path).replace(/%2F/g, "/")}?ref=${encodeURIComponent(branch)}`);
-      return { path, sha: x.sha, content: dec.decode(Uint8Array.from(atob(x.content.replace(/\n/g, "")), c => c.charCodeAt(0))) };
-    }));
+      const b64 = String(x?.content || "").replace(/\n/g, "");
+      if (!b64 || b64.length > 260000) continue;
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      const content = dec.decode(bytes);
+      if (content.length > 90000) continue;
+      usedBudget += content.length;
+      files.push({ path, sha: x.sha, content });
+    }
+    if (!files.length) throw new AgentError("AGENT_TARGET_NOT_FOUND", "Os arquivos alvo são grandes demais para uma edição segura nesta execução.", { stage: "locating_files", retryable: false, httpStatus: 422 });
 
     const highRisk = isHighRiskCommand(cmd);
     const basePrompt = editPrompt(cmd, repository, files, highRisk);
