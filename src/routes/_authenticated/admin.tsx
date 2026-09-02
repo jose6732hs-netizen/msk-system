@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Activity, Clock, KeyRound, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, MessageCircle } from "lucide-react";
+import { Activity, Clock, KeyRound, LayoutDashboard, Loader2, Menu, Search, ShieldAlert, Users, X, Zap, TrendingUp, DollarSign, MessageSquare, MessageCircle, CreditCard, XCircle, Percent, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AdminGatewayTab } from "@/components/msk/admin-gateway";
@@ -392,9 +392,20 @@ function Admin() {
                   ["Vendas Aprovadas", Number(stats?.conversions ?? 0), false, Activity, "text-cyan-400"],
                   ["Receita Aprovada", Number(stats?.revenue ?? 0), true, DollarSign, "text-emerald-400"],
                 ].map(([k, v, isMoney, Icon, color]: any, i: number) => <div key={k} className="holo-card holo-rise group rounded-2xl p-4 sm:p-5" style={{ animationDelay: `${i * 80}ms` }}><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div><p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{k}</p><p className="mt-1 text-lg sm:text-2xl font-bold"><CountUp value={v} currency={isMoney} /></p></div><div className={`w-fit rounded-xl bg-muted/20 p-2 ${color}`}><Icon className="h-5 w-5" /></div></div><div className="mt-3 h-[3px] w-full rounded-full bg-foreground/5 holo-bar" /></div>)}
+               </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 sm:gap-4">
+                {[
+                  ["Cartão Aprovadas", Number(stats?.cardApproved ?? 0), false, CreditCard, "text-emerald-400"],
+                  ["Receita Cartão", Number(stats?.cardRevenue ?? 0), true, DollarSign, "text-emerald-300"],
+                  ["Cartão Recusadas", Number(stats?.cardFailed ?? 0), false, XCircle, "text-red-400"],
+                  ["Cartão Processando", Number(stats?.cardPending ?? 0), false, Clock, "text-amber-400"],
+                  ["Aprovação Cartão", Number(stats?.cardApprovalRate ?? 0), false, Percent, "text-fuchsia-400", "%"],
+                  ["PIX Aprovados", Number(stats?.pixApproved ?? 0), false, QrCode, "text-cyan-400"],
+                ].map(([k, v, isMoney, Icon, color, suffix]: any, i: number) => <div key={k} className="holo-card holo-rise group rounded-2xl p-4 sm:p-5" style={{ animationDelay: `${i * 80}ms` }}><div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div><p className="text-[0.6rem] uppercase tracking-widest text-muted-foreground">{k}</p><p className="mt-1 text-lg sm:text-2xl font-bold">{suffix ? `${v.toFixed(1)}%` : <CountUp value={v} currency={isMoney} />}</p></div><div className={`w-fit rounded-xl bg-muted/20 p-2 ${color}`}><Icon className="h-5 w-5" /></div></div><div className="mt-3 h-[3px] w-full rounded-full bg-foreground/5 holo-bar" /></div>)}
               </div>
 
-              <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+               <div className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <FilterChips
                   value={statusFilter}
                   onChange={setStatusFilter}

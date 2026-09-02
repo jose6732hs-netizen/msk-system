@@ -105,6 +105,20 @@ export async function loadFinanceOverview() {
     .filter((w: any) => String(w.status).toUpperCase() === "PENDING")
     .reduce((s: number, w: any) => s + Number(w.amount ?? 0), 0);
 
+  const method = (t: any) => String(t?.method ?? "").toUpperCase();
+  const isCard = (t: any) => method(t).includes("CARD") || method(t).includes("CARTAO");
+  const isPix = (t: any) => method(t).includes("PIX");
+  const isPaidTx = (t: any) => PAID_STATUSES.includes(st(t)) || !!t.paid_at;
+  const isFailedTx = (t: any) =>
+    ["FAILED", "REFUSED", "DECLINED", "ERROR", "CHARGEBACK", "CANCELED", "CANCELLED", "REFUNDED"].includes(st(t));
+  const cardTx = transactions.filter(isCard);
+  const cardPaid = cardTx.filter(isPaidTx);
+  const cardFailedTx = cardTx.filter(isFailedTx);
+  const cardPendingTx = cardTx.filter((t: any) => !isPaidTx(t) && !isFailedTx(t));
+  const pixTx = transactions.filter(isPix);
+  const pixPaid = pixTx.filter(isPaidTx);
+  const sum = (rows: any[]) => rows.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+
   let gatewayBalance: Record<string, any> | null = null;
   try {
     gatewayBalance = await (await AmploPayService.create()).getBalance();
@@ -134,6 +148,15 @@ export async function loadFinanceOverview() {
       totalAffiliateSales: affiliates.reduce((sum: number, a: any) => sum + Number(a.total_sales ?? 0), 0),
       paidCount: paid.length,
       pending: pendingTransactions.length,
+      cardTotal: cardTx.length,
+      cardApproved: cardPaid.length,
+      cardRevenue: sum(cardPaid),
+      cardFailed: cardFailedTx.length,
+      cardPending: cardPendingTx.length,
+      cardApprovalRate: cardTx.length ? (cardPaid.length / cardTx.length) * 100 : 0,
+      cardAverageTicket: cardPaid.length ? sum(cardPaid) / cardPaid.length : 0,
+      pixApproved: pixPaid.length,
+      pixRevenue: sum(pixPaid),
       pendingWithdrawals: withdrawals.filter(
         (w: any) => String(w.status).toUpperCase() === "PENDING",
       ).length,

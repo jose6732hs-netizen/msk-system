@@ -155,6 +155,25 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     .filter((c: any) => new Date(c.created_at) >= monthStart)
     .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
 
+  // Métricas por método de pagamento (base ampla, não apenas as últimas 80)
+  const { data: allTx } = await supabaseAdmin
+    .from("transactions")
+    .select("id,amount,status,method,paid_at,created_at")
+    .order("created_at", { ascending: false })
+    .limit(5000);
+  const txMethod = (t: any) => String(t?.method ?? "").toUpperCase();
+  const isFailed = (t: any) =>
+    ["FAILED", "REFUSED", "DECLINED", "ERROR", "CHARGEBACK", "CANCELED", "CANCELLED", "REFUNDED"].includes(
+      String(t?.status ?? "").toUpperCase(),
+    );
+  const cardTx = (allTx ?? []).filter((t: any) => txMethod(t).includes("CARD") || txMethod(t).includes("CARTAO"));
+  const cardPaid = cardTx.filter(isPaid);
+  const cardFailed = cardTx.filter(isFailed);
+  const cardPending = cardTx.filter((t: any) => !isPaid(t) && !isFailed(t));
+  const pixTx = (allTx ?? []).filter((t: any) => txMethod(t).includes("PIX"));
+  const pixPaid = pixTx.filter(isPaid);
+  const sumAmt = (rows: any[]) => rows.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
+
   const { data: appSettings } = await (supabaseAdmin as any).from("app_settings").select("*");
   const cms = (appSettings || []).reduce((acc: any, curr: any) => {
     acc[curr.key] = curr.value;
@@ -183,6 +202,14 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
       monthCommissions,
       conversions: paidTx.length,
       transactions: (payments ?? []).length,
+      cardTotal: cardTx.length,
+      cardApproved: cardPaid.length,
+      cardRevenue: sumAmt(cardPaid),
+      cardFailed: cardFailed.length,
+      cardPending: cardPending.length,
+      cardApprovalRate: cardTx.length ? (cardPaid.length / cardTx.length) * 100 : 0,
+      pixApproved: pixPaid.length,
+      pixRevenue: sumAmt(pixPaid),
     },
   };
 }
