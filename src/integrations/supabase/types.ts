@@ -2209,6 +2209,123 @@ export type Database = {
           },
         ]
       }
+      msk_agent_errors: {
+        Row: {
+          attempt: number
+          branch_name: string | null
+          code: string | null
+          context: Json | null
+          created_at: string
+          id: string
+          lovable_project_id: string | null
+          message: string | null
+          repository: string | null
+          resolved_at: string | null
+          retryable: boolean
+          stack: string | null
+          stage: string | null
+          task_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempt?: number
+          branch_name?: string | null
+          code?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          lovable_project_id?: string | null
+          message?: string | null
+          repository?: string | null
+          resolved_at?: string | null
+          retryable?: boolean
+          stack?: string | null
+          stage?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempt?: number
+          branch_name?: string | null
+          code?: string | null
+          context?: Json | null
+          created_at?: string
+          id?: string
+          lovable_project_id?: string | null
+          message?: string | null
+          repository?: string | null
+          resolved_at?: string | null
+          retryable?: boolean
+          stack?: string | null
+          stage?: string | null
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      msk_agent_locks: {
+        Row: {
+          created_at: string
+          expires_at: string
+          repo_branch: string
+          task_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          repo_branch: string
+          task_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          repo_branch?: string
+          task_id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      msk_agent_secrets: {
+        Row: {
+          created_at: string
+          encrypted_value: string
+          field_type: string | null
+          id: string
+          key_name: string
+          lovable_project_id: string
+          metadata: Json
+          provider: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          encrypted_value: string
+          field_type?: string | null
+          id?: string
+          key_name: string
+          lovable_project_id: string
+          metadata?: Json
+          provider?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          encrypted_value?: string
+          field_type?: string | null
+          id?: string
+          key_name?: string
+          lovable_project_id?: string
+          metadata?: Json
+          provider?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       msk_ai_global_training: {
         Row: {
           ai_acknowledgement: string | null
@@ -2388,6 +2505,245 @@ export type Database = {
           provider?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      msk_github_installations: {
+        Row: {
+          account_login: string | null
+          account_type: string | null
+          created_at: string
+          id: string
+          installation_id: number
+          last_validated_at: string | null
+          revoked_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_login?: string | null
+          account_type?: string | null
+          created_at?: string
+          id?: string
+          installation_id: number
+          last_validated_at?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_login?: string | null
+          account_type?: string | null
+          created_at?: string
+          id?: string
+          installation_id?: number
+          last_validated_at?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      msk_projects: {
+        Row: {
+          connected_at: string | null
+          created_at: string
+          github_default_branch: string | null
+          github_installation_id: number | null
+          github_owner: string | null
+          github_repo: string | null
+          lovable_project_id: string
+          project_name: string | null
+          published_url: string | null
+          session_token_hash: string | null
+          supabase_project_ref: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          connected_at?: string | null
+          created_at?: string
+          github_default_branch?: string | null
+          github_installation_id?: number | null
+          github_owner?: string | null
+          github_repo?: string | null
+          lovable_project_id: string
+          project_name?: string | null
+          published_url?: string | null
+          session_token_hash?: string | null
+          supabase_project_ref?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          connected_at?: string | null
+          created_at?: string
+          github_default_branch?: string | null
+          github_installation_id?: number | null
+          github_owner?: string | null
+          github_repo?: string | null
+          lovable_project_id?: string
+          project_name?: string | null
+          published_url?: string | null
+          session_token_hash?: string | null
+          supabase_project_ref?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      msk_task_events: {
+        Row: {
+          created_at: string
+          id: string
+          lovable_project_id: string | null
+          message: string | null
+          payload: Json | null
+          stage: string
+          status: string | null
+          task_id: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lovable_project_id?: string | null
+          message?: string | null
+          payload?: Json | null
+          stage: string
+          status?: string | null
+          task_id: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lovable_project_id?: string | null
+          message?: string | null
+          payload?: Json | null
+          stage?: string
+          status?: string | null
+          task_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "msk_task_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "msk_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      msk_tasks: {
+        Row: {
+          answer: string | null
+          attachments: Json | null
+          branch_name: string | null
+          command: string
+          commit_sha: string | null
+          commit_url: string | null
+          created_at: string
+          credential_request: Json | null
+          diff_summary: string | null
+          error: string | null
+          error_code: string | null
+          error_stage: string | null
+          files_changed: Json | null
+          finished_at: string | null
+          id: string
+          idempotency_key: string | null
+          installation_id: number | null
+          intent: Json | null
+          last_error_id: string | null
+          lovable_project_id: string
+          model: string | null
+          openai_response_id: string | null
+          original_command: string | null
+          pending_command: string | null
+          provider: string | null
+          pull_request_url: string | null
+          question: Json | null
+          repository: string | null
+          retry_count: number
+          stage: string | null
+          status: string
+          summary: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          answer?: string | null
+          attachments?: Json | null
+          branch_name?: string | null
+          command: string
+          commit_sha?: string | null
+          commit_url?: string | null
+          created_at?: string
+          credential_request?: Json | null
+          diff_summary?: string | null
+          error?: string | null
+          error_code?: string | null
+          error_stage?: string | null
+          files_changed?: Json | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          installation_id?: number | null
+          intent?: Json | null
+          last_error_id?: string | null
+          lovable_project_id: string
+          model?: string | null
+          openai_response_id?: string | null
+          original_command?: string | null
+          pending_command?: string | null
+          provider?: string | null
+          pull_request_url?: string | null
+          question?: Json | null
+          repository?: string | null
+          retry_count?: number
+          stage?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          answer?: string | null
+          attachments?: Json | null
+          branch_name?: string | null
+          command?: string
+          commit_sha?: string | null
+          commit_url?: string | null
+          created_at?: string
+          credential_request?: Json | null
+          diff_summary?: string | null
+          error?: string | null
+          error_code?: string | null
+          error_stage?: string | null
+          files_changed?: Json | null
+          finished_at?: string | null
+          id?: string
+          idempotency_key?: string | null
+          installation_id?: number | null
+          intent?: Json | null
+          last_error_id?: string | null
+          lovable_project_id?: string
+          model?: string | null
+          openai_response_id?: string | null
+          original_command?: string | null
+          pending_command?: string | null
+          provider?: string | null
+          pull_request_url?: string | null
+          question?: Json | null
+          repository?: string | null
+          retry_count?: number
+          stage?: string | null
+          status?: string
+          summary?: string | null
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -4376,6 +4732,10 @@ export type Database = {
           provider: string
           updated_at: string
         }[]
+      }
+      msk_task_persistence_probe: {
+        Args: { p_project_id: string; p_user_id: string }
+        Returns: Json
       }
       presence_heartbeat: {
         Args: { _session_id: string; _user_id?: string }

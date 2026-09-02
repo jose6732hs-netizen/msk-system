@@ -210,7 +210,40 @@ function extractHardcodedKeys(content: string) {
   return [...names];
 }
 
+const REQUESTED_FIELD_HINTS: Array<[RegExp, RegExp]> = [
+  [/\bsecret\s*key|chave\s*secreta\b/i, /SECRET_KEY|SECRET$/i],
+  [/\bpublic\s*key|chave\s*p[uú]blica\b/i, /PUBLIC_KEY|PUBLISHABLE/i],
+  [/\bclient\s*id\b/i, /CLIENT_ID/i],
+  [/\bclient\s*secret\b/i, /CLIENT_SECRET/i],
+  [/\bapi\s*key|chave\s*(?:de\s*)?api\b/i, /API_KEY/i],
+  [/\bwebhook\b/i, /WEBHOOK/i],
+  [/\bbase\s*url|endpoint\b/i, /BASE_URL|URL$/i],
+  [/\btoken\b/i, /TOKEN/i],
+  [/\bmerchant|lojista\b/i, /MERCHANT/i],
+];
+
+function requestedFieldFilters(command: string) {
+  return REQUESTED_FIELD_HINTS.filter(([hint]) => hint.test(command)).map(([, key]) => key);
+}
+
+async function logTaskEvent(input: { taskId: string; userId: string; projectId: string; stage: string; status?: string; message?: string; payload?: Record<string, unknown> }) {
+  try {
+    await db.from("msk_task_events").insert({
+      task_id: input.taskId,
+      user_id: input.userId,
+      lovable_project_id: input.projectId,
+      stage: input.stage,
+      status: input.status || null,
+      message: input.message || null,
+      payload: input.payload || null,
+    });
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "task_event_log_failed", stage: input.stage, task_id: input.taskId }));
+  }
+}
+
 async function analyzeRepository(project: any, command: string) {
+
   const owner = String(project.github_owner || "");
   const repo = String(project.github_repo || "");
   const branch = String(project.github_default_branch || "main");
@@ -254,7 +287,15 @@ async function analyzeRepository(project: any, command: string) {
   let names = [...envNames].filter(name => !providerPrefix || name.includes(providerPrefix) || providerTerms.some(term => name.includes(term.toUpperCase())));
   if (!names.length) names = [...hardcoded];
   if (!names.length) names = defaultFields[provider] || defaultFields.generic;
-  names = [...new Set(names)].slice(0, 8);
+  names = [...new Set(names)];
+  // Quando o cliente citou campos específicos, pedir SOMENTE esses campos.
+  const filters = requestedFieldFilters(command);
+  if (filters.length) {
+    const scoped = names.filter(name => filters.some(pattern => pattern.test(name)));
+    if (scoped.length) names = scoped;
+  }
+  names = names.slice(0, 8);
+
   const fields = names.map(key => {
     const type = fieldType(key);
     return { key, label: labelFromKey(key), type, placeholder: placeholderFor(key, type), required: true, encrypted: true };
@@ -352,7 +393,13 @@ Deno.serve(async (req: Request) => {
         lovable_project_id: projectId,
         user_id: who.id,
         command: redactCommand(command),
+        original_command: redactCommand(command),
+        pending_command: redactCommand(command),
         status: "awaiting_credentials",
+        stage: "awaiting_credentials",
+        provider: analysis.provider,
+        repository: analysis.repository,
+        installation_id: Number(project.github_installation_id || 0) || null,
         summary: "Aguardando preenchimento seguro das credenciais.",
         credential_request: credentialRequest,
         error: null,
@@ -362,7 +409,17 @@ Deno.serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       }, { onConflict: "id" });
       if (write.error) throw write.error;
+      await logTaskEvent({
+        taskId,
+        userId: who.id,
+        projectId,
+        stage: "awaiting_credentials",
+        status: "awaiting_credentials",
+        message: `Cofre MSK solicitou ${analysis.fields.length} campo(s) para ${analysis.provider}.`,
+        payload: { fields: analysis.fields.map((field: any) => field.key), repository: analysis.repository },
+      });
       return json({ ok: true, requires_credentials: true, task_id: taskId, status: "awaiting_credentials", credential_card: { taskId, ...credentialRequest } });
+
     }
 
     if (action === "status") {
@@ -424,9 +481,19 @@ Deno.serve(async (req: Request) => {
         envExample.changed ? ".env.example atualizado sem valores reais." : "As variáveis já estavam registradas em .env.example.",
         request.code_rewrite_recommended ? "O repositório contém indícios de credencial hardcoded; os valores novos não foram inseridos no código." : "Nenhum valor real foi inserido no código.",
       ].join(" ");
-      await db.from("msk_tasks").update({ status: "completed", summary, credential_request: nextRequest, error: null, error_code: null, error_stage: null, updated_at: now }).eq("id", taskId).eq("user_id", who.id);
+      await db.from("msk_tasks").update({ status: "completed", stage: "finalizing", summary, credential_request: nextRequest, pending_command: null, commit_sha: envExample.commit_sha || null, commit_url: envExample.commit_url || null, finished_at: now, error: null, error_code: null, error_stage: null, updated_at: now }).eq("id", taskId).eq("user_id", who.id);
+      await logTaskEvent({
+        taskId,
+        userId: who.id,
+        projectId,
+        stage: "credentials_saved",
+        status: "completed",
+        message: summary,
+        payload: { saved_keys: [...expected.keys()], env_example_updated: envExample.changed, secret_values_returned: false },
+      });
       console.log(JSON.stringify({ event: "credential_saved", task_id: taskId, user_id: who.id, project_id: projectId, keys: [...expected.keys()], provider: request.provider || "generic", env_example_updated: envExample.changed }));
       return json({ ok: true, completed: true, credential_saved: true, task_id: taskId, saved_keys: [...expected.keys()], secret_values_returned: false, summary, commit_sha: envExample.commit_sha, commit_url: envExample.commit_url });
+
     }
 
     if (action === "list") {
