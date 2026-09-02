@@ -127,6 +127,15 @@ export class AtomoPayService {
     return this.call<Record<string, unknown>>("GET", "/products");
   }
 
+  /** Detalhe de um produto (traz as ofertas, que a listagem geral omite). */
+  getProduct(productHash: string) {
+    return this.call<Record<string, unknown>>(
+      "GET",
+      `/products/${encodeURIComponent(productHash)}`,
+    );
+  }
+
+
   listCategories() {
     return this.call<Record<string, unknown>>("GET", "/products/categories");
   }
