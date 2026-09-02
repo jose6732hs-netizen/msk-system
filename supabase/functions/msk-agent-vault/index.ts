@@ -210,7 +210,40 @@ function extractHardcodedKeys(content: string) {
   return [...names];
 }
 
+const REQUESTED_FIELD_HINTS: Array<[RegExp, RegExp]> = [
+  [/\bsecret\s*key|chave\s*secreta\b/i, /SECRET_KEY|SECRET$/i],
+  [/\bpublic\s*key|chave\s*p[uú]blica\b/i, /PUBLIC_KEY|PUBLISHABLE/i],
+  [/\bclient\s*id\b/i, /CLIENT_ID/i],
+  [/\bclient\s*secret\b/i, /CLIENT_SECRET/i],
+  [/\bapi\s*key|chave\s*(?:de\s*)?api\b/i, /API_KEY/i],
+  [/\bwebhook\b/i, /WEBHOOK/i],
+  [/\bbase\s*url|endpoint\b/i, /BASE_URL|URL$/i],
+  [/\btoken\b/i, /TOKEN/i],
+  [/\bmerchant|lojista\b/i, /MERCHANT/i],
+];
+
+function requestedFieldFilters(command: string) {
+  return REQUESTED_FIELD_HINTS.filter(([hint]) => hint.test(command)).map(([, key]) => key);
+}
+
+async function logTaskEvent(input: { taskId: string; userId: string; projectId: string; stage: string; status?: string; message?: string; payload?: Record<string, unknown> }) {
+  try {
+    await db.from("msk_task_events").insert({
+      task_id: input.taskId,
+      user_id: input.userId,
+      lovable_project_id: input.projectId,
+      stage: input.stage,
+      status: input.status || null,
+      message: input.message || null,
+      payload: input.payload || null,
+    });
+  } catch (error) {
+    console.warn(JSON.stringify({ event: "task_event_log_failed", stage: input.stage, task_id: input.taskId }));
+  }
+}
+
 async function analyzeRepository(project: any, command: string) {
+
   const owner = String(project.github_owner || "");
   const repo = String(project.github_repo || "");
   const branch = String(project.github_default_branch || "main");
