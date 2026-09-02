@@ -71,7 +71,9 @@ function offerPrice(offer: any) {
   return Number(offer?.price ?? offer?.amount ?? offer?.value ?? 0);
 }
 
-async function resolveCatalogForAmount(creds: GatewayCredentials, amountCents: number) {
+// mantido apenas como referência histórica; o cartão usa o catálogo aprovado do PIX
+// @ts-expect-error unused
+async function _resolveCatalogForAmountLegacy(creds: GatewayCredentials, amountCents: number) {
   const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
   const { data: row } = await supabaseAdmin
     .from("app_settings")
