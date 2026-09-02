@@ -67,8 +67,11 @@ const validatePreCommit = (changes: Array<{ path: string; content: string; creat
 };
 
 async function semanticReview(req: Request, command: string, repo: string, before: Array<{ path: string; content: string }>, changes: Array<{ path: string; content: string; create: boolean }>) {
-  const compactBefore = before.map(file => `--- ANTES ${file.path}\n${file.content}`).join("\n").slice(0, 26000);
-  const compactAfter = changes.map(file => `--- DEPOIS ${file.path}\n${file.content}`).join("\n").slice(0, 42000);
+  // Corta por arquivo ANTES de concatenar: juntar conteúdos inteiros gerava pico de memória no worker.
+  const perBefore = Math.max(1200, Math.floor(26000 / Math.max(1, before.length)));
+  const perAfter = Math.max(1500, Math.floor(42000 / Math.max(1, changes.length)));
+  const compactBefore = before.map(file => `--- ANTES ${file.path}\n${file.content.slice(0, perBefore)}`).join("\n").slice(0, 26000);
+  const compactAfter = changes.map(file => `--- DEPOIS ${file.path}\n${file.content.slice(0, perAfter)}`).join("\n").slice(0, 42000);
   const response = await ask(req, `${MSK_ENGINEERING_PROFILE}\nVALIDAÇÃO SEMÂNTICA PRÉ-COMMIT. Compare o pedido real com o antes/depois. Não edite. Rejeite se o alvo estiver errado, se faltar parte pedida, se houver mudança fora do escopo ou se o resultado não corresponder ao pedido. Responda SOMENTE JSON válido: {"ok":true,"issues":[]} ou {"ok":false,"issues":["motivo objetivo"]}.\nRepositório: ${repo}\nPedido: ${command}\n${compactBefore}\n${compactAfter}`, true, 2600);
   const review = parse(response.text);
   return { ok: review?.ok === true, issues: Array.isArray(review?.issues) ? review.issues.map((x: any) => String(x)).slice(0, 8) : [] };
