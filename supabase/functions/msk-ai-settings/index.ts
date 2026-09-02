@@ -168,7 +168,7 @@ function safeMessages(value: unknown) {
   return out;
 }
 
-async function validateProviderKey(provider: ProviderId, apiKey: string, model: string) {
+async function validateProviderKey(provider: ProviderId, apiKey: string, model: string, chatUrl?: string) {
   const cfg = PROVIDERS[provider];
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15_000);
@@ -178,8 +178,9 @@ async function validateProviderKey(provider: ProviderId, apiKey: string, model: 
       headers["HTTP-Referer"] = "https://msksystem.online";
       headers["X-Title"] = "MSK Agente";
     }
-    const response = await fetch(cfg.baseUrl, {
+    const response = await fetch(chatUrl || cfg.baseUrl, {
       method: "POST",
+
       headers,
       body: JSON.stringify({
         model,
