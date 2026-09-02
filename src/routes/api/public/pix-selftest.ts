@@ -108,28 +108,6 @@ export const Route = createFileRoute("/api/public/pix-selftest")({
           });
           return Response.json({ amount: raw?.amount ?? raw?.data?.amount, status: raw?.payment_status ?? raw?.data?.payment_status, hash: raw?.hash ?? raw?.data?.hash });
         }
-        if ((body as any).rawcard) {
-          const { AtomoPayService } = await import("@/lib/payments/atomo-pay.server");
-          const svc: any = await AtomoPayService.create();
-          const variants: Record<string, any> = {
-            v_flat: { card_number: "4111111111111111", card_holder_name: "TESTE MSK", card_expiration_month: 12, card_expiration_year: 2030, card_cvv: "123" },
-            v_nested: { card: { number: "4111111111111111", holder_name: "TESTE MSK", exp_month: 12, exp_year: 2030, cvv: "123" } },
-            v_hash: { card_hash: "test" },
-          };
-          const out: Record<string, string> = {};
-          for (const [k, extra] of Object.entries(variants)) {
-            try {
-              const r = await svc["call"]("POST", "/transactions", {
-                amount: 1000, offer_hash: "sq1cm4jzxh_kbyqro62tg", payment_method: "credit_card", installments: 1,
-                customer: { name: "Teste MSK", email: "teste@msksystem.online", phone: "11943213342", document: "19100000000", document_type: "cpf", street_name: "Rua Teste", number: "1", complement: "", neighborhood: "Centro", city: "Sao Paulo", state: "SP", zip_code: "01001000" },
-                cart: [{ product_hash: "sq1cm4jzxh", offer_hash: "sq1cm4jzxh_kbyqro62tg", title: "Teste MSK", cover: null, price: 1000, quantity: 1, operation_type: 1, tangible: false }],
-                transaction_origin: "api", ...extra,
-              });
-              out[k] = JSON.stringify(r).slice(0, 400);
-            } catch (e) { out[k] = (e as Error).message.slice(0, 400); }
-          }
-          return Response.json(out);
-        }
         if ((body as any).card) {
           const c = (body as any).card as any;
           const { createAtomoCardTransaction } = await import("@/lib/payments/atomo-card.server");
