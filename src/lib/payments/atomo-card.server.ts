@@ -101,7 +101,9 @@ export async function createAtomoCardTransaction(input: {
       name: input.customer.name.trim(),
       email: input.customer.email.trim(),
       phone_number: phone,
+      phone,
       document,
+      document_type: document.length === 14 ? "cnpj" : "cpf",
     },
     cart: [
       {
