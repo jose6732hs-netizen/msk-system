@@ -313,5 +313,14 @@ export async function savePlan(plan: Record<string, any>) {
   const { syncPrimaryPlanOffer } = await import("./plan-offer-sync.server");
   await syncPrimaryPlanOffer(planId, payload);
 
+  // Espelha a oferta na AtomoPay para que ela apareça nos produtos do gateway.
+  // Falha aqui nunca bloqueia o salvamento do plano.
+  try {
+    const { syncPlanToAtomo } = await import("./payments/atomo-catalog-sync.server");
+    await syncPlanToAtomo(planId);
+  } catch (e) {
+    console.error("[plans] espelhamento AtomoPay falhou:", (e as Error).message);
+  }
+
   return { ok: true, id: planId };
 }
