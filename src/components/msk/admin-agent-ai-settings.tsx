@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, Network, ShieldCheck, Trash2 } from "lucide-react";
+import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, Network, PlugZap, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,29 +10,90 @@ import { AdminAiGlobalTraining } from "@/components/msk/admin-ai-global-training
 import { AdminAiProviders } from "@/components/msk/admin-ai-providers";
 import {
   agentAiSettingsDelete,
+  agentAiSettingsModels,
   agentAiSettingsSave,
   agentAiSettingsStatus,
+  agentAiSettingsTest,
 } from "@/lib/agent-admin.functions";
+
+type ProviderId = "bai" | "openrouter" | "omniroute";
+
+const PROVIDER_META: Record<ProviderId, { label: string; baseUrl: string; model: string; editableBase: boolean }> = {
+  bai: { label: "B.AI", baseUrl: "https://api.b.ai/v1", model: "deepseek-v4-flash", editableBase: false },
+  openrouter: { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-5.5", editableBase: false },
+  omniroute: { label: "OmniRoute", baseUrl: "http://127.0.0.1:20128/v1", model: "z-ai/glm-5.2", editableBase: true },
+};
 
 export function AdminAgentAiSettings() {
   const qc = useQueryClient();
   const statusFn = useServerFn(agentAiSettingsStatus);
   const saveFn = useServerFn(agentAiSettingsSave);
   const deleteFn = useServerFn(agentAiSettingsDelete);
+  const modelsFn = useServerFn(agentAiSettingsModels);
+  const testFn = useServerFn(agentAiSettingsTest);
   const [apiKey, setApiKey] = useState("");
+  const [provider, setProvider] = useState<ProviderId>("bai");
+  const [baseUrl, setBaseUrl] = useState(PROVIDER_META.bai.baseUrl);
+  const [model, setModel] = useState("");
+  const [models, setModels] = useState<string[]>([]);
+  const [modelFilter, setModelFilter] = useState("");
   const [section, setSection] = useState<"api" | "providers" | "training">("api");
-
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-ai-settings"],
     queryFn: () => statusFn(),
   });
 
+  useEffect(() => {
+    if (!data) return;
+    const id = (data.providerId ?? "bai") as ProviderId;
+    setProvider(id);
+    setBaseUrl(data.baseUrl || PROVIDER_META[id].baseUrl);
+    setModel(data.model || PROVIDER_META[id].model);
+  }, [data]);
+
+  function switchProvider(id: ProviderId) {
+    setProvider(id);
+    setModels([]);
+    setBaseUrl(data?.providerId === id && data?.baseUrl ? data.baseUrl : PROVIDER_META[id].baseUrl);
+    setModel(data?.providerId === id ? data?.model || PROVIDER_META[id].model : PROVIDER_META[id].model);
+  }
+
+  const payload = () => ({
+    provider,
+    baseUrl: baseUrl.trim(),
+    model: model.trim(),
+    ...(apiKey.trim().length >= 16 ? { apiKey: apiKey.trim() } : {}),
+  });
+
+  const fetchModels = useMutation({
+    mutationFn: () => modelsFn({ data: payload() }),
+    onSuccess: (res) => {
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setModels(res.models);
+      toast.success(`${res.models.length} modelos disponíveis em ${PROVIDER_META[provider].label}.`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const testConnection = useMutation({
+    mutationFn: () => testFn({ data: payload() }),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(`Conexão confirmada com ${PROVIDER_META[provider].label}.`);
+      else toast.error(res.error);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const save = useMutation({
-    mutationFn: () => saveFn({ data: { apiKey: apiKey.trim() } }),
+    mutationFn: () =>
+      saveFn({ data: { apiKey: apiKey.trim(), provider, baseUrl: baseUrl.trim(), model: model.trim() } }),
     onSuccess: () => {
       setApiKey("");
-      toast.success("API da IA validada, criptografada e aplicada ao MSK Agente.");
+      toast.success(`${PROVIDER_META[provider].label} validado, criptografado e ativado no MSK Agente.`);
       qc.invalidateQueries({ queryKey: ["agent-ai-settings"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -49,6 +110,8 @@ export function AdminAgentAiSettings() {
   });
 
   const configured = !!data?.configured;
+  const filteredModels = models.filter((m) => m.toLowerCase().includes(modelFilter.trim().toLowerCase()));
+
 
   return (
     <div className="space-y-4">
