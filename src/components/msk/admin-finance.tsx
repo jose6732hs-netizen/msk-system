@@ -85,6 +85,8 @@ export function AdminFinanceTab() {
         {([
           [["Receita aprovada", <Money value={s?.revenue} />], ["Receita gerada", <Money value={s?.generatedRevenue} />], ["Receita líquida", <Money value={s?.netRevenue} />], ["Ticket médio", <Money value={s?.averageTicket} />]],
           [["Vendas aprovadas", String(s?.paidCount ?? 0)], ["Conversão", `${Number(s?.conversionRate ?? 0).toFixed(1)}%`], ["Em checkout", String(s?.pending ?? 0)], ["Valor pendente", <Money value={s?.pendingRevenue} />]],
+          [["Cartão aprovadas", String(s?.cardApproved ?? 0)], ["Receita cartão", <Money value={s?.cardRevenue} />], ["Cartão recusadas/erros", String(s?.cardFailed ?? 0)], ["Aprovação cartão", `${Number(s?.cardApprovalRate ?? 0).toFixed(1)}%`]],
+          [["Cartão em processamento", String(s?.cardPending ?? 0)], ["Ticket médio cartão", <Money value={s?.cardAverageTicket} />], ["PIX aprovados", String(s?.pixApproved ?? 0)], ["Receita PIX", <Money value={s?.pixRevenue} />]],
           [["Comissões pagas", <Money value={s?.approvedCommissions} />], ["Comissões pendentes", <Money value={s?.pendingCommissions} />], ["Saques pendentes", <Money value={s?.pendingWithdrawalValue} />], ["Vendas afiliadas", String(s?.totalAffiliateSales ?? 0)]],
         ] as [string, React.ReactNode][][]).map((row, rowIndex) => (
           <div key={rowIndex} className="grid grid-cols-2 border-b border-primary/20 last:border-b-0 lg:grid-cols-4">
