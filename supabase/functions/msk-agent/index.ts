@@ -67,8 +67,11 @@ const validatePreCommit = (changes: Array<{ path: string; content: string; creat
 };
 
 async function semanticReview(req: Request, command: string, repo: string, before: Array<{ path: string; content: string }>, changes: Array<{ path: string; content: string; create: boolean }>) {
-  const compactBefore = before.map(file => `--- ANTES ${file.path}\n${file.content}`).join("\n").slice(0, 26000);
-  const compactAfter = changes.map(file => `--- DEPOIS ${file.path}\n${file.content}`).join("\n").slice(0, 42000);
+  // Corta por arquivo ANTES de concatenar: juntar conteúdos inteiros gerava pico de memória no worker.
+  const perBefore = Math.max(1200, Math.floor(26000 / Math.max(1, before.length)));
+  const perAfter = Math.max(1500, Math.floor(42000 / Math.max(1, changes.length)));
+  const compactBefore = before.map(file => `--- ANTES ${file.path}\n${file.content.slice(0, perBefore)}`).join("\n").slice(0, 26000);
+  const compactAfter = changes.map(file => `--- DEPOIS ${file.path}\n${file.content.slice(0, perAfter)}`).join("\n").slice(0, 42000);
   const response = await ask(req, `${MSK_ENGINEERING_PROFILE}\nVALIDAÇÃO SEMÂNTICA PRÉ-COMMIT. Compare o pedido real com o antes/depois. Não edite. Rejeite se o alvo estiver errado, se faltar parte pedida, se houver mudança fora do escopo ou se o resultado não corresponder ao pedido. Responda SOMENTE JSON válido: {"ok":true,"issues":[]} ou {"ok":false,"issues":["motivo objetivo"]}.\nRepositório: ${repo}\nPedido: ${command}\n${compactBefore}\n${compactAfter}`, true, 2600);
   const review = parse(response.text);
   return { ok: review?.ok === true, issues: Array.isArray(review?.issues) ? review.issues.map((x: any) => String(x)).slice(0, 8) : [] };
@@ -261,7 +264,13 @@ Deno.serve(async (req: Request) => {
     stage = "locating_files";
     await taskPatch(taskId, { status: "locating_files" }, who.id);
     const tree = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/trees/${encodeURIComponent(branch).replace(/%2F/g, "/")}?recursive=1`);
-    const paths = (tree.tree || []).filter((x: any) => x.type === "blob" && /\.(tsx?|jsx?|css|scss|html|json|md|sql|mjs|cjs)$/.test(x.path)).slice(0, 1200).map((x: any) => String(x.path));
+    // Ignora blobs gigantes: eles nunca cabem no prompt e derrubam o worker por memória.
+    const MAX_BLOB_BYTES = 160000;
+    const paths = (tree.tree || [])
+      .filter((x: any) => x.type === "blob" && /\.(tsx?|jsx?|css|scss|html|json|md|sql|mjs|cjs)$/.test(x.path))
+      .filter((x: any) => !Number.isFinite(Number(x.size)) || Number(x.size) <= MAX_BLOB_BYTES)
+      .slice(0, 800)
+      .map((x: any) => String(x.path));
     if (!paths.length) throw new AgentError("AGENT_NO_EDITABLE_FILES", "Não existem arquivos editáveis compatíveis no repositório.", { stage: "locating_files", httpStatus: 422 });
 
     const fast = String(body.mode || "").toUpperCase() === "FAST_EDIT" && isSimpleVisualEdit(clientCmd);
@@ -276,14 +285,29 @@ Deno.serve(async (req: Request) => {
       } catch (error) {
         console.warn("MSK file selection fallback", mapErrorToAgentError(error, "analyzing").code);
       }
-      chosen = resolveChosenFiles(paths, pick, cmd, fast ? 2 : 8);
+      chosen = resolveChosenFiles(paths, pick, cmd, fast ? 2 : 5);
     }
     if (!chosen.length) throw new AgentError("AGENT_TARGET_NOT_FOUND", "Não foi possível localizar com segurança o alvo do pedido.", { stage: "locating_files", retryable: true, httpStatus: 422 });
 
-    const files = await Promise.all(chosen.map(async (path: string) => {
+    // Download em série com orçamento total de conteúdo. O Promise.all com arquivos
+    // grandes estourava a memória do worker (WORKER_RESOURCE_LIMIT).
+    const CONTENT_BUDGET = 190000;
+    const files: Array<{ path: string; sha: string; content: string }> = [];
+    let usedBudget = 0;
+    for (const path of chosen) {
+      if (usedBudget >= CONTENT_BUDGET) break;
       const x = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/contents/${encodeURIComponent(path).replace(/%2F/g, "/")}?ref=${encodeURIComponent(branch)}`);
-      return { path, sha: x.sha, content: dec.decode(Uint8Array.from(atob(x.content.replace(/\n/g, "")), c => c.charCodeAt(0))) };
-    }));
+      const b64 = String(x?.content || "").replace(/\n/g, "");
+      if (!b64 || b64.length > 260000) continue;
+      const binary = atob(b64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+      const content = dec.decode(bytes);
+      if (content.length > 90000) continue;
+      usedBudget += content.length;
+      files.push({ path, sha: x.sha, content });
+    }
+    if (!files.length) throw new AgentError("AGENT_TARGET_NOT_FOUND", "Os arquivos alvo são grandes demais para uma edição segura nesta execução.", { stage: "locating_files", retryable: false, httpStatus: 422 });
 
     const highRisk = isHighRiskCommand(cmd);
     const basePrompt = editPrompt(cmd, repository, files, highRisk);
