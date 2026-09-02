@@ -26,14 +26,22 @@ function firstRow(data: unknown): any {
 
 function normalizeStatus(data: unknown) {
   const row = firstRow(data);
+  const providerId = String(row?.providerId || row?.provider_id || "").toLowerCase();
   return {
     configured: !!row?.configured,
     provider: String(row?.provider || "B.AI"),
+    providerId: providerId.includes("omniroute")
+      ? ("omniroute" as const)
+      : providerId.includes("openrouter")
+        ? ("openrouter" as const)
+        : ("bai" as const),
+    baseUrl: row?.baseUrl ? String(row.baseUrl) : row?.base_url ? String(row.base_url) : "",
     model: String(row?.model || "deepseek-v4-flash"),
     keyMasked: row?.keyMasked ? String(row.keyMasked) : row?.key_masked ? String(row.key_masked) : null,
     updatedAt: row?.updatedAt ? String(row.updatedAt) : row?.updated_at ? String(row.updated_at) : null,
   };
 }
+
 
 async function agentAiRequest(action: string, payload: Record<string, unknown> = {}) {
   const request = getRequest();
@@ -82,17 +90,89 @@ export const agentAiSettingsStatus = createServerFn({ method: "GET" })
     return normalizeStatus(await agentAiRequest("ai-global-status"));
   });
 
+const providerInput = z.enum(["bai", "openrouter", "omniroute"]);
+
 export const agentAiSettingsSave = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: unknown) => z.object({ apiKey: z.string().min(16).max(600) }).parse(data))
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        apiKey: z.string().min(16).max(600),
+        provider: providerInput.default("bai"),
+        baseUrl: z.string().trim().max(300).optional(),
+        model: z.string().trim().max(160).optional(),
+      })
+      .parse(data),
+  )
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const apiKey = data.apiKey.trim();
-    const saved = await agentAiRequest("ai-global-save", { apiKey });
+    const saved = await agentAiRequest("ai-global-save", {
+      apiKey,
+      provider: data.provider,
+      baseUrl: data.baseUrl ?? "",
+      model: data.model ?? "",
+    });
     const normalized = normalizeStatus(saved);
     if (!normalized.configured || !normalized.keyMasked) throw new Error("A chave foi validada, mas o backend do MSK Agente não confirmou a gravação.");
     return { ok: true, ...normalized };
   });
+
+/** Lista os modelos disponíveis no provedor (a Secret Key nunca sai do servidor). */
+export const agentAiSettingsModels = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        provider: providerInput.default("bai"),
+        baseUrl: z.string().trim().max(300).optional(),
+        apiKey: z.string().trim().max(600).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    try {
+      const body = await agentAiRequest("ai-global-models", {
+        provider: data.provider,
+        baseUrl: data.baseUrl ?? "",
+        apiKey: data.apiKey?.trim() ? data.apiKey.trim() : undefined,
+      });
+      const models = Array.isArray(body?.models) ? body.models.map((m: unknown) => String(m)) : [];
+      return { ok: true as const, models };
+    } catch (error) {
+      return { ok: false as const, error: error instanceof Error ? error.message : "Não foi possível listar os modelos." };
+    }
+  });
+
+/** Testa a conexão com o provedor sem gravar nada. */
+export const agentAiSettingsTest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        provider: providerInput.default("bai"),
+        baseUrl: z.string().trim().max(300).optional(),
+        model: z.string().trim().max(160).optional(),
+        apiKey: z.string().trim().max(600).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    try {
+      await agentAiRequest("ai-global-test", {
+        provider: data.provider,
+        baseUrl: data.baseUrl ?? "",
+        model: data.model ?? "",
+        apiKey: data.apiKey?.trim() ? data.apiKey.trim() : undefined,
+      });
+      return { ok: true as const };
+    } catch (error) {
+      return { ok: false as const, error: error instanceof Error ? error.message : "Conexão recusada pelo provedor." };
+    }
+  });
+
 
 export const agentAiSettingsDelete = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

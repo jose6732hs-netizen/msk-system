@@ -22,13 +22,21 @@ async function decrypt(v: string) {
 
 type ActiveAIConfig = {
   apiKey: string;
-  provider: "bai" | "openrouter";
+  provider: "bai" | "openrouter" | "omniroute";
   model: string;
   baseUrl: string;
 };
 
 const BAI_BASE_URL = "https://api.b.ai/v1/chat/completions";
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OMNIROUTE_BASE_URL = "http://127.0.0.1:20128/v1/chat/completions";
+
+function providerFromLabel(value: unknown): "bai" | "openrouter" | "omniroute" {
+  const raw = String(value || "").toLowerCase();
+  if (raw.includes("omniroute")) return "omniroute";
+  if (raw.includes("openrouter")) return "openrouter";
+  return "bai";
+}
 
 async function activeAI(r: Request): Promise<ActiveAIConfig> {
   // A configuração global definida pelo painel admin é a fonte principal.
@@ -41,17 +49,20 @@ async function activeAI(r: Request): Promise<ActiveAIConfig> {
 
   if (globalCfg?.active !== false && globalCfg?.api_key_ciphertext) {
     try {
-      const provider: "bai" | "openrouter" = String(globalCfg.provider || "")
-        .toLowerCase()
-        .includes("openrouter") ? "openrouter" : "bai";
-      const fallbackModel = provider === "openrouter" ? "openai/gpt-5.5" : "deepseek-v4-flash";
-      const fallbackBaseUrl = provider === "openrouter" ? OPENROUTER_BASE_URL : BAI_BASE_URL;
+      const provider = providerFromLabel(globalCfg.provider);
+      const fallbackModel = provider === "openrouter" ? "openai/gpt-5.5" : provider === "omniroute" ? "z-ai/glm-5.2" : "deepseek-v4-flash";
+      const fallbackBaseUrl = provider === "openrouter" ? OPENROUTER_BASE_URL : provider === "omniroute" ? OMNIROUTE_BASE_URL : BAI_BASE_URL;
+      const configuredBase = String(globalCfg.api_base_url || "").trim().replace(/\/+$/, "");
+      const baseUrl = configuredBase
+        ? (/\/chat\/completions$/i.test(configuredBase) ? configuredBase : `${configuredBase}/chat/completions`)
+        : fallbackBaseUrl;
       return {
         apiKey: await decrypt(String(globalCfg.api_key_ciphertext)),
         provider,
         model: String(globalCfg.model || fallbackModel).trim() || fallbackModel,
-        baseUrl: String(globalCfg.api_base_url || fallbackBaseUrl).trim() || fallbackBaseUrl,
+        baseUrl,
       };
+
     } catch (error) {
       console.warn("MSK global AI config decrypt failed", error instanceof Error ? error.name : "invalid");
     }
