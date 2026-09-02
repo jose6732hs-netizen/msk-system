@@ -273,16 +273,38 @@ Deno.serve(async (req: Request) => {
       parsed.attachment_context_used = true;
     }
 
-    const upstream = await fetch(`${supabaseUrl}/functions/v1/msk-agent?action=${encodeURIComponent(upstreamAction)}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(parsed),
-    });
+    const callUpstream = async (upAction: string, payload: any) => {
+      const response = await fetch(`${supabaseUrl}/functions/v1/msk-agent?action=${encodeURIComponent(upAction)}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload),
+      });
+      const raw = await response.text();
+      let parsedData: any = {};
+      try { parsedData = raw ? JSON.parse(raw) : {}; }
+      catch { parsedData = { error: "O MSK não conseguiu concluir esta operação agora. Tente novamente." }; }
+      return { response, parsedData };
+    };
 
-    const text = await upstream.text();
-    let data: any = {};
-    try { data = text ? JSON.parse(text) : {}; }
-    catch { data = { error: "O MSK não conseguiu concluir esta operação agora. Tente novamente." }; }
+    let { response: upstream, parsedData: data } = await callUpstream(upstreamAction, parsed);
+    let conversationalMode = conversational;
+
+    // Rede de segurança: se o modo conversa respondeu afirmando que alterou o projeto,
+    // a execução real é feita agora para garantir commit no repositório.
+    if (conversationalMode && !quickReply && upstream.ok && claimsApplied(data?.assistant_message || data?.message)) {
+      const editPayload = {
+        ...parsed,
+        original_command: augmented || originalCommand,
+        command: augmented || originalCommand,
+        client_original_command: originalCommand,
+        reinforced_command: `${String(parsed.reinforced_command || "").trim()}\n\n${augmented || originalCommand}`.trim(),
+      };
+      const retry = await callUpstream("run", editPayload);
+      upstream = retry.response;
+      data = retry.parsedData;
+      conversationalMode = false;
+    }
+
 
     if (upstream.status === 546) {
       return json({
