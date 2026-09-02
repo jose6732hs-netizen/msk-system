@@ -337,21 +337,30 @@ Deno.serve(async (req: Request) => {
     if (body.direct_commit !== false) {
       stage = "committing";
       await taskPatch(taskId, { status: "committing" }, who.id);
-      try {
-        const commit = await directCommit(selected.token, owner, repoNameOnly, branch, changes, commitMessage);
-        stage = "verifying";
-        await taskPatch(taskId, { status: "verifying", branch_name: branch }, who.id);
-        const ref = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(branch).replace(/%2F/g, "/")}`);
-        const headSha = String(ref?.object?.sha || "");
-        if (!commit?.sha || headSha !== String(commit.sha)) throw new AgentError("COMMIT_VERIFICATION_FAILED", "O SHA do branch não corresponde ao commit criado.", { stage: "verifying", retryable: true, httpStatus: 409, context: { expected: String(commit?.sha || ""), actual: headSha } });
-        const summary = professionalSummary(String(out.summary || "Alteração aplicada."), repository, changes.map(x => x.path), commit.sha);
-        await taskPatch(taskId, { status: "completed", branch_name: branch, summary, error: null, error_code: null, error_stage: null }, who.id);
-        return json({ ok: true, completed: true, direct_commit: true, assistant_message: String(out.reply || summary), summary, model: "MSK-IA", provider: "MSK", task_id: taskId, repository, repository_locked: true, branch, files: changes.map(x => x.path), files_changed_count: changes.length, commit_sha: commit.sha, commit_url: commit.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commit.sha}`, validation: { content_changed: true, semantic: true, commit_verified: true }, fast_edit: fast });
-      } catch (error) {
-        const mapped = mapErrorToAgentError(error, stage);
-        if (mapped.code !== "GITHUB_CONFLICT") throw mapped;
-        console.warn("MSK direct commit conflict; preparing isolated PR", mapped.code);
+      // Toda alteração, por menor que seja, DEVE virar commit no branch principal
+      // para o Lovable exibir "Atualizar prévia". Em conflito, re-tenta com base
+      // atualizada antes de qualquer fallback de PR.
+      let lastConflict: any = null;
+      for (let commitAttempt = 1; commitAttempt <= 4; commitAttempt++) {
+        try {
+          const commit = await directCommit(selected.token, owner, repoNameOnly, branch, changes, commitMessage);
+          stage = "verifying";
+          await taskPatch(taskId, { status: "verifying", branch_name: branch }, who.id);
+          const ref = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(branch).replace(/%2F/g, "/")}`);
+          const headSha = String(ref?.object?.sha || "");
+          if (!commit?.sha || headSha !== String(commit.sha)) throw new AgentError("COMMIT_VERIFICATION_FAILED", "O SHA do branch não corresponde ao commit criado.", { stage: "verifying", retryable: true, httpStatus: 409, context: { expected: String(commit?.sha || ""), actual: headSha } });
+          const summary = professionalSummary(String(out.summary || "Alteração aplicada."), repository, changes.map(x => x.path), commit.sha);
+          await taskPatch(taskId, { status: "completed", branch_name: branch, summary, error: null, error_code: null, error_stage: null }, who.id);
+          return json({ ok: true, completed: true, direct_commit: true, assistant_message: String(out.reply || summary), summary, model: "MSK-IA", provider: "MSK", task_id: taskId, repository, repository_locked: true, branch, files: changes.map(x => x.path), files_changed_count: changes.length, commit_sha: commit.sha, commit_url: commit.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commit.sha}`, validation: { content_changed: true, semantic: true, commit_verified: true }, fast_edit: fast, commit_attempt: commitAttempt });
+        } catch (error) {
+          const mapped = mapErrorToAgentError(error, stage);
+          if (mapped.code !== "GITHUB_CONFLICT" && mapped.code !== "COMMIT_VERIFICATION_FAILED") throw mapped;
+          lastConflict = mapped;
+          console.warn("MSK direct commit retry", JSON.stringify({ taskId, attempt: commitAttempt, code: mapped.code }));
+          await new Promise(resolve => setTimeout(resolve, 350 * commitAttempt));
+        }
       }
+      console.warn("MSK direct commit conflicts exhausted; preparing isolated PR", String(lastConflict?.code || "GITHUB_CONFLICT"));
     }
 
     stage = "committing";
