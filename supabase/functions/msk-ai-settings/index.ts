@@ -338,14 +338,58 @@ Deno.serve(async (req: Request) => {
     if (action === "ai-global-status") {
       const { data, error } = await db.from("msk_ai_settings").select("provider,model,api_base_url,api_key_ciphertext,api_key_last4,active,updated_at").eq("id", "default").maybeSingle();
       if (error) throw error;
+      const providerId = normalizeProvider(data?.provider);
+      const storedBase = String(data?.api_base_url || PROVIDERS[providerId].baseUrl).replace(/\/chat\/completions$/i, "");
       return json({
         configured: !!(data?.active && data?.api_key_ciphertext && data?.api_key_last4),
         provider: data?.provider || "B.AI",
-        providerId: String(data?.provider || "").toLowerCase().includes("openrouter") ? "openrouter" : "bai",
-        model: data?.model || "deepseek-v4-flash",
+        providerId,
+        baseUrl: storedBase,
+        model: data?.model || PROVIDERS[providerId].defaultModel,
         keyMasked: data?.api_key_last4 ? `••••${data.api_key_last4}` : null,
         updatedAt: data?.updated_at || null,
       });
+    }
+
+    // Lista os modelos disponíveis no provedor (GET {BASE_URL}/models).
+    if (action === "ai-global-models" || action === "ai-global-test") {
+      const provider = normalizeProvider(body?.provider);
+      const endpoints = resolveEndpoints(provider, body?.baseUrl);
+      let apiKey = String(body?.apiKey || "").trim();
+      if (!apiKey) {
+        const { data } = await db.from("msk_ai_settings").select("api_key_ciphertext,provider").eq("id", "default").maybeSingle();
+        if (data?.api_key_ciphertext && normalizeProvider(data.provider) === provider) {
+          apiKey = await decrypt(String(data.api_key_ciphertext)).catch(() => "");
+        }
+      }
+      if (!apiKey) return json({ error: "Informe a Secret Key deste provedor primeiro." }, 400);
+
+      if (action === "ai-global-test") {
+        await validateProviderKey(provider, apiKey, normalizeModel(provider, body?.model), endpoints.chatUrl);
+        return json({ ok: true, tested: true });
+      }
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 15_000);
+      try {
+        const response = await fetch(endpoints.modelsUrl, { headers: { Authorization: `Bearer ${apiKey}` }, signal: controller.signal });
+        if (!response.ok) {
+          return json({
+            error: response.status === 401 || response.status === 403
+              ? "Secret Key recusada pelo provedor."
+              : `O provedor respondeu HTTP ${response.status} ao listar modelos.`,
+          }, 400);
+        }
+        const payload = await response.json().catch(() => ({}));
+        const list = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload?.models) ? payload.models : [];
+        const models = [...new Set(list.map((m: any) => String(m?.id || m?.name || "").replace(/^models\//, "")).filter(Boolean))].sort();
+        return json({ ok: true, models });
+      } catch (error: any) {
+        if (error?.name === "AbortError") return json({ error: "O provedor demorou demais para responder." }, 504);
+        return json({ error: "Não foi possível falar com o provedor nesta Base URL." }, 502);
+      } finally {
+        clearTimeout(timer);
+      }
     }
 
     if (action === "ai-global-save") {
@@ -353,7 +397,8 @@ Deno.serve(async (req: Request) => {
       if (apiKey.length < 16 || apiKey.length > 600) return json({ error: "API key inválida." }, 400);
       const provider = normalizeProvider(body?.provider);
       const model = normalizeModel(provider, body?.model);
-      await validateProviderKey(provider, apiKey, model);
+      const endpoints = resolveEndpoints(provider, body?.baseUrl);
+      await validateProviderKey(provider, apiKey, model, endpoints.chatUrl);
       const ciphertext = await encrypt(apiKey);
       const now = new Date().toISOString();
       const last4 = apiKey.slice(-4);
@@ -362,21 +407,22 @@ Deno.serve(async (req: Request) => {
         id: "default",
         provider: cfg.label,
         model,
-        api_base_url: cfg.baseUrl,
+        api_base_url: endpoints.chatUrl,
         api_key_ciphertext: ciphertext,
         api_key_last4: last4,
         active: true,
         updated_by: admin.id,
         updated_at: now,
-      }, { onConflict: "id" }).select("id,provider,model,api_key_ciphertext,api_key_last4,active,updated_at").single();
+      }, { onConflict: "id" }).select("id,provider,model,api_base_url,api_key_ciphertext,api_key_last4,active,updated_at").single();
       if (error) throw error;
       if (!saved?.active || !saved.api_key_ciphertext || saved.api_key_last4 !== last4) {
         const persistenceError = new Error("A chave foi validada, mas o banco não confirmou a gravação.");
         (persistenceError as any).status = 500;
         throw persistenceError;
       }
-      return json({ ok: true, configured: true, provider: saved.provider, providerId: provider, model: saved.model, keyMasked: `••••${saved.api_key_last4}`, updatedAt: saved.updated_at || now });
+      return json({ ok: true, configured: true, provider: saved.provider, providerId: provider, baseUrl: endpoints.root, model: saved.model, keyMasked: `••••${saved.api_key_last4}`, updatedAt: saved.updated_at || now });
     }
+
 
     if (action === "ai-global-delete") {
       const { error } = await db.from("msk_ai_settings").delete().eq("id", "default");
