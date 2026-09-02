@@ -108,6 +108,28 @@ export const Route = createFileRoute("/api/public/pix-selftest")({
           });
           return Response.json({ amount: raw?.amount ?? raw?.data?.amount, status: raw?.payment_status ?? raw?.data?.payment_status, hash: raw?.hash ?? raw?.data?.hash });
         }
+        if ((body as any).card) {
+          const c = (body as any).card as any;
+          const { createAtomoCardTransaction } = await import("@/lib/payments/atomo-card.server");
+          try {
+            const out = await createAtomoCardTransaction({
+              identifier: `SELFTEST-CARD-${Date.now()}`,
+              amountCents: Math.max(100, Math.round(Number(c.amountCents ?? 100))),
+              installments: Number(c.installments ?? 1),
+              customer: { name: "Teste MSK", email: "teste@msksystem.online", phone: "11943213342", document: "19100000000" },
+              card: {
+                number: String(c.number ?? "4111111111111111"),
+                holderName: String(c.holderName ?? "TESTE MSK"),
+                expMonth: Number(c.expMonth ?? 12),
+                expYear: Number(c.expYear ?? 2030),
+                cvv: String(c.cvv ?? "123"),
+              },
+            });
+            return Response.json({ ok: true, ...out });
+          } catch (e) {
+            return Response.json({ ok: false, error: (e as Error).message });
+          }
+        }
         if ((body as any).list) {
           const { AtomoPayService } = await import("@/lib/payments/atomo-pay.server");
           const svc: any = await AtomoPayService.create();
