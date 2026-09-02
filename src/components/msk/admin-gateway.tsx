@@ -398,7 +398,7 @@ function AtomoCatalogCard() {
   async function sync() {
     setSyncing(true);
     try {
-      const result = await syncFn({ data: {} });
+      const result = await syncFn();
       await qc.invalidateQueries({ queryKey: ["atomo-catalog-map"] });
       toast.success(
         `${result.synced}/${result.total} ofertas espelhadas na AtomoPay` +
