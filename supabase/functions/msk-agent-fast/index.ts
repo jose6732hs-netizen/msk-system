@@ -1,101 +1,174 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.23.8";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-msk-session, x-msk-license, x-msk-installation-id, x-msk-extension-version, x-msk-extension-id, x-msk-build-id, x-msk-integrity-root, x-msk-build-fingerprint, x-msk-device-session, x-msk-proof-version, x-msk-timestamp, x-msk-counter, x-msk-body-sha256, x-msk-signature, x-msk-target, x-msk-action",
   "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const transientAi = new Set(["AI_RATE_LIMIT", "AI_UPSTREAM_UNAVAILABLE", "AI_NETWORK_UNAVAILABLE", "AI_REQUEST_TIMEOUT", "AI_WAITING_RETRY"]);
-const supabaseUrl = (Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "");
-const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-const db = supabaseUrl && serviceRole ? createClient(supabaseUrl, serviceRole) : null;
 
-function copyHeaders(req: Request) {
-  const headers = new Headers();
-  for (const name of ["authorization", "apikey", "content-type", "x-msk-session", "x-msk-license", "x-msk-installation-id", "x-msk-extension-version", "x-msk-extension-id", "x-msk-build-id", "x-msk-integrity-root", "x-msk-build-fingerprint", "x-msk-device-session", "x-msk-proof-version", "x-msk-timestamp", "x-msk-counter", "x-msk-body-sha256", "x-msk-signature", "x-msk-target", "x-msk-action"]) {
-    const value = req.headers.get(name); if (value) headers.set(name, value);
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
+  status,
+  headers: { ...cors, "Content-Type": "application/json" },
+});
+
+const RunPayloadSchema = z.object({
+  lovable_project_id: z.string().uuid(),
+  task_id: z.string().uuid().optional(),
+  command: z.string().max(12000).optional(),
+  original_command: z.string().max(12000).optional(),
+  client_original_command: z.string().max(12000).optional(),
+  repository_url: z.string().max(500).optional(),
+  direct_commit: z.boolean().optional(),
+  mode: z.string().max(40).optional(),
+}).passthrough().superRefine((value, ctx) => {
+  const command = String(value.client_original_command || value.original_command || value.command || "").trim();
+  if (!command) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["command"], message: "Comando obrigatório." });
+});
+
+function sanitize(value: unknown, depth = 0): unknown {
+  if (depth > 4) return "[truncated]";
+  if (value == null || typeof value === "number" || typeof value === "boolean") return value;
+  if (typeof value === "string") return value.slice(0, 12000);
+  if (Array.isArray(value)) return value.slice(0, 20).map(item => sanitize(item, depth + 1));
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value as Record<string, unknown>).slice(0, 50)) {
+      if (/(authorization|api.?key|secret|token|password|private.?key|signature|session|ciphertext)/i.test(key)) out[key] = "[redacted]";
+      else if (key === "attachments") out[key] = Array.isArray(child) ? `[${child.length} attachment(s)]` : "[attachments]";
+      else out[key] = sanitize(child, depth + 1);
+    }
+    return out;
   }
-  if (!headers.has("content-type")) headers.set("content-type", "application/json");
-  return headers;
+  return String(value).slice(0, 1000);
 }
 
-async function parseResponse(response: Response) {
-  const text = await response.text();
-  let data: any = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { data = { error: text || `HTTP ${response.status}` }; }
-  return { response, text, data };
-}
-
-async function queueTask(bodyText: string, code: string, attempt: number) {
-  if (!db) return;
-  let body: any = {};
-  try { body = JSON.parse(bodyText || "{}"); } catch { return; }
-  const taskId = String(body?.task_id || "");
-  const projectId = String(body?.lovable_project_id || "");
-  if (!/^[0-9a-f-]{36}$/i.test(taskId) || !/^[0-9a-f-]{36}$/i.test(projectId)) return;
-  const { data: task } = await db.from("msk_tasks").select("user_id").eq("id", taskId).maybeSingle();
-  if (!task?.user_id) return;
-  const next = new Date(Date.now() + Math.min(120000, 15000 * Math.max(1, attempt))).toISOString();
-  await db.from("msk_tasks").update({ status: "queued_waiting_ai", error: null, error_code: code, error_stage: "analyzing", progress_message: "IA ocupada · aguardando automaticamente", updated_at: new Date().toISOString() }).eq("id", taskId);
-  await db.from("msk_ai_retry_queue").upsert({ task_id: taskId, user_id: task.user_id, lovable_project_id: projectId, reason_code: code, attempt_count: Math.max(1, attempt), next_retry_at: next, updated_at: new Date().toISOString() }, { onConflict: "task_id" });
-}
-
-async function clearQueue(bodyText: string) {
-  if (!db) return;
-  try {
-    const body = JSON.parse(bodyText || "{}");
-    const taskId = String(body?.task_id || "");
-    if (/^[0-9a-f-]{36}$/i.test(taskId)) await db.from("msk_ai_retry_queue").delete().eq("task_id", taskId);
-  } catch {}
+function log(level: "info" | "warn" | "error", event: string, data: Record<string, unknown>) {
+  const line = JSON.stringify({ timestamp: new Date().toISOString(), service: "msk-agent-fast", event, ...sanitize(data) as Record<string, unknown> });
+  if (level === "error") console.error(line);
+  else if (level === "warn") console.warn(line);
+  else console.log(line);
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ ok: false, code: "METHOD_NOT_ALLOWED" }, 405);
-  const base = supabaseUrl;
+
+  const base = (Deno.env.get("SUPABASE_URL") || "").replace(/\/$/, "");
   if (!base) return json({ ok: false, code: "MSK_UNAVAILABLE", error: "MSK indisponível." }, 503);
+
   const url = new URL(req.url);
+  const action = url.searchParams.get("action") || "status";
   const body = await req.text();
-  const headers = copyHeaders(req);
+  const headers = new Headers();
+  for (const name of [
+    "authorization", "apikey", "content-type", "x-msk-session", "x-msk-license",
+    "x-msk-installation-id", "x-msk-extension-version", "x-msk-extension-id",
+    "x-msk-build-id", "x-msk-integrity-root", "x-msk-build-fingerprint",
+    "x-msk-device-session", "x-msk-proof-version", "x-msk-timestamp",
+    "x-msk-counter", "x-msk-body-sha256", "x-msk-signature", "x-msk-target",
+    "x-msk-action",
+  ]) {
+    const value = req.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  if (!headers.has("content-type")) headers.set("content-type", "application/json");
+
   try {
-    if (url.searchParams.get("action") === "run") {
-      const preflight = await fetch(`${base}/functions/v1/msk-agent-preflight?action=preflight`, { method: "POST", headers, body });
+    let parsedBody: any = null;
+    if (action === "run") {
+      try {
+        parsedBody = body ? JSON.parse(body) : {};
+      } catch (error) {
+        log("warn", "task_payload_invalid_json", { error: error instanceof Error ? error.message : String(error) });
+        return json({ ok: false, code: "TASK_PAYLOAD_INVALID", error: "O comando não pôde ser lido com segurança." }, 400);
+      }
+
+      const validation = RunPayloadSchema.safeParse(parsedBody);
+      if (!validation.success) {
+        const issues = validation.error.issues.slice(0, 12).map(issue => ({ path: issue.path.join("."), message: issue.message }));
+        log("warn", "task_payload_schema_rejected", { payload: parsedBody, issues });
+        return json({ ok: false, code: "TASK_PAYLOAD_INVALID", error: "Os dados obrigatórios da tarefa estão incompletos ou inválidos.", issues }, 422);
+      }
+
+      log("info", "task_persistence_precheck", {
+        task_id: parsedBody.task_id || null,
+        lovable_project_id: parsedBody.lovable_project_id,
+        repository_url: parsedBody.repository_url || null,
+        payload: parsedBody,
+      });
+
+      const preflight = await fetch(`${base}/functions/v1/msk-agent-preflight?action=preflight`, {
+        method: "POST",
+        headers,
+        body,
+      });
       const preflightText = await preflight.text();
       let preflightData: any = {};
       try { preflightData = preflightText ? JSON.parse(preflightText) : {}; } catch {}
-      if (!preflight.ok || preflightData?.ready !== true) return new Response(preflightText || JSON.stringify({ ready: false, blockers: [{ code: "PREFLIGHT_FAILED", message: "O pre-flight não autorizou o envio." }], warnings: [] }), { status: preflight.status || 409, headers: { ...cors, "Content-Type": "application/json" } });
-      if (preflightData?.context?.force_pr === true) {
-        let directCommit = true; try { directCommit = JSON.parse(body || "{}")?.direct_commit !== false; } catch {}
-        if (directCommit) return json({ ready: false, blockers: [{ code: "BRANCH_PROTECTED", message: "A branch é protegida. Reenvie a tarefa em modo branch/PR.", action: "Usar Pull Request" }], warnings: preflightData?.warnings || [], context: preflightData?.context || null }, 409);
+      if (!preflight.ok || preflightData?.ready !== true) {
+        log("warn", "task_preflight_blocked", {
+          task_id: parsedBody.task_id || null,
+          lovable_project_id: parsedBody.lovable_project_id,
+          blockers: preflightData?.blockers || [],
+        });
+        return new Response(preflightText || JSON.stringify({ ready: false, blockers: [{ code: "PREFLIGHT_FAILED", message: "O pre-flight não autorizou o envio." }], warnings: [] }), {
+          status: preflight.status || 409,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      if (preflightData?.context?.force_pr === true && parsedBody?.direct_commit !== false) {
+        return json({
+          ready: false,
+          blockers: [{ code: "BRANCH_PROTECTED", message: "A branch é protegida. Reenvie a tarefa em modo branch/PR.", action: "Usar Pull Request" }],
+          warnings: preflightData?.warnings || [],
+          context: preflightData?.context || null,
+        }, 409);
       }
     }
 
-    const delays = url.searchParams.get("action") === "run" ? [0, 2500, 6000, 12000, 22000] : [0];
-    let last: any = null;
-    for (let attempt = 0; attempt < delays.length; attempt++) {
-      if (delays[attempt]) await sleep(delays[attempt]);
-      const upstream = await fetch(`${base}/functions/v1/msk-agent?${url.searchParams.toString()}`, { method: "POST", headers, body });
-      last = await parseResponse(upstream);
-      const code = String(last?.data?.code || "").toUpperCase();
-      if (!transientAi.has(code)) {
-        if (last.response.ok) await clearQueue(body);
-        return new Response(last.text, { status: last.response.status, headers: { ...cors, "Content-Type": last.response.headers.get("content-type") || "application/json" } });
+    const upstream = await fetch(`${base}/functions/v1/msk-agent?${url.searchParams.toString()}`, {
+      method: "POST",
+      headers,
+      body,
+    });
+    const text = await upstream.text();
+
+    if (action === "run" && !upstream.ok) {
+      let data: any = {};
+      try { data = text ? JSON.parse(text) : {}; } catch {}
+      const code = String(data?.code || "");
+      if (code === "TASK_PERSISTENCE_FAILED" || /^(RLS_VIOLATION|NOT_NULL_VIOLATION|TABLE_NOT_FOUND|DATABASE_|POSTGREST_|FOREIGN_KEY_VIOLATION|UNIQUE_VIOLATION)/.test(code)) {
+        log("error", "task_persistence_failed", {
+          task_id: parsedBody?.task_id || data?.task_id || null,
+          lovable_project_id: parsedBody?.lovable_project_id || null,
+          repository_url: parsedBody?.repository_url || null,
+          code: code || "DATABASE_PERSISTENCE_ERROR",
+          upstream: data,
+          payload: parsedBody,
+        });
       }
-      await queueTask(body, code, attempt + 1);
+      if (code === "TASK_PERSISTENCE_FAILED") {
+        return json({
+          ...data,
+          code: "DATABASE_PERSISTENCE_ERROR",
+          stage: data?.stage || "request",
+          retryable: false,
+          error: "O banco recusou o registro da tarefa. O evento foi registrado para diagnóstico.",
+        }, upstream.status || 500);
+      }
     }
 
-    const originalCode = String(last?.data?.code || "AI_UPSTREAM_UNAVAILABLE").toUpperCase();
-    await queueTask(body, originalCode, delays.length);
-    let payload: any = {}; try { payload = JSON.parse(body || "{}"); } catch {}
-    return json({
-      ok: false, queued: true, retryable: true, ai_backpressure: true,
-      code: "AI_WAITING_RETRY", upstream_code: originalCode, stage: "analyzing",
-      task_id: String(payload?.task_id || last?.data?.task_id || ""), retry_after_ms: 45000,
-      error: "A MSK IA está temporariamente ocupada. A tarefa foi preservada e será retomada automaticamente; nenhum commit duplicado será criado."
-    }, 202);
+    return new Response(text, {
+      status: upstream.status,
+      headers: { ...cors, "Content-Type": upstream.headers.get("content-type") || "application/json" },
+    });
   } catch (error) {
-    return json({ ok: false, code: "MSK_FAST_PROXY_ERROR", retryable: true, stage: "transport", error: error instanceof Error ? error.message : "A rota de execução ficou temporariamente indisponível." }, 503);
+    log("error", "fast_gateway_failure", { action, error: error instanceof Error ? { message: error.message, stack: error.stack } : error });
+    return json({
+      ok: false,
+      code: "MSK_FAST_PROXY_ERROR",
+      retryable: true,
+      error: "A rota de execução ficou temporariamente indisponível; tente novamente.",
+    }, 503);
   }
 });
