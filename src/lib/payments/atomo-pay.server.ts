@@ -30,6 +30,11 @@ type AtomoPixCatalog = AtomoCatalog & { unitPrice: number; quantity: number };
 const SAFE_OFFER_MAX = 7000;
 /** Ticket mínimo aceito pela AtomoPay. */
 const MIN_OFFER_PRICE = 500;
+const ATOMO_RATE_LIMIT_RETRIES = 4;
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /**
  * Frações possíveis do valor total: unidade × quantidade = total exato,
@@ -107,26 +112,37 @@ export class AtomoPayService {
   private async call<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
     const sep = path.includes("?") ? "&" : "?";
     const url = `${this.creds.baseUrl}${path}${sep}api_token=${encodeURIComponent(this.creds.secretKey)}`;
-    const res = await fetch(url, {
-      method,
-      headers: { "content-type": "application/json", accept: "application/json" },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    const text = await res.text();
-    if (!res.ok) {
-      const safe = sanitizeProviderText(text);
-      console.error(`[atomopay] ${method} ${path} falhou [${res.status}]`, safe);
-      throw new Error(`ATOMOPAY_HTTP_${res.status}: ${safe}`);
+    for (let attempt = 0; attempt < ATOMO_RATE_LIMIT_RETRIES; attempt += 1) {
+      const res = await fetch(url, {
+        method,
+        headers: { "content-type": "application/json", accept: "application/json" },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+      const text = await res.text();
+      if (res.status === 429 && attempt < ATOMO_RATE_LIMIT_RETRIES - 1) {
+        const retryAfter = Number(res.headers.get("retry-after") ?? 0);
+        await wait(retryAfter > 0 ? retryAfter * 1000 : 750 * 2 ** attempt);
+        continue;
+      }
+      if (!res.ok) {
+        const safe = sanitizeProviderText(text);
+        console.error(`[atomopay] ${method} ${path} falhou [${res.status}]`, safe);
+        throw new Error(`ATOMOPAY_HTTP_${res.status}: ${safe}`);
+      }
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        return {} as T;
+      }
     }
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      return {} as T;
-    }
+    throw new Error("ATOMOPAY_RATE_LIMIT_EXCEEDED");
   }
 
-  listProducts() {
-    return this.call<Record<string, unknown>>("GET", "/products");
+  listProducts(page = 1, perPage = 100) {
+    return this.call<Record<string, unknown>>(
+      "GET",
+      `/products?page=${page}&per_page=${Math.min(100, Math.max(1, perPage))}`,
+    );
   }
 
   /** Detalhe de um produto (traz as ofertas, que a listagem geral omite). */
@@ -162,7 +178,8 @@ export class AtomoPayService {
   createOffer(productHash: string, input: { title: string; amount: number }) {
     return this.call<Record<string, unknown>>("POST", `/products/${productHash}/offers`, {
       title: input.title,
-      price: input.amount,
+      cover: DEFAULT_PRODUCT_COVER,
+      amount: input.amount,
     });
   }
 
