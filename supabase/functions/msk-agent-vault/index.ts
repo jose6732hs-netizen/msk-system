@@ -287,7 +287,15 @@ async function analyzeRepository(project: any, command: string) {
   let names = [...envNames].filter(name => !providerPrefix || name.includes(providerPrefix) || providerTerms.some(term => name.includes(term.toUpperCase())));
   if (!names.length) names = [...hardcoded];
   if (!names.length) names = defaultFields[provider] || defaultFields.generic;
-  names = [...new Set(names)].slice(0, 8);
+  names = [...new Set(names)];
+  // Quando o cliente citou campos específicos, pedir SOMENTE esses campos.
+  const filters = requestedFieldFilters(command);
+  if (filters.length) {
+    const scoped = names.filter(name => filters.some(pattern => pattern.test(name)));
+    if (scoped.length) names = scoped;
+  }
+  names = names.slice(0, 8);
+
   const fields = names.map(key => {
     const type = fieldType(key);
     return { key, label: labelFromKey(key), type, placeholder: placeholderFor(key, type), required: true, encrypted: true };
