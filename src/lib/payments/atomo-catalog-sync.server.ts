@@ -13,6 +13,11 @@ import { AtomoPayService } from "./atomo-pay.server";
 import { calculateCardAmounts } from "./card.server";
 
 const MAP_KEY = "atomopay_plan_catalog";
+const REQUEST_INTERVAL_MS = 850;
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 type PlanMapping = {
   planId: string;
@@ -160,6 +165,8 @@ export async function syncAllPlansToAtomo() {
         error: String((e as Error).message ?? e).slice(0, 200),
       });
     }
+    // A API aplica rate limit agressivo em criação/consulta sequencial.
+    await wait(REQUEST_INTERVAL_MS);
   }
 
   await saveMap(state);
