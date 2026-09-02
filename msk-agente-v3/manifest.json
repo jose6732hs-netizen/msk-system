@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MSK Agente — Guardião Lovable",
-  "version": "3.4.33",
+  "version": "3.4.34",
   "description": "Envio imediato em segundo plano para ChatGPT e Grok: a mensagem enviada pela extensão chega diretamente à IA sem sair do Lovable; visual e demais funções preservados.",
   "permissions": [
     "storage",
@@ -68,7 +68,8 @@
         "msk-enhancements.css",
         "msk-ui-fixes.css",
         "msk-custom-skills.css",
-        "msk-active-skill.css"
+        "msk-active-skill.css",
+        "msk-gel.css"
       ],
       "run_at": "document_idle"
     },

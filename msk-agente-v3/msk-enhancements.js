@@ -405,7 +405,7 @@
       const stored = await chrome.storage.local.get(STORE_READ);
       readIds = new Set(Array.isArray(stored?.[STORE_READ]) ? stored[STORE_READ].map(String) : []);
     } catch {}
-    setInterval(mount, 1200);
+    setInterval(mount, 2000);
     mount();
     await readLicense();
     await initUsers();
