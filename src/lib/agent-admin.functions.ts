@@ -26,14 +26,22 @@ function firstRow(data: unknown): any {
 
 function normalizeStatus(data: unknown) {
   const row = firstRow(data);
+  const providerId = String(row?.providerId || row?.provider_id || "").toLowerCase();
   return {
     configured: !!row?.configured,
     provider: String(row?.provider || "B.AI"),
+    providerId: providerId.includes("omniroute")
+      ? ("omniroute" as const)
+      : providerId.includes("openrouter")
+        ? ("openrouter" as const)
+        : ("bai" as const),
+    baseUrl: row?.baseUrl ? String(row.baseUrl) : row?.base_url ? String(row.base_url) : "",
     model: String(row?.model || "deepseek-v4-flash"),
     keyMasked: row?.keyMasked ? String(row.keyMasked) : row?.key_masked ? String(row.key_masked) : null,
     updatedAt: row?.updatedAt ? String(row.updatedAt) : row?.updated_at ? String(row.updated_at) : null,
   };
 }
+
 
 async function agentAiRequest(action: string, payload: Record<string, unknown> = {}) {
   const request = getRequest();
