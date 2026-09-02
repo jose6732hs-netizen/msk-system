@@ -16,6 +16,10 @@ type CardInput = {
   cvv: string;
 };
 
+function unwrap(value: any) {
+  return value?.data ?? value ?? {};
+}
+
 function digits(value: string | null | undefined) {
   return String(value ?? "").replace(/\D+/g, "");
 }
