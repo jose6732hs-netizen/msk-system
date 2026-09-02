@@ -124,7 +124,12 @@ export async function payTransactionWithCard(input: {
   transactionId: string;
   installments: number;
   card: CardInput;
-  payer?: { name?: string; email?: string; document?: string; phone?: string };
+  payer?: {
+    name?: string | undefined;
+    email?: string | undefined;
+    document?: string | undefined;
+    phone?: string | undefined;
+  };
 }): Promise<CardResult> {
   const { onlyDigits, isValidDocument, isValidPhoneBR } = await import("../br");
   const payerDocument = onlyDigits(input.payer?.document ?? "");
