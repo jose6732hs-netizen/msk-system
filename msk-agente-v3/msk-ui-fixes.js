@@ -94,7 +94,11 @@
   const mountObserver = () => {
     const root = getRoot();
     if (!root || observer) return;
-    observer = new MutationObserver(() => keepSuppressed());
+    let suppressFrame = 0;
+    observer = new MutationObserver(() => {
+      if (suppressFrame) return;
+      suppressFrame = requestAnimationFrame(() => { suppressFrame = 0; keepSuppressed(); });
+    });
     observer.observe(root, {
       subtree: true,
       childList: true,
