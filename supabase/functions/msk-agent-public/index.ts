@@ -228,7 +228,9 @@ Deno.serve(async (req: Request) => {
     const followup = action === "run" && isContextualFollowup(originalCommand, history);
     const editIntent = action === "run" && (hasEditIntent(originalCommand) || followup);
     const attachments = action === "run" || action === "chat" ? attachmentArray(parsed?.attachments) : [];
-    const conversational = action === "run" && !!originalCommand && !editIntent;
+    // Só conversa quando for saudação ou pergunta pura. Todo o resto executa edição real com commit.
+    const conversational = action === "run" && !!originalCommand && !editIntent && (isSocialOnly(originalCommand) || isPureQuestion(originalCommand));
+
     const quickReply = conversational && !attachments.length ? quickConversationReply(originalCommand) : "";
 
     let attachmentInfo: any = { ok: true, context: "", attachment_count: 0 };
