@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, Network, ShieldCheck, Trash2 } from "lucide-react";
+import { Bot, BrainCircuit, CheckCircle2, KeyRound, Loader2, Network, PlugZap, RefreshCw, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,29 +10,90 @@ import { AdminAiGlobalTraining } from "@/components/msk/admin-ai-global-training
 import { AdminAiProviders } from "@/components/msk/admin-ai-providers";
 import {
   agentAiSettingsDelete,
+  agentAiSettingsModels,
   agentAiSettingsSave,
   agentAiSettingsStatus,
+  agentAiSettingsTest,
 } from "@/lib/agent-admin.functions";
+
+type ProviderId = "bai" | "openrouter" | "omniroute";
+
+const PROVIDER_META: Record<ProviderId, { label: string; baseUrl: string; model: string; editableBase: boolean }> = {
+  bai: { label: "B.AI", baseUrl: "https://api.b.ai/v1", model: "deepseek-v4-flash", editableBase: false },
+  openrouter: { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-5.5", editableBase: false },
+  omniroute: { label: "OmniRoute", baseUrl: "http://127.0.0.1:20128/v1", model: "z-ai/glm-5.2", editableBase: true },
+};
 
 export function AdminAgentAiSettings() {
   const qc = useQueryClient();
   const statusFn = useServerFn(agentAiSettingsStatus);
   const saveFn = useServerFn(agentAiSettingsSave);
   const deleteFn = useServerFn(agentAiSettingsDelete);
+  const modelsFn = useServerFn(agentAiSettingsModels);
+  const testFn = useServerFn(agentAiSettingsTest);
   const [apiKey, setApiKey] = useState("");
+  const [provider, setProvider] = useState<ProviderId>("bai");
+  const [baseUrl, setBaseUrl] = useState(PROVIDER_META.bai.baseUrl);
+  const [model, setModel] = useState("");
+  const [models, setModels] = useState<string[]>([]);
+  const [modelFilter, setModelFilter] = useState("");
   const [section, setSection] = useState<"api" | "providers" | "training">("api");
-
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-ai-settings"],
     queryFn: () => statusFn(),
   });
 
+  useEffect(() => {
+    if (!data) return;
+    const id = (data.providerId ?? "bai") as ProviderId;
+    setProvider(id);
+    setBaseUrl(data.baseUrl || PROVIDER_META[id].baseUrl);
+    setModel(data.model || PROVIDER_META[id].model);
+  }, [data]);
+
+  function switchProvider(id: ProviderId) {
+    setProvider(id);
+    setModels([]);
+    setBaseUrl(data?.providerId === id && data?.baseUrl ? data.baseUrl : PROVIDER_META[id].baseUrl);
+    setModel(data?.providerId === id ? data?.model || PROVIDER_META[id].model : PROVIDER_META[id].model);
+  }
+
+  const payload = () => ({
+    provider,
+    baseUrl: baseUrl.trim(),
+    model: model.trim(),
+    ...(apiKey.trim().length >= 16 ? { apiKey: apiKey.trim() } : {}),
+  });
+
+  const fetchModels = useMutation({
+    mutationFn: () => modelsFn({ data: payload() }),
+    onSuccess: (res) => {
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setModels(res.models);
+      toast.success(`${res.models.length} modelos disponíveis em ${PROVIDER_META[provider].label}.`);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const testConnection = useMutation({
+    mutationFn: () => testFn({ data: payload() }),
+    onSuccess: (res) => {
+      if (res.ok) toast.success(`Conexão confirmada com ${PROVIDER_META[provider].label}.`);
+      else toast.error(res.error);
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const save = useMutation({
-    mutationFn: () => saveFn({ data: { apiKey: apiKey.trim() } }),
+    mutationFn: () =>
+      saveFn({ data: { apiKey: apiKey.trim(), provider, baseUrl: baseUrl.trim(), model: model.trim() } }),
     onSuccess: () => {
       setApiKey("");
-      toast.success("API da IA validada, criptografada e aplicada ao MSK Agente.");
+      toast.success(`${PROVIDER_META[provider].label} validado, criptografado e ativado no MSK Agente.`);
       qc.invalidateQueries({ queryKey: ["agent-ai-settings"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -49,6 +110,8 @@ export function AdminAgentAiSettings() {
   });
 
   const configured = !!data?.configured;
+  const filteredModels = models.filter((m) => m.toLowerCase().includes(modelFilter.trim().toLowerCase()));
+
 
   return (
     <div className="space-y-4">
@@ -91,7 +154,8 @@ export function AdminAgentAiSettings() {
                   </span>
                 </div>
                 <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-                  A chave cadastrada aqui é validada na B.AI, criptografada com AES-GCM no servidor e passa a ser usada automaticamente pelo DeepSeek V4 Flash do MSK Agente. A chave completa nunca volta para o navegador.
+                  Escolha o provedor da IA do MSK (B.AI, OpenRouter ou OmniRoute). A Secret Key é validada no servidor,
+                  criptografada com AES-GCM e nunca volta para o navegador, para o bundle ou para a extensão.
                 </p>
               </div>
             </div>
@@ -100,53 +164,134 @@ export function AdminAgentAiSettings() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="mt-5 space-y-2">
+            <Label className="text-[0.62rem] font-black uppercase tracking-widest">Provedor</Label>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(PROVIDER_META) as ProviderId[]).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => switchProvider(id)}
+                  className={`rounded-xl border px-4 py-2 text-[0.65rem] font-black uppercase tracking-widest transition ${provider === id ? "border-primary/50 bg-primary/10 text-primary" : "border-white/10 text-muted-foreground hover:text-foreground"}`}
+                >
+                  {PROVIDER_META[id].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="msk-ai-api-key" className="text-[0.62rem] font-black uppercase tracking-widest">API Key B.AI</Label>
+              <Label htmlFor="msk-ai-base-url" className="text-[0.62rem] font-black uppercase tracking-widest">Base URL</Label>
+              <Input
+                id="msk-ai-base-url"
+                value={baseUrl}
+                onChange={(event) => setBaseUrl(event.target.value)}
+                disabled={!PROVIDER_META[provider].editableBase}
+                placeholder="http://127.0.0.1:20128/v1"
+                className="border-primary/20 bg-black/30 font-mono"
+              />
+              <p className="text-[0.62rem] text-muted-foreground">
+                Local: <b className="text-foreground">http://127.0.0.1:20128/v1</b> · público: <b className="text-foreground">https://ai.seudominio.com/v1</b>
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="msk-ai-api-key" className="text-[0.62rem] font-black uppercase tracking-widest">Secret Key</Label>
               <Input
                 id="msk-ai-api-key"
                 type="password"
                 autoComplete="new-password"
                 value={apiKey}
                 onChange={(event) => setApiKey(event.target.value)}
-                placeholder={configured ? data?.keyMasked || "••••••••••••••••" : "Cole a API key da B.AI"}
+                placeholder={configured ? data?.keyMasked || "••••••••••••••••" : `Cole a Secret Key do ${PROVIDER_META[provider].label}`}
                 className="border-primary/20 bg-black/30 font-mono"
               />
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.65rem] text-muted-foreground">
-                <span>Provedor: <b className="text-foreground">{data?.provider || "B.AI"}</b></span>
-                <span>Modelo: <b className="text-foreground">{data?.model || "deepseek-v4-flash"}</b></span>
-                {data?.updatedAt ? <span>Atualizada: <b className="text-foreground">{new Date(data.updatedAt).toLocaleString("pt-BR")}</b></span> : null}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="space-y-2">
+              <Label className="text-[0.62rem] font-black uppercase tracking-widest">Modelo ativo</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                  placeholder="ex.: z-ai/glm-5.2"
+                  className="border-primary/20 bg-black/30 font-mono"
+                />
+                <Button variant="outline" disabled={fetchModels.isPending} onClick={() => fetchModels.mutate()}>
+                  {fetchModels.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+                  Buscar modelos
+                </Button>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button
-                variant="neon"
-                disabled={apiKey.trim().length < 16 || save.isPending}
-                onClick={() => save.mutate()}
-              >
-                {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                Salvar e aplicar
-              </Button>
-              {configured ? (
-                <Button
-                  variant="outline"
-                  disabled={remove.isPending}
-                  onClick={() => {
-                    if (window.confirm("Remover a API da IA cadastrada no MSK Agente?")) remove.mutate();
-                  }}
+            {models.length > 0 ? (
+              <div className="space-y-2">
+                <Label className="text-[0.62rem] font-black uppercase tracking-widest">Modelos disponíveis ({models.length})</Label>
+                <Input
+                  value={modelFilter}
+                  onChange={(event) => setModelFilter(event.target.value)}
+                  placeholder="Pesquisar modelo…"
+                  className="border-primary/20 bg-black/30"
+                />
+                <select
+                  size={5}
+                  value={model}
+                  onChange={(event) => setModel(event.target.value)}
+                  className="h-32 w-full rounded-md border border-primary/20 bg-black/30 px-3 py-2 font-mono text-xs"
                 >
-                  {remove.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                  Remover
-                </Button>
-              ) : null}
-            </div>
+                  {filteredModels.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-4 flex items-start gap-2 rounded-xl border border-white/5 bg-black/20 px-3 py-2.5 text-[0.68rem] leading-relaxed text-muted-foreground">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            Ao salvar, o servidor testa a chave antes de gravar. Se a B.AI recusar a credencial, ela não substitui a configuração válida atual.
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <Button variant="outline" disabled={testConnection.isPending} onClick={() => testConnection.mutate()}>
+              {testConnection.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlugZap className="mr-2 h-4 w-4" />}
+              Testar conexão
+            </Button>
+            <Button
+              variant="neon"
+              disabled={apiKey.trim().length < 16 || save.isPending}
+              onClick={() => save.mutate()}
+            >
+              {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+              Salvar e ativar
+            </Button>
+            {configured ? (
+              <Button
+                variant="outline"
+                disabled={remove.isPending}
+                onClick={() => {
+                  if (window.confirm("Remover a API da IA cadastrada no MSK Agente?")) remove.mutate();
+                }}
+              >
+                {remove.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                Remover
+              </Button>
+            ) : null}
           </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2.5 text-[0.68rem] text-muted-foreground">
+            <span className={`font-black uppercase tracking-widest ${configured ? "text-emerald-400" : "text-yellow-400"}`}>
+              ● {data?.provider || "B.AI"} {configured ? "conectado" : "não configurado"}
+            </span>
+            <span>Modelo ativo: <b className="text-foreground">{data?.model || "—"}</b></span>
+            <span>API: <b className="text-foreground">{data?.keyMasked || "—"}</b></span>
+            {data?.updatedAt ? <span>Atualizada: <b className="text-foreground">{new Date(data.updatedAt).toLocaleString("pt-BR")}</b></span> : null}
+          </div>
+
+          <div className="mt-3 flex items-start gap-2 rounded-xl border border-white/5 bg-black/20 px-3 py-2.5 text-[0.68rem] leading-relaxed text-muted-foreground">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            Ao salvar, o servidor testa a chave antes de gravar. Se o provedor recusar a credencial, ela não substitui a
+            configuração válida atual. Toda chamada do MSK Agente passa pelo backend — a extensão nunca recebe a chave.
+          </div>
+
         </section>
       )}
     </div>
