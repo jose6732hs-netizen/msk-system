@@ -3,8 +3,21 @@ import { AgentError } from "./errors.ts";
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+function stateSigningSecret() {
+  const configured = (Deno.env.get("MSK_STATE_SECRET") || "").trim();
+  if (configured) return configured;
+
+  // Fallback somente com segredo server-side já existente no projeto. Isso evita
+  // quebrar o OAuth quando MSK_STATE_SECRET ainda não foi cadastrado, sem expor
+  // material sensível para a extensão ou para o navegador.
+  const fallback = (Deno.env.get("MSK_TOKEN_ENCRYPTION_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "").trim();
+  if (fallback) return `msk-github-oauth-state:v1:${fallback}`;
+
+  throw new AgentError("OAUTH_STATE_CONFIGURATION_ERROR", "A assinatura segura da autorização do GitHub está indisponível.", { stage: "auth", httpStatus: 503 });
+}
+
 const hmac = async (v: string) => {
-  const k = await crypto.subtle.importKey("raw", enc.encode(env("MSK_STATE_SECRET")), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const k = await crypto.subtle.importKey("raw", enc.encode(stateSigningSecret()), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   return b64(new Uint8Array(await crypto.subtle.sign("HMAC", k, enc.encode(v))));
 };
 
