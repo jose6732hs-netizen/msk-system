@@ -238,6 +238,6 @@
     }
   };
 
-  setInterval(mount, 900);
+  setInterval(mount, 2500);
   mount();
 })();
