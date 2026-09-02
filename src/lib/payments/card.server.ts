@@ -273,17 +273,33 @@ export async function payTransactionWithCard(input: {
       Math.max(1, Math.round(input.installments)),
     );
 
+    const customerName = (input.payer?.name || profile?.name || profile?.email || "Cliente MSK").trim();
+    const customerEmail = (input.payer?.email || profile?.email || "cliente@msksystem.online").trim();
+    const customerDocument = payerDocument || onlyDigits(profile?.document ?? "");
+    const customerPhone = payerPhone || onlyDigits(profile?.phone ?? "");
+    if (!isValidDocument(customerDocument)) throw new Error("Informe um CPF/CNPJ válido para pagar com cartão.");
+    if (!isValidPhoneBR(customerPhone)) throw new Error("Informe um telefone válido (DDD + número).");
+
+    // Reaproveita os dados na próxima compra.
+    if (payerDocument || payerPhone) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ document: customerDocument, phone: customerPhone } as never)
+        .eq("id", input.userId);
+    }
+
     const result = await createAtomoCardTransaction({
       identifier: tx.identifier,
       amountCents,
       installments,
       customer: {
-        name: profile?.name || profile?.email || "Cliente MSK",
-        email: profile?.email || "cliente@msksystem.online",
-        phone: profile?.phone ?? "",
-        document: profile?.document ?? "",
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        document: customerDocument,
       },
       card: input.card,
+
       ...(callbackUrl ? { callbackUrl } : {}),
       onTransactionRequestStart: async () => {
         gatewayRequestStarted = true;
