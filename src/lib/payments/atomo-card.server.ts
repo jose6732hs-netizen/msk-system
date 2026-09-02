@@ -49,7 +49,11 @@ async function callAtomo<T>(
   if (!response.ok) {
     const safe = sanitizeProviderText(text);
     console.error(`[atomopay-card] ${method} ${path} falhou [${response.status}]`, safe);
-    throw new Error(`ATOMOPAY_HTTP_${response.status}: ${safe}`);
+    const error = new Error(`ATOMOPAY_HTTP_${response.status}: ${safe}`) as Error & {
+      httpStatus?: number;
+    };
+    error.httpStatus = response.status;
+    throw error;
   }
   try {
     return JSON.parse(text) as T;
@@ -57,6 +61,8 @@ async function callAtomo<T>(
     return {} as T;
   }
 }
+
+
 
 export async function createAtomoCardTransaction(input: {
   identifier: string;
@@ -85,18 +91,19 @@ export async function createAtomoCardTransaction(input: {
   if (phone.length < 10 || phone.length > 13) throw new Error("ATOMOPAY_CUSTOMER_PHONE_INVALID");
   if (document.length !== 11 && document.length !== 14) throw new Error("ATOMOPAY_CUSTOMER_DOCUMENT_INVALID");
 
-  const body: Record<string, unknown> = {
+  const installments = Math.max(1, Math.round(input.installments));
+  const expMonth = String(input.card.expMonth).padStart(2, "0");
+  const expYear4 = String(input.card.expYear).length === 2
+    ? `20${input.card.expYear}`
+    : String(input.card.expYear);
+  const expYear2 = expYear4.slice(-2);
+  const holder = input.card.holderName.trim();
+
+  const commonBody: Record<string, unknown> = {
     amount,
     offer_hash: catalog.offerHash,
     payment_method: "credit_card",
-    installments: Math.max(1, Math.round(input.installments)),
-    card: {
-      number: pan,
-      holder_name: input.card.holderName.trim(),
-      exp_month: input.card.expMonth,
-      exp_year: input.card.expYear,
-      cvv,
-    },
+    installments,
     customer: {
       name: input.customer.name.trim(),
       email: input.customer.email.trim(),
@@ -117,13 +124,70 @@ export async function createAtomoCardTransaction(input: {
         tangible: false,
       },
     ],
+    expire_in_days: 1,
     transaction_origin: "api",
     ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
   };
 
+  // A AtomoPay já rejeitou (HTTP 400 genérico) o formato aninhado `card`.
+  // Enviamos os formatos aceitos pela família de API em ordem, parando no
+  // primeiro que o gateway aceitar — um 400 significa que nada foi cobrado.
+  const variants: Record<string, unknown>[] = [
+    {
+      ...commonBody,
+      card: {
+        number: pan,
+        holder_name: holder,
+        exp_month: Number(expMonth),
+        exp_year: Number(expYear4),
+        cvv,
+      },
+      card_number: pan,
+      card_holder_name: holder,
+      card_expiration_month: Number(expMonth),
+      card_expiration_year: Number(expYear4),
+      card_cvv: cvv,
+    },
+    {
+      ...commonBody,
+      card_number: pan,
+      card_holder_name: holder,
+      card_expiration_month: expMonth,
+      card_expiration_year: expYear2,
+      card_cvv: cvv,
+    },
+    {
+      ...commonBody,
+      credit_card: {
+        number: pan,
+        holder_name: holder,
+        expiration_month: Number(expMonth),
+        expiration_year: Number(expYear4),
+        cvv,
+      },
+    },
+  ];
+
   // A marca no banco precisa existir antes do POST real, evitando estado ambíguo.
   await input.onTransactionRequestStart?.();
-  const raw = unwrap(await callAtomo<any>(creds, "POST", "/transactions", body));
+
+  let raw: any = null;
+  let lastError: unknown = null;
+  for (let i = 0; i < variants.length; i += 1) {
+    try {
+      raw = unwrap(await callAtomo<any>(creds, "POST", "/transactions", variants[i]));
+      lastError = null;
+      break;
+    } catch (error) {
+      lastError = error;
+      const status = (error as { httpStatus?: number }).httpStatus;
+      // Só tentamos outro formato quando o gateway recusou o payload (400/422).
+      if (status !== 400 && status !== 422) throw error;
+      console.error(`[atomopay-card] formato ${i + 1} recusado, tentando próximo`);
+    }
+  }
+  if (lastError) throw lastError;
+
   const providerStatus = String(raw?.payment_status ?? raw?.status ?? "prossessing");
   const transactionHash = String(
     raw?.hash ?? raw?.transaction_hash ?? raw?.id ?? raw?.transaction_id ?? "",
