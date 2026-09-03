@@ -112,7 +112,7 @@ async function handle(request: Request) {
     }
     const activatedAt = new Date(now).toISOString();
     const expiresAt = durationMs > 0 ? new Date(now + durationMs).toISOString() : (license.expires_at ?? null);
-    delete metadata.pending_duration_ms;
+    delete metadata["pending_duration_ms"];
 
     const { error: updateError } = await supabaseAdmin
       .from("licenses")
