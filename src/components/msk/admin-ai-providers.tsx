@@ -72,6 +72,21 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) => enabledFn({ data: { id: row.id, enabled } }),
+    onSuccess: (_res, enabled) => {
+      toast.success(
+        enabled
+          ? `${row.label} ativado — agora é a IA usada pelo agente.`
+          : `${row.label} desativado.`,
+      );
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const isActive = row.enabled && row.is_primary;
+
   const remove = useMutation({
     mutationFn: () => deleteFn({ data: { id: row.id } }),
     onSuccess: () => {
