@@ -81,7 +81,7 @@ function mapRows(data: any): AiProviderRow[] {
       last_status: row.configured ? (row.active ? "active" : "paused") : null,
       last_checked_at: row.updatedAt ? String(row.updatedAt) : null,
       updated_at: row.updatedAt ? String(row.updatedAt) : null,
-    };
+    }];
   });
 }
 
