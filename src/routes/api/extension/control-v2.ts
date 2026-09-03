@@ -46,7 +46,10 @@ function verifyOfficialBuild(request: Request) {
   const result = verifyOfficialExtensionDigest(version, digest);
 
   if (!result.official) {
-    const code = result.reason === "VERSION_NOT_REGISTERED" ? "EXTENSION_VERSION_NOT_REGISTERED" : "INTEGRITY_BUILD_NOT_APPROVED";
+    const code =
+      result.reason === "VERSION_NOT_REGISTERED"
+        ? "EXTENSION_VERSION_NOT_REGISTERED"
+        : "INTEGRITY_BUILD_NOT_APPROVED";
     const message =
       result.reason === "VERSION_NOT_REGISTERED"
         ? "Esta versão ainda não está registrada como versão oficial MSK. Atualize a extensão."
@@ -68,7 +71,9 @@ function verifyOfficialBuild(request: Request) {
 
 async function acknowledgeBatch(request: Request, commandIds: string[]) {
   const unique = [...new Set(commandIds.filter((id) => UUID.test(id)))].slice(0, 25);
-  if (!unique.length) return json(request, { ok: false, code: "INVALID_ACK", message: "Confirmação inválida." }, 400);
+  if (!unique.length) {
+    return json(request, { ok: false, code: "INVALID_ACK", message: "Confirmação inválida." }, 400);
+  }
 
   const results: Array<{ command_id: string; ok: boolean; status: number }> = [];
   for (const commandId of unique) {
@@ -81,7 +86,11 @@ async function acknowledgeBatch(request: Request, commandIds: string[]) {
     results.push({ command_id: commandId, ok: response.ok, status: response.status });
   }
   const failed = results.filter((item) => !item.ok);
-  return json(request, { ok: failed.length === 0, acknowledged: results.length - failed.length, failed }, failed.length ? 207 : 200);
+  return json(
+    request,
+    { ok: failed.length === 0, acknowledged: results.length - failed.length, failed },
+    failed.length ? 207 : 200,
+  );
 }
 
 async function securedV2(request: Request) {
@@ -89,10 +98,10 @@ async function securedV2(request: Request) {
   if (integrityError) return integrityError;
 
   if (request.method === "POST") {
-    const clone = request.clone();
-    const body = (await clone.json().catch(() => null)) as Record<string, unknown> | null;
-    if (Array.isArray(body?.["command_ids"])) {
-      return acknowledgeBatch(request, body!["command_ids"]!.map(String));
+    const body = (await request.clone().json().catch(() => null)) as Record<string, unknown> | null;
+    const commandIds = body?.["command_ids"];
+    if (Array.isArray(commandIds)) {
+      return acknowledgeBatch(request, commandIds.map(String));
     }
   }
 
