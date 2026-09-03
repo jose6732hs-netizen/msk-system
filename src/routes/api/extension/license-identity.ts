@@ -150,7 +150,7 @@ async function handle(request: Request) {
   }
 
   const input = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const requestedEmail = String(input.email ?? "").trim().toLowerCase();
+  const requestedEmail = String(input['email'] ?? "").trim().toLowerCase();
 
   return json(request, {
     ok: true,

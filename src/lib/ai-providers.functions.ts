@@ -5,10 +5,10 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
 
 const AI_ADMIN_URL =
-  process.env.MSK_MULTI_AI_ADMIN_URL?.trim() ||
+  process.env['MSK_MULTI_AI_ADMIN_URL']?.trim() ||
   "https://iybjfmhqbblrppqoodyf.supabase.co/functions/v1/msk-ai-admin-v2";
 const AI_SUPABASE_KEY =
-  process.env.MSK_AGENT_SUPABASE_PUBLISHABLE_KEY?.trim() ||
+  process.env['MSK_AGENT_SUPABASE_PUBLISHABLE_KEY']?.trim() ||
   "sb_publishable_-aERipV8XmdiDq9UMERZUA_OIyOeyzD";
 
 const providerId = z.enum(["bai", "openrouter", "gemini", "groq", "manus", "mistral", "claude"]);
