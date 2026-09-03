@@ -106,7 +106,7 @@ async function handle(request: Request) {
 
     // Ativar agora, recalculando expires_at preservando a duração original.
     const metadata = { ...((license.metadata ?? {}) as Record<string, unknown>) };
-    let durationMs = Number(metadata.pending_duration_ms ?? 0);
+    let durationMs = Number(metadata["pending_duration_ms"] ?? 0);
     if (!(durationMs > 0)) {
       durationMs = parseTime(license.expires_at) - parseTime(license.created_at);
     }
