@@ -35,6 +35,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiAgentChatRouteImport } from './routes/api/agent/chat'
 import { Route as ApiExtensionControlRouteImport } from './routes/api/extension/control'
+import { Route as ApiExtensionControlV2RouteImport } from './routes/api/extension/control-v2'
 import { Route as ApiExtensionDeviceAuthorizeRouteImport } from './routes/api/extension/device-authorize'
 import { Route as ApiExtensionDownloadRouteImport } from './routes/api/extension/download'
 import { Route as ApiExtensionErrorsRouteImport } from './routes/api/extension/errors'
@@ -212,6 +213,11 @@ const ApiAgentChatRoute = ApiAgentChatRouteImport.update({
 const ApiExtensionControlRoute = ApiExtensionControlRouteImport.update({
   id: '/api/extension/control',
   path: '/api/extension/control',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExtensionControlV2Route = ApiExtensionControlV2RouteImport.update({
+  id: '/api/extension/control-v2',
+  path: '/api/extension/control-v2',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiExtensionDeviceAuthorizeRoute =
@@ -491,6 +497,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/control-v2': typeof ApiExtensionControlV2Route
   '/api/extension/device-authorize': typeof ApiExtensionDeviceAuthorizeRoute
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
@@ -563,6 +570,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/control-v2': typeof ApiExtensionControlV2Route
   '/api/extension/device-authorize': typeof ApiExtensionDeviceAuthorizeRoute
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
@@ -637,6 +645,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/agent/chat': typeof ApiAgentChatRoute
   '/api/extension/control': typeof ApiExtensionControlRoute
+  '/api/extension/control-v2': typeof ApiExtensionControlV2Route
   '/api/extension/device-authorize': typeof ApiExtensionDeviceAuthorizeRoute
   '/api/extension/download': typeof ApiExtensionDownloadRoute
   '/api/extension/errors': typeof ApiExtensionErrorsRoute
@@ -711,6 +720,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
     | '/api/extension/control'
+    | '/api/extension/control-v2'
     | '/api/extension/device-authorize'
     | '/api/extension/download'
     | '/api/extension/errors'
@@ -783,6 +793,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
     | '/api/extension/control'
+    | '/api/extension/control-v2'
     | '/api/extension/device-authorize'
     | '/api/extension/download'
     | '/api/extension/errors'
@@ -856,6 +867,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/api/agent/chat'
     | '/api/extension/control'
+    | '/api/extension/control-v2'
     | '/api/extension/device-authorize'
     | '/api/extension/download'
     | '/api/extension/errors'
@@ -925,6 +937,7 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiAgentChatRoute: typeof ApiAgentChatRoute
   ApiExtensionControlRoute: typeof ApiExtensionControlRoute
+  ApiExtensionControlV2Route: typeof ApiExtensionControlV2Route
   ApiExtensionDeviceAuthorizeRoute: typeof ApiExtensionDeviceAuthorizeRoute
   ApiExtensionDownloadRoute: typeof ApiExtensionDownloadRoute
   ApiExtensionErrorsRoute: typeof ApiExtensionErrorsRoute
@@ -1153,6 +1166,13 @@ declare module '@tanstack/react-router' {
       path: '/api/extension/control'
       fullPath: '/api/extension/control'
       preLoaderRoute: typeof ApiExtensionControlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/extension/control-v2': {
+      id: '/api/extension/control-v2'
+      path: '/api/extension/control-v2'
+      fullPath: '/api/extension/control-v2'
+      preLoaderRoute: typeof ApiExtensionControlV2RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extension/device-authorize': {
@@ -1527,6 +1547,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiAgentChatRoute: ApiAgentChatRoute,
   ApiExtensionControlRoute: ApiExtensionControlRoute,
+  ApiExtensionControlV2Route: ApiExtensionControlV2Route,
   ApiExtensionDeviceAuthorizeRoute: ApiExtensionDeviceAuthorizeRoute,
   ApiExtensionDownloadRoute: ApiExtensionDownloadRoute,
   ApiExtensionErrorsRoute: ApiExtensionErrorsRoute,
