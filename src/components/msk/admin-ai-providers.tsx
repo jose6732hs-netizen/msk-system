@@ -22,6 +22,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
   const deleteFn = useServerFn(aiProviderDelete);
   const primaryFn = useServerFn(aiProviderSetPrimary);
   const modelsFn = useServerFn(aiProviderModels);
+  const enabledFn = useServerFn(aiProviderSetEnabled);
 
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(row.model ?? "");
