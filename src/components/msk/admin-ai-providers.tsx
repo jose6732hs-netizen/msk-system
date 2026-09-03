@@ -106,14 +106,25 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
           >
             {row.configured ? "API ativa" : "Sem chave"}
           </span>
-          {row.is_primary ? (
+          {isActive ? (
             <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[0.55rem] font-black uppercase tracking-widest text-primary">
-              Principal
+              Em uso pelo agente
             </span>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {!row.is_primary && row.configured ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-black/30 px-3 py-1.5">
+            <Switch
+              checked={isActive}
+              disabled={!row.configured || toggle.isPending}
+              onCheckedChange={(v) => toggle.mutate(v)}
+              aria-label={`Ativar ${row.label}`}
+            />
+            <span className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">
+              {isActive ? "Ativa" : "Desativada"}
+            </span>
+          </div>
+          {!isActive && row.configured ? (
             <Button size="sm" variant="outline" disabled={setPrimary.isPending} onClick={() => setPrimary.mutate()}>
               <Star className="mr-2 h-3.5 w-3.5" /> Tornar principal
             </Button>
