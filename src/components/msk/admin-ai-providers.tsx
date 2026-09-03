@@ -47,6 +47,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
           id: row.id,
           ...(apiKey.trim().length >= 16 ? { apiKey: apiKey.trim() } : {}),
           ...(model.trim() ? { model: model.trim() } : {}),
+          ...(baseUrl.trim() && baseUrl.trim() !== row.api_base_url ? { baseUrl: baseUrl.trim() } : {}),
         },
       }),
     onSuccess: () => {
@@ -145,7 +146,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <div className="space-y-2">
           <Label className="text-[0.62rem] font-black uppercase tracking-widest">API Key</Label>
           <Input
@@ -154,6 +155,15 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={row.key_masked || "Cole a API key"}
+            className="border-primary/20 bg-black/30 font-mono"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-[0.62rem] font-black uppercase tracking-widest">Base URL</Label>
+          <Input
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="https://…"
             className="border-primary/20 bg-black/30 font-mono"
           />
         </div>
