@@ -44,11 +44,18 @@ const PROVIDERS = {
     defaultModel: "z-ai/glm-5.2",
     custom: true,
   },
+  claude: {
+    label: "Claude",
+    baseUrl: "https://api.synterolink.com/v1/chat/completions",
+    defaultModel: "claude-sonnet-4-5",
+    custom: true,
+  },
 } as const;
 type ProviderId = keyof typeof PROVIDERS;
 
 function normalizeProvider(value: unknown): ProviderId {
   const raw = String(value || "bai").trim().toLowerCase();
+  if (raw.includes("claude") || raw.includes("synterolink")) return "claude";
   if (raw.includes("omniroute") || raw === "omni_route") return "omniroute";
   if (raw.includes("openrouter") || raw === "open_router") return "openrouter";
   return "bai";
