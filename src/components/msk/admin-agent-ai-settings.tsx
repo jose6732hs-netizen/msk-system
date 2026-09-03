@@ -16,12 +16,13 @@ import {
   agentAiSettingsTest,
 } from "@/lib/agent-admin.functions";
 
-type ProviderId = "bai" | "openrouter" | "omniroute";
+type ProviderId = "bai" | "openrouter" | "omniroute" | "claude";
 
 const PROVIDER_META: Record<ProviderId, { label: string; baseUrl: string; model: string; editableBase: boolean }> = {
   bai: { label: "B.AI", baseUrl: "https://api.b.ai/v1", model: "deepseek-v4-flash", editableBase: false },
   openrouter: { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-5.5", editableBase: false },
   omniroute: { label: "OmniRoute", baseUrl: "http://127.0.0.1:20128/v1", model: "z-ai/glm-5.2", editableBase: true },
+  claude: { label: "Claude", baseUrl: "https://api.synterolink.com/v1", model: "claude-sonnet-4-5", editableBase: true },
 };
 
 export function AdminAgentAiSettings() {
@@ -154,7 +155,7 @@ export function AdminAgentAiSettings() {
                   </span>
                 </div>
                 <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-                  Escolha o provedor da IA do MSK (B.AI, OpenRouter ou OmniRoute). A Secret Key é validada no servidor,
+                  Escolha o provedor da IA do MSK (B.AI, OpenRouter, OmniRoute ou Claude). A Secret Key é validada no servidor,
                   criptografada com AES-GCM e nunca volta para o navegador, para o bundle ou para a extensão.
                 </p>
               </div>

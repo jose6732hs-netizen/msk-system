@@ -30,7 +30,9 @@ function normalizeStatus(data: unknown) {
   return {
     configured: !!row?.configured,
     provider: String(row?.provider || "B.AI"),
-    providerId: providerId.includes("omniroute")
+    providerId: providerId.includes("claude") || providerId.includes("synterolink")
+      ? ("claude" as const)
+      : providerId.includes("omniroute")
       ? ("omniroute" as const)
       : providerId.includes("openrouter")
         ? ("openrouter" as const)
@@ -90,7 +92,7 @@ export const agentAiSettingsStatus = createServerFn({ method: "GET" })
     return normalizeStatus(await agentAiRequest("ai-global-status"));
   });
 
-const providerInput = z.enum(["bai", "openrouter", "omniroute"]);
+const providerInput = z.enum(["bai", "openrouter", "omniroute", "claude"]);
 
 export const agentAiSettingsSave = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
