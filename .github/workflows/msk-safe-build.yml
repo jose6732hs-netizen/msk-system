@@ -1,0 +1,156 @@
+name: MSK Safe Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: msk-safe-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Typecheck + Build + CSS
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 3
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bunx tsgo --noEmit -p tsconfig.json
+
+      - name: Production build
+        run: bun run build
+
+      - name: Verify global CSS contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s src/styles.css
+          grep -Fq '@import "tailwindcss"' src/styles.css
+          grep -Fq '../styles.css?url' src/routes/__root.tsx
+
+          CSS_COUNT=$(find .output dist build -type f -name '*.css' -size +100c 2>/dev/null | wc -l | tr -d ' ')
+          if [ "${CSS_COUNT:-0}" -lt 1 ]; then
+            echo 'ERRO: build terminou sem nenhum asset CSS não-vazio.'
+            exit 1
+          fi
+
+          echo "CSS assets encontrados: ${CSS_COUNT}"
+
+  auto-restore:
+    name: Auto restore last healthy commit
+    needs: validate
+    if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout failed head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 4
+
+      - name: Decide whether this commit is managed by MSK/Lovable
+        id: managed
+        shell: bash
+        run: |
+          set -euo pipefail
+          SUBJECT=$(git log -1 --pretty=%s)
+          BODY=$(git log -1 --pretty=%B)
+          AUTHOR=$(git log -1 --pretty=%an)
+          echo "subject=$SUBJECT"
+          echo "author=$AUTHOR"
+
+          if [[ "$SUBJECT" == "MSK AUTO-RESTORE:"* ]]; then
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$SUBJECT" == "MSK:"* ]] || [[ "$BODY" == *"X-Lovable-Edit-ID:"* ]] || [[ "$AUTHOR" == "lovable-dev[bot]" ]]; then
+            echo "eligible=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "eligible=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Bun
+        if: steps.managed.outputs.eligible == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Verify parent was healthy
+        if: steps.managed.outputs.eligible == 'true'
+        id: parent
+        shell: bash
+        run: |
+          set -euo pipefail
+          PARENTS=$(git rev-list --parents -n 1 HEAD | wc -w)
+          if [ "$PARENTS" -ne 2 ]; then
+            echo 'healthy=false' >> "$GITHUB_OUTPUT"
+            echo 'Auto-restore ignorado: commit não possui exatamente um pai.'
+            exit 0
+          fi
+
+          FAILED_SHA=$(git rev-parse HEAD)
+          PARENT_SHA=$(git rev-parse HEAD^)
+          echo "failed_sha=$FAILED_SHA" >> "$GITHUB_OUTPUT"
+          echo "parent_sha=$PARENT_SHA" >> "$GITHUB_OUTPUT"
+
+          git checkout --detach "$PARENT_SHA"
+          bun install --frozen-lockfile
+
+          if bunx tsgo --noEmit -p tsconfig.json && bun run build; then
+            test -s src/styles.css
+            grep -Fq '@import "tailwindcss"' src/styles.css
+            grep -Fq '../styles.css?url' src/routes/__root.tsx
+            CSS_COUNT=$(find .output dist build -type f -name '*.css' -size +100c 2>/dev/null | wc -l | tr -d ' ')
+            if [ "${CSS_COUNT:-0}" -ge 1 ]; then
+              echo 'healthy=true' >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          echo 'healthy=false' >> "$GITHUB_OUTPUT"
+          echo 'O commit anterior também não passou na validação; nenhum rollback automático será feito.'
+
+      - name: Revert failed managed commit
+        if: steps.managed.outputs.eligible == 'true' && steps.parent.outputs.healthy == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          FAILED_SHA='${{ steps.parent.outputs.failed_sha }}'
+          SHORT=${FAILED_SHA:0:12}
+
+          git checkout -B main origin/main
+          if [ "$(git rev-parse HEAD)" != "$FAILED_SHA" ]; then
+            echo 'main mudou enquanto a validação rodava; rollback automático cancelado para não sobrescrever trabalho novo.'
+            exit 1
+          fi
+
+          git config user.name 'MSK Safe Build'
+          git config user.email 'safe-build@msksystem.online'
+          git revert --no-edit "$FAILED_SHA"
+          git commit --amend -m "MSK AUTO-RESTORE: restaurar build saudável após $SHORT"
+          git push origin HEAD:main
+
+      - name: Report unmanaged/pre-existing failure
+        if: steps.managed.outputs.eligible != 'true' || steps.parent.outputs.healthy != 'true'
+        run: |
+          echo 'Build falhou, mas o auto-restore não foi aplicado: commit não gerenciado ou base anterior também não saudável.'
+          exit 1
