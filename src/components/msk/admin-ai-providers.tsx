@@ -26,6 +26,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
 
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(row.model ?? "");
+  const [baseUrl, setBaseUrl] = useState(row.api_base_url);
 
   const modelsQuery = useQuery({
     queryKey: ["ai-provider-models", row.id, row.updated_at],
