@@ -4,15 +4,47 @@ path = Path("supabase/functions/msk-agent/index.ts")
 s = path.read_text()
 original = s
 
-old_approve = '''      await taskPatch(id, { status: "completed", branch_name: liveBranch, error: null, error_code: null, error_stage: null }, who.id);
-      return json({ ok: true, completed: true, preview_pending: true, branch: liveBranch, branch_used: liveBranch, commit_sha: afterSha, commit_url: `https://github.com/${selected.repo.owner.login}/${selected.repo.name}/commit/${afterSha}`, message: `Commit enviado para ${liveBranch} — atualize a prévia no Lovable`, repository: selectedRepo });'''
-new_approve = '''      await taskPatch(id, { status: "verification_pending", preview_status: "pending", commit_sha: afterSha, branch_name: liveBranch, error: null, error_code: null, error_stage: null }, who.id);
-      return json({ ok: true, completed: false, verification_pending: true, preview_pending: true, preview_ready: false, branch: liveBranch, branch_used: liveBranch, commit_sha: afterSha, commit_url: `https://github.com/${selected.repo.owner.login}/${selected.repo.name}/commit/${afterSha}`, message: `Commit criado em ${liveBranch}. Validando a prévia antes de concluir.`, repository: selectedRepo });'''
-if old_approve not in s:
-    raise SystemExit("approve completion block not found")
-s = s.replace(old_approve, new_approve, 1)
 
-marker = '''    if (action !== "run") return json({ error: "Ação não suportada.", code: "ACTION_NOT_SUPPORTED" }, 400);'''
+def replace_once(old: str, new: str, label: str):
+    global s
+    if old not in s:
+        raise SystemExit(f"{label} not found")
+    s = s.replace(old, new, 1)
+
+
+replace_once(
+    '''      await taskPatch(id, { status: "completed", branch_name: liveBranch, error: null, error_code: null, error_stage: null }, who.id);
+      return json({ ok: true, completed: true, preview_pending: true, branch: liveBranch, branch_used: liveBranch, commit_sha: afterSha, commit_url: `https://github.com/${selected.repo.owner.login}/${selected.repo.name}/commit/${afterSha}`, message: `Commit enviado para ${liveBranch} — atualize a prévia no Lovable`, repository: selectedRepo });''',
+    '''      await taskPatch(id, { status: "verification_pending", preview_status: "pending", commit_sha: afterSha, branch_name: liveBranch, error: null, error_code: null, error_stage: null }, who.id);
+      return json({ ok: true, completed: false, verification_pending: true, preview_pending: true, preview_ready: false, branch: liveBranch, branch_used: liveBranch, commit_sha: afterSha, commit_url: `https://github.com/${selected.repo.owner.login}/${selected.repo.name}/commit/${afterSha}`, message: `Commit criado em ${liveBranch}. Validando a prévia antes de concluir.`, repository: selectedRepo });''',
+    "approve completion block",
+)
+
+replace_once(
+    '    await taskPatch(taskId, { status: "completed", branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);',
+    '    await taskPatch(taskId, { status: "verification_pending", preview_status: "pending", commit_sha: commitSha, branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);',
+    "normal task completion",
+)
+replace_once(
+    '    const previewMessage = `Commit enviado para ${usedBranch} — atualize a prévia no Lovable`;',
+    '    const previewMessage = `Commit criado em ${usedBranch}. Validando a prévia antes de concluir.`;',
+    "normal preview message",
+)
+
+normal_anchor = '    await taskPatch(taskId, { status: "verification_pending"'
+anchor_at = s.index(normal_anchor)
+completed_at = s.find('      completed: true,', anchor_at)
+if completed_at < 0:
+    raise SystemExit("normal response completed flag not found")
+s = s[:completed_at] + '      completed: false,\n      verification_pending: true,\n      preview_ready: false,' + s[completed_at + len('      completed: true,'):]
+
+replace_once(
+    '      validation: { content_changed: true, semantic: true, commit_verified: true, branch_changed: true },',
+    '      validation: { content_changed: true, semantic: true, commit_verified: true, branch_changed: true, preview_verified: false },',
+    "normal validation block",
+)
+
+marker = '    if (action !== "run") return json({ error: "Ação não suportada.", code: "ACTION_NOT_SUPPORTED" }, 400);'
 preview_action = '''    if (action === "preview-confirm") {
       const id = String(body.task_id || "");
       const expectedSha = String(body.commit_sha || "").trim();
@@ -37,34 +69,25 @@ preview_action = '''    if (action === "preview-confirm") {
     }
 
 '''
-if marker not in s:
-    raise SystemExit("run marker not found")
-s = s.replace(marker, preview_action + marker, 1)
+replace_once(marker, preview_action + marker, "run marker")
 
-old_normal = '''    await taskPatch(taskId, { status: "completed", branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);
-    const commitUrl = String(commit?.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commitSha}`), previewMessage = `Commit enviado para ${usedBranch} — atualize a prévia no Lovable`;
-    return json({ ok: true, completed: true, direct_commit: commit?.fallback_pr !== true, fallback_pr: commit?.fallback_pr === true, assistant_message: String(out.reply || summary), summary, model: "MSK-IA", provider: "MSK", task_id: taskId, repository, repository_locked: true, branch: usedBranch, branch_used: usedBranch, files: changes.map(x => x.path), files_changed_count: changes.length, commit_sha: commitSha, commit_url: commitUrl, pull_request_url: String(commit?.pull_request_url || "") || undefined, preview_pending: true, preview_message: previewMessage, validation: { content_changed: true, semantic: true, commit_verified: true, branch_changed: true }, fast_edit: fast, commit_attempt: Number(commit?.commit_attempt || 1) });'''
-new_normal = '''    await taskPatch(taskId, { status: "verification_pending", preview_status: "pending", commit_sha: commitSha, branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);
-    const commitUrl = String(commit?.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commitSha}`), previewMessage = `Commit criado em ${usedBranch}. Validando a prévia antes de concluir.`;
-    return json({ ok: true, completed: false, verification_pending: true, preview_ready: false, direct_commit: commit?.fallback_pr !== true, fallback_pr: commit?.fallback_pr === true, assistant_message: String(out.reply || summary), summary, model: "MSK-IA", provider: "MSK", task_id: taskId, repository, repository_locked: true, branch: usedBranch, branch_used: usedBranch, files: changes.map(x => x.path), files_changed_count: changes.length, commit_sha: commitSha, commit_url: commitUrl, pull_request_url: String(commit?.pull_request_url || "") || undefined, preview_pending: true, preview_message: previewMessage, validation: { content_changed: true, semantic: true, commit_verified: true, branch_changed: true, preview_verified: false }, fast_edit: fast, commit_attempt: Number(commit?.commit_attempt || 1) });'''
-if old_normal not in s:
-    raise SystemExit("normal completion block not found")
-s = s.replace(old_normal, new_normal, 1)
+if 'version: "3.3.0-direct-main-preview"' in s:
+    s = s.replace('version: "3.3.0-direct-main-preview"', 'version: "3.4.0-fail-closed-preview"', 1)
+if 'atomic_git_data_commit: true, preview_pending: true });' in s:
+    s = s.replace('atomic_git_data_commit: true, preview_pending: true });', 'atomic_git_data_commit: true, preview_pending: true, preview_fail_closed: true });', 1)
 
-s = s.replace('version: "3.3.0-direct-main-preview"', 'version: "3.4.0-fail-closed-preview"', 1)
-s = s.replace('atomic_git_data_commit: true, preview_pending: true });', 'atomic_git_data_commit: true, preview_pending: true, preview_fail_closed: true });', 1)
-
-required = [
+for required in [
     'status: "verification_pending"',
     'preview_status: "pending"',
     'action === "preview-confirm"',
     'preview_verified_at: now',
-    'completed: false, verification_pending: true',
-]
-for item in required:
-    if item not in s:
-        raise SystemExit(f"missing required marker: {item}")
+    'completed: false,\n      verification_pending: true',
+    'preview_verified: false',
+]:
+    if required not in s:
+        raise SystemExit(f"missing required marker: {required}")
 if s == original:
     raise SystemExit("no changes")
+
 path.write_text(s)
 print("MSK agent fail-closed patch applied")
