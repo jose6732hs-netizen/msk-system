@@ -11,7 +11,7 @@ const AI_SUPABASE_KEY =
   process.env.MSK_AGENT_SUPABASE_PUBLISHABLE_KEY?.trim() ||
   "sb_publishable_-aERipV8XmdiDq9UMERZUA_OIyOeyzD";
 
-const providerId = z.enum(["bai", "openrouter", "gemini", "groq", "manus", "mistral"]);
+const providerId = z.enum(["bai", "openrouter", "gemini", "groq", "manus", "mistral", "claude"]);
 export type AiProviderId = z.infer<typeof providerId>;
 
 export type AiProviderRow = {
@@ -36,6 +36,7 @@ const BASE_URLS: Record<AiProviderId, string> = {
   groq: "https://api.groq.com/openai/v1/chat/completions",
   manus: "https://api.manus.im/v1/responses",
   mistral: "https://api.mistral.ai/v1/chat/completions",
+  claude: "https://api.synterolink.com/v1/chat/completions",
 };
 
 async function adminRequest(action: string, payload: Record<string, unknown> = {}) {
