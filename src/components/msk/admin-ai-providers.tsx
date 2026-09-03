@@ -212,7 +212,12 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
         <Button
           variant="neon"
           size="sm"
-          disabled={save.isPending || (apiKey.trim().length < 16 && model.trim() === (row.model ?? ""))}
+          disabled={
+            save.isPending ||
+            (apiKey.trim().length < 16 &&
+              model.trim() === (row.model ?? "") &&
+              baseUrl.trim() === row.api_base_url)
+          }
           onClick={() => save.mutate()}
         >
           {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
@@ -240,7 +245,7 @@ export function AdminAiProviders() {
     <div className="space-y-4">
       <div className="flex items-start gap-2 rounded-xl border border-white/5 bg-black/20 px-3 py-2.5 text-[0.68rem] leading-relaxed text-muted-foreground">
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        Cadastre a chave de cada provedor (OpenAI, Groq e Gemini). As chaves são criptografadas no banco e nunca
+        Cadastre a chave de cada provedor (OpenAI, Groq, Gemini, B.AI, OpenRouter e OmniRoute). As chaves são criptografadas no banco e nunca
         voltam para o navegador. Use o botão de atualizar para listar os modelos disponíveis na sua conta e escolher
         qual fica ativo. O provedor marcado como principal é o usado pelo MSK Agente.
       </div>
