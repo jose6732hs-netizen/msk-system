@@ -4681,6 +4681,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      msk_ai_providers_set_enabled: {
+        Args: { p_enabled: boolean; p_id: string }
+        Returns: boolean
+      }
       msk_ai_providers_set_primary: { Args: { p_id: string }; Returns: boolean }
       msk_ai_providers_status: {
         Args: never

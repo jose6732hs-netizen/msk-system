@@ -6,10 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   aiProviderDelete,
   aiProviderModels,
   aiProviderSave,
+  aiProviderSetEnabled,
   aiProviderSetPrimary,
   aiProvidersStatus,
   type AiProviderRow,
@@ -20,6 +22,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
   const deleteFn = useServerFn(aiProviderDelete);
   const primaryFn = useServerFn(aiProviderSetPrimary);
   const modelsFn = useServerFn(aiProviderModels);
+  const enabledFn = useServerFn(aiProviderSetEnabled);
 
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(row.model ?? "");
@@ -69,6 +72,21 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const toggle = useMutation({
+    mutationFn: (enabled: boolean) => enabledFn({ data: { id: row.id, enabled } }),
+    onSuccess: (_res, enabled) => {
+      toast.success(
+        enabled
+          ? `${row.label} ativado — agora é a IA usada pelo agente.`
+          : `${row.label} desativado.`,
+      );
+      onChanged();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const isActive = row.enabled && row.is_primary;
+
   const remove = useMutation({
     mutationFn: () => deleteFn({ data: { id: row.id } }),
     onSuccess: () => {
@@ -88,14 +106,25 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
           >
             {row.configured ? "API ativa" : "Sem chave"}
           </span>
-          {row.is_primary ? (
+          {isActive ? (
             <span className="rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-[0.55rem] font-black uppercase tracking-widest text-primary">
-              Principal
+              Em uso pelo agente
             </span>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {!row.is_primary && row.configured ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-black/30 px-3 py-1.5">
+            <Switch
+              checked={isActive}
+              disabled={!row.configured || toggle.isPending}
+              onCheckedChange={(v) => toggle.mutate(v)}
+              aria-label={`Ativar ${row.label}`}
+            />
+            <span className="text-[0.6rem] font-black uppercase tracking-widest text-muted-foreground">
+              {isActive ? "Ativa" : "Desativada"}
+            </span>
+          </div>
+          {!isActive && row.configured ? (
             <Button size="sm" variant="outline" disabled={setPrimary.isPending} onClick={() => setPrimary.mutate()}>
               <Star className="mr-2 h-3.5 w-3.5" /> Tornar principal
             </Button>

@@ -64,6 +64,22 @@ export const aiProviderSetPrimary = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+/** Liga/desliga um provedor. Ligar torna ele o usado pelo agente e desliga os demais. */
+export const aiProviderSetEnabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ id: providerId, enabled: z.boolean() }).parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase.rpc("msk_ai_providers_set_enabled" as never, {
+      p_id: data.id,
+      p_enabled: data.enabled,
+    } as never);
+    if (error) throw new Error(error.message);
+    return { ok: true as const };
+  });
+
 export const aiProviderDelete = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: providerId }).parse(input))
