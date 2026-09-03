@@ -96,12 +96,39 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
   );
 }
 
+const PROVIDER_CATALOG: Array<{ id: AiProviderRow["id"]; label: string }> = [
+  { id: "bai", label: "B.AI" },
+  { id: "openrouter", label: "OpenRouter" },
+  { id: "gemini", label: "Google Gemini" },
+  { id: "groq", label: "Groq" },
+  { id: "manus", label: "Manus AI" },
+  { id: "mistral", label: "Mistral" },
+  { id: "claude", label: "Claude" },
+];
+
 export function AdminAiProviders() {
   const qc = useQueryClient();
   const statusFn = useServerFn(aiProvidersStatus);
   const { data, isLoading } = useQuery({ queryKey: ["ai-providers"], queryFn: () => statusFn() });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["ai-providers"] });
-  const active = (data ?? []).filter((row) => row.configured && row.enabled).length;
+  const rows: AiProviderRow[] = PROVIDER_CATALOG.map((item) => {
+    const found = (data ?? []).find((row) => row.id === item.id);
+    return found ?? {
+      id: item.id,
+      label: item.label,
+      api_base_url: "",
+      model: null,
+      models: [],
+      configured: false,
+      key_masked: null,
+      enabled: false,
+      is_primary: false,
+      last_status: null,
+      last_checked_at: null,
+      updated_at: null,
+    };
+  });
+  const active = rows.filter((row) => row.configured && row.enabled).length;
 
   return (
     <div className="space-y-4">
