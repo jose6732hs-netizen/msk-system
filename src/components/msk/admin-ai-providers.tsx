@@ -96,12 +96,39 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
   );
 }
 
+const PROVIDER_CATALOG: Array<{ id: AiProviderRow["id"]; label: string }> = [
+  { id: "bai", label: "B.AI" },
+  { id: "openrouter", label: "OpenRouter" },
+  { id: "gemini", label: "Google Gemini" },
+  { id: "groq", label: "Groq" },
+  { id: "manus", label: "Manus AI" },
+  { id: "mistral", label: "Mistral" },
+  { id: "claude", label: "Claude" },
+];
+
 export function AdminAiProviders() {
   const qc = useQueryClient();
   const statusFn = useServerFn(aiProvidersStatus);
   const { data, isLoading } = useQuery({ queryKey: ["ai-providers"], queryFn: () => statusFn() });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["ai-providers"] });
-  const active = (data ?? []).filter((row) => row.configured && row.enabled).length;
+  const rows: AiProviderRow[] = PROVIDER_CATALOG.map((item) => {
+    const found = (data ?? []).find((row) => row.id === item.id);
+    return found ?? {
+      id: item.id,
+      label: item.label,
+      api_base_url: "",
+      model: null,
+      models: [],
+      configured: false,
+      key_masked: null,
+      enabled: false,
+      is_primary: false,
+      last_status: null,
+      last_checked_at: null,
+      updated_at: null,
+    };
+  });
+  const active = rows.filter((row) => row.configured && row.enabled).length;
 
   return (
     <div className="space-y-4">
@@ -109,7 +136,7 @@ export function AdminAiProviders() {
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <span><b className="text-foreground">Central Multi-IA MSK — {active} ativa(s).</b> Catálogo do Studio original: B.AI, OpenRouter, Google Gemini, Groq, Manus AI e Mistral. Você pode deixar várias ativas ao mesmo tempo. Na extensão, “Todas as IAs” consulta todas as ativas; “Automática” usa a marcada como principal.</span>
       </div>
-      {isLoading ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando provedores…</div> : (data ?? []).map((row) => <ProviderCard key={row.id} row={row} onChanged={refresh} />)}
+      {isLoading ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando provedores…</div> : rows.map((row) => <ProviderCard key={row.id} row={row} onChanged={refresh} />)}
     </div>
   );
 }
