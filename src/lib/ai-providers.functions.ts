@@ -3,10 +3,10 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
 
-const providerId = z.enum(["openai", "groq", "gemini"]);
+const providerId = z.enum(["openai", "groq", "gemini", "bai", "openrouter", "omniroute"]);
 
 export type AiProviderRow = {
-  id: "openai" | "groq" | "gemini";
+  id: "openai" | "groq" | "gemini" | "bai" | "openrouter" | "omniroute";
   label: string;
   api_base_url: string;
   model: string | null;

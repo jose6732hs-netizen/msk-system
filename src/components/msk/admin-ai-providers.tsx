@@ -26,6 +26,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
 
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(row.model ?? "");
+  const [baseUrl, setBaseUrl] = useState(row.api_base_url);
 
   const modelsQuery = useQuery({
     queryKey: ["ai-provider-models", row.id, row.updated_at],
@@ -46,6 +47,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
           id: row.id,
           ...(apiKey.trim().length >= 16 ? { apiKey: apiKey.trim() } : {}),
           ...(model.trim() ? { model: model.trim() } : {}),
+          ...(baseUrl.trim() && baseUrl.trim() !== row.api_base_url ? { baseUrl: baseUrl.trim() } : {}),
         },
       }),
     onSuccess: () => {
@@ -144,7 +146,7 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
         <div className="space-y-2">
           <Label className="text-[0.62rem] font-black uppercase tracking-widest">API Key</Label>
           <Input
@@ -153,6 +155,15 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             placeholder={row.key_masked || "Cole a API key"}
+            className="border-primary/20 bg-black/30 font-mono"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-[0.62rem] font-black uppercase tracking-widest">Base URL</Label>
+          <Input
+            value={baseUrl}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            placeholder="https://…"
             className="border-primary/20 bg-black/30 font-mono"
           />
         </div>
@@ -201,7 +212,12 @@ function ProviderCard({ row, onChanged }: { row: AiProviderRow; onChanged: () =>
         <Button
           variant="neon"
           size="sm"
-          disabled={save.isPending || (apiKey.trim().length < 16 && model.trim() === (row.model ?? ""))}
+          disabled={
+            save.isPending ||
+            (apiKey.trim().length < 16 &&
+              model.trim() === (row.model ?? "") &&
+              baseUrl.trim() === row.api_base_url)
+          }
           onClick={() => save.mutate()}
         >
           {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
@@ -229,7 +245,7 @@ export function AdminAiProviders() {
     <div className="space-y-4">
       <div className="flex items-start gap-2 rounded-xl border border-white/5 bg-black/20 px-3 py-2.5 text-[0.68rem] leading-relaxed text-muted-foreground">
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-        Cadastre a chave de cada provedor (OpenAI, Groq e Gemini). As chaves são criptografadas no banco e nunca
+        Cadastre a chave de cada provedor (OpenAI, Groq, Gemini, B.AI, OpenRouter e OmniRoute). As chaves são criptografadas no banco e nunca
         voltam para o navegador. Use o botão de atualizar para listar os modelos disponíveis na sua conta e escolher
         qual fica ativo. O provedor marcado como principal é o usado pelo MSK Agente.
       </div>
