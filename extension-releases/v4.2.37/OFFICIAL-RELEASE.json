@@ -1,0 +1,12 @@
+{
+  "product": "MSK Agente",
+  "version": "4.2.37",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v4.2.37 — Guardião + Painel Profissional",
+  "bridge_version": 1,
+  "integrity_policy_sha256": "fc9ca740b9bcfdbfd79debb435001dd6d718c4179a3f6beca4e6f21d23363652",
+  "package_sha256": "fdfe55527358ec9a2b55685d29e69007ff1bba3e671432d8923cc4d8b11c3164",
+  "official_site": "https://msksystem.online",
+  "notes": "Build oficial com Guardião de integridade, licença embutida no popup, Painel Profissional e sino sincronizado."
+}
