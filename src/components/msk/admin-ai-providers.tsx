@@ -136,7 +136,7 @@ export function AdminAiProviders() {
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <span><b className="text-foreground">Central Multi-IA MSK — {active} ativa(s).</b> Catálogo do Studio original: B.AI, OpenRouter, Google Gemini, Groq, Manus AI e Mistral. Você pode deixar várias ativas ao mesmo tempo. Na extensão, “Todas as IAs” consulta todas as ativas; “Automática” usa a marcada como principal.</span>
       </div>
-      {isLoading ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando provedores…</div> : (data ?? []).map((row) => <ProviderCard key={row.id} row={row} onChanged={refresh} />)}
+      {isLoading ? <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Carregando provedores…</div> : rows.map((row) => <ProviderCard key={row.id} row={row} onChanged={refresh} />)}
     </div>
   );
 }

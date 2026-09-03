@@ -64,9 +64,11 @@ async function adminRequest(action: string, payload: Record<string, unknown> = {
 }
 
 function mapRows(data: any): AiProviderRow[] {
-  return (Array.isArray(data?.providers) ? data.providers : []).map((row: any) => {
-    const id = providerId.parse(row.providerId || row.provider_id);
-    return {
+  return (Array.isArray(data?.providers) ? data.providers : []).flatMap((row: any) => {
+    const parsed = providerId.safeParse(row.providerId || row.provider_id);
+    if (!parsed.success) return [];
+    const id = parsed.data;
+    return [{
       id,
       label: String(row.provider || id),
       api_base_url: BASE_URLS[id],
