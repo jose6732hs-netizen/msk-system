@@ -92,7 +92,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (req.method === "POST" && url.searchParams.get("action") === "health") {
-      return json({ ok: true, service: "msk-agent", version: "3.3.0-direct-main-preview", device_guard: "staged", repository_isolation: "strict", resilient_ai: true, global_training: true, fast_edit: true, structured_errors: true, repo_lock: true, semantic_precommit: true, atomic_git_data_commit: true, preview_pending: true });
+      return json({ ok: true, service: "msk-agent", version: "3.4.0-fail-closed-preview", device_guard: "staged", repository_isolation: "strict", resilient_ai: true, global_training: true, fast_edit: true, structured_errors: true, repo_lock: true, semantic_precommit: true, atomic_git_data_commit: true, preview_pending: true, preview_fail_closed: true });
     }
 
     if (req.method === "GET" && url.searchParams.get("installation_id") && url.searchParams.get("state")) {
@@ -245,8 +245,31 @@ Deno.serve(async (req: Request) => {
       const afterRef = await gh(selected.token, `/repos/${selected.repo.owner.login}/${selected.repo.name}/git/ref/heads/${encodeURIComponent(liveBranch).replace(/%2F/g, "/")}`);
       const afterSha = String(afterRef?.object?.sha || "");
       if (!afterSha || afterSha !== String(merged.sha) || afterSha === beforeSha) throw new AgentError("COMMIT_VERIFICATION_FAILED", "O PR antigo foi mesclado, mas o branch padrão não mudou para o SHA do merge.", { stage: "verifying", retryable: true, httpStatus: 409 });
-      await taskPatch(id, { status: "completed", branch_name: liveBranch, error: null, error_code: null, error_stage: null }, who.id);
-      return json({ ok: true, completed: true, preview_pending: true, branch: liveBranch, branch_used: liveBranch, commit_sha: afterSha, commit_url: `https://github.com/${selected.repo.owner.login}/${selected.repo.name}/commit/${afterSha}`, message: `Commit enviado para ${liveBranch} — atualize a prévia no Lovable`, repository: selectedRepo });
+      await taskPatch(id, { status: "verification_pending", preview_status: "pending", commit_sha: afterSha, branch_name: liveBranch, error: null, error_code: null, error_stage: null }, who.id);
+      return json({ ok: true, completed: false, verification_pending: true, preview_pending: true, preview_ready: false, branch: liveBranch, branch_used: liveBranch, commit_sha: afterSha, commit_url: `https://github.com/${selected.repo.owner.login}/${selected.repo.name}/commit/${afterSha}`, message: `Commit criado em ${liveBranch}. Validando a prévia antes de concluir.`, repository: selectedRepo });
+    }
+
+    if (action === "preview-confirm") {
+      const id = String(body.task_id || "");
+      const expectedSha = String(body.commit_sha || "").trim();
+      const previewOk = body.preview_ok === true;
+      if (!/^[0-9a-f-]{36}$/i.test(id) || !/^[0-9a-f]{40}$/i.test(expectedSha)) return json({ ok: false, code: "PREVIEW_CONFIRM_INVALID" }, 400);
+      const { data: task } = await db.from("msk_tasks").select("id,status,branch_name,commit_sha,last_known_good_sha,preview_status").eq("id", id).eq("lovable_project_id", pid).eq("user_id", who.id).maybeSingle();
+      if (!task) return json({ ok: false, code: "TASK_NOT_FOUND" }, 404);
+      if (String(task.commit_sha || "") !== expectedSha) return json({ ok: false, code: "PREVIEW_COMMIT_MISMATCH", message: "A prévia não corresponde ao commit desta execução." }, 409);
+      if (String(task.status || "") !== "verification_pending") return json({ ok: false, code: "PREVIEW_CONFIRM_NOT_PENDING", task_status: task.status }, 409);
+      const verifyBranch = String(task.branch_name || selected.repo.default_branch || "").trim();
+      if (!verifyBranch) return json({ ok: false, code: "PREVIEW_BRANCH_MISSING" }, 409);
+      const ref = await gh(selected.token, `/repos/${selected.repo.owner.login}/${selected.repo.name}/git/ref/heads/${encodeURIComponent(verifyBranch).replace(/%2F/g, "/")}`);
+      const liveSha = String(ref?.object?.sha || "");
+      if (liveSha !== expectedSha) return json({ ok: false, code: "PREVIEW_BRANCH_MOVED", message: "O branch mudou antes da confirmação da prévia.", expected_sha: expectedSha, actual_sha: liveSha }, 409);
+      if (!previewOk) {
+        await taskPatch(id, { status: "failed", preview_status: "failed", error: "A prévia não passou na verificação visual/runtime.", error_code: "PREVIEW_FAILED", error_stage: "verifying" }, who.id);
+        return json({ ok: true, completed: false, preview_ready: false, preview_status: "failed", code: "PREVIEW_FAILED", last_known_good_sha: task.last_known_good_sha || null });
+      }
+      const now = new Date().toISOString();
+      await taskPatch(id, { status: "completed", preview_status: "healthy", preview_verified_at: now, last_known_good_sha: expectedSha, error: null, error_code: null, error_stage: null }, who.id);
+      return json({ ok: true, completed: true, preview_ready: true, preview_pending: false, preview_status: "healthy", commit_sha: expectedSha, branch: verifyBranch, verified_at: now, repository: selectedRepo });
     }
 
     if (action !== "run") return json({ error: "Ação não suportada.", code: "ACTION_NOT_SUPPORTED" }, 400);
@@ -414,12 +437,14 @@ Deno.serve(async (req: Request) => {
     }
 
     const summary = professionalSummary(String(out.summary || "Alteração aplicada."), repository, changes.map(x => x.path), commitSha);
-    await taskPatch(taskId, { status: "completed", branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);
+    await taskPatch(taskId, { status: "verification_pending", preview_status: "pending", commit_sha: commitSha, branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);
     const commitUrl = String(commit?.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commitSha}`);
-    const previewMessage = `Commit enviado para ${usedBranch} — atualize a prévia no Lovable`;
+    const previewMessage = `Commit criado em ${usedBranch}. Validando a prévia antes de concluir.`;
     return json({
       ok: true,
-      completed: true,
+      completed: false,
+      verification_pending: true,
+      preview_ready: false,
       direct_commit: commit?.fallback_pr !== true,
       fallback_pr: commit?.fallback_pr === true,
       assistant_message: String(out.reply || summary),
@@ -438,7 +463,7 @@ Deno.serve(async (req: Request) => {
       pull_request_url: String(commit?.pull_request_url || "") || undefined,
       preview_pending: true,
       preview_message: previewMessage,
-      validation: { content_changed: true, semantic: true, commit_verified: true, branch_changed: true },
+      validation: { content_changed: true, semantic: true, commit_verified: true, branch_changed: true, preview_verified: false },
       fast_edit: fast,
       commit_attempt: Number(commit?.commit_attempt || 1),
     });
