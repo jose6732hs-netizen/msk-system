@@ -80,31 +80,26 @@ async function handle(request: Request) {
     return json(request, { ok: false, active: false, code: "RATE_LIMITED" }, 429);
   }
 
-  const alreadyActivated = !!license.activated_at && status === "active";
+  // Validação de e-mail em TODA validação de licença, antes de qualquer sucesso.
+  const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(
+    String(license.user_id),
+  );
+  const realEmail = normalizeEmail(userData?.user?.email);
+  if (userError || !realEmail || !providedEmail || realEmail !== providedEmail) {
+    await logEvent({
+      license_id: String(license.id),
+      user_id: String(license.user_id),
+      event_type: "license_email_mismatch",
+      metadata: { provided_email_present: !!providedEmail },
+    });
+    return json(request, { ok: false, active: false, code: "LICENSE_EMAIL_MISMATCH" }, 401);
+  }
+
+  const alreadyActivated = !!license.activated_at;
 
   if (!alreadyActivated) {
-    // Primeiro uso legítimo: licença recém-gerada (inactive, activated_at null).
-    // Antes de ativar, conferir o e-mail informado com o e-mail real do dono.
-    if (status === "expired" || (license.expires_at && parseTime(license.expires_at) <= now)) {
-      // Licença expirada nunca pode ser (re)ativada pela lógica de primeiro uso.
-      return json(request, { ok: false, active: false, code: "LICENSE_EXPIRED" }, 401);
-    }
-
-    const { data: userData, error: userError } = await supabaseAdmin.auth.admin.getUserById(
-      String(license.user_id),
-    );
-    const realEmail = normalizeEmail(userData?.user?.email);
-    if (userError || !realEmail || !providedEmail || realEmail !== providedEmail) {
-      await logEvent({
-        license_id: String(license.id),
-        user_id: String(license.user_id),
-        event_type: "first_activation_email_mismatch",
-        metadata: { provided_email_present: !!providedEmail },
-      });
-      return json(request, { ok: false, active: false, code: "LICENSE_EMAIL_MISMATCH" }, 401);
-    }
-
-    // Ativar agora, recalculando expires_at preservando a duração original.
+    // Primeiro uso legítimo: licença nunca usada (activated_at null).
+    // O expires_at pré-calculado é apenas referência de duração; recalcula a partir de agora.
     const metadata = { ...((license.metadata ?? {}) as Record<string, unknown>) };
     let durationMs = Number(metadata["pending_duration_ms"] ?? 0);
     if (!(durationMs > 0)) {
@@ -156,15 +151,12 @@ async function handle(request: Request) {
     return json(request, { ok: false, active: false, code: "LICENSE_EXPIRED" }, 401);
   }
 
-  const { data: userData } = await supabaseAdmin.auth.admin.getUserById(String(license.user_id));
-  const email = normalizeEmail(userData?.user?.email);
-
   return json(request, {
     ok: true,
     active: true,
     user_id: String(license.user_id),
     license_id: String(license.id),
-    email,
+    email: realEmail,
     status: "active",
     activated_at: license.activated_at ?? null,
     expires_at: license.expires_at ?? null,
