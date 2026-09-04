@@ -104,6 +104,7 @@ export function AdminAgentAiSettings() {
   const [model, setModel] = useState(PROVIDERS.synterolink.defaultModel);
   const [baseUrl, setBaseUrl] = useState(PROVIDERS.synterolink.defaultBaseUrl || "");
   const [makePrimary, setMakePrimary] = useState(true);
+  void makePrimary;
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-ai-settings"],
@@ -229,7 +230,7 @@ export function AdminAgentAiSettings() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h4 className="text-sm font-black uppercase tracking-widest">Central Multi-IA do MSK System</h4>
-              <p className="mt-1 text-xs text-muted-foreground">Cadastre várias APIs. Ativar uma não desativa as outras. A extensão recebe somente o catálogo, nunca as chaves.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Cadastre várias APIs. Somente UMA IA fica ativa por vez: ativar uma desativa as demais. A extensão recebe somente o catálogo, nunca as chaves.</p>
               <div className="mt-2 flex gap-2 text-[0.62rem] font-bold uppercase tracking-widest">
                 <span className="rounded-full border border-emerald-500/25 px-2 py-1 text-emerald-300">{activeCount} ativas</span>
                 <span className="rounded-full border border-white/10 px-2 py-1 text-muted-foreground">{configuredCount} configuradas</span>
