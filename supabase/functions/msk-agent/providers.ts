@@ -165,32 +165,46 @@ export function buildProviderRequest(cfg: ProviderConfig, options: {
     };
   }
 
+  const reasoning = isReasoningModel(cfg.model);
+  // Modelos de raciocínio (gpt-5.x, o1/o3/o4) consomem tokens pensando ANTES de
+  // escrever: sem folga extra a resposta volta vazia/truncada (finish_reason
+  // "length"). Eles também recusam temperature != 1 e o campo max_tokens.
+  const budget = reasoning ? Math.min(32000, Math.max(maxTokens * 3, 8000)) : maxTokens;
   return {
     url: cfg.endpoint,
     headers,
     body: {
       model: cfg.model,
       messages: options.messages,
-      max_tokens: maxTokens,
-      temperature: 0,
+      ...(reasoning ? { max_completion_tokens: budget } : { max_tokens: budget, temperature: 0 }),
+      ...(reasoning && cfg.provider === "openrouter" ? { reasoning: { effort: "low" } } : {}),
       stream: false,
       ...(options.jsonMode ? { response_format: { type: "json_object" } } : {}),
     },
   };
 }
 
+/** gpt-5.x, o1/o3/o4 e similares: raciocínio interno com regras próprias de payload. */
+export function isReasoningModel(model: string) {
+  const id = String(model || "").toLowerCase().split("/").pop() || "";
+  return /^(gpt-5|o[1345](\b|-)|gpt-o)/.test(id) || /(^|[^a-z])(thinking|reason)/.test(id);
+}
+
 /** Converte a resposta de qualquer IA para { id, text }. */
-export function extractProviderText(cfg: ProviderConfig, payload: any): { id: string; text: string } {
+export function extractProviderText(cfg: ProviderConfig, payload: any): { id: string; text: string; finishReason: string } {
   const id = String(payload?.id || payload?.response_id || "");
+  const finishReason = String(
+    payload?.choices?.[0]?.finish_reason || payload?.choices?.[0]?.native_finish_reason || payload?.stop_reason || payload?.status || "",
+  );
 
   if (cfg.family === "anthropic") {
     const parts = Array.isArray(payload?.content) ? payload.content : [];
     const text = parts.map((part: any) => String(part?.text || part?.content || "")).join("").trim();
-    return { id, text: text || String(payload?.completion || "").trim() };
+    return { id, finishReason, text: text || String(payload?.completion || "").trim() };
   }
 
   if (cfg.family === "responses") {
-    if (typeof payload?.output_text === "string" && payload.output_text.trim()) return { id, text: payload.output_text.trim() };
+    if (typeof payload?.output_text === "string" && payload.output_text.trim()) return { id, finishReason, text: payload.output_text.trim() };
     const output = Array.isArray(payload?.output) ? payload.output : [];
     const text = output
       .flatMap((item: any) => (Array.isArray(item?.content) ? item.content : []))
@@ -198,7 +212,7 @@ export function extractProviderText(cfg: ProviderConfig, payload: any): { id: st
       .map((part: any) => String(part?.text || ""))
       .join("")
       .trim();
-    if (text) return { id, text };
+    if (text) return { id, finishReason, text };
   }
 
   const message = payload?.choices?.[0]?.message;
@@ -207,8 +221,15 @@ export function extractProviderText(cfg: ProviderConfig, payload: any): { id: st
     : Array.isArray(message?.content)
       ? message.content.map((part: any) => String(part?.text || part?.content || "")).join("")
       : String(payload?.choices?.[0]?.text || "");
-  return { id, text: String(raw || "").trim() };
+  // Alguns roteadores devolvem só o campo de raciocínio quando o texto final vem vazio.
+  const fallback = typeof message?.reasoning_content === "string"
+    ? message.reasoning_content
+    : typeof message?.reasoning === "string"
+      ? message.reasoning
+      : "";
+  return { id, finishReason, text: String(raw || "").trim() || String(fallback || "").trim() };
 }
+
 
 /** Escolhe a ÚNICA IA ativa a partir das linhas salvas no painel. */
 export function pickActiveRow(rows: any[]): any | null {
