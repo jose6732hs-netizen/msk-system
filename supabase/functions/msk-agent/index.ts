@@ -483,20 +483,25 @@ Deno.serve(async (req: Request) => {
     }
 
     const summary = professionalSummary(String(out.summary || "Alteração aplicada."), repository, changes.map(x => x.path), commitSha);
-    await taskPatch(taskId, { status: "verification_pending", preview_status: "pending", commit_sha: commitSha, branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);
     const commitUrl = String(commit?.html_url || `https://github.com/${owner}/${repoNameOnly}/commit/${commitSha}`);
+    await taskPatch(taskId, { status: "verification_pending", preview_status: "pending", commit_sha: commitSha, commit_url: commitUrl, files_changed: changes.map(x => x.path), provider: activeProvider.provider || null, model: activeProvider.model || null, branch_name: usedBranch, summary, error: null, error_code: null, error_stage: null }, who.id);
+    await checkpoint(taskId, who.id, pid, "verifying", "Verificando", { commit_sha: commitSha, files: changes.map(x => x.path) });
     const previewMessage = `Commit criado em ${usedBranch}. Validando a prévia antes de concluir.`;
     return json({
       ok: true,
       completed: false,
+      status: "verification_pending",
       verification_pending: true,
       preview_ready: false,
       direct_commit: commit?.fallback_pr !== true,
       fallback_pr: commit?.fallback_pr === true,
       assistant_message: String(out.reply || summary),
       summary,
-      model: "MSK-IA",
-      provider: "MSK",
+      model: activeProvider.model || "MSK-IA",
+      provider: activeProvider.provider || "MSK",
+      provider_label: activeProvider.label || "MSK",
+      skill: skill.id,
+      files_changed: changes.map(x => x.path),
       task_id: taskId,
       repository,
       repository_locked: true,
