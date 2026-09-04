@@ -11,6 +11,8 @@ export type PromptEnvelope = {
   files?: PromptFile[];
   highRisk?: boolean;
   complex?: boolean;
+  /** Contexto técnico determinístico montado pelo backend (projeto, repo, branch, skill). */
+  context?: string;
 };
 
 export type BuiltPrompt = {
