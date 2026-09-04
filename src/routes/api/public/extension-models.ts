@@ -39,7 +39,7 @@ export const Route = createFileRoute("/api/public/extension-models")({
           .eq("visible", true)
           .order("sort_order", { ascending: true });
 
-        if (error) return Response.json({ ok: false, models: [], error: error.message }, { status: 500 });
+        if (error) return Response.json({ ok: false, models: [], error: error.message }, { status: 500, headers: CORS });
 
         return Response.json(
           {
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/public/extension-models")({
               note: row.note,
             })),
           },
-          { headers: { "Cache-Control": "public, max-age=60" } },
+          { headers: { ...CORS, "Cache-Control": "public, max-age=60" } },
         );
       },
     },
