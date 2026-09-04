@@ -1,0 +1,10 @@
+COMUNICADO — MSK SYSTEM v3.4.0
+
+A Central Multi-IA do MSK System foi atualizada.
+Agora o Super Admin pode cadastrar e manter vários provedores de IA ativos simultaneamente, cada um com sua própria API Key e catálogo de modelos.
+
+Na extensão, o cliente visualiza apenas as IAs que estiverem ativas no MSK System. Ao escolher uma IA específica, os modelos liberados para aquele provedor aparecem no chat. A opção “Todas as IAs” utiliza exclusivamente os provedores ativos definidos pelo Super Admin.
+
+As API Keys permanecem protegidas no gateway e nunca são entregues à extensão. A licença continua validada pelo servidor, e a versão 3.4.0 adiciona verificação de integridade dos arquivos do cliente para bloquear instalações alteradas/corrompidas.
+
+MSK System — projeto proprietário e restrito.

@@ -1,0 +1,8 @@
+MSK SYSTEM — SOFTWARE PROPRIETÁRIO E RESTRITO
+Build: 3.4.0
+
+O código, interface, fluxos de licença, integração com o gateway MSK e lógica proprietária desta extensão são de uso restrito aos usuários autorizados pelo MSK System.
+Cópia, clonagem, redistribuição, alteração para contornar licença, remoção dos controles de integridade ou uso não autorizado são proibidos pelos termos aplicáveis do MSK System.
+
+A autorização real de IA/GitHub é validada no servidor. Alterações no cliente não concedem autorização no backend.
+Componentes de terceiros permanecem sujeitos às respectivas licenças originais.

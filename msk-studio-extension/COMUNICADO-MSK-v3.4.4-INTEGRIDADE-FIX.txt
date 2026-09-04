@@ -1,0 +1,4 @@
+MSK System Studio v3.4.4 — correção de integridade
+
+Guard atualizado para a versão 3.4.4 e hashes SHA-256 recalculados para os arquivos oficiais desta build.
+A proteção fail-closed permanece ativa: qualquer alteração posterior nos arquivos protegidos continuará bloqueando o Studio.

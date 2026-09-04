@@ -1,0 +1,8 @@
+MSK System Studio v3.4.4 — Claude / SynteroLink
+
+- Provedor Claude · SynteroLink disponível pelo catálogo central do MSK.
+- Base do provedor configurada no backend: https://api.synterolink.com
+- A extensão NÃO contém nem recebe a API Key do provedor.
+- A API Key é cadastrada no Super Admin e armazenada criptografada no backend.
+- O seletor Motor de IA exibe Claude · SynteroLink automaticamente quando a API estiver cadastrada e ativa.
+- Modelo inicial: claude-sonnet-4-6.

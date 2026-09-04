@@ -1,0 +1,13 @@
+MSK SYSTEM STUDIO v3.4.6
+
+Arquitetura desta versão:
+- A extensão atua como interface/controle.
+- Comandos de edição do projeto usam o backend oficial msk-agent.
+- O Project ID Lovable é detectado automaticamente quando possível.
+- GitHub é vinculado pelo fluxo oficial do backend/GitHub App; PAT não é usado para executar edições.
+- A extensão não escolhe provedor/modelo de IA.
+- Somente a IA ativa definida no Super Admin é solicitada.
+- A extensão não executa fallback para outra IA nem repete automaticamente a chamada de IA.
+- O MSK Studio local também usa routing_mode=active e faz uma única chamada por envio.
+
+O backend continua responsável por localizar arquivos, montar contexto técnico, chamar a IA ativa, validar, aplicar no GitHub e criar commit.
