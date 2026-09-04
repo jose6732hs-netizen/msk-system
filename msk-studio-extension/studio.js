@@ -2103,7 +2103,4 @@ function toast(msg, ms = 3000) {
   clearTimeout(toastTimer);
   if (ms > 0) toastTimer = setTimeout(() => el.classList.add('hidden'), ms);
 }
-function escapeHtml(str) {
-  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
 initStudio();

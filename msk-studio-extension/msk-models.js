@@ -131,9 +131,6 @@
     fillModelSelect(binding.modelSelect);
     binding.onChange(getSelection());
   }
-  function renderAll() {
-    for (const binding of bindings.values?.() || []) renderBinding(binding);
-  }
   function renderKnownBindings() {
     document.querySelectorAll('select').forEach((select) => {
       const binding = bindings.get(select);
