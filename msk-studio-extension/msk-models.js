@@ -39,6 +39,16 @@
         return true;
       });
   }
+  function relayFetch(url) {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage({ type: 'msk-fetch-catalog', url }, (reply) => {
+          void chrome.runtime.lastError;
+          resolve(reply?.ok ? cleanModels(reply.models) : []);
+        });
+      } catch { resolve([]); }
+    });
+  }
   async function fetchOnce(url) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 8000);
@@ -55,11 +65,14 @@
   }
   async function fetchCatalog() {
     for (const url of CATALOG_URLS) {
-      const models = await fetchOnce(url);
-      if (models.length) return models;
+      const direct = await fetchOnce(url);
+      if (direct.length) return direct;
+      const relayed = await relayFetch(url);
+      if (relayed.length) return relayed;
     }
     return [];
   }
+
   function providers() { return [...new Set(state.models.map((item) => item.provider))]; }
   function modelsOf(provider) { return state.models.filter((item) => item.provider === provider); }
   function getSelection() {
