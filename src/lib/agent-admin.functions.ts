@@ -145,12 +145,51 @@ async function agentAiRequest(action: string, payload: Record<string, unknown> =
   }
 }
 
+/** Diagnóstico do executor lido direto da base do MSK (o painel remoto não expõe essa ação). */
 export const agentErrorAnalytics = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => z.object({ days: z.number().int().min(1).max(90).default(7) }).parse(data ?? {}))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
-    return agentAiRequest("agent-errors", { days: data.days });
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const since = new Date(Date.now() - data.days * 86_400_000).toISOString();
+    const { data: rows, error } = await supabaseAdmin
+      .from("msk_agent_errors")
+      .select("id, code, stage, message, repository, attempt, retryable, created_at")
+      .gte("created_at", since)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) throw new Error(error.message);
+
+    const list = rows ?? [];
+    const total = list.length;
+    const internal = list.filter((row) => (row.code || "INTERNAL_ERROR") === "INTERNAL_ERROR").length;
+    const retryable = list.filter((row) => row.retryable).length;
+    const internalRate = total ? (internal / total) * 100 : 0;
+    const tally = (key: "code" | "stage") => {
+      const map = new Map<string, number>();
+      for (const row of list) {
+        const label = String(row[key] || "desconhecido");
+        map.set(label, (map.get(label) ?? 0) + 1);
+      }
+      return [...map.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+    };
+
+    return {
+      summary: { total, internal, retryable, internalRate, alert: internalRate > 5 && total > 0 },
+      byCode: tally("code"),
+      byStage: tally("stage"),
+      recent: list.slice(0, 50).map((row) => ({
+        id: row.id,
+        code: row.code || "INTERNAL_ERROR",
+        stage: row.stage || "desconhecida",
+        message: row.message || "Sem mensagem registrada.",
+        repository: row.repository,
+        attempt: row.attempt,
+        retryable: row.retryable,
+        createdAt: row.created_at,
+      })),
+    };
   });
 
 export const agentErrorDetail = createServerFn({ method: "GET" })
@@ -158,7 +197,14 @@ export const agentErrorDetail = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) => z.object({ errorId: z.string().uuid() }).parse(data))
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
-    return agentAiRequest("agent-error-detail", { errorId: data.errorId });
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("msk_agent_errors")
+      .select("*")
+      .eq("id", data.errorId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return { error: row };
   });
 
 const providerSchema = z.enum([
