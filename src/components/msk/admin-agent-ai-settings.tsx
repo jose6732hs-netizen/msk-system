@@ -221,12 +221,15 @@ export function AdminAgentAiSettings() {
         <Button size="sm" variant={section === "all" ? "default" : "ghost"} onClick={() => setSection("all")}>
           <Bot className="mr-2 h-4 w-4" /> Todas as IAs
         </Button>
+        <Button size="sm" variant={section === "models" ? "default" : "ghost"} onClick={() => setSection("models")}>
+          <Layers className="mr-2 h-4 w-4" /> Modelos da extensão
+        </Button>
         <Button size="sm" variant={section === "training" ? "default" : "ghost"} onClick={() => setSection("training")}>
           <BrainCircuit className="mr-2 h-4 w-4" /> Treinamento Global
         </Button>
       </div>
 
-      {section === "training" ? <AdminAiGlobalTraining /> : (
+      {section === "models" ? <AdminExtensionModels /> : section === "training" ? <AdminAiGlobalTraining /> : (
         <section className="rounded-[1.75rem] border border-primary/25 bg-gradient-to-br from-primary/[0.08] via-background to-background p-5 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
