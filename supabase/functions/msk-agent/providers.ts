@@ -1,0 +1,222 @@
+// Camada única de adapters de IA do MSK.
+// Todas as IAs entram e saem no MESMO formato interno, e SOMENTE a IA marcada
+// como ativa/principal no Super Admin é usada em cada comando (sem fallback
+// automático para outro provedor).
+
+export type ProviderId =
+  | "synterolink"
+  | "omniroute"
+  | "openrouter"
+  | "openai"
+  | "gemini"
+  | "groq"
+  | "mistral"
+  | "manus"
+  | "bai";
+
+export type ProviderFamily = "openai" | "anthropic" | "responses";
+
+export type ProviderMeta = {
+  id: ProviderId;
+  label: string;
+  family: ProviderFamily;
+  root: string;
+  defaultModel: string;
+  customBase: boolean;
+};
+
+export type ProviderConfig = {
+  provider: ProviderId;
+  label: string;
+  family: ProviderFamily;
+  apiKey: string;
+  model: string;
+  endpoint: string;
+};
+
+export type ChatMessage = { role: "system" | "assistant" | "user"; content: string };
+
+export const PROVIDER_CATALOG: Record<ProviderId, ProviderMeta> = {
+  synterolink: { id: "synterolink", label: "Claude · SynteroLink", family: "anthropic", root: "https://api.synterolink.com", defaultModel: "claude-sonnet-4-6", customBase: true },
+  omniroute: { id: "omniroute", label: "OmniRoute", family: "openai", root: "https://ai.msksystem.online/v1", defaultModel: "z-ai/glm-5.2", customBase: true },
+  openrouter: { id: "openrouter", label: "OpenRouter", family: "openai", root: "https://openrouter.ai/api/v1", defaultModel: "z-ai/glm-5.2", customBase: false },
+  openai: { id: "openai", label: "OpenAI", family: "openai", root: "https://api.openai.com/v1", defaultModel: "gpt-5.5", customBase: false },
+  gemini: { id: "gemini", label: "Google Gemini", family: "openai", root: "https://generativelanguage.googleapis.com/v1beta/openai", defaultModel: "gemini-2.5-flash", customBase: false },
+  groq: { id: "groq", label: "Groq", family: "openai", root: "https://api.groq.com/openai/v1", defaultModel: "llama-3.3-70b-versatile", customBase: false },
+  mistral: { id: "mistral", label: "Mistral AI", family: "openai", root: "https://api.mistral.ai/v1", defaultModel: "codestral-latest", customBase: false },
+  manus: { id: "manus", label: "Manus AI", family: "responses", root: "https://api.manus.im/v1", defaultModel: "manus-agent-v1", customBase: true },
+  bai: { id: "bai", label: "B.AI", family: "openai", root: "https://api.b.ai/v1", defaultModel: "deepseek-v4-flash", customBase: false },
+};
+
+/** Reconhece o provedor a partir de qualquer rótulo/id salvo no painel. */
+export function normalizeProviderId(value: unknown, fallback: ProviderId = "bai"): ProviderId {
+  const raw = String(value ?? "").trim().toLowerCase().replace(/[.\s_-]+/g, "");
+  if (!raw) return fallback;
+  if (raw.includes("syntero") || raw.includes("claude") || raw.includes("anthropic")) return "synterolink";
+  if (raw.includes("openrouter")) return "openrouter";
+  if (raw.includes("omniroute") || raw === "omni") return "omniroute";
+  if (raw.includes("gemini") || raw.includes("google")) return "gemini";
+  if (raw.includes("groq")) return "groq";
+  if (raw.includes("mistral") || raw.includes("codestral")) return "mistral";
+  if (raw.includes("manus")) return "manus";
+  if (raw.includes("openai") || raw.includes("gpt")) return "openai";
+  if (raw.includes("bai") || raw.includes("deepseek")) return "bai";
+  return fallback;
+}
+
+function normalizeModel(provider: ProviderId, value: unknown) {
+  const model = String(value ?? "").trim();
+  if (model && model.length <= 180 && /^[A-Za-z0-9._:/@+-]+$/.test(model)) return model;
+  return PROVIDER_CATALOG[provider].defaultModel;
+}
+
+/** Aceita raiz ("https://host/v1"), endpoint completo ou vazio e devolve o endpoint final. */
+export function resolveEndpoint(provider: ProviderId, value: unknown) {
+  const meta = PROVIDER_CATALOG[provider];
+  let raw = String(value ?? "").trim();
+  if (!raw) raw = meta.root;
+  raw = raw.replace(/\/+$/, "");
+  const root = raw
+    .replace(/\/chat\/completions$/i, "")
+    .replace(/\/messages$/i, "")
+    .replace(/\/responses$/i, "");
+  let url: URL;
+  try {
+    url = new URL(root);
+  } catch {
+    return endpointFor(provider, meta.root);
+  }
+  if (!/^https?:$/.test(url.protocol)) return endpointFor(provider, meta.root);
+  return endpointFor(provider, root);
+}
+
+function endpointFor(provider: ProviderId, root: string) {
+  const family = PROVIDER_CATALOG[provider].family;
+  const base = root.replace(/\/+$/, "");
+  if (family === "anthropic") return /\/v\d+$/i.test(base) ? `${base}/messages` : `${base}/v1/messages`;
+  if (family === "responses") return `${base}/responses`;
+  return `${base}/chat/completions`;
+}
+
+export function buildProviderConfig(input: {
+  provider: unknown;
+  apiKey: string;
+  model?: unknown;
+  baseUrl?: unknown;
+}): ProviderConfig {
+  const provider = normalizeProviderId(input.provider);
+  const meta = PROVIDER_CATALOG[provider];
+  return {
+    provider,
+    label: meta.label,
+    family: meta.family,
+    apiKey: String(input.apiKey || "").trim(),
+    model: normalizeModel(provider, input.model),
+    endpoint: resolveEndpoint(provider, meta.customBase ? input.baseUrl : ""),
+  };
+}
+
+/** Payload de saída padronizado, independente do provedor. */
+export function buildProviderRequest(cfg: ProviderConfig, options: {
+  messages: ChatMessage[];
+  maxTokens: number;
+  jsonMode: boolean;
+}): { url: string; headers: Record<string, string>; body: unknown } {
+  const maxTokens = Math.max(256, Math.min(Number(options.maxTokens || 4000), 18000));
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  if (cfg.family === "anthropic") {
+    headers["x-api-key"] = cfg.apiKey;
+    headers["authorization"] = `Bearer ${cfg.apiKey}`;
+    headers["anthropic-version"] = "2023-06-01";
+    const system = options.messages.filter((m) => m.role === "system").map((m) => m.content).join("\n\n");
+    const messages = options.messages
+      .filter((m) => m.role !== "system")
+      .map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
+    if (!messages.length) messages.push({ role: "user", content: system || "" });
+    return {
+      url: cfg.endpoint,
+      headers,
+      body: {
+        model: cfg.model,
+        max_tokens: maxTokens,
+        temperature: 0,
+        stream: false,
+        ...(system ? { system: options.jsonMode ? `${system}\n\nResponda SOMENTE com JSON válido, sem markdown.` : system } : {}),
+        messages,
+      },
+    };
+  }
+
+  headers["Authorization"] = `Bearer ${cfg.apiKey}`;
+  if (cfg.provider === "openrouter") {
+    headers["HTTP-Referer"] = "https://msksystem.online";
+    headers["X-Title"] = "MSK Agente";
+  }
+
+  if (cfg.family === "responses") {
+    const input = options.messages
+      .map((m) => `${m.role === "user" ? "Cliente" : m.role === "assistant" ? "Contexto" : "Sistema"}: ${m.content}`)
+      .join("\n\n");
+    return {
+      url: cfg.endpoint,
+      headers,
+      body: { model: cfg.model, max_output_tokens: maxTokens, input: options.jsonMode ? `${input}\n\nResponda SOMENTE com JSON válido, sem markdown.` : input },
+    };
+  }
+
+  return {
+    url: cfg.endpoint,
+    headers,
+    body: {
+      model: cfg.model,
+      messages: options.messages,
+      max_tokens: maxTokens,
+      temperature: 0,
+      stream: false,
+      ...(options.jsonMode ? { response_format: { type: "json_object" } } : {}),
+    },
+  };
+}
+
+/** Converte a resposta de qualquer IA para { id, text }. */
+export function extractProviderText(cfg: ProviderConfig, payload: any): { id: string; text: string } {
+  const id = String(payload?.id || payload?.response_id || "");
+
+  if (cfg.family === "anthropic") {
+    const parts = Array.isArray(payload?.content) ? payload.content : [];
+    const text = parts.map((part: any) => String(part?.text || part?.content || "")).join("").trim();
+    return { id, text: text || String(payload?.completion || "").trim() };
+  }
+
+  if (cfg.family === "responses") {
+    if (typeof payload?.output_text === "string" && payload.output_text.trim()) return { id, text: payload.output_text.trim() };
+    const output = Array.isArray(payload?.output) ? payload.output : [];
+    const text = output
+      .flatMap((item: any) => (Array.isArray(item?.content) ? item.content : []))
+      .filter((part: any) => part?.type === "output_text" || typeof part?.text === "string")
+      .map((part: any) => String(part?.text || ""))
+      .join("")
+      .trim();
+    if (text) return { id, text };
+  }
+
+  const message = payload?.choices?.[0]?.message;
+  const raw = typeof message?.content === "string"
+    ? message.content
+    : Array.isArray(message?.content)
+      ? message.content.map((part: any) => String(part?.text || part?.content || "")).join("")
+      : String(payload?.choices?.[0]?.text || "");
+  return { id, text: String(raw || "").trim() };
+}
+
+/** Escolhe a ÚNICA IA ativa a partir das linhas salvas no painel. */
+export function pickActiveRow(rows: any[]): any | null {
+  const usable = (rows || []).filter((row) => {
+    const key = row?.api_key_ciphertext || row?.apiKeyCiphertext || row?.api_key || row?.key_ciphertext;
+    const active = row?.active ?? row?.enabled ?? row?.is_active;
+    return !!key && active !== false;
+  });
+  if (!usable.length) return null;
+  return usable.find((row) => row?.is_primary === true || row?.primary === true || row?.is_default === true) || usable[0];
+}
