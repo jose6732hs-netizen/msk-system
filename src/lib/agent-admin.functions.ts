@@ -93,18 +93,19 @@ function normalizeProviderRow(value: any): AgentAiProviderStatus {
 
 function normalizeStatus(data: unknown) {
   const row = firstRow(data);
-  const providerId = normalizeProviderId(row?.providerId || row?.provider_id || row?.provider);
-  const providers = Array.isArray(row?.providers) ? row.providers.map(normalizeProviderRow) : [];
+  const providerId = normalizeProviderId(row?.['providerId'] || row?.['provider_id'] || row?.['provider']);
+  const providers = Array.isArray(row?.['providers']) ? row!['providers'].map(normalizeProviderRow) : [];
   return {
-    configured: !!row?.configured,
-    provider: String(row?.provider || "B.AI"),
+    configured: !!row?.['configured'],
+    provider: String(row?.['provider'] || "B.AI"),
     providerId,
-    model: String(row?.model || DEFAULT_MODELS[providerId]),
-    keyMasked: row?.keyMasked ? String(row.keyMasked) : row?.key_masked ? String(row.key_masked) : null,
-    updatedAt: row?.updatedAt ? String(row.updatedAt) : row?.updated_at ? String(row.updated_at) : null,
-    primaryProviderId: normalizeProviderId(row?.primaryProviderId || row?.primary_provider_id || providerId),
+    model: String(row?.['model'] || DEFAULT_MODELS[providerId]),
+    keyMasked: row?.['keyMasked'] ? String(row['keyMasked']) : row?.['key_masked'] ? String(row['key_masked']) : null,
+    updatedAt: row?.['updatedAt'] ? String(row['updatedAt']) : row?.['updated_at'] ? String(row['updated_at']) : null,
+    primaryProviderId: normalizeProviderId(row?.['primaryProviderId'] || row?.['primary_provider_id'] || providerId),
     providers,
   };
+
 }
 
 async function agentAiRequest(action: string, payload: Record<string, unknown> = {}) {
