@@ -213,41 +213,27 @@ async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
 /**
  * Chamada na IA recebida. Retry exponencial apenas para falhas transitórias
  * (429/5xx) do MESMO provedor; a troca de IA é decidida por withFailover.
+ * Se o provedor recusar o MODELO (404/400/422 de modelo inválido,
+ * descontinuado ou exclusivo de outra API, como ":batch"), tenta os modelos
+ * reserva do MESMO provedor antes de desistir — sem custo de descoberta,
+ * pois só roda após uma recusa real.
  */
 async function resilientAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean) {
-  let mode = jsonMode;
-  // Alguns modelos (gpt-5.x e afins) recusam temperature/max_tokens: nesse caso
-  // repetimos a MESMA IA com o payload de modelos de raciocínio.
-  let reasoningStyle = false;
+  const models = [cfg.model, ...(MODEL_FALLBACKS[cfg.provider] || []).filter((m) => m !== cfg.model)];
   let lastStatus = 0;
   let lastError = "";
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      let x = await requestAI(cfg, messages, maxTokens, mode, 26000, reasoningStyle);
-      if (!x.ok && [400, 422].includes(x.status) && !reasoningStyle) {
-        const probe = await x.clone().text().catch(() => "");
-        if (/temperature|max_tokens|max_completion_tokens|unsupported/i.test(probe)) {
-          reasoningStyle = true;
-          x = await requestAI(cfg, messages, maxTokens, mode, 26000, true);
-        }
-      }
-      if (mode && [400, 404, 422].includes(x.status)) {
-        mode = false;
-        x = await requestAI(cfg, messages, maxTokens, false, 26000, reasoningStyle);
-      }
-      if (x.ok) return x;
-      lastStatus = x.status;
-      const detail = await x.text().catch(() => "");
-      lastError = detail.slice(0, 500);
-
-      if (!retryable(x.status) || attempt === 3) break;
-    } catch (error) {
-      const mapped = error instanceof AgentError ? error : new AgentError("AI_NETWORK_UNAVAILABLE", `A conexão com ${cfg.label} falhou.`, { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
-      lastError = mapped.code;
-      if (!mapped.retryable || attempt === 3) throw mapped;
-    }
-    await sleep(350 * (2 ** (attempt - 1)));
+  let lastCfg = cfg;
+  for (const model of models) {
+    const variant: ProviderConfig = model === cfg.model ? cfg : { ...cfg, model };
+    const outcome = await resilientModel(variant, messages, maxTokens, jsonMode);
+    if (outcome.response) return outcome.response;
+    lastStatus = outcome.status;
+    lastError = outcome.error;
+    lastCfg = variant;
+    if (!outcome.modelError) break;
+    console.warn("MSK AI model fallback", cfg.provider, model, outcome.status);
   }
+  cfg = lastCfg;
 
   const context = { provider: cfg.provider, model: cfg.model, upstreamStatus: lastStatus, detail: lastError };
   if (lastStatus === 429) throw new AgentError("AI_RATE_LIMIT", `${cfg.label} limitou temporariamente as requisições do agente.`, { stage: "analyzing", retryable: true, httpStatus: 503, context });
