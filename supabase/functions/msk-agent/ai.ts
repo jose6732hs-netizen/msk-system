@@ -168,7 +168,19 @@ async function runPrompt(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
   try { d = await x.json(); }
   catch (error) { throw new AgentError("AI_RESPONSE_PARSE_ERROR", `A resposta de ${cfg.label} não era JSON HTTP válido.`, { stage: "analyzing", retryable: true, httpStatus: 422, cause: error }); }
   const extracted = extractProviderText(cfg, d);
-  if (!extracted.text) throw new AgentError("AI_EMPTY_RESPONSE", `${cfg.label} respondeu sem conteúdo utilizável.`, { stage: "analyzing", retryable: true, httpStatus: 422, context: { provider: cfg.provider } });
+  const truncated = /length|max_tokens|max_output_tokens/i.test(extracted.finishReason);
+  if (!extracted.text) {
+    throw new AgentError(
+      "AI_EMPTY_RESPONSE",
+      truncated
+        ? `${cfg.label} (${cfg.model}) esgotou o limite de tokens antes de escrever a resposta. Reduza o escopo do pedido ou use um modelo com menos raciocínio interno.`
+        : `${cfg.label} respondeu sem conteúdo utilizável.`,
+      { stage: "analyzing", retryable: true, httpStatus: 422, context: { provider: cfg.provider, model: cfg.model, finishReason: extracted.finishReason } },
+    );
+  }
+  if (truncated) {
+    throw new AgentError("AI_RESPONSE_TRUNCATED", `${cfg.label} (${cfg.model}) cortou a resposta no limite de tokens — nenhuma operação completa foi gerada.`, { stage: "analyzing", retryable: true, httpStatus: 422, context: { provider: cfg.provider, model: cfg.model, finishReason: extracted.finishReason, preview: extracted.text.slice(0, 300) } });
+  }
   return extracted;
 }
 
@@ -178,12 +190,27 @@ async function callBuiltPrompt(r: Request, built: BuiltPrompt, max = 4000) {
   if (built.assistantContext) messages.push({ role: "assistant", content: built.assistantContext });
   messages.push({ role: "user", content: built.user });
   const { id, text: rawText } = await runPrompt(cfg, messages, max, built.jsonMode);
+  let text: string;
   try {
-    return { id, text: normalizeOperationResponse(rawText, built.operation) };
+    text = normalizeOperationResponse(rawText, built.operation);
   } catch (error) {
-    throw new AgentError("AI_RESPONSE_PARSE_ERROR", `${cfg.label} retornou dados fora do schema esperado para esta etapa.`, { stage: built.operation === "edit" || built.operation === "self_healing" ? "editing" : "analyzing", retryable: true, httpStatus: 422, cause: error, context: { operation: built.operation, provider: cfg.provider } });
+    throw new AgentError("AI_RESPONSE_PARSE_ERROR", `${cfg.label} retornou dados fora do schema esperado para esta etapa.`, { stage: built.operation === "edit" || built.operation === "self_healing" ? "editing" : "analyzing", retryable: true, httpStatus: 422, cause: error, context: { operation: built.operation, provider: cfg.provider, model: cfg.model, preview: String(rawText).slice(0, 300) } });
   }
+  if (built.operation === "edit" || built.operation === "self_healing") {
+    let parsed: any = null;
+    try { parsed = JSON.parse(text); } catch { parsed = null; }
+    if (!parsed || !Array.isArray(parsed.changes) || parsed.changes.length === 0) {
+      const reply = String(parsed?.reply || parsed?.summary || "").slice(0, 600);
+      throw new AgentError(
+        "AI_NO_OPERATIONS",
+        `${cfg.label} (${cfg.model}) respondeu sem nenhuma operação de arquivo.${reply ? ` Retorno da IA: ${reply}` : ""}`,
+        { stage: "editing", retryable: true, httpStatus: 422, context: { operation: built.operation, provider: cfg.provider, model: cfg.model, preview: String(rawText).slice(0, 300) } },
+      );
+    }
+  }
+  return { id, text };
 }
+
 
 
 function legacyValidationPrompt(prompt: string): BuiltPrompt | null {
