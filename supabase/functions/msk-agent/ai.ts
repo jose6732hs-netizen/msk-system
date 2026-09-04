@@ -1,4 +1,4 @@
-import { db, enc, dec, unb64, identity, globalTraining } from "./common.ts";
+import { db, enc, dec, unb64, globalTraining } from "./common.ts";
 import { gh } from "./github.ts";
 import { AgentError } from "./errors.ts";
 import { PromptBuilder, decodePromptEnvelope, normalizeOperationResponse, type BuiltPrompt } from "./prompt-builder.ts";
