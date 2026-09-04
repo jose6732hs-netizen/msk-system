@@ -20,26 +20,48 @@ async function decrypt(v: string) {
   return dec.decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, k, cipher));
 }
 
-type ActiveAIConfig = {
-  apiKey: string;
-  provider: "bai" | "openrouter" | "omniroute";
-  model: string;
-  baseUrl: string;
-};
+import {
+  buildProviderConfig,
+  buildProviderRequest,
+  extractProviderText,
+  pickActiveRow,
+  type ChatMessage,
+  type ProviderConfig,
+} from "./providers.ts";
 
-const BAI_BASE_URL = "https://api.b.ai/v1/chat/completions";
-const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OMNIROUTE_BASE_URL = "http://127.0.0.1:20128/v1/chat/completions";
-
-function providerFromLabel(value: unknown): "bai" | "openrouter" | "omniroute" {
-  const raw = String(value || "").toLowerCase();
-  if (raw.includes("omniroute")) return "omniroute";
-  if (raw.includes("openrouter")) return "openrouter";
-  return "bai";
+async function decryptKey(value: unknown) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  try {
+    return await decrypt(raw);
+  } catch (error) {
+    console.warn("MSK AI key decrypt failed", error instanceof Error ? error.name : "invalid");
+    return "";
+  }
 }
 
-async function activeAI(r: Request): Promise<ActiveAIConfig> {
-  // A configuração global definida pelo painel admin é a fonte principal.
+/**
+ * Resolve a ÚNICA IA que deve trabalhar neste comando.
+ * Prioridade: catálogo multi-provider do Super Admin → configuração legada →
+ * BYOK do usuário → chave de ambiente. Nunca há fallback entre provedores
+ * dentro de um mesmo comando.
+ */
+async function activeAI(r: Request): Promise<ProviderConfig> {
+  const { data: catalog, error: catalogError } = await db.from("msk_ai_providers").select("*");
+  if (catalogError) console.warn("MSK multi-provider read failed", catalogError.message);
+  const row = pickActiveRow(Array.isArray(catalog) ? catalog : []);
+  if (row) {
+    const apiKey = await decryptKey(row.api_key_ciphertext ?? row.api_key ?? row.key_ciphertext);
+    if (apiKey) {
+      return buildProviderConfig({
+        provider: row.provider_id ?? row.id ?? row.provider ?? row.label,
+        apiKey,
+        model: row.model,
+        baseUrl: row.api_base_url ?? row.base_url,
+      });
+    }
+  }
+
   const { data: globalCfg, error: globalError } = await db
     .from("msk_ai_settings")
     .select("provider,model,api_base_url,api_key_ciphertext,active")
@@ -48,23 +70,14 @@ async function activeAI(r: Request): Promise<ActiveAIConfig> {
   if (globalError) console.warn("MSK global AI config read failed", globalError.message);
 
   if (globalCfg?.active !== false && globalCfg?.api_key_ciphertext) {
-    try {
-      const provider = providerFromLabel(globalCfg.provider);
-      const fallbackModel = provider === "openrouter" ? "openai/gpt-5.5" : provider === "omniroute" ? "z-ai/glm-5.2" : "deepseek-v4-flash";
-      const fallbackBaseUrl = provider === "openrouter" ? OPENROUTER_BASE_URL : provider === "omniroute" ? OMNIROUTE_BASE_URL : BAI_BASE_URL;
-      const configuredBase = String(globalCfg.api_base_url || "").trim().replace(/\/+$/, "");
-      const baseUrl = configuredBase
-        ? (/\/chat\/completions$/i.test(configuredBase) ? configuredBase : `${configuredBase}/chat/completions`)
-        : fallbackBaseUrl;
-      return {
-        apiKey: await decrypt(String(globalCfg.api_key_ciphertext)),
-        provider,
-        model: String(globalCfg.model || fallbackModel).trim() || fallbackModel,
-        baseUrl,
-      };
-
-    } catch (error) {
-      console.warn("MSK global AI config decrypt failed", error instanceof Error ? error.name : "invalid");
+    const apiKey = await decryptKey(globalCfg.api_key_ciphertext);
+    if (apiKey) {
+      return buildProviderConfig({
+        provider: globalCfg.provider,
+        apiKey,
+        model: globalCfg.model,
+        baseUrl: globalCfg.api_base_url,
+      });
     }
   }
 
@@ -78,56 +91,41 @@ async function activeAI(r: Request): Promise<ActiveAIConfig> {
       .eq("connector_id", "ai_bai")
       .maybeSingle();
     if (data?.connection_key_ciphertext && !data.revoked_at) {
-      try {
-        return {
-          apiKey: await decrypt(String(data.connection_key_ciphertext)),
-          provider: "bai",
-          model: "deepseek-v4-flash",
-          baseUrl: BAI_BASE_URL,
-        };
-      } catch (error) {
-        console.warn("MSK user AI key decrypt failed", error instanceof Error ? error.name : "invalid");
-      }
+      const apiKey = await decryptKey(data.connection_key_ciphertext);
+      if (apiKey) return buildProviderConfig({ provider: "bai", apiKey });
     }
   }
 
   const fallbackKey = Deno.env.get("BAI_API_KEY");
-  if (!fallbackKey) throw new AgentError("AI_CONFIGURATION_ERROR", "A API da inteligência MSK não está configurada.", { stage: "auth", httpStatus: 503 });
-  return { apiKey: fallbackKey, provider: "bai", model: "deepseek-v4-flash", baseUrl: BAI_BASE_URL };
+  if (!fallbackKey) throw new AgentError("AI_CONFIGURATION_ERROR", "Nenhuma IA está ativa no Super Admin do MSK.", { stage: "auth", httpStatus: 503 });
+  return buildProviderConfig({ provider: "bai", apiKey: fallbackKey });
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const retryable = (status: number) => [408, 409, 425, 429, 500, 502, 503, 504].includes(status);
 
-async function requestAI(r: Request, body: any, timeoutMs = 26000) {
+async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean, timeoutMs = 26000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const cfg = await activeAI(r);
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${cfg.apiKey}`,
-      "Content-Type": "application/json",
-    };
-    if (cfg.provider === "openrouter") {
-      headers["HTTP-Referer"] = "https://msksystem.online";
-      headers["X-Title"] = "MSK Agente";
-    }
-    return await fetch(cfg.baseUrl, {
+    const built = buildProviderRequest(cfg, { messages, maxTokens, jsonMode });
+    return await fetch(built.url, {
       method: "POST",
-      headers,
-      body: JSON.stringify({ ...body, model: cfg.model }),
+      headers: built.headers,
+      body: JSON.stringify(built.body),
       signal: controller.signal,
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new AgentError("AI_REQUEST_TIMEOUT", "A IA demorou além do limite seguro de resposta.", { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
+      throw new AgentError("AI_REQUEST_TIMEOUT", `A IA ${cfg.label} demorou além do limite seguro de resposta.`, { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
     }
     if (error instanceof AgentError) throw error;
-    throw new AgentError("AI_NETWORK_UNAVAILABLE", "A conexão com o provedor de IA ficou indisponível.", { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
+    throw new AgentError("AI_NETWORK_UNAVAILABLE", `A conexão com ${cfg.label} ficou indisponível.`, { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
   } finally {
     clearTimeout(timer);
   }
 }
+
 
 async function resilientAI(r: Request, base: any, jsonMode: boolean) {
   let mode = jsonMode;
