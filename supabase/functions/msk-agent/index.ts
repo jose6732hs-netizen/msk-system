@@ -523,7 +523,21 @@ Deno.serve(async (req: Request) => {
     const logged = await recordAgentError({ error, stage: mapped.stage, taskId: taskId || undefined, userId: taskUserId || undefined, projectId: projectId || undefined, repository: repository || undefined, branchName: branchName || undefined, attempt: retryCount, context: { taskId: taskId || null, repository: repository || null, branch: branchName || null } });
     console.error("MSK agent failure", JSON.stringify({ taskId: taskId || null, code: mapped.code, stage: mapped.stage, retryable: mapped.retryable, errorId: logged.errorId || null }));
     if (taskId && taskUserId) await taskPatch(taskId, { status: "failed", error: mapped.message, error_code: mapped.code, error_stage: mapped.stage, retry_count: retryCount, last_error_id: logged.errorId || null }, taskUserId);
-    return json({ error: mapped.message, code: mapped.code, stage: mapped.stage, retryable: mapped.retryable, error_id: logged.errorId || undefined, task_id: taskId || undefined }, mapped.httpStatus);
+    if (taskId && taskUserId) await checkpoint(taskId, taskUserId, projectId, "failed", mapped.message, { code: mapped.code, stage: mapped.stage, provider: activeProvider.provider || null });
+    return json({
+      ok: false,
+      error: mapped.message,
+      message: mapped.message,
+      code: mapped.code,
+      error_code: mapped.code,
+      stage: mapped.stage,
+      error_stage: mapped.stage,
+      provider: activeProvider.provider || undefined,
+      model: activeProvider.model || undefined,
+      retryable: mapped.retryable,
+      error_id: logged.errorId || undefined,
+      task_id: taskId || undefined,
+    }, mapped.httpStatus);
   } finally {
     if (lockHeld && lockKey && taskId) await releaseRepoLock(lockKey, taskId);
   }
