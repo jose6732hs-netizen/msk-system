@@ -360,8 +360,7 @@ export async function ask(r: Request, prompt: string, jsonMode = false, max = 40
   // Compatibilidade apenas para chamadas antigas ainda fora do novo pipeline.
   const training = await globalTraining(r);
   const effectivePrompt = training ? `${training}\n\n${prompt}` : prompt;
-  const cfg = await activeAI(r);
-  return runPrompt(cfg, [{ role: "user", content: effectivePrompt }], max, jsonMode);
+  return withFailover(r, (cfg) => runPrompt(cfg, [{ role: "user", content: effectivePrompt }], max, jsonMode));
 }
 
 
