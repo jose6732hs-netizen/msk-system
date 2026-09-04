@@ -220,21 +220,10 @@ export async function ask(r: Request, prompt: string, jsonMode = false, max = 40
   // Compatibilidade apenas para chamadas antigas ainda fora do novo pipeline.
   const training = await globalTraining(r);
   const effectivePrompt = training ? `${training}\n\n${prompt}` : prompt;
-  const base: any = {
-    model: "deepseek-v4-flash",
-    messages: [{ role: "user", content: effectivePrompt }],
-    max_tokens: Math.max(256, Math.min(Number(max || 4000), 18000)),
-    temperature: 0,
-    stream: false,
-  };
-  const x = await resilientAI(r, base, jsonMode);
-  let d: any;
-  try { d = await x.json(); }
-  catch (error) { throw new AgentError("AI_RESPONSE_PARSE_ERROR", "A resposta da IA não era JSON HTTP válido.", { stage: "analyzing", retryable: true, httpStatus: 422, cause: error }); }
-  const text = String(d.choices?.[0]?.message?.content || "").trim();
-  if (!text) throw new AgentError("AI_EMPTY_RESPONSE", "A IA respondeu sem conteúdo utilizável.", { stage: "analyzing", retryable: true, httpStatus: 422 });
-  return { id: String(d.id || ""), text };
+  const cfg = await activeAI(r);
+  return runPrompt(cfg, [{ role: "user", content: effectivePrompt }], max, jsonMode);
 }
+
 
 const stripFence = (s: string) => s.replace(/^\s*```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
 export const parse = (s: string) => {
