@@ -5,13 +5,21 @@ import { createClient } from "@supabase/supabase-js";
  * Catálogo público de modelos que o Super Admin liberou para a extensão.
  * Nunca expõe API Keys — somente id do provedor, id do modelo e rótulo.
  */
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "content-type",
+};
+
 export const Route = createFileRoute("/api/public/extension-models")({
   server: {
     handlers: {
+      OPTIONS: async () => new Response(null, { status: 204, headers: CORS }),
       GET: async () => {
         const url = process.env['SUPABASE_URL'];
         const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
-        if (!url || !key) return Response.json({ ok: false, models: [] }, { status: 503 });
+        if (!url || !key) return Response.json({ ok: false, models: [] }, { status: 503, headers: CORS });
+
 
         const supabase = createClient(url, key, {
           auth: { persistSession: false },
