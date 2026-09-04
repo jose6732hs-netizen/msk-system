@@ -37,7 +37,7 @@ export type ProviderConfig = {
 export type ChatMessage = { role: "system" | "assistant" | "user"; content: string };
 
 export const PROVIDER_CATALOG: Record<ProviderId, ProviderMeta> = {
-  synterolink: { id: "synterolink", label: "Claude · SynteroLink", family: "anthropic", root: "https://api.synterolink.com", defaultModel: "claude-sonnet-4-6", customBase: true },
+  synterolink: { id: "synterolink", label: "Claude · KPALabz", family: "anthropic", root: "https://api.kpalabz.com", defaultModel: "claude-sonnet-5", customBase: true },
   omniroute: { id: "omniroute", label: "OmniRoute", family: "openai", root: "https://ai.msksystem.online/v1", defaultModel: "z-ai/glm-5.2", customBase: true },
   openrouter: { id: "openrouter", label: "OpenRouter", family: "openai", root: "https://openrouter.ai/api/v1", defaultModel: "z-ai/glm-5.2", customBase: false },
   openai: { id: "openai", label: "OpenAI", family: "openai", root: "https://api.openai.com/v1", defaultModel: "gpt-5.5", customBase: false },
