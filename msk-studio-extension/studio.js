@@ -381,6 +381,15 @@ const agentActiveBadge= $('agent-active-badge');
 const aiProviderSelect= $('ai-provider-select');
 const aiModelSelect   = $('ai-model-select');
 const activeRoutingBadge=$('active-routing-badge');
+const executionPanel = $('msk-execution-panel');
+const executionTitle = $('execution-title');
+const executionUpdated = $('execution-updated');
+const executionRouteBadge = $('execution-route-badge');
+const executionProgressFill = $('execution-progress-fill');
+const executionAI = $('execution-ai');
+const executionAttempt = $('execution-attempt');
+const executionFiles = $('execution-files');
+const executionDetail = $('execution-detail');
 async function initStudio() {
   if (!(await _0x9a7())) { setStudioLicenseLocked(true, 'Integridade MSK inválida. Reinstale a extensão oficial.'); return; }
   aiStatusBox?.classList?.add('hidden');
@@ -464,8 +473,16 @@ function _0x9a8() {
       if (activeRoutingBadge) {
         activeRoutingBadge.textContent = sel.model
           ? `${window.MSKModels.providerLabel(sel.provider)} • ${sel.label}`
-          : 'Nenhum modelo liberado no Admin';
+          : (sel.error || 'Nenhum modelo liberado no Admin');
       }
+      if (!state.isGenerating) updateExecutionPanel({
+        state: sel.ready ? 'idle' : 'error',
+        title: sel.ready ? 'Pronto para executar' : 'Catálogo indisponível',
+        route: sel.ready ? 'Rota explícita' : 'Rota automática',
+        ai: sel.ready ? `${window.MSKModels.providerLabel(sel.provider)} • ${sel.label}` : 'IA ativa do Admin',
+        detail: sel.error || (sel.source === 'cache' ? 'Último catálogo válido carregado do dispositivo.' : 'Seleção confirmada pelo catálogo do Admin.'),
+        progress: 0,
+      });
     },
   });
 }
@@ -849,6 +866,19 @@ btnSendPrompt?.addEventListener('click', () => {
 function updateProgress(mainText, subText = '') {
   if (aiStatusLabel) aiStatusLabel.textContent = mainText;
   if (aiStatusFile) aiStatusFile.textContent = subText;
+  updateExecutionPanel({ state: 'running', title: mainText, detail: subText });
+}
+function updateExecutionPanel(next = {}) {
+  if (!executionPanel) return;
+  if (next.state) executionPanel.dataset.state = next.state;
+  if (next.title && executionTitle) executionTitle.textContent = next.title;
+  if (executionUpdated) executionUpdated.textContent = next.updated || `Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;
+  if (next.route && executionRouteBadge) executionRouteBadge.textContent = next.route;
+  if (next.ai && executionAI) executionAI.textContent = next.ai;
+  if (next.attempt && executionAttempt) executionAttempt.textContent = next.attempt;
+  if (next.files !== undefined && executionFiles) executionFiles.textContent = next.files;
+  if (next.detail && executionDetail) executionDetail.textContent = next.detail;
+  if (next.progress !== undefined && executionProgressFill) executionProgressFill.style.width = `${Math.max(0, Math.min(100, Number(next.progress) || 0))}%`;
 }
 function normalizeAIFileMap(value) {
   if (Array.isArray(value)) {
@@ -970,13 +1000,21 @@ async function submitAIPrompt() {
   aiStatusBox?.classList.remove('hidden');
   updateProgress('Analisando sua solicitação...', 'Identificando escopo e arquivos');
   try {
+    const selection = await window.MSKModels?.loadSelection?.();
+    state.selectedProvider = selection?.provider || '';
+    state.selectedModel = selection?.model || '';
     const provider = 'msk-auto';
     const role = state.selectedRole || 'auto';
     const currentFiles = proj.files;
+    const requestedAI = state.selectedModel
+      ? `${window.MSKModels.providerLabel(state.selectedProvider)} • ${selection?.label || state.selectedModel}`
+      : 'IA ativa do Super Admin';
+    updateExecutionPanel({ state: 'running', title: 'Preparando execução', route: state.selectedModel ? 'Rota explícita' : 'Rota automática', ai: requestedAI, attempt: '0 / 2', files: 'Analisando', detail: 'Validando a rota antes de enviar o comando.', progress: 8 });
     updateProgress('Iniciando construção com IA...', `Motor: ${provider} • Papel: ${role}`);
     const response = await executeAIAgent(provider, role, prompt, currentFiles, updateProgress);
     if (response.ok && response.files && Object.keys(response.files).length > 0) {
       updateProgress('Aplicando alterações...', `${Object.keys(response.files).length} arquivo(s) gerados`);
+      updateExecutionPanel({ progress: 76, files: String(Object.keys(response.files).length), ai: response.providerUsed || requestedAI, route: response.routeLabel || (state.selectedModel ? 'Rota explícita confirmada' : 'Rota automática') });
       for (const [fileName, fileContent] of Object.entries(response.files)) {
         proj.files[fileName] = fileContent;
       }
@@ -995,6 +1033,7 @@ async function submitAIPrompt() {
         summary: response.summary || 'Código construído e sincronizado com sucesso.',
         files: Object.keys(response.files)
       }, meta);
+      updateExecutionPanel({ state: 'success', title: 'Alterações concluídas', progress: 100, files: String(Object.keys(response.files).length), ai: response.providerUsed || requestedAI, route: response.routeLabel || (state.selectedModel ? 'Rota explícita confirmada' : 'Rota automática'), detail: `${Object.keys(response.files).length} arquivo(s) aplicado(s) e prévia atualizada.` });
       toast('✓ Alterações aplicadas na prévia ao vivo!', 2500);
     }
   } catch (e) {
@@ -1003,6 +1042,7 @@ async function submitAIPrompt() {
     });
     toast('Projeto preservado.', 3500);
     studioChatInput.value = prompt;
+    updateExecutionPanel({ state: 'error', title: 'Execução não concluída', progress: 100, detail: `${e.message || 'Nenhuma alteração foi aplicada.'} Projeto preservado.` });
   } finally {
     state.isGenerating = false;
     if (btnSendPrompt) {
@@ -1094,6 +1134,7 @@ ${fileContext}` },
   let rawResponseText = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
+      updateExecutionPanel({ state: 'running', title: 'IA executando o pedido', progress: attempt === 1 ? 28 : 42, attempt: `${attempt} / 2`, ai: state.selectedModel ? `${window.MSKModels.providerLabel(state.selectedProvider)} • ${state.selectedModel}` : 'IA ativa do Super Admin', route: state.selectedModel ? 'Rota explícita' : 'Rota automática', detail: attempt === 1 ? 'Aguardando a resposta completa do modelo.' : 'Nova tentativa segura com contexto otimizado.' });
       response = await fetch(_0x9a2, {
         method: 'POST',
         headers: {
@@ -1131,10 +1172,14 @@ ${fileContext}` },
   const rawText = String(data?.choices?.[0]?.message?.content || data?.output_text || data?.content?.[0]?.text || '').trim();
   if (!rawText) throw new Error('A IA ativa no MSK respondeu sem conteúdo.');
   const validated = validateAndExtractAIResponse(rawText);
+  const routedProvider = String(data?.provider || data?.provider_used || data?.routing?.provider || '').trim();
+  const routedModel = String(data?.model || data?.model_used || data?.routing?.model || '').trim();
+  const providerUsed = `${routedProvider ? window.MSKModels.providerLabel(routedProvider) : 'IA ativa MSK'}${routedModel ? ` • ${routedModel}` : ''}`;
   return {
     ok: true,
-    providerUsed: `${data?.provider || 'IA ativa MSK'}${data?.model ? ` • ${data.model}` : ''}`,
-    model: data?.model || '',
+    providerUsed,
+    model: routedModel,
+    routeLabel: routedProvider || routedModel ? (state.selectedModel ? 'Rota explícita confirmada' : 'Rota automática confirmada') : (state.selectedModel ? 'Rota explícita solicitada' : 'Rota automática'),
     summary: validated.summary,
     files: validated.files,
   };
