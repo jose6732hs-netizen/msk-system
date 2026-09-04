@@ -104,11 +104,11 @@ async function activeAI(r: Request): Promise<ProviderConfig> {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const retryable = (status: number) => [408, 409, 425, 429, 500, 502, 503, 504].includes(status);
 
-async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean, timeoutMs = 26000) {
+async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean, timeoutMs = 26000, forceReasoningStyle = false) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const built = buildProviderRequest(cfg, { messages, maxTokens, jsonMode });
+    const built = buildProviderRequest(cfg, { messages, maxTokens, jsonMode, forceReasoningStyle });
     return await fetch(built.url, {
       method: "POST",
       headers: built.headers,
@@ -133,19 +133,30 @@ async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
  */
 async function resilientAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean) {
   let mode = jsonMode;
+  // Alguns modelos (gpt-5.x e afins) recusam temperature/max_tokens: nesse caso
+  // repetimos a MESMA IA com o payload de modelos de raciocínio.
+  let reasoningStyle = false;
   let lastStatus = 0;
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      let x = await requestAI(cfg, messages, maxTokens, mode);
+      let x = await requestAI(cfg, messages, maxTokens, mode, 26000, reasoningStyle);
+      if (!x.ok && [400, 422].includes(x.status) && !reasoningStyle) {
+        const probe = await x.clone().text().catch(() => "");
+        if (/temperature|max_tokens|max_completion_tokens|unsupported/i.test(probe)) {
+          reasoningStyle = true;
+          x = await requestAI(cfg, messages, maxTokens, mode, 26000, true);
+        }
+      }
       if (mode && [400, 404, 422].includes(x.status)) {
         mode = false;
-        x = await requestAI(cfg, messages, maxTokens, false);
+        x = await requestAI(cfg, messages, maxTokens, false, 26000, reasoningStyle);
       }
       if (x.ok) return x;
       lastStatus = x.status;
       const detail = await x.text().catch(() => "");
       lastError = detail.slice(0, 500);
+
       if (!retryable(x.status) || attempt === 3) break;
     } catch (error) {
       const mapped = error instanceof AgentError ? error : new AgentError("AI_NETWORK_UNAVAILABLE", `A conexão com ${cfg.label} falhou.`, { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
