@@ -221,6 +221,8 @@ export function AdminAgentApiUsageTab() {
         </div>
       </Card>
 
+      <AdminAiFinance />
+
       <AdminAgentErrors days={Number(days)} />
 
       {/* FILTROS */}
