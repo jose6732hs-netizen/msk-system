@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, BrainCircuit, KeyRound, Loader2, Network, Power, Save, ShieldCheck, Star, Trash2 } from "lucide-react";
+import { Bot, BrainCircuit, KeyRound, Layers, Loader2, Network, Power, Save, ShieldCheck, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AdminAiGlobalTraining } from "@/components/msk/admin-ai-global-training";
+import { AdminExtensionModels } from "@/components/msk/admin-extension-models";
 import {
   agentAiProviderModel,
   agentAiProviderPrimary,
