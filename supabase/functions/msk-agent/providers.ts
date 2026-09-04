@@ -231,15 +231,3 @@ export function extractProviderText(cfg: ProviderConfig, payload: any): { id: st
       : "";
   return { id, finishReason, text: String(raw || "").trim() || String(fallback || "").trim() };
 }
-
-
-/** Escolhe a ÚNICA IA ativa a partir das linhas salvas no painel. */
-export function pickActiveRow(rows: any[]): any | null {
-  const usable = (rows || []).filter((row) => {
-    const key = row?.api_key_ciphertext || row?.apiKeyCiphertext || row?.api_key || row?.key_ciphertext;
-    const active = row?.active ?? row?.enabled ?? row?.is_active;
-    return !!key && active !== false;
-  });
-  if (!usable.length) return null;
-  return usable.find((row) => row?.is_primary === true || row?.primary === true || row?.is_default === true) || usable[0];
-}
