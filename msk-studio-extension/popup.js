@@ -999,4 +999,6 @@ async function init() {
   populateSettings();
   enableInput();
 }
+setupPopupModelSelect();
 init();
+
