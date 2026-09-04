@@ -428,6 +428,7 @@ Deno.serve(async (req: Request) => {
       }
 
       stage = "validating";
+      await checkpoint(taskId, who.id, pid, "validating", "Validando", { files: changes.map(x => x.path), attempt });
       await taskPatch(taskId, { status: "validating", retry_count: retryCount }, who.id);
       validatePreCommit(changes, files);
       const review = await semanticReview(req, cmd, repository, files, changes);
