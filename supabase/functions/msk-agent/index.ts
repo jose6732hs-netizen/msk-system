@@ -311,20 +311,48 @@ Deno.serve(async (req: Request) => {
       .map((x: any) => String(x.path));
     if (!paths.length) throw new AgentError("AGENT_NO_EDITABLE_FILES", "Não existem arquivos editáveis compatíveis no repositório.", { stage: "locating_files", httpStatus: 422 });
 
+    // ---- Classificação determinística (skill) antes de qualquer chamada de IA ----
+    const skill = classifySkill(clientCmd, await loadSkillOverrides());
+    const activeProvider = await activeProviderInfo(req);
+    const taskContext = contextBlock({
+      projectId: pid,
+      projectName: String(proj?.["project_name"] || proj?.["name"] || "") || pid,
+      repository,
+      branch,
+      skillId: skill.id,
+      skillLabel: skill.label,
+      risk: skill.risk,
+      instructions: skill.instructions,
+      validation: skill.validation,
+    });
+    await checkpoint(taskId, who.id, pid, "locating_files", "Localizando arquivos", { skill: skill.id, provider: activeProvider.provider, model: activeProvider.model });
+    await taskPatch(taskId, { provider: activeProvider.provider || null, model: activeProvider.model || null, stage: "locating_files" }, who.id);
+
     const fast = String(body.mode || "").toUpperCase() === "FAST_EDIT" && isSimpleVisualEdit(clientCmd);
     stage = "analyzing";
     await taskPatch(taskId, { status: "analyzing" }, who.id);
-    let chosen: string[] = fast ? selectFallbackFiles(paths, cmd).slice(0, 2) : [];
+    await checkpoint(taskId, who.id, pid, "analyzing", "Analisando", { skill: skill.id });
+
+    // 1) Busca literal quando o cliente citou um texto exato.
+    const literals = literalTargets(clientCmd);
+    let chosen: string[] = literals.length
+      ? await searchLiteral((path: string) => gh(selected.token, path), owner, repoNameOnly, literals, paths)
+      : [];
+    // 2) Localização determinística por skill + termos do comando.
+    if (!chosen.length) chosen = locateFiles(paths, clientCmd, skill);
+    if (fast) chosen = chosen.slice(0, 2);
+    // 3) Somente comandos que continuam ambíguos gastam tokens com seleção por IA.
     if (!chosen.length) {
       let pick: any = {};
       try {
-        const selection = await ask(req, selectionPrompt(cmd, paths, repository), true, 1800);
+        const selection = await ask(req, selectionPrompt(cmd, paths, repository, taskContext), true, 1800);
         pick = parse(selection.text);
       } catch (error) {
         console.warn("MSK file selection fallback", mapErrorToAgentError(error, "analyzing").code);
       }
       chosen = resolveChosenFiles(paths, pick, cmd, fast ? 2 : 5);
     }
+    if (!chosen.length) chosen = selectFallbackFiles(paths, cmd).slice(0, skill.maxFiles);
     if (!chosen.length) throw new AgentError("AGENT_TARGET_NOT_FOUND", "Não foi possível localizar com segurança o alvo do pedido.", { stage: "locating_files", retryable: true, httpStatus: 422 });
 
     // Download em série com orçamento total de conteúdo. O Promise.all com arquivos
