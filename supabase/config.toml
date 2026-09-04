@@ -1,1 +1,8 @@
 project_id = "zjrrymncmiyftyogejjr"
+
+# The MSK extension authenticates with its own license token and the Edge Function
+# validates that token internally. Supabase JWT verification must stay disabled
+# here, otherwise the gateway rejects the MSK license before the function can
+# validate it and the extension receives "Invalid JWT".
+[functions.msk-agent]
+verify_jwt = false
