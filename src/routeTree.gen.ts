@@ -50,6 +50,7 @@ import { Route as ApiExtensionSessionRouteImport } from './routes/api/extension/
 import { Route as ApiExtensionVersionRouteImport } from './routes/api/extension/version'
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
+import { Route as ApiPublicExtensionModelsRouteImport } from './routes/api/public/extension-models'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
 import { Route as ApiPublicPixSelftestRouteImport } from './routes/api/public/pix-selftest'
 import { Route as ApiPublicPresenceRouteImport } from './routes/api/public/presence'
@@ -295,6 +296,12 @@ const ApiPublicCmsRoute = ApiPublicCmsRouteImport.update({
   path: '/api/public/cms',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicExtensionModelsRoute =
+  ApiPublicExtensionModelsRouteImport.update({
+    id: '/api/public/extension-models',
+    path: '/api/public/extension-models',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicOpenapiRoute = ApiPublicOpenapiRouteImport.update({
   id: '/api/public/openapi',
   path: '/api/public/openapi',
@@ -512,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
+  '/api/public/extension-models': typeof ApiPublicExtensionModelsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
@@ -585,6 +593,7 @@ export interface FileRoutesByTo {
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
+  '/api/public/extension-models': typeof ApiPublicExtensionModelsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
@@ -660,6 +669,7 @@ export interface FileRoutesById {
   '/api/extension/version': typeof ApiExtensionVersionRoute
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
+  '/api/public/extension-models': typeof ApiPublicExtensionModelsRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
@@ -735,6 +745,7 @@ export interface FileRouteTypes {
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
+    | '/api/public/extension-models'
     | '/api/public/openapi'
     | '/api/public/pix-selftest'
     | '/api/public/presence'
@@ -808,6 +819,7 @@ export interface FileRouteTypes {
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
+    | '/api/public/extension-models'
     | '/api/public/openapi'
     | '/api/public/pix-selftest'
     | '/api/public/presence'
@@ -882,6 +894,7 @@ export interface FileRouteTypes {
     | '/api/extension/version'
     | '/api/license/validate'
     | '/api/public/cms'
+    | '/api/public/extension-models'
     | '/api/public/openapi'
     | '/api/public/pix-selftest'
     | '/api/public/presence'
@@ -952,6 +965,7 @@ export interface RootRouteChildren {
   ApiExtensionVersionRoute: typeof ApiExtensionVersionRoute
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
+  ApiPublicExtensionModelsRoute: typeof ApiPublicExtensionModelsRoute
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
   ApiPublicPixSelftestRoute: typeof ApiPublicPixSelftestRoute
   ApiPublicPresenceRoute: typeof ApiPublicPresenceRoute
@@ -1273,6 +1287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCmsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/extension-models': {
+      id: '/api/public/extension-models'
+      path: '/api/public/extension-models'
+      fullPath: '/api/public/extension-models'
+      preLoaderRoute: typeof ApiPublicExtensionModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/openapi': {
       id: '/api/public/openapi'
       path: '/api/public/openapi'
@@ -1562,6 +1583,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiExtensionVersionRoute: ApiExtensionVersionRoute,
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
+  ApiPublicExtensionModelsRoute: ApiPublicExtensionModelsRoute,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
   ApiPublicPixSelftestRoute: ApiPublicPixSelftestRoute,
   ApiPublicPresenceRoute: ApiPublicPresenceRoute,
