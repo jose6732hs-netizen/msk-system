@@ -4,8 +4,10 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { assertAdmin } from "./admin-guard";
 
+// Multi-API admin must always use the current backend. A stale environment
+// override previously routed OmniRoute saves to legacy msk-ai-settings, where
+// unknown providers were normalized as B.AI.
 const AGENT_AI_SETTINGS_URL =
-  process.env['MSK_AGENT_AI_SETTINGS_URL']?.trim() ||
   "https://iybjfmhqbblrppqoodyf.supabase.co/functions/v1/msk-ai-admin-v2";
 const AGENT_SUPABASE_PUBLISHABLE_KEY =
   process.env['MSK_AGENT_SUPABASE_PUBLISHABLE_KEY']?.trim() ||
