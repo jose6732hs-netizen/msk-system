@@ -202,10 +202,41 @@ export function normalizeOperationResponse(text: string, operation: PromptOperat
     return JSON.stringify({ ok: raw?.ok === true, issues: strArray(raw?.issues).slice(0, 8) });
   }
 
-  const changes = Array.isArray(raw?.changes || raw?.edits || raw?.updates) ? (raw.changes || raw.edits || raw.updates).slice(0, 20) : [];
+  const rawChanges =
+    raw?.changes || raw?.edits || raw?.updates || raw?.operations || raw?.patches ||
+    raw?.actions || raw?.modifications || raw?.alteracoes || raw?.["alterações"];
+  const changes = (Array.isArray(rawChanges) ? rawChanges : [])
+    .map((item: any) => normalizeChange(item))
+    .filter(Boolean)
+    .slice(0, 20);
   return JSON.stringify({
     summary: clean(raw?.summary || "Alteração preparada.", 1200),
     reply: clean(raw?.reply || raw?.summary || "", 1600),
     changes,
   });
 }
+
+/**
+ * Converte a saída de QUALQUER provedor para o formato interno único:
+ * { path, content?, find?, replace?, create?, delete? }.
+ */
+function normalizeChange(item: any) {
+  if (!item || typeof item !== "object") return null;
+  const path = String(item.path || item.file || item.filename || item.file_path || item.filePath || "").trim();
+  if (!path || path.includes("..")) return null;
+
+  const action = String(item.action || item.type || item.op || item.operation || "").trim().toLowerCase();
+  if (action === "delete" || action === "remove" || item.delete === true) return { path, delete: true };
+
+  const find = item.find ?? item.search ?? item.old_content ?? item.oldContent ?? item.old_string ?? item.target;
+  const replaceWith = item.replace ?? item.replacement ?? item.new_content ?? item.newContent ?? item.new_string;
+  if (typeof find === "string" && find.length > 0 && typeof replaceWith === "string") {
+    return { path, find, replace: replaceWith };
+  }
+
+  const content = item.content ?? item.code ?? item.new_content ?? item.newContent ?? item.body ?? item.text;
+  if (typeof content !== "string") return null;
+  const create = item.create === true || action === "create" || action === "write" || action === "add";
+  return { path, content, create };
+}
+
