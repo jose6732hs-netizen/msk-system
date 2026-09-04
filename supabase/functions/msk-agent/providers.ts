@@ -167,7 +167,7 @@ export function buildProviderRequest(cfg: ProviderConfig, options: {
     };
   }
 
-  const reasoning = isReasoningModel(cfg.model);
+  const reasoning = isReasoningModel(cfg.model) || options.forceReasoningStyle === true;
   // Modelos de raciocínio (gpt-5.x, o1/o3/o4) consomem tokens pensando ANTES de
   // escrever: sem folga extra a resposta volta vazia/truncada (finish_reason
   // "length"). Eles também recusam temperature != 1 e o campo max_tokens.
