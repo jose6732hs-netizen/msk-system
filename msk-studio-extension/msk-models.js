@@ -28,16 +28,37 @@
     try { chrome.storage.local.set({ [STORE_KEY]: { provider: state.provider, model: state.model } }); } catch {}
   }
 
-  async function fetchCatalog() {
+  const FALLBACK = [
+    { provider: 'groq', model: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B (Groq)', free: true },
+    { provider: 'groq', model: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B (Groq)', free: true },
+    { provider: 'groq', model: 'qwen/qwen3-32b', label: 'Qwen3 32B (Groq)', free: true },
+  ];
+
+  const MIRRORS = [CATALOG_URL, 'https://msk-system.lovable.app/api/public/extension-models'];
+
+  async function fetchOnce(url) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
     try {
-      const res = await fetch(CATALOG_URL, { cache: 'no-store' });
+      const res = await fetch(url, { cache: 'no-store', signal: ctrl.signal });
       const data = await res.json().catch(() => ({}));
       const list = Array.isArray(data?.models) ? data.models : [];
       return list.filter((m) => m && m.provider && m.model);
     } catch {
       return [];
+    } finally {
+      clearTimeout(timer);
     }
   }
+
+  async function fetchCatalog() {
+    for (const url of MIRRORS) {
+      const list = await fetchOnce(url);
+      if (list.length) return list;
+    }
+    return [];
+  }
+
 
   function providers() {
     return [...new Set(state.models.map((m) => m.provider))];
