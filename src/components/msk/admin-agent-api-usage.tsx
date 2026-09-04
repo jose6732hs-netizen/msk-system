@@ -9,6 +9,7 @@ import CountUp from "@/components/msk/animated-number";
 import { FilterChips } from "@/components/msk/filter-chips";
 import { AdminAgentAiSettings } from "@/components/msk/admin-agent-ai-settings";
 import { AdminAgentErrors } from "@/components/msk/admin-agent-errors";
+import { AdminAiFinance } from "@/components/msk/admin-ai-finance";
 import { agentUsageAnalytics, agentHealth } from "@/lib/agent-usage.functions";
 
 const fmtDate = (v?: string | null) => (v ? new Date(v).toLocaleString("pt-BR") : "—");
