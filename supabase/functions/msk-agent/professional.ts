@@ -54,12 +54,13 @@ function shortlistCandidates(paths: string[], command: string, max = 80) {
     .map((item) => item.path);
 }
 
-export const selectionPrompt = (command: string, paths: string[], repository: string) =>
+export const selectionPrompt = (command: string, paths: string[], repository: string, context = "") =>
   encodePromptEnvelope({
     operation: "interpretation",
     command,
     repository,
     candidates: shortlistCandidates(paths, command),
+    ...(context ? { context } : {}),
   });
 
 export const editPrompt = (
@@ -67,6 +68,7 @@ export const editPrompt = (
   repository: string,
   files: Array<{ path: string; content: string }>,
   highRisk: boolean,
+  context = "",
 ) => encodePromptEnvelope({
   operation: "edit",
   command,
@@ -74,6 +76,7 @@ export const editPrompt = (
   files,
   highRisk,
   complex: isComplexCommand(command, files, highRisk),
+  ...(context ? { context } : {}),
 });
 
 const ALLOWED_NEW = /^(src|app|pages|components|lib|server|api|supabase|public|scripts|tests?)\//i;
