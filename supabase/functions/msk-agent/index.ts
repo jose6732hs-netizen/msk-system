@@ -330,7 +330,7 @@ Deno.serve(async (req: Request) => {
 
     // ---- Classificação determinística (skill) antes de qualquer chamada de IA ----
     const skill = classifySkill(clientCmd, await loadSkillOverrides());
-    const activeProvider = await activeProviderInfo(req);
+    activeProvider = await activeProviderInfo(req);
     const taskContext = contextBlock({
       projectId: pid,
       projectName: String(proj?.["project_name"] || proj?.["name"] || "") || pid,
