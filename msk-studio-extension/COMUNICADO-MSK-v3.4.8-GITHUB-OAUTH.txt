@@ -1,0 +1,9 @@
+MSK System Studio v3.4.8
+
+- Botão visível “Conectar GitHub” restaurado nas Configurações.
+- Autorização é feita pelo fluxo oficial GitHub App/OAuth do backend MSK.
+- Não exige PAT/token manual dentro da extensão.
+- Repositório e branch continuam configuráveis por projeto/cliente.
+- Status mostra GitHub conectado / aguardando autorização / desconectado.
+- Após abrir a autorização, a extensão verifica automaticamente quando o usuário retorna.
+- IA continua sendo definida somente pelo Super Admin/backend.

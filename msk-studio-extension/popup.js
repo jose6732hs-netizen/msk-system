@@ -83,6 +83,7 @@ const state = {
   attachedFiles: [],
   isLoading: false,
   abortCtrl: null,
+  githubConnected: false,
   activeCategory: 'all',
   searchQuery: ''
 };
@@ -304,7 +305,7 @@ function togglePanel(panel, btn) {
 }
 settingsBtn?.addEventListener('click', () => {
   togglePanel(settingsPanel, settingsBtn);
-  if (!settingsPanel.classList.contains('hidden')) populateSettings();
+  if (!settingsPanel.classList.contains('hidden')) { populateSettings(); void refreshGitHubConnectionStatus({ quiet: true }); }
 });
 historyBtn?.addEventListener('click', () => {
   togglePanel(historyPanel, historyBtn);
@@ -317,17 +318,29 @@ statsBtn?.addEventListener('click', () => {
 $('settings-close')?.addEventListener('click', showMain);
 $('history-close')?.addEventListener('click', showMain);
 $('stats-close')?.addEventListener('click', showMain);
+function currentRepositoryLabel() {
+  return normalizeRepoInput(state.agentContext?.repository || state.config?.repo || '');
+}
 function updateStatusPill() {
   if (!headerStatusPill || !headerStatusText) return;
   const licenseOnline = !!state.license?.key && !!state.license?.email && !licenseExpiredLocally();
-  if (licenseOnline) {
+  const repository = currentRepositoryLabel();
+  if (licenseOnline && state.githubConnected && repository) {
+    headerStatusPill.className = 'status-pill online repo-online';
+    headerStatusText.textContent = repository;
+    headerStatusText.title = repository;
+    const branch = state.config?.branch || 'main';
+    headerStatusPill.title = `GitHub conectado • ${repository} • branch ${branch}`;
+  } else if (licenseOnline) {
     headerStatusPill.className = 'status-pill online';
-    headerStatusText.textContent = 'Conectado';
+    headerStatusText.textContent = repository || 'Conectado';
+    headerStatusText.title = repository || 'MSK conectado';
     const expiry = state.license?.expiresAt ? formatLicenseExpiry(state.license.expiresAt) : 'Vitalícia / sem expiração';
-    headerStatusPill.title = `Licença MSK ativa • ${expiry}`;
+    headerStatusPill.title = repository ? `Projeto selecionado • ${repository} • GitHub aguardando confirmação` : `Licença MSK ativa • ${expiry}`;
   } else {
     headerStatusPill.className = 'status-pill offline';
     headerStatusText.textContent = 'Desconectado';
+    headerStatusText.title = 'Desconectado';
     headerStatusPill.title = 'Ative uma key MSK para conectar';
   }
 }
@@ -662,35 +675,133 @@ function populateSettings() {
   }
   updateLicenseStatus();
 }
-$('settings-save')?.addEventListener('click', async () => {
+function setGitHubConnectionUI(status = {}) {
+  const card = $('github-connect-card');
+  const dot = $('github-status-dot');
+  const text = $('github-status-text');
+  const detail = $('github-status-detail');
+  const btn = $('github-connect-btn');
+  if (!card || !text || !detail || !btn) return;
+  card.classList.remove('connected', 'waiting');
+  const connected = !!status.connected;
+  const repository = normalizeRepoInput(status.repository || state.agentContext?.repository || state.config?.repo || '');
+  state.githubConnected = connected;
+  if (repository) {
+    state.agentContext.repository = repository;
+    state.config = { ...(state.config || {}), repo: repository, branch: state.config?.branch || status.branch || 'main' };
+  }
+  if (connected) {
+    card.classList.add('connected');
+    text.textContent = 'GitHub conectado';
+    detail.textContent = repository ? `${repository} • branch ${state.config?.branch || status.branch || 'main'}` : 'Conta GitHub autorizada pelo MSK.';
+    btn.querySelector('span').textContent = 'GitHub conectado • verificar novamente';
+    btn.title = 'Verificar novamente a autorização do GitHub';
+  } else if (status.authorize_url || status.waiting) {
+    card.classList.add('waiting');
+    text.textContent = 'Aguardando autorização do GitHub';
+    detail.textContent = 'Conclua a autorização na aba do GitHub. O MSK verificará automaticamente quando você voltar.';
+    btn.querySelector('span').textContent = 'Abrir autorização do GitHub';
+  } else {
+    text.textContent = 'GitHub não conectado';
+    detail.textContent = repository ? `Autorize o MSK para editar e criar commits em ${repository}.` : 'Informe o repositório e autorize sua conta GitHub para permitir commits.';
+    btn.querySelector('span').textContent = 'Conectar GitHub';
+    btn.title = 'Autorizar GitHub pelo fluxo oficial do MSK';
+  }
+  if (dot) dot.setAttribute('aria-label', connected ? 'conectado' : 'desconectado');
+  updateStatusPill();
+}
+async function saveProjectConfigFromSettings() {
   const projectId = String($('lovable-project-id')?.value || '').trim();
   const repo = normalizeRepoInput($('gh-repo')?.value || '');
   const branch = String($('gh-branch')?.value || '').trim() || 'main';
-  if (!MSK_PROJECT_ID_RE.test(projectId)) { toast('Informe um Project ID Lovable válido ou abra o projeto no Lovable.', 'error'); return; }
-  const btn = $('settings-save');
+  if (!MSK_PROJECT_ID_RE.test(projectId)) throw new Error('Informe um Project ID Lovable válido ou abra o projeto no Lovable.');
+  state.config = { ...(state.config || {}), repo, branch, projectId };
+  state.agentContext.projectId = projectId;
+  state.agentContext.repository = repo;
+  await store.set({ config: state.config, mskAgentProjectId: projectId });
+  return { projectId, repo, branch };
+}
+async function refreshGitHubConnectionStatus({ quiet = false } = {}) {
+  try {
+    const cfg = await saveProjectConfigFromSettings();
+    if (!(await ensureActiveLicense({ network: true, quiet: true }))) return null;
+    const status = await mskAgentRequest('status', {});
+    if (status?.repository) {
+      const repository = normalizeRepoInput(status.repository);
+      state.agentContext.repository = repository;
+      state.config = { ...(state.config || {}), repo: repository, projectId: cfg.projectId, branch: state.config?.branch || status.branch || 'main' };
+      await store.set({ config: state.config });
+      if ($('gh-repo')) $('gh-repo').value = repository;
+      if ($('gh-branch')) $('gh-branch').value = state.config.branch || 'main';
+    }
+    setGitHubConnectionUI(status || {});
+    if (status?.connected) enableInput();
+    return status;
+  } catch (e) {
+    if (String(e?.code || '') === 'MSK_SESSION_REQUIRED') {
+      setGitHubConnectionUI({ connected: false });
+      return null;
+    }
+    if (!quiet) toast(`GitHub: ${e.message}`, 'error');
+    setGitHubConnectionUI({ connected: false });
+    return null;
+  }
+}
+let githubAuthPollTimer = null;
+function startGitHubAuthorizationWatch() {
+  clearInterval(githubAuthPollTimer);
+  let checks = 0;
+  githubAuthPollTimer = setInterval(async () => {
+    checks += 1;
+    const status = await refreshGitHubConnectionStatus({ quiet: true });
+    if (status?.connected || checks >= 36) {
+      clearInterval(githubAuthPollTimer);
+      githubAuthPollTimer = null;
+      if (status?.connected) toast(`✓ GitHub conectado${status.repository ? ` • ${status.repository}` : ''}`, 'success', 2200);
+    }
+  }, 2500);
+}
+$('github-connect-btn')?.addEventListener('click', async () => {
+  const btn = $('github-connect-btn');
   btn.disabled = true;
-  btn.textContent = 'Conectando...';
   try {
     if (!(await ensureActiveLicense({ network: true, quiet: false }))) return;
-    state.config = { ...(state.config || {}), repo, branch, projectId };
-    state.agentContext.projectId = projectId;
-    await store.set({ config: state.config, mskAgentProjectId: projectId });
+    await saveProjectConfigFromSettings();
+    setGitHubConnectionUI({ waiting: true });
     const result = await ensureAgentConnected({ openAuthorization: true });
     if (result?.connected) {
-      toast(`✓ Projeto conectado${result.repository ? ` • ${result.repository}` : ''}`, 'success');
+      setGitHubConnectionUI(result);
+      toast(`✓ GitHub conectado${result.repository ? ` • ${result.repository}` : ''}`, 'success');
       updateStatusPill();
       enableInput();
-      setTimeout(() => { settingsPanel.classList.add('hidden'); settingsBtn.classList.remove('active'); }, 900);
     } else if (result?.authorize_url) {
-      toast('Autorize o GitHub na aba aberta e depois volte ao Lovable.', '', 4500);
+      setGitHubConnectionUI({ authorize_url: result.authorize_url, waiting: true });
+      toast('Autorize o GitHub na aba aberta. O MSK vai verificar automaticamente.', '', 4500);
+      startGitHubAuthorizationWatch();
     } else {
-      throw new Error(result?.error || 'Não foi possível concluir a conexão do projeto.');
+      throw new Error(result?.error || 'O backend não retornou a autorização do GitHub.');
     }
+  } catch (e) {
+    setGitHubConnectionUI({ connected: false });
+    toast(`Erro ao conectar GitHub: ${e.message}`, 'error', 5000);
+  } finally {
+    btn.disabled = false;
+  }
+});
+$('settings-save')?.addEventListener('click', async () => {
+  const btn = $('settings-save');
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = 'Salvando...';
+  try {
+    const cfg = await saveProjectConfigFromSettings();
+    toast(`✓ Projeto salvo • ${cfg.repo || 'repositório será detectado'} • ${cfg.branch}`, 'success');
+    await refreshGitHubConnectionStatus({ quiet: true });
   } catch (e) {
     toast(`Erro: ${e.message}`, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Conectar Projeto';
+    btn.textContent = original || 'Salvar Projeto / Branch';
   }
 });
 $('history-refresh')?.addEventListener('click', loadHistory);
@@ -835,6 +946,82 @@ function addAssistantMessage(res) {
 function escHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
 }
+function isLongRunTimeoutError(error) {
+  const code = String(error?.code || '').toUpperCase();
+  const message = String(error?.message || error || '').toLowerCase();
+  return [
+    'TASK_PROCESSING_TIMEOUT', 'AI_REQUEST_TIMEOUT', 'AI_UPSTREAM_UNAVAILABLE',
+    'AI_NETWORK_UNAVAILABLE', 'AI_RATE_LIMIT', 'GATEWAY_TIMEOUT'
+  ].includes(code) || /idle timeout|150s|request.*timeout|timed out|tempo.*limite|gateway timeout/.test(message);
+}
+const waitMs = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function taskStatusToRunResult(taskId, packet) {
+  const task = packet?.task || {};
+  const status = String(task.status || '');
+  const success = ['verification_pending', 'completed'].includes(status);
+  return {
+    ok: success,
+    completed: status === 'completed',
+    status,
+    verification_pending: status === 'verification_pending',
+    preview_pending: status === 'verification_pending',
+    task_id: taskId,
+    summary: String(task.summary || (success ? 'Alteração concluída pelo MSK.' : '')),
+    message: String(task.summary || task.error || ''),
+    error: success ? '' : String(task.error || ''),
+    error_code: String(task.error_code || ''),
+    branch: String(task.branch_name || state.config?.branch || 'main'),
+    branch_used: String(task.branch_name || state.config?.branch || 'main'),
+    repository: String(packet?.repository || currentRepositoryLabel()),
+    pull_request_url: String(task.pull_request_url || ''),
+    recovered_after_timeout: true,
+  };
+}
+async function pollAgentTask(taskId, { maxMs = 12 * 60 * 1000 } = {}) {
+  const started = Date.now();
+  let missingCount = 0;
+  while (Date.now() - started < maxMs) {
+    if (state.abortCtrl?.signal?.aborted) throw new DOMException('Cancelado pelo usuário.', 'AbortError');
+    try {
+      const packet = await mskAgentRequest('task-status', { task_id: taskId }, state.abortCtrl?.signal || null);
+      const task = packet?.task || {};
+      const status = String(task.status || '');
+      if (status) {
+        if (statusMsg) statusMsg.textContent = `MSK continua executando • ${status.replace(/_/g, ' ')}`;
+        if (['verification_pending', 'completed'].includes(status)) return taskStatusToRunResult(taskId, packet);
+        if (status === 'failed') {
+          const err = new Error(String(task.error || 'A execução foi encerrada antes do commit.'));
+          err.code = String(task.error_code || 'TASK_FAILED');
+          throw err;
+        }
+      }
+    } catch (error) {
+      if (String(error?.code || '') === 'TASK_NOT_FOUND') {
+        missingCount += 1;
+        if (missingCount > 8) throw error;
+      } else if (!isLongRunTimeoutError(error) && String(error?.code || '') !== 'LOCK_ACQUISITION_FAILED') {
+        throw error;
+      }
+    }
+    await waitMs(4000);
+  }
+  const err = new Error('A edição continua no backend, mas ultrapassou o tempo de acompanhamento desta tela. Reabra a extensão para consultar o status.');
+  err.code = 'CLIENT_MONITOR_TIMEOUT';
+  throw err;
+}
+async function runAgentCommandResilient(payload) {
+  const taskId = crypto.randomUUID();
+  const runPayload = { ...payload, task_id: taskId };
+  try {
+    return await mskAgentRequest('run', runPayload, state.abortCtrl.signal);
+  } catch (error) {
+    if (!isLongRunTimeoutError(error)) throw error;
+    if (statusMsg) statusMsg.textContent = 'A IA demorou mais, mas o MSK continua acompanhando a execução...';
+    toast('A IA demorou. O MSK continuará acompanhando sem encerrar o comando.', '', 5000);
+    return await pollAgentTask(taskId);
+  }
+}
+
 async function sendMessage() {
   const text = messageInput.value.trim();
   if (!text || state.isLoading) return;
@@ -862,14 +1049,14 @@ async function sendMessage() {
       if (connected?.authorize_url) throw new Error('Autorize o GitHub na aba aberta e depois envie o comando novamente.');
       throw new Error(connected?.error || 'Projeto ainda não está conectado ao GitHub MSK.');
     }
-    const res = await mskAgentRequest('run', {
+    const res = await runAgentCommandResilient({
       command: text,
       original_command: text,
       client_original_command: text,
       repository_url: connected.repository || state.config?.repo || undefined,
       branch: state.config?.branch || undefined,
       attached_files: files,
-    }, state.abortCtrl.signal);
+    });
     addAssistantMessage(res);
     if (res.ok) {
       const count = Number(res.files_changed_count || (Array.isArray(res.files) ? res.files.length : 0) || (Array.isArray(res.committed) ? res.committed.length : 0));
@@ -951,9 +1138,9 @@ $('license-remove')?.addEventListener('click', async () => {
   if (!confirm('Remover a key deste dispositivo? O Studio ficará bloqueado até uma nova ativação.')) return;
   await forgetLicense('Key removida. Informe uma nova licença MSK.');
 });
-window.addEventListener('focus', () => { if (state.license) void ensureActiveLicense({ network: true, quiet: true }); });
+window.addEventListener('focus', () => { if (state.license) { void ensureActiveLicense({ network: true, quiet: true }); if (!settingsPanel?.classList.contains('hidden')) void refreshGitHubConnectionStatus({ quiet: true }); } });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && state.license) void ensureActiveLicense({ network: true, quiet: true });
+  if (document.visibilityState === 'visible' && state.license) { void ensureActiveLicense({ network: true, quiet: true }); if (!settingsPanel?.classList.contains('hidden')) void refreshGitHubConnectionStatus({ quiet: true }); }
 });
 async function init() {
   if (!(await _0x8f7())) { disableInput(); return; }
@@ -981,12 +1168,14 @@ async function init() {
     settingsPanel.classList.remove('hidden');
     settingsBtn.classList.add('active');
     populateSettings();
+    void refreshGitHubConnectionStatus({ quiet: true });
     disableInput();
     return;
   }
   try {
     const connected = await ensureAgentConnected({ openAuthorization: false });
     if (connected?.connected) {
+      setGitHubConnectionUI(connected);
       enableInput();
       setupPopupModelSelect();
       return;
@@ -997,8 +1186,7 @@ async function init() {
   settingsPanel.classList.remove('hidden');
   settingsBtn.classList.add('active');
   populateSettings();
+  void refreshGitHubConnectionStatus({ quiet: true });
   enableInput();
 }
-setupPopupModelSelect();
 init();
-

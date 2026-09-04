@@ -1,0 +1,10 @@
+MSK System Studio v3.4.9
+
+- Base: v3.4.8 GitHub OAuth/App.
+- Mantém o botão profissional Conectar GitHub.
+- Mostra o repositório conectado em verde no topo da extensão.
+- Seletor de IA + modelo usa somente o catálogo publicado pelo Super Admin, com espelho/retry de carregamento.
+- Comandos enviados ao msk-agent recebem task_id antecipado.
+- Se a conexão HTTP atingir idle timeout, a extensão consulta task-status e continua acompanhando a mesma tarefa em vez de encerrar imediatamente.
+- MSK Studio repete uma chamada lenta uma vez no mesmo modelo, sem trocar de provedor.
+- Nenhuma API key/PAT do GitHub é armazenada no navegador; autorização continua pelo GitHub App/OAuth.

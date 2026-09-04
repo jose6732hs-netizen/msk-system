@@ -1071,43 +1071,64 @@ Não use markdown, comentários fora do JSON nem texto depois do fechamento do o
 CAMINHOS DO PROJETO:
 ${pathList}`;
   onProgress('Conectando ao MSK SaaS...', state.selectedModel ? `Modelo selecionado: ${state.selectedModel}` : 'Usando a IA ativa definida no Super Admin');
-  const response = await fetch(_0x9a2, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'apikey': _0x9a5,
-      'Content-Type': 'application/json',
-      'x-msk-build': _0x9a3,
-    },
-    body: JSON.stringify({
-      action: 'editor-chat',
-      routing_mode: state.selectedModel ? 'explicit' : 'active',
-      provider: state.selectedProvider || undefined,
-      model: state.selectedModel || undefined,
-      source: 'msk-system-studio',
-      license_email: studioLicense?.email || '',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: `${prompt}
+  const baseBody = {
+    action: 'editor-chat',
+    routing_mode: state.selectedModel ? 'explicit' : 'active',
+    provider: state.selectedProvider || undefined,
+    model: state.selectedModel || undefined,
+    source: 'msk-system-studio',
+    license_email: studioLicense?.email || '',
+    messages: [
+      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'user', content: `${prompt}
 
 CONTEÚDO DOS ARQUIVOS MAIS RELEVANTES:
 ${fileContext}` },
-      ],
-      response_format: { type: 'json_object' },
-      max_tokens: 18000,
-      temperature: 0,
-    }),
-  });
-  const data = await response.json().catch(() => ({}));
+    ],
+    response_format: { type: 'json_object' },
+    max_tokens: 18000,
+    temperature: 0,
+  };
+  let response = null;
+  let data = {};
+  let rawResponseText = '';
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      response = await fetch(_0x9a2, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': _0x9a5,
+          'Content-Type': 'application/json',
+          'x-msk-build': _0x9a3,
+        },
+        body: JSON.stringify({ ...baseBody, max_tokens: attempt === 1 ? 18000 : 12000 }),
+      });
+      rawResponseText = await response.text().catch(() => '');
+      try { data = JSON.parse(rawResponseText || '{}'); } catch { data = {}; }
+      const timeoutLike = /idle timeout|150s|timed out|tempo.*limite/i.test(rawResponseText) || [502,503,504].includes(response.status);
+      if (!response.ok && timeoutLike && attempt < 2) {
+        onProgress('A IA demorou mais que o esperado...', 'Repetindo com contexto otimizado no mesmo modelo');
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        continue;
+      }
+      break;
+    } catch (error) {
+      if (attempt >= 2) throw error;
+      onProgress('Conexão lenta com a IA...', 'Tentando novamente no mesmo modelo');
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
+  }
+  if (!response) throw new Error('Não foi possível alcançar a IA selecionada.');
   if (!response.ok) {
     const code = String(data?.code || data?.error?.code || '');
     if (response.status === 401 || response.status === 403 || ['LICENSE_INVALID','LICENSE_EMAIL_MISMATCH','LICENSE_EXPIRED','LICENSE_REVOKED','LICENSE_BLOCKED'].includes(code)) {
       await clearStudioLicense(studioLicenseMessage(code || 'LICENSE_INVALID'));
     }
-    const message = typeof data?.error === 'string' ? data.error : data?.error?.message || data?.message || `MSK SaaS respondeu HTTP ${response.status}`;
+    const message = typeof data?.error === 'string' ? data.error : data?.error?.message || data?.message || rawResponseText || `MSK SaaS respondeu HTTP ${response.status}`;
     const err = new Error(message); err.code = code; throw err;
   }
-  const rawText = String(data?.choices?.[0]?.message?.content || '').trim();
+  const rawText = String(data?.choices?.[0]?.message?.content || data?.output_text || data?.content?.[0]?.text || '').trim();
   if (!rawText) throw new Error('A IA ativa no MSK respondeu sem conteúdo.');
   const validated = validateAndExtractAIResponse(rawText);
   return {
@@ -2040,5 +2061,4 @@ function toast(msg, ms = 3000) {
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-setupProviderSelect();
 initStudio();
