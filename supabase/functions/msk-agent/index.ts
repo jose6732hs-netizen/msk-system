@@ -1,6 +1,7 @@
 import { cors, json, env, db, dec, sha, identity, verifyDevice } from "./common.ts";
 import { makeState, readState, installation, instToken, gh, validSession, chooseRepo } from "./github.ts";
-import { ask, parse, directCommit } from "./ai.ts";
+import { ask, parse, directCommit, activeProviderInfo } from "./ai.ts";
+import { classifySkill, loadSkillOverrides, literalTargets, locateFiles, searchLiteral, contextBlock } from "./skills.ts";
 import { MSK_ENGINEERING_PROFILE, normalizeRepo, isHighRiskCommand, selectionPrompt, editPrompt, validateChanges, professionalSummary } from "./professional.ts";
 import { AgentError, type AgentStage, acquireRepoLock, mapErrorToAgentError, recordAgentError, releaseRepoLock } from "./errors.ts";
 
