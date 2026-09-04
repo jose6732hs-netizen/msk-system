@@ -121,6 +121,8 @@ export function buildProviderRequest(cfg: ProviderConfig, options: {
   messages: ChatMessage[];
   maxTokens: number;
   jsonMode: boolean;
+  forceReasoningStyle?: boolean;
+
 }): { url: string; headers: Record<string, string>; body: unknown } {
   const maxTokens = Math.max(256, Math.min(Number(options.maxTokens || 4000), 18000));
   const headers: Record<string, string> = { "Content-Type": "application/json" };
