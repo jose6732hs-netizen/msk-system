@@ -23,6 +23,9 @@ O agente não deve retornar `MSK_AGENT_ERROR`. Falhas conhecidas recebem código
 | `NO_CHANGES_APPLIED` | editing/validating | sim | A saída não produziu alteração real. Reprocessar mantendo o mesmo pedido e alvo. |
 | `AI_RESPONSE_PARSE_ERROR` | analyzing/editing | sim | A resposta da IA não pôde ser interpretada com segurança. |
 | `AI_EMPTY_RESPONSE` | analyzing | sim | A IA respondeu sem conteúdo utilizável. |
+| `AI_RESPONSE_TRUNCATED` | analyzing | sim | A IA cortou a resposta no limite de tokens (modelos de raciocínio gastam tokens pensando). |
+| `AI_NO_OPERATIONS` | editing | sim | A IA respondeu, mas sem nenhuma operação de arquivo; o texto devolvido pela IA acompanha o erro. |
+
 | `AI_REQUEST_TIMEOUT` | analyzing | sim | Timeout do provedor de IA. |
 | `AI_NETWORK_UNAVAILABLE` | analyzing | sim | Falha temporária de rede com a IA. |
 | `AI_RATE_LIMIT` | analyzing | sim | Rate limit do provedor de IA. |
