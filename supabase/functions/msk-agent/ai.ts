@@ -211,8 +211,8 @@ async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
 
 
 /**
- * Executa a chamada SOMENTE na IA ativa. Retry exponencial apenas para falhas
- * transitórias (429/5xx) do mesmo provedor — nunca troca de IA.
+ * Chamada na IA recebida. Retry exponencial apenas para falhas transitórias
+ * (429/5xx) do MESMO provedor; a troca de IA é decidida por withFailover.
  */
 async function resilientAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean) {
   let mode = jsonMode;
