@@ -134,16 +134,33 @@ async function agentAiRequest(action: string, payload: Record<string, unknown> =
     }
     if (!response.ok) {
       const message = typeof body?.error === "string" ? body.error : body?.error?.message || body?.message;
-      throw new Error(String(message || `HTTP ${response.status}`).slice(0, 500));
+      throw new Error(friendlyAgentAiError(String(message || `HTTP ${response.status}`)));
     }
     return body || {};
   } catch (error: any) {
     if (error?.name === "AbortError") throw new Error("O backend do MSK demorou demais para responder. Tente novamente.");
-    throw error;
+    throw new Error(friendlyAgentAiError(error?.message || String(error)));
   } finally {
     clearTimeout(timer);
   }
 }
+
+/** Converte erros de rede/DNS do painel remoto em mensagens acionáveis. */
+function friendlyAgentAiError(raw: string): string {
+  const message = String(raw || "").slice(0, 500);
+  const url = message.match(/https?:\/\/[^\s)"']+/)?.[0];
+  if (/dns error|failed to lookup address|ENOTFOUND|getaddrinfo/i.test(message)) {
+    return `Não foi possível resolver o endereço${url ? ` ${url}` : ""}. Confira a Base URL do provedor — o domínio não existe ou está escrito errado.`;
+  }
+  if (/error sending request|fetch failed|ECONNREFUSED|Connect|tls|certificate/i.test(message)) {
+    return `Não foi possível conectar${url ? ` em ${url}` : " ao provedor"}. Verifique a Base URL e se o serviço está no ar.`;
+  }
+  if (/401|403|unauthorized|invalid api key/i.test(message)) {
+    return "A chave de API foi recusada pelo provedor. Confira a chave e tente novamente.";
+  }
+  return message;
+}
+
 
 /** Diagnóstico do executor lido direto da base do MSK (o painel remoto não expõe essa ação). */
 export const agentErrorAnalytics = createServerFn({ method: "GET" })
