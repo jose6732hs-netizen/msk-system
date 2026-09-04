@@ -2541,6 +2541,48 @@ export type Database = {
         }
         Relationships: []
       }
+      msk_extension_models: {
+        Row: {
+          created_at: string
+          focus: string
+          id: string
+          is_free: boolean
+          label: string
+          model_id: string
+          note: string | null
+          provider_id: string
+          sort_order: number
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          created_at?: string
+          focus?: string
+          id?: string
+          is_free?: boolean
+          label: string
+          model_id: string
+          note?: string | null
+          provider_id: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          created_at?: string
+          focus?: string
+          id?: string
+          is_free?: boolean
+          label?: string
+          model_id?: string
+          note?: string | null
+          provider_id?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
       msk_github_installations: {
         Row: {
           account_login: string | null
