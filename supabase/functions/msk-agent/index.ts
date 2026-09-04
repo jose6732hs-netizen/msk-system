@@ -459,6 +459,7 @@ Deno.serve(async (req: Request) => {
 
     stage = "committing";
     await taskPatch(taskId, { status: "committing", branch_name: branch }, who.id);
+    await checkpoint(taskId, who.id, pid, "committing", "Criando commit", { branch, files: changes.map(x => x.path) });
     const beforeRef = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/ref/heads/${encodeURIComponent(branch).replace(/%2F/g, "/")}`);
     const beforeSha = String(beforeRef?.object?.sha || "");
     if (!beforeSha) throw new AgentError("GITHUB_RESOURCE_NOT_FOUND", "O branch padrão não possui SHA antes do commit.", { stage: "committing", httpStatus: 404 });
