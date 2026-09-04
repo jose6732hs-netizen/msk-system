@@ -393,10 +393,12 @@ const executionDetail = $('execution-detail');
 async function initStudio() {
   if (!(await _0x9a7())) { setStudioLicenseLocked(true, 'Integridade MSK inválida. Reinstale a extensão oficial.'); return; }
   aiStatusBox?.classList?.add('hidden');
+  setupProviderSelect();
   startStudioLicenseWatch();
   setStudioLicenseLocked(true, 'Verificando sua licença no servidor MSK...');
   const licensed = await validateStudioLicense({ quiet: false });
   if (!licensed) return;
+
   if (studioBootstrapped) return;
   studioBootstrapped = true;
   const saved = await new Promise(r => chrome.storage.local.get(['studio_projects_v5', 'studio_current_id_v5', 'theme'], r));
