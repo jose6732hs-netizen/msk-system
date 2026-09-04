@@ -1,0 +1,1 @@
+revoke all on function public.msk_enforce_single_active_ai_settings() from public, anon, authenticated;
