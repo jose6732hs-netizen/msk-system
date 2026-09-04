@@ -120,42 +120,69 @@ export function AdminExtensionModels() {
       {isLoading ? <p className="mt-4 text-xs text-muted-foreground">Carregando catálogo…</p> : null}
 
       <div className="mt-5 space-y-4">
-        {grouped.map(([providerIdKey, models]) => (
-          <div key={providerIdKey} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs font-black uppercase tracking-[0.16em]">{PROVIDER_LABELS[providerIdKey] || providerIdKey}</p>
-              <div className="flex gap-2">
-                <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ providerId: providerIdKey, visible: true })}>
-                  <Eye className="mr-2 h-4 w-4" /> Mostrar todos
-                </Button>
-                <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ providerId: providerIdKey, visible: false })}>
-                  <EyeOff className="mr-2 h-4 w-4" /> Ocultar todos
-                </Button>
-              </div>
-            </div>
-
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {models.map((row) => (
-                <div key={row.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/20 p-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-bold">{row.label}</p>
-                    <p className="truncate font-mono text-[0.6rem] text-muted-foreground">{row.modelId}</p>
-                    <div className="mt-1 flex flex-wrap gap-1 text-[0.52rem] font-black uppercase tracking-widest">
-                      <span className="rounded-full border border-white/10 px-2 py-0.5">{FOCUS_LABELS[row.focus] || row.focus}</span>
-                      {row.isFree ? <span className="rounded-full border border-emerald-500/30 px-2 py-0.5 text-emerald-300">Grátis</span> : null}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2">
-                    <Switch checked={row.visible} onCheckedChange={(next) => toggle.mutate({ id: row.id, visible: next })} />
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => window.confirm(`Remover ${row.modelId}?`) && remove.mutate(row.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
+        {grouped.map(([providerIdKey, models]) => {
+          const activeInProvider = models.filter((m) => m.visible).length;
+          const open = openProviders[providerIdKey] ?? true;
+          return (
+            <div key={providerIdKey} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOpenProviders((prev) => ({ ...prev, [providerIdKey]: !open }))}
+                  className="flex items-center gap-2 text-left"
+                  aria-expanded={open}
+                >
+                  <ChevronDown className={`h-4 w-4 text-primary transition-transform ${open ? "" : "-rotate-90"}`} />
+                  <span className="text-xs font-black uppercase tracking-[0.16em]">{PROVIDER_LABELS[providerIdKey] || providerIdKey}</span>
+                  <span className="rounded-full border border-emerald-500/25 px-2 py-0.5 text-[0.55rem] font-black uppercase tracking-widest text-emerald-300">
+                    {activeInProvider}/{models.length} ativos
+                  </span>
+                </button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ providerId: providerIdKey, visible: true })}>
+                    <Eye className="mr-2 h-4 w-4" /> Ativar todos
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={bulk.isPending} onClick={() => bulk.mutate({ providerId: providerIdKey, visible: false })}>
+                    <EyeOff className="mr-2 h-4 w-4" /> Desativar todos
+                  </Button>
                 </div>
-              ))}
+              </div>
+
+              {open ? (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {models.map((row) => (
+                    <div
+                      key={row.id}
+                      className={`flex items-start justify-between gap-3 rounded-xl border p-3 transition-colors ${row.visible ? "border-emerald-500/30 bg-emerald-500/[0.06]" : "border-white/10 bg-black/20 opacity-70"}`}
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-bold">{row.label}</p>
+                        <p className="truncate font-mono text-[0.6rem] text-muted-foreground">{row.modelId}</p>
+                        <div className="mt-1 flex flex-wrap gap-1 text-[0.52rem] font-black uppercase tracking-widest">
+                          <span className="rounded-full border border-white/10 px-2 py-0.5">{FOCUS_LABELS[row.focus] || row.focus}</span>
+                          {row.isFree ? <span className="rounded-full border border-emerald-500/30 px-2 py-0.5 text-emerald-300">Grátis</span> : null}
+                          <span className={`rounded-full border px-2 py-0.5 ${row.visible ? "border-emerald-500/30 text-emerald-300" : "border-white/10 text-muted-foreground"}`}>
+                            {row.visible ? "Ativo na extensão" : "Oculto"}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-2">
+                        <Switch
+                          checked={row.visible}
+                          aria-label={`Ativar ${row.modelId} na extensão`}
+                          onCheckedChange={(next) => toggle.mutate({ id: row.id, visible: next })}
+                        />
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => window.confirm(`Remover ${row.modelId}?`) && remove.mutate(row.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
