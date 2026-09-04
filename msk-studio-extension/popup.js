@@ -622,6 +622,40 @@ async function mskAgentRequest(action, payload = {}, signal = null) {
   }
   return data;
 }
+const _0x8fB = 'https://iybjfmhqbblrppqoodyf.supabase.co/functions/v1/msk-agent-repositories';
+async function mskRepositoriesRequest(action, payload = {}) {
+  const ctx = await resolveAgentContext();
+  if (!MSK_PROJECT_ID_RE.test(String(ctx.projectId || ''))) throw new Error('Project ID Lovable inválido.');
+  const headers = {
+    'Authorization': `Bearer ${state.license?.key || ''}`,
+    'apikey': _0x8f4,
+    'Content-Type': 'application/json',
+  };
+  if (ctx.session) headers['x-msk-session'] = ctx.session;
+  const res = await fetch(`${_0x8fB}?action=${encodeURIComponent(action)}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ lovable_project_id: ctx.projectId, ...payload }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data?.ok === false) {
+    const error = new Error(String(data?.error || `HTTP ${res.status}`));
+    error.code = String(data?.code || '');
+    throw error;
+  }
+  return data;
+}
+async function bindRequestedRepository(requested, boundRepository) {
+  const target = normalizeRepoInput(requested || '');
+  const current = normalizeRepoInput(boundRepository || '');
+  if (!target || target === current) return null;
+  const selected = await mskRepositoriesRequest('select', { repository: target });
+  const repository = normalizeRepoInput(selected?.repository || target);
+  state.agentContext.repository = repository;
+  state.config = { ...(state.config || {}), repo: repository, branch: selected?.branch || state.config?.branch || 'main' };
+  await store.set({ config: state.config });
+  return { ...selected, repository };
+}
 async function ensureAgentConnected({ openAuthorization = false } = {}) {
   const ctx = await resolveAgentContext();
   if (!MSK_PROJECT_ID_RE.test(String(ctx.projectId || ''))) return { connected: false, code: 'PROJECT_ID_REQUIRED' };
