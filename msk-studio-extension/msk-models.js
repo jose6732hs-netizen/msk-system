@@ -115,14 +115,26 @@
    * onChange recebe { provider, model }.
    */
   async function attach({ providerSelect, modelSelect, onChange = () => {} } = {}) {
+    if (providerSelect?.dataset) {
+      if (providerSelect.dataset['mskBound'] === '1' && state.loaded) {
+        fillProviderSelect(providerSelect);
+        fillModelSelect(modelSelect);
+        onChange(getSelection());
+        return getSelection();
+      }
+      providerSelect.dataset['mskBound'] = '1';
+    }
+
     if (!state.loaded) {
       const [models, saved] = await Promise.all([fetchCatalog(), readSaved()]);
-      state.models = models;
+      const usable = models.length ? models : FALLBACK;
+      state.models = usable;
       state.loaded = true;
-      state.provider = saved.provider && models.some((m) => m.provider === saved.provider)
+      state.usedFallback = !models.length;
+      state.provider = saved.provider && usable.some((m) => m.provider === saved.provider)
         ? saved.provider
-        : (models[0]?.provider || '');
-      state.model = saved.model && models.some((m) => m.provider === state.provider && m.model === saved.model)
+        : (usable[0]?.provider || '');
+      state.model = saved.model && usable.some((m) => m.provider === state.provider && m.model === saved.model)
         ? saved.model
         : (modelsOf(state.provider)[0]?.model || '');
     }
@@ -146,8 +158,35 @@
 
     persist();
     onChange(getSelection());
+
+    // Se o catálogo online falhou, tenta novamente em segundo plano.
+    if (state.usedFallback && !state.retrying) {
+      state.retrying = true;
+      const retry = async (attempt = 1) => {
+        const models = await fetchCatalog();
+        if (models.length) {
+          state.models = models;
+          state.usedFallback = false;
+          state.retrying = false;
+          if (!models.some((m) => m.provider === state.provider)) state.provider = models[0].provider;
+          if (!models.some((m) => m.provider === state.provider && m.model === state.model)) {
+            state.model = modelsOf(state.provider)[0]?.model || '';
+          }
+          fillProviderSelect(providerSelect);
+          fillModelSelect(modelSelect);
+          persist();
+          onChange(getSelection());
+          return;
+        }
+        if (attempt < 5) setTimeout(() => void retry(attempt + 1), 5000);
+        else state.retrying = false;
+      };
+      setTimeout(() => void retry(), 4000);
+    }
+
     return getSelection();
   }
+
 
   function getSelection() {
     const found = state.models.find((m) => m.provider === state.provider && m.model === state.model);
