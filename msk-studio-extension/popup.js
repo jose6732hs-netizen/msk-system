@@ -578,6 +578,9 @@ async function mskAgentRequest(action, payload = {}, signal = null) {
   if (!(await _0x8f7())) throw new Error('Integridade MSK inválida. Reinstale a extensão oficial.');
   const licensed = await ensureActiveLicense({ network: true, quiet: false });
   if (!licensed || !state.license?.key) throw new Error('Licença MSK necessária.');
+  const selection = await window.MSKModels?.loadSelection?.();
+  state.selectedProvider = selection?.provider || '';
+  state.selectedModel = selection?.model || '';
   const ctx = await resolveAgentContext();
   if (!MSK_PROJECT_ID_RE.test(String(ctx.projectId || ''))) {
     const err = new Error('Abra o projeto no Lovable ou informe o Project ID nas configurações.');
@@ -1158,6 +1161,7 @@ async function init() {
   if (!licensed) { disableInput(); return; }
   hideLicenseGate();
   startLicenseWatch();
+  setupPopupModelSelect();
   if (saved.config) state.config = { ...saved.config, token: undefined };
   const ctx = await resolveAgentContext();
   if ($('gh-repo')) $('gh-repo').value = state.config?.repo || '';
@@ -1177,7 +1181,6 @@ async function init() {
     if (connected?.connected) {
       setGitHubConnectionUI(connected);
       enableInput();
-      setupPopupModelSelect();
       return;
     }
   } catch (e) {
