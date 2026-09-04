@@ -105,6 +105,7 @@ Deno.serve(async (req: Request) => {
   let lockHeld = false;
   let stage: AgentStage = "request";
   let retryCount = 0;
+  let activeProvider: { provider: string; model: string; label: string } = { provider: "", model: "", label: "" };
 
   try {
     if (req.method === "POST" && url.searchParams.get("action") === "health") {
