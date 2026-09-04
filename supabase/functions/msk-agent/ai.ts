@@ -25,6 +25,7 @@ import {
   buildProviderRequest,
   extractProviderText,
   normalizeProviderId,
+  MODEL_FALLBACKS,
   type ChatMessage,
   type ProviderConfig,
 } from "./providers.ts";
@@ -209,6 +210,53 @@ async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
   }
 }
 
+
+type ModelOutcome = { response?: Response; status: number; error: string; modelError: boolean };
+
+/** Erro de MODELO: vale tentar outro modelo do mesmo provedor. */
+function isModelError(status: number, detail: string) {
+  if (status === 404) return true;
+  if (![400, 402, 422].includes(status)) return false;
+  return /model|batch|no endpoints|not found|does not exist|unavailable|decommissioned|deprecated/i.test(detail);
+}
+
+/** Loop de tentativas transitórias de UM modelo de UM provedor. */
+async function resilientModel(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean): Promise<ModelOutcome> {
+  let mode = jsonMode;
+  let reasoningStyle = false;
+  let lastStatus = 0;
+  let lastError = "";
+  let modelError = false;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      let x = await requestAI(cfg, messages, maxTokens, mode, 26000, reasoningStyle);
+      if (!x.ok && [400, 422].includes(x.status) && !reasoningStyle) {
+        const probe = await x.clone().text().catch(() => "");
+        if (/temperature|max_tokens|max_completion_tokens|unsupported/i.test(probe)) {
+          reasoningStyle = true;
+          x = await requestAI(cfg, messages, maxTokens, mode, 26000, true);
+        }
+      }
+      if (mode && [400, 404, 422].includes(x.status)) {
+        mode = false;
+        x = await requestAI(cfg, messages, maxTokens, false, 26000, reasoningStyle);
+      }
+      if (x.ok) return { response: x, status: 200, error: "", modelError: false };
+      lastStatus = x.status;
+      const detail = await x.text().catch(() => "");
+      lastError = detail.slice(0, 500);
+      modelError = isModelError(x.status, detail);
+
+      if (modelError || !retryable(x.status) || attempt === 3) break;
+    } catch (error) {
+      if (error instanceof AgentError && !error.retryable) throw error;
+      lastError = error instanceof AgentError ? error.code : "network";
+      if (attempt === 3) break;
+    }
+    await sleep(350 * (2 ** (attempt - 1)));
+  }
+  return { status: lastStatus, error: lastError, modelError };
+}
 
 /**
  * Chamada na IA recebida. Retry exponencial apenas para falhas transitórias
