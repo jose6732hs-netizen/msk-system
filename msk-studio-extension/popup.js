@@ -1110,14 +1110,17 @@ async function sendMessage() {
       if (connected?.authorize_url) throw new Error('Autorize o GitHub na aba aberta e depois envie o comando novamente.');
       throw new Error(connected?.error || 'Projeto ainda não está conectado ao GitHub MSK.');
     }
+    const typedRepo = normalizeRepoInput($('gh-repo')?.value || '');
+    const targetRepo = typedRepo || normalizeRepoInput(connected.repository || state.config?.repo || '');
     const res = await runAgentCommandResilient({
       command: text,
       original_command: text,
       client_original_command: text,
-      repository_url: connected.repository || state.config?.repo || undefined,
+      repository_url: targetRepo || undefined,
       branch: state.config?.branch || undefined,
       attached_files: files,
     });
+
     addAssistantMessage(res);
     if (res.ok) {
       const count = Number(res.files_changed_count || (Array.isArray(res.files) ? res.files.length : 0) || (Array.isArray(res.committed) ? res.committed.length : 0));
