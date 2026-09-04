@@ -314,10 +314,11 @@ export function AdminAgentAiSettings() {
             ) : null}
 
             {provider !== "synterolink" ? (
-              <label className="mt-4 flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
-                <input type="checkbox" checked={makePrimary} onChange={(event) => setMakePrimary(event.target.checked)} /> Definir também como IA principal
-              </label>
+              <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-muted-foreground">
+                Ao salvar, <b className="text-primary">{meta.label}</b> vira a única IA ativa e principal. As outras são desativadas automaticamente.
+              </div>
             ) : (
+
               <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-muted-foreground">
                 Ao salvar Claude, o MSK já deixa <b className="text-primary">ativa e principal</b> automaticamente.
               </div>
