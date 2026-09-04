@@ -659,9 +659,14 @@ async function bindRequestedRepository(requested, boundRepository) {
 async function ensureAgentConnected({ openAuthorization = false } = {}) {
   const ctx = await resolveAgentContext();
   if (!MSK_PROJECT_ID_RE.test(String(ctx.projectId || ''))) return { connected: false, code: 'PROJECT_ID_REQUIRED' };
+  const requestedRepo = normalizeRepoInput($('gh-repo')?.value || state.config?.repo || '');
   try {
-    const status = await mskAgentRequest('status', {});
+    let status = await mskAgentRequest('status', {});
     if (status?.connected) {
+      if (requestedRepo && normalizeRepoInput(status.repository || '') !== requestedRepo) {
+        const rebound = await bindRequestedRepository(requestedRepo, status.repository);
+        if (rebound?.repository) status = { ...status, repository: rebound.repository, branch: rebound.branch || status.branch };
+      }
       if (status.repository) {
         state.agentContext.repository = String(status.repository);
         state.config = { ...(state.config || {}), repo: String(status.repository), projectId: ctx.projectId, branch: state.config?.branch || 'main' };
@@ -669,6 +674,7 @@ async function ensureAgentConnected({ openAuthorization = false } = {}) {
       }
       return status;
     }
+
   } catch (e) {
     if (!['MSK_SESSION_REQUIRED'].includes(String(e.code || ''))) throw e;
   }
