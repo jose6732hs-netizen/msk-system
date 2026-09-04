@@ -327,17 +327,20 @@ function legacyChatPrompt(prompt: string): BuiltPrompt | null {
 }
 
 /**
- * Identificação da ÚNICA IA ativa (sem expor a API Key), usada nas respostas
- * e nos checkpoints enviados para a extensão.
+ * Identificação da IA preferida no momento (sem expor a API Key), usada nas
+ * respostas e nos checkpoints enviados para a extensão. Se houver revezamento,
+ * passa a refletir a IA que efetivamente atendeu.
  */
 export async function activeProviderInfo(r: Request) {
   try {
-    const cfg = await activeAI(r);
-    return { provider: cfg.provider, model: cfg.model, label: cfg.label };
+    const pool = await aiPool(r);
+    const cfg = pool.configs[Math.min(pool.preferred, pool.configs.length - 1)]!;
+    return { provider: cfg.provider, model: cfg.model, label: cfg.label, available: pool.configs.length };
   } catch {
-    return { provider: "", model: "", label: "" };
+    return { provider: "", model: "", label: "", available: 0 };
   }
 }
+
 
 export async function ask(r: Request, prompt: string, jsonMode = false, max = 4000) {
   const decoded = decodePromptEnvelope(prompt);
