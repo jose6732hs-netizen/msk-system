@@ -46,8 +46,8 @@ const PROVIDERS = {
   },
   claude: {
     label: "Claude",
-    baseUrl: "https://api.synterolink.com/v1/chat/completions",
-    defaultModel: "claude-sonnet-4-5",
+    baseUrl: "https://api.kpalabz.com/v1/messages",
+    defaultModel: "claude-sonnet-5",
     custom: true,
   },
 } as const;

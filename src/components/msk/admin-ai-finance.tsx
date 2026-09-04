@@ -9,7 +9,7 @@ import { aiProviderFinance } from "@/lib/ai-finance.functions";
 
 const PROVIDER_LABELS: Record<string, string> = {
   groq: "Groq",
-  synterolink: "Claude · SynteroLink",
+  synterolink: "Claude · KPALabz",
   claude: "Claude",
   openai: "OpenAI",
   gemini: "Google Gemini",

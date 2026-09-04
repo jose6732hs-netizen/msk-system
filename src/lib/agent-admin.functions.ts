@@ -54,7 +54,7 @@ const DEFAULT_MODELS: Record<AgentAiProviderId, string> = {
   manus: "manus-agent-v1",
   mistral: "codestral-latest",
   omniroute: "z-ai/glm-5.2",
-  synterolink: "claude-sonnet-4-6",
+  synterolink: "claude-sonnet-5",
 };
 
 function normalizeProviderId(value: unknown): AgentAiProviderId {

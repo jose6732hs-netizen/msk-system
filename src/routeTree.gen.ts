@@ -77,6 +77,8 @@ import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/em
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
 import { Route as ApiPublicAgentLicenseHeartbeatRouteImport } from './routes/api/public/agent/license/heartbeat'
 import { Route as ApiPublicAgentLicenseValidateRouteImport } from './routes/api/public/agent/license/validate'
+import { Route as ApiPublicAgentSecurityReportRouteImport } from './routes/api/public/agent/security/report'
+import { Route as ApiPublicAgentSecurityStatusRouteImport } from './routes/api/public/agent/security/status'
 import { Route as ApiPublicExtRuntimeBundleRouteImport } from './routes/api/public/ext/runtime/bundle'
 import { Route as ApiPublicExtRuntimeManifestRouteImport } from './routes/api/public/ext/runtime/manifest'
 import { Route as ApiPublicLicenseDeviceRemoveRouteImport } from './routes/api/public/license/device/remove'
@@ -447,6 +449,18 @@ const ApiPublicAgentLicenseValidateRoute =
     path: '/api/public/agent/license/validate',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAgentSecurityReportRoute =
+  ApiPublicAgentSecurityReportRouteImport.update({
+    id: '/api/public/agent/security/report',
+    path: '/api/public/agent/security/report',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicAgentSecurityStatusRoute =
+  ApiPublicAgentSecurityStatusRouteImport.update({
+    id: '/api/public/agent/security/status',
+    path: '/api/public/agent/security/status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicExtRuntimeBundleRoute =
   ApiPublicExtRuntimeBundleRouteImport.update({
     id: '/api/public/ext/runtime/bundle',
@@ -546,6 +560,8 @@ export interface FileRoutesByFullPath {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
   '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
+  '/api/public/agent/security/report': typeof ApiPublicAgentSecurityReportRoute
+  '/api/public/agent/security/status': typeof ApiPublicAgentSecurityStatusRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -620,6 +636,8 @@ export interface FileRoutesByTo {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
   '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
+  '/api/public/agent/security/report': typeof ApiPublicAgentSecurityReportRoute
+  '/api/public/agent/security/status': typeof ApiPublicAgentSecurityStatusRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -696,6 +714,8 @@ export interface FileRoutesById {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/api/public/agent/license/heartbeat': typeof ApiPublicAgentLicenseHeartbeatRoute
   '/api/public/agent/license/validate': typeof ApiPublicAgentLicenseValidateRoute
+  '/api/public/agent/security/report': typeof ApiPublicAgentSecurityReportRoute
+  '/api/public/agent/security/status': typeof ApiPublicAgentSecurityStatusRoute
   '/api/public/ext/runtime/bundle': typeof ApiPublicExtRuntimeBundleRoute
   '/api/public/ext/runtime/manifest': typeof ApiPublicExtRuntimeManifestRoute
   '/api/public/license/device/remove': typeof ApiPublicLicenseDeviceRemoveRoute
@@ -772,6 +792,8 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/api/public/agent/license/heartbeat'
     | '/api/public/agent/license/validate'
+    | '/api/public/agent/security/report'
+    | '/api/public/agent/security/status'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -846,6 +868,8 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/api/public/agent/license/heartbeat'
     | '/api/public/agent/license/validate'
+    | '/api/public/agent/security/report'
+    | '/api/public/agent/security/status'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -921,6 +945,8 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/api/public/agent/license/heartbeat'
     | '/api/public/agent/license/validate'
+    | '/api/public/agent/security/report'
+    | '/api/public/agent/security/status'
     | '/api/public/ext/runtime/bundle'
     | '/api/public/ext/runtime/manifest'
     | '/api/public/license/device/remove'
@@ -991,6 +1017,8 @@ export interface RootRouteChildren {
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   ApiPublicAgentLicenseHeartbeatRoute: typeof ApiPublicAgentLicenseHeartbeatRoute
   ApiPublicAgentLicenseValidateRoute: typeof ApiPublicAgentLicenseValidateRoute
+  ApiPublicAgentSecurityReportRoute: typeof ApiPublicAgentSecurityReportRoute
+  ApiPublicAgentSecurityStatusRoute: typeof ApiPublicAgentSecurityStatusRoute
   ApiPublicExtRuntimeBundleRoute: typeof ApiPublicExtRuntimeBundleRoute
   ApiPublicExtRuntimeManifestRoute: typeof ApiPublicExtRuntimeManifestRoute
   ApiPublicLicenseDeviceRemoveRoute: typeof ApiPublicLicenseDeviceRemoveRoute
@@ -1476,6 +1504,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAgentLicenseValidateRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/agent/security/report': {
+      id: '/api/public/agent/security/report'
+      path: '/api/public/agent/security/report'
+      fullPath: '/api/public/agent/security/report'
+      preLoaderRoute: typeof ApiPublicAgentSecurityReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/agent/security/status': {
+      id: '/api/public/agent/security/status'
+      path: '/api/public/agent/security/status'
+      fullPath: '/api/public/agent/security/status'
+      preLoaderRoute: typeof ApiPublicAgentSecurityStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/ext/runtime/bundle': {
       id: '/api/public/ext/runtime/bundle'
       path: '/api/public/ext/runtime/bundle'
@@ -1609,6 +1651,8 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   ApiPublicAgentLicenseHeartbeatRoute: ApiPublicAgentLicenseHeartbeatRoute,
   ApiPublicAgentLicenseValidateRoute: ApiPublicAgentLicenseValidateRoute,
+  ApiPublicAgentSecurityReportRoute: ApiPublicAgentSecurityReportRoute,
+  ApiPublicAgentSecurityStatusRoute: ApiPublicAgentSecurityStatusRoute,
   ApiPublicExtRuntimeBundleRoute: ApiPublicExtRuntimeBundleRoute,
   ApiPublicExtRuntimeManifestRoute: ApiPublicExtRuntimeManifestRoute,
   ApiPublicLicenseDeviceRemoveRoute: ApiPublicLicenseDeviceRemoveRoute,

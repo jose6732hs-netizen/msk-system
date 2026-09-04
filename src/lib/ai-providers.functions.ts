@@ -36,7 +36,7 @@ const BASE_URLS: Record<AiProviderId, string> = {
   groq: "https://api.groq.com/openai/v1/chat/completions",
   manus: "https://api.manus.im/v1/responses",
   mistral: "https://api.mistral.ai/v1/chat/completions",
-  claude: "https://api.synterolink.com/v1/chat/completions",
+  claude: "https://api.kpalabz.com/v1/messages",
 };
 
 async function adminRequest(action: string, payload: Record<string, unknown> = {}) {
