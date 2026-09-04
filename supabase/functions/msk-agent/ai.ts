@@ -24,7 +24,7 @@ import {
   buildProviderConfig,
   buildProviderRequest,
   extractProviderText,
-  pickActiveRow,
+  normalizeProviderId,
   type ChatMessage,
   type ProviderConfig,
 } from "./providers.ts";
@@ -40,66 +40,93 @@ async function decryptKey(value: unknown) {
   }
 }
 
-/**
- * Resolve a ÚNICA IA que deve trabalhar neste comando.
- * Prioridade: catálogo multi-provider do Super Admin → configuração legada →
- * BYOK do usuário → chave de ambiente. Nunca há fallback entre provedores
- * dentro de um mesmo comando.
- */
-async function activeAI(r: Request): Promise<ProviderConfig> {
-  const { data: catalog, error: catalogError } = await db.from("msk_ai_providers").select("*");
-  if (catalogError) console.warn("MSK multi-provider read failed", catalogError.message);
-  const row = pickActiveRow(Array.isArray(catalog) ? catalog : []);
-  if (row) {
-    const apiKey = await decryptKey(row.api_key_ciphertext ?? row.api_key ?? row.key_ciphertext);
-    if (apiKey) {
-      return buildProviderConfig({
-        provider: row.provider_id ?? row.id ?? row.provider ?? row.label,
-        apiKey,
-        model: row.model,
-        baseUrl: row.api_base_url ?? row.base_url,
-      });
-    }
-  }
+/** Linhas reservadas de controle dentro de public.msk_ai_settings. */
+const RESERVED_ROWS = new Set(["default", "__primary__"]);
 
-  const { data: globalCfg, error: globalError } = await db
-    .from("msk_ai_settings")
-    .select("provider,model,api_base_url,api_key_ciphertext,active")
-    .eq("id", "default")
-    .maybeSingle();
-  if (globalError) console.warn("MSK global AI config read failed", globalError.message);
+type AiSettingsRow = {
+  id?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  api_base_url?: string | null;
+  api_key_ciphertext?: string | null;
+  active?: boolean | null;
+  updated_at?: string | null;
+};
 
-  if (globalCfg?.active !== false && globalCfg?.api_key_ciphertext) {
-    const apiKey = await decryptKey(globalCfg.api_key_ciphertext);
-    if (apiKey) {
-      return buildProviderConfig({
-        provider: globalCfg.provider,
-        apiKey,
-        model: globalCfg.model,
-        baseUrl: globalCfg.api_base_url,
-      });
-    }
-  }
+const rowId = (row: AiSettingsRow) => String(row?.id || "").trim().toLowerCase();
+const usableRow = (row: AiSettingsRow | undefined | null) =>
+  !!row && row.active !== false && !!String(row.api_key_ciphertext || "").trim();
 
-  // Compatibilidade: BYOK B.AI do usuário continua como fallback quando o admin
-  // ainda não definiu uma IA global ativa.
-  const u = await identity(r);
-  if (u) {
-    const { data } = await db.from("app_user_connections")
-      .select("connection_key_ciphertext,revoked_at")
-      .eq("user_id", u.id)
-      .eq("connector_id", "ai_bai")
-      .maybeSingle();
-    if (data?.connection_key_ciphertext && !data.revoked_at) {
-      const apiKey = await decryptKey(data.connection_key_ciphertext);
-      if (apiKey) return buildProviderConfig({ provider: "bai", apiKey });
-    }
-  }
-
-  const fallbackKey = Deno.env.get("BAI_API_KEY");
-  if (!fallbackKey) throw new AgentError("AI_CONFIGURATION_ERROR", "Nenhuma IA está ativa no Super Admin do MSK.", { stage: "auth", httpStatus: 503 });
-  return buildProviderConfig({ provider: "bai", apiKey: fallbackKey });
+async function configFromRow(row: AiSettingsRow): Promise<ProviderConfig | null> {
+  const apiKey = await decryptKey(row.api_key_ciphertext);
+  if (!apiKey) return null;
+  const id = rowId(row);
+  return buildProviderConfig({
+    provider: RESERVED_ROWS.has(id) ? row.provider : (row.provider || id),
+    apiKey,
+    model: row.model,
+    baseUrl: row.api_base_url,
+  });
 }
+
+/**
+ * Resolve a ÚNICA IA ativa a partir de public.msk_ai_settings (fonte oficial).
+ * Sem fallback para BYOK, variável de ambiente ou outro provedor.
+ */
+async function resolveActiveAI(): Promise<ProviderConfig> {
+  const { data, error } = await db
+    .from("msk_ai_settings")
+    .select("id,provider,model,api_base_url,api_key_ciphertext,active,updated_at");
+  if (error) {
+    throw new AgentError("AI_CONFIGURATION_ERROR", "Não foi possível ler a configuração de IA do Super Admin.", { stage: "auth", httpStatus: 503, cause: error });
+  }
+
+  const rows: AiSettingsRow[] = Array.isArray(data) ? data : [];
+  const byId = new Map(rows.map((row) => [rowId(row), row]));
+  const providerRows = rows.filter((row) => !RESERVED_ROWS.has(rowId(row)));
+
+  const candidates: AiSettingsRow[] = [];
+
+  // 1) Ponteiro __primary__ (aponta para o provedor escolhido no Super Admin).
+  const pointer = byId.get("__primary__");
+  if (pointer) {
+    const target = String(pointer.provider || pointer.model || "").trim();
+    if (target) {
+      const wanted = normalizeProviderId(target);
+      const match = providerRows.find((row) => normalizeProviderId(row.provider || row.id) === wanted);
+      if (match) candidates.push(match);
+    }
+    if (usableRow(pointer)) candidates.push(pointer);
+  }
+
+  // 2) Provedor marcado como ativo.
+  candidates.push(...providerRows.filter((row) => row.active === true));
+
+  // 3) Linha legada "default".
+  const legacy = byId.get("default");
+  if (legacy) candidates.push(legacy);
+
+  for (const row of candidates) {
+    if (!usableRow(row)) continue;
+    const cfg = await configFromRow(row);
+    if (cfg?.apiKey) return cfg;
+  }
+
+  throw new AgentError("AI_CONFIGURATION_ERROR", "Nenhuma IA está ativa no Super Admin do MSK.", { stage: "auth", httpStatus: 503 });
+}
+
+/** Uma única resolução da IA ativa por execução/requisição. */
+const AI_PER_REQUEST = new WeakMap<Request, Promise<ProviderConfig>>();
+
+function activeAI(r: Request): Promise<ProviderConfig> {
+  const cached = AI_PER_REQUEST.get(r);
+  if (cached) return cached;
+  const pending = resolveActiveAI();
+  AI_PER_REQUEST.set(r, pending);
+  pending.catch(() => AI_PER_REQUEST.delete(r));
+  return pending;
+}
+
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const retryable = (status: number) => [408, 409, 425, 429, 500, 502, 503, 504].includes(status);
