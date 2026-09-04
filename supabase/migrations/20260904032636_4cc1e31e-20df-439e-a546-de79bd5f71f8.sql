@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.msk_enforce_single_active_ai() FROM PUBLIC, anon, authenticated;
