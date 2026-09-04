@@ -127,17 +127,20 @@ async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
 }
 
 
-async function resilientAI(r: Request, base: any, jsonMode: boolean) {
+/**
+ * Executa a chamada SOMENTE na IA ativa. Retry exponencial apenas para falhas
+ * transitórias (429/5xx) do mesmo provedor — nunca troca de IA.
+ */
+async function resilientAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean) {
   let mode = jsonMode;
   let lastStatus = 0;
   let lastError = "";
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      const body = mode ? { ...base, response_format: { type: "json_object" } } : base;
-      let x = await requestAI(r, body);
+      let x = await requestAI(cfg, messages, maxTokens, mode);
       if (mode && [400, 404, 422].includes(x.status)) {
         mode = false;
-        x = await requestAI(r, base);
+        x = await requestAI(cfg, messages, maxTokens, false);
       }
       if (x.ok) return x;
       lastStatus = x.status;
@@ -145,41 +148,43 @@ async function resilientAI(r: Request, base: any, jsonMode: boolean) {
       lastError = detail.slice(0, 500);
       if (!retryable(x.status) || attempt === 3) break;
     } catch (error) {
-      const mapped = error instanceof AgentError ? error : new AgentError("AI_NETWORK_UNAVAILABLE", "A conexão com a IA falhou.", { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
+      const mapped = error instanceof AgentError ? error : new AgentError("AI_NETWORK_UNAVAILABLE", `A conexão com ${cfg.label} falhou.`, { stage: "analyzing", retryable: true, httpStatus: 503, cause: error });
       lastError = mapped.code;
       if (!mapped.retryable || attempt === 3) throw mapped;
     }
     await sleep(350 * (2 ** (attempt - 1)));
   }
 
-  if (lastStatus === 429) throw new AgentError("AI_RATE_LIMIT", "A IA limitou temporariamente as requisições do agente.", { stage: "analyzing", retryable: true, httpStatus: 503, context: { upstreamStatus: lastStatus } });
-  if (retryable(lastStatus)) throw new AgentError("AI_UPSTREAM_UNAVAILABLE", "O provedor de IA ficou temporariamente indisponível.", { stage: "analyzing", retryable: true, httpStatus: 503, context: { upstreamStatus: lastStatus } });
-  throw new AgentError("AI_UPSTREAM_REJECTED", "O provedor de IA recusou a solicitação.", { stage: "analyzing", retryable: false, httpStatus: 502, context: { upstreamStatus: lastStatus, detail: lastError } });
+  const context = { provider: cfg.provider, model: cfg.model, upstreamStatus: lastStatus, detail: lastError };
+  if (lastStatus === 429) throw new AgentError("AI_RATE_LIMIT", `${cfg.label} limitou temporariamente as requisições do agente.`, { stage: "analyzing", retryable: true, httpStatus: 503, context });
+  if (lastStatus === 401 || lastStatus === 403) throw new AgentError("AI_CONFIGURATION_ERROR", `${cfg.label} recusou a API Key configurada no Super Admin.`, { stage: "auth", retryable: false, httpStatus: 502, context });
+  if (retryable(lastStatus)) throw new AgentError("AI_UPSTREAM_UNAVAILABLE", `${cfg.label} ficou temporariamente indisponível.`, { stage: "analyzing", retryable: true, httpStatus: 503, context });
+  throw new AgentError("AI_UPSTREAM_REJECTED", `${cfg.label} recusou a solicitação.`, { stage: "analyzing", retryable: false, httpStatus: 502, context });
+}
+
+async function runPrompt(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean) {
+  const x = await resilientAI(cfg, messages, maxTokens, jsonMode);
+  let d: any;
+  try { d = await x.json(); }
+  catch (error) { throw new AgentError("AI_RESPONSE_PARSE_ERROR", `A resposta de ${cfg.label} não era JSON HTTP válido.`, { stage: "analyzing", retryable: true, httpStatus: 422, cause: error }); }
+  const extracted = extractProviderText(cfg, d);
+  if (!extracted.text) throw new AgentError("AI_EMPTY_RESPONSE", `${cfg.label} respondeu sem conteúdo utilizável.`, { stage: "analyzing", retryable: true, httpStatus: 422, context: { provider: cfg.provider } });
+  return extracted;
 }
 
 async function callBuiltPrompt(r: Request, built: BuiltPrompt, max = 4000) {
-  const messages: Array<{ role: "system" | "assistant" | "user"; content: string }> = [{ role: "system", content: built.system }];
+  const cfg = await activeAI(r);
+  const messages: ChatMessage[] = [{ role: "system", content: built.system }];
   if (built.assistantContext) messages.push({ role: "assistant", content: built.assistantContext });
   messages.push({ role: "user", content: built.user });
-  const base: any = {
-    model: "deepseek-v4-flash",
-    messages,
-    max_tokens: Math.max(256, Math.min(Number(max || 4000), 18000)),
-    temperature: 0,
-    stream: false,
-  };
-  const x = await resilientAI(r, base, built.jsonMode);
-  let d: any;
-  try { d = await x.json(); }
-  catch (error) { throw new AgentError("AI_RESPONSE_PARSE_ERROR", "A resposta da IA não era JSON HTTP válido.", { stage: "analyzing", retryable: true, httpStatus: 422, cause: error }); }
-  const rawText = String(d.choices?.[0]?.message?.content || "").trim();
-  if (!rawText) throw new AgentError("AI_EMPTY_RESPONSE", "A IA respondeu sem conteúdo utilizável.", { stage: "analyzing", retryable: true, httpStatus: 422 });
+  const { id, text: rawText } = await runPrompt(cfg, messages, max, built.jsonMode);
   try {
-    return { id: String(d.id || ""), text: normalizeOperationResponse(rawText, built.operation) };
+    return { id, text: normalizeOperationResponse(rawText, built.operation) };
   } catch (error) {
-    throw new AgentError("AI_RESPONSE_PARSE_ERROR", "A IA retornou dados fora do schema esperado para esta etapa.", { stage: built.operation === "edit" || built.operation === "self_healing" ? "editing" : "analyzing", retryable: true, httpStatus: 422, cause: error, context: { operation: built.operation } });
+    throw new AgentError("AI_RESPONSE_PARSE_ERROR", `${cfg.label} retornou dados fora do schema esperado para esta etapa.`, { stage: built.operation === "edit" || built.operation === "self_healing" ? "editing" : "analyzing", retryable: true, httpStatus: 422, cause: error, context: { operation: built.operation, provider: cfg.provider } });
   }
 }
+
 
 function legacyValidationPrompt(prompt: string): BuiltPrompt | null {
   if (!prompt.includes("VALIDAÇÃO SEMÂNTICA PRÉ-COMMIT")) return null;
