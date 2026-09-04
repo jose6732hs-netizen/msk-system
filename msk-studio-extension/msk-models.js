@@ -6,68 +6,95 @@
     'https://msk-system.lovable.app/api/public/extension-models',
   ];
   const STORE_KEY = 'msk_ai_selection_v1';
+  const CACHE_KEY = 'msk_ai_catalog_cache_v1';
   const PROVIDER_LABELS = {
     groq: 'Groq', gemini: 'Google Gemini', openrouter: 'OpenRouter', omniroute: 'OmniRoute',
     bai: 'B.AI', claude: 'Claude', synterolink: 'Claude · SynteroLink', openai: 'OpenAI',
     mistral: 'Mistral AI', manus: 'Manus AI',
   };
-  const state = { models: [], provider: '', model: '', loaded: false, loading: null, retrying: false };
-  const bound = new WeakSet();
+  const state = {
+    models: [], provider: '', model: '', loaded: false, loading: null,
+    source: 'loading', error: '', retryTimer: null, retryAttempt: 0,
+  };
+  const bindings = new WeakMap();
   const providerLabel = (id) => PROVIDER_LABELS[String(id || '').toLowerCase()] || String(id || '').toUpperCase();
-
-  async function readSaved() {
-    return await new Promise((resolve) => {
-      try { chrome.storage.local.get([STORE_KEY], (v) => resolve(v?.[STORE_KEY] || {})); }
-      catch { resolve({}); }
-    });
-  }
-  function persist() {
-    try { chrome.storage.local.set({ [STORE_KEY]: { provider: state.provider, model: state.model } }); } catch {}
+  const storageGet = (keys) => new Promise((resolve) => {
+    try { chrome.storage.local.get(keys, (value) => resolve(value || {})); }
+    catch { resolve({}); }
+  });
+  const storageSet = (value) => new Promise((resolve) => {
+    try { chrome.storage.local.set(value, resolve); }
+    catch { resolve(); }
+  });
+  function cleanModels(value) {
+    const list = Array.isArray(value) ? value : [];
+    const seen = new Set();
+    return list
+      .filter((item) => item && item.provider && item.model && item.enabled !== false && item.allowed !== false)
+      .map((item) => ({ ...item, provider: String(item.provider).toLowerCase(), model: String(item.model) }))
+      .filter((item) => {
+        const key = `${item.provider}::${item.model}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
   }
   async function fetchOnce(url) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 9000);
+    const timer = setTimeout(() => controller.abort(), 8000);
     try {
-      const res = await fetch(url, { cache: 'no-store', signal: controller.signal });
-      if (!res.ok) return [];
-      const data = await res.json().catch(() => ({}));
-      const list = Array.isArray(data?.models) ? data.models : [];
-      const seen = new Set();
-      return list
-        .filter((m) => m && m.provider && m.model && m.enabled !== false && m.allowed !== false)
-        .filter((m) => {
-          const key = `${String(m.provider).toLowerCase()}::${String(m.model)}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-    } catch { return []; }
-    finally { clearTimeout(timer); }
+      const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
+      if (!response.ok) return [];
+      const data = await response.json().catch(() => ({}));
+      return cleanModels(data?.models);
+    } catch {
+      return [];
+    } finally {
+      clearTimeout(timer);
+    }
   }
   async function fetchCatalog() {
     for (const url of CATALOG_URLS) {
-      const list = await fetchOnce(url);
-      if (list.length) return list;
+      const models = await fetchOnce(url);
+      if (models.length) return models;
     }
     return [];
   }
-  function providers() { return [...new Set(state.models.map((m) => m.provider))]; }
-  function modelsOf(provider) { return state.models.filter((m) => m.provider === provider); }
+  function providers() { return [...new Set(state.models.map((item) => item.provider))]; }
+  function modelsOf(provider) { return state.models.filter((item) => item.provider === provider); }
+  function getSelection() {
+    const found = state.models.find((item) => item.provider === state.provider && item.model === state.model);
+    return {
+      provider: state.provider,
+      model: state.model,
+      label: found?.label || state.model,
+      count: state.models.length,
+      ready: Boolean(found),
+      source: state.source,
+      error: state.error,
+    };
+  }
+  function persistSelection() {
+    void storageSet({ [STORE_KEY]: { provider: state.provider, model: state.model } });
+  }
   function fillProviderSelect(select) {
     if (!select) return;
     select.innerHTML = '';
     const list = providers();
     if (!list.length) {
-      select.innerHTML = '<option value="">Catálogo do Admin indisponível</option>';
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = state.loading ? 'Carregando catálogo…' : 'Catálogo indisponível';
+      select.appendChild(option);
       select.disabled = true;
       select.classList.remove('hidden');
       return;
     }
-    for (const p of list) {
-      const opt = document.createElement('option');
-      opt.value = p;
-      opt.textContent = providerLabel(p);
-      select.appendChild(opt);
+    for (const provider of list) {
+      const option = document.createElement('option');
+      option.value = provider;
+      option.textContent = providerLabel(provider);
+      select.appendChild(option);
     }
     if (!list.includes(state.provider)) state.provider = list[0] || '';
     select.value = state.provider;
@@ -79,81 +106,127 @@
     select.innerHTML = '';
     const list = modelsOf(state.provider);
     if (!list.length) {
-      select.innerHTML = '<option value="">Nenhum modelo liberado</option>';
+      const option = document.createElement('option');
+      option.value = '';
+      option.textContent = state.loading ? 'Carregando modelos…' : 'Nenhum modelo disponível';
+      select.appendChild(option);
       select.disabled = true;
       select.classList.remove('hidden');
       return;
     }
-    for (const m of list) {
-      const opt = document.createElement('option');
-      opt.value = m.model;
-      opt.textContent = `${m.label || m.model}${m.free ? ' • grátis' : ''}`;
-      if (m.note) opt.title = m.note;
-      select.appendChild(opt);
+    for (const item of list) {
+      const option = document.createElement('option');
+      option.value = item.model;
+      option.textContent = `${item.label || item.model}${item.free ? ' • grátis' : ''}`;
+      if (item.note) option.title = item.note;
+      select.appendChild(option);
     }
-    if (!list.some((m) => m.model === state.model)) state.model = list[0].model;
+    if (!list.some((item) => item.model === state.model)) state.model = list[0].model;
     select.value = state.model;
     select.disabled = false;
     select.classList.remove('hidden');
   }
-  function getSelection() {
-    const found = state.models.find((m) => m.provider === state.provider && m.model === state.model);
-    return { provider: state.provider, model: state.model, label: found?.label || state.model, count: state.models.length };
+  function renderBinding(binding) {
+    fillProviderSelect(binding.providerSelect);
+    fillModelSelect(binding.modelSelect);
+    binding.onChange(getSelection());
   }
-  function refreshControls(providerSelect, modelSelect, onChange) {
-    fillProviderSelect(providerSelect);
-    fillModelSelect(modelSelect);
-    persist();
-    onChange(getSelection());
+  function renderAll() {
+    for (const binding of bindings.values?.() || []) renderBinding(binding);
+  }
+  function renderKnownBindings() {
+    document.querySelectorAll('select').forEach((select) => {
+      const binding = bindings.get(select);
+      if (binding?.providerSelect === select) renderBinding(binding);
+    });
   }
   async function ensureLoaded(force = false) {
     if (state.loading) return state.loading;
     if (state.loaded && !force) return state.models;
     state.loading = (async () => {
-      const [models, saved] = await Promise.all([fetchCatalog(), readSaved()]);
-      state.models = models;
+      const saved = await storageGet([STORE_KEY, CACHE_KEY]);
+      const cached = cleanModels(saved?.[CACHE_KEY]?.models);
+      if (!state.models.length && cached.length) {
+        state.models = cached;
+        state.source = 'cache';
+      }
+      const online = await fetchCatalog();
+      if (online.length) {
+        state.models = online;
+        state.source = 'network';
+        state.error = '';
+        state.retryAttempt = 0;
+        await storageSet({ [CACHE_KEY]: { models: online, updatedAt: Date.now() } });
+      } else if (state.models.length) {
+        state.source = 'cache';
+        state.error = 'Catálogo online temporariamente indisponível; usando a última lista válida.';
+      } else {
+        state.source = 'unavailable';
+        state.error = 'Catálogo do Admin indisponível.';
+      }
       state.loaded = true;
-      state.provider = saved.provider && models.some((m) => m.provider === saved.provider) ? saved.provider : (models[0]?.provider || '');
-      state.model = saved.model && models.some((m) => m.provider === state.provider && m.model === saved.model) ? saved.model : (modelsOf(state.provider)[0]?.model || '');
-      return models;
-    })().finally(() => { state.loading = null; });
+      const selected = saved?.[STORE_KEY] || {};
+      if (selected.provider && state.models.some((item) => item.provider === selected.provider)) state.provider = selected.provider;
+      if (!state.provider || !state.models.some((item) => item.provider === state.provider)) state.provider = state.models[0]?.provider || '';
+      if (selected.model && state.models.some((item) => item.provider === state.provider && item.model === selected.model)) state.model = selected.model;
+      if (!state.model || !state.models.some((item) => item.provider === state.provider && item.model === state.model)) state.model = modelsOf(state.provider)[0]?.model || '';
+      persistSelection();
+      return state.models;
+    })().finally(() => {
+      state.loading = null;
+      renderKnownBindings();
+    });
     return state.loading;
   }
+  function scheduleRetry() {
+    if (state.models.length || state.retryTimer || state.retryAttempt >= 3) return;
+    const delays = [3000, 8000, 15000];
+    const delay = delays[state.retryAttempt] || delays[delays.length - 1];
+    state.retryAttempt += 1;
+    state.retryTimer = setTimeout(async () => {
+      state.retryTimer = null;
+      await ensureLoaded(true);
+      if (!state.models.length) scheduleRetry();
+    }, delay);
+  }
   async function attach({ providerSelect, modelSelect, onChange = () => {} } = {}) {
-    await ensureLoaded(false);
-    refreshControls(providerSelect, modelSelect, onChange);
-    if (providerSelect && !bound.has(providerSelect)) {
-      bound.add(providerSelect);
+    const binding = { providerSelect, modelSelect, onChange };
+    if (providerSelect) bindings.set(providerSelect, binding);
+    if (modelSelect) bindings.set(modelSelect, binding);
+    fillProviderSelect(providerSelect);
+    fillModelSelect(modelSelect);
+    if (providerSelect && providerSelect.dataset.mskModelsBound !== '1') {
+      providerSelect.dataset.mskModelsBound = '1';
       providerSelect.addEventListener('change', () => {
         state.provider = providerSelect.value;
         state.model = modelsOf(state.provider)[0]?.model || '';
         fillModelSelect(modelSelect);
-        persist();
+        persistSelection();
         onChange(getSelection());
       });
     }
-    if (modelSelect && !bound.has(modelSelect)) {
-      bound.add(modelSelect);
+    if (modelSelect && modelSelect.dataset.mskModelsBound !== '1') {
+      modelSelect.dataset.mskModelsBound = '1';
       modelSelect.addEventListener('change', () => {
         state.model = modelSelect.value;
-        persist();
+        persistSelection();
         onChange(getSelection());
       });
     }
-    if (!state.models.length && !state.retrying) {
-      state.retrying = true;
-      void (async () => {
-        for (let attempt = 1; attempt <= 6; attempt++) {
-          await new Promise((resolve) => setTimeout(resolve, attempt === 1 ? 2500 : 5000));
-          await ensureLoaded(true);
-          refreshControls(providerSelect, modelSelect, onChange);
-          if (state.models.length) break;
-        }
-        state.retrying = false;
-      })();
-    }
+    await ensureLoaded(false);
+    renderBinding(binding);
+    scheduleRetry();
     return getSelection();
   }
-  async function loadSelection() { await ensureLoaded(false); return getSelection(); }
-  window.MSKModels = { attach, getSelection, loadSelection, providerLabel, refresh: () => ensureLoaded(true) };
+  async function loadSelection() {
+    await ensureLoaded(false);
+    return getSelection();
+  }
+  async function refresh() {
+    await ensureLoaded(true);
+    renderKnownBindings();
+    scheduleRetry();
+    return getSelection();
+  }
+  window.MSKModels = { attach, getSelection, loadSelection, providerLabel, refresh };
 })();
