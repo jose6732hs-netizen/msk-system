@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MSK System Studio",
-  "version": "3.4.6",
+  "version": "3.4.7",
   "description": "MSK System Studio — extensão fina conectada ao backend MSK, usando somente a IA ativa do Super Admin.",
   "permissions": [
     "storage",
@@ -35,5 +35,5 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "version_name": "3.4.6 PROTECTED · Backend MSK · IA Ativa Única"
+  "version_name": "3.4.7 PROTECTED · Backend MSK · Modelos liberados no Admin"
 }
