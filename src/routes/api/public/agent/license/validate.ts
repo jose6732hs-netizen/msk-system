@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight, findLicenseByToken, jsonResponse } from "@/lib/license.server";
-import { handleUnifiedLicenseValidation } from "@/lib/unified-license-validate.server";
+import { handleValidation } from "@/lib/license-validate.server";
 import { isAgentUserRemotelyBlocked } from "@/lib/extension-remote-control.server";
 
 function browserExtensionOrigin(request: Request) {
@@ -42,10 +42,14 @@ function withExtensionCors(response: Response, request: Request) {
 }
 
 /**
- * Compatibilidade para clientes antigos que ainda chamam a rota /agent.
- * A validação usa o mesmo banco central e a mesma política da rota principal.
- * O bloqueio remoto do Super Admin é aplicado depois da licença ser autenticada,
- * sem confiar em user_id vindo do cliente.
+ * Endpoint oficial da tela de KEY do MSK Agente.
+ *
+ * Compatibilidade:
+ * - não exige login/e-mail;
+ * - aceita token + installation_id/device_fingerprint da extensão;
+ * - aceita licenças MSK Agente novas e licenças MSK de extensão legadas;
+ * - rejeita licenças de outros produtos (LIVE/Clonador/entrega);
+ * - preserva limite de dispositivos, validade, expiração e bloqueio remoto.
  */
 export const Route = createFileRoute("/api/public/agent/license/validate")({
   server: {
@@ -53,7 +57,12 @@ export const Route = createFileRoute("/api/public/agent/license/validate")({
       OPTIONS: ({ request }) => extensionPreflight(request),
       POST: async ({ request }) => {
         const input = await request.clone().json().catch(() => null) as Record<string, unknown> | null;
-        const response = await handleUnifiedLicenseValidation(request, "agent-validate", 60);
+        const response = await handleValidation(
+          request,
+          "agent-validate",
+          120,
+          ["agent", "extension"],
+        );
         if (!response.ok) return withExtensionCors(response, request);
 
         const body = await response.clone().json().catch(() => null) as Record<string, unknown> | null;
