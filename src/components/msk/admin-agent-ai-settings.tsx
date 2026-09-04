@@ -77,11 +77,11 @@ const PROVIDERS: Record<ProviderId, ProviderMeta> = {
     showBaseUrl: true,
   },
   synterolink: {
-    label: "Claude · SynteroLink",
-    defaultModel: "claude-sonnet-4-6",
-    models: ["claude-sonnet-4-6"],
-    hint: "Claude via SynteroLink. A chave fica somente no backend do MSK.",
-    defaultBaseUrl: "https://api.synterolink.com",
+    label: "Claude · KPALabz",
+    defaultModel: "claude-sonnet-5",
+    models: ["claude-sonnet-5", "claude-sonnet-4-6"],
+    hint: "Claude via KPALabz. A chave fica somente no backend do MSK.",
+    defaultBaseUrl: "https://api.kpalabz.com",
     showBaseUrl: true,
     lockBaseUrl: true,
   },
@@ -122,8 +122,8 @@ export function AdminAgentAiSettings() {
 
   useEffect(() => {
     const row = rows.get(provider);
-    setModel(row?.model || meta.defaultModel);
-    setBaseUrl(row?.baseUrl || meta.defaultBaseUrl || "");
+    setModel(provider === "synterolink" ? meta.defaultModel : row?.model || meta.defaultModel);
+    setBaseUrl(provider === "synterolink" ? meta.defaultBaseUrl || "" : row?.baseUrl || meta.defaultBaseUrl || "");
     setApiKey("");
     setMakePrimary(provider === "synterolink" ? true : !!row?.primary);
   }, [provider, current?.updatedAt]);
@@ -298,7 +298,7 @@ export function AdminAgentAiSettings() {
                   {availableModels.map((id) => <option key={id} value={id} />)}
                 </datalist>
                 <p className="text-[0.62rem] text-muted-foreground">
-                  Cole o ID exato do modelo. Para Claude/SynteroLink use <b className="text-foreground">claude-sonnet-4-6</b>.
+                  Cole o ID exato do modelo. Para Claude use <b className="text-foreground">claude-sonnet-5</b>.
                 </p>
                 {current?.configured ? (
                   <Button size="sm" variant="outline" disabled={saveModel.isPending || !model.trim()} onClick={() => saveModel.mutate()}>
@@ -313,7 +313,7 @@ export function AdminAgentAiSettings() {
                 <Label htmlFor="msk-ai-base-url">Base URL</Label>
                 <Input id="msk-ai-base-url" value={baseUrl} onChange={(event) => setBaseUrl(event.target.value)} disabled={meta.lockBaseUrl} placeholder={meta.defaultBaseUrl} className="font-mono" />
                 <p className="text-[0.62rem] text-muted-foreground">
-                  {provider === "synterolink" ? "Claude/SynteroLink usa https://api.synterolink.com; o MSK acrescenta /v1/messages no servidor." : "Use uma URL HTTPS acessível pelo backend."}
+                  {provider === "synterolink" ? "Claude usa https://api.kpalabz.com; o MSK acrescenta /v1/messages no servidor." : "Use uma URL HTTPS acessível pelo backend."}
                 </p>
               </div>
             ) : null}

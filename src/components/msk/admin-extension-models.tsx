@@ -17,7 +17,7 @@ import {
 
 const PROVIDER_LABELS: Record<string, string> = {
   groq: "Groq",
-  synterolink: "Claude · SynteroLink",
+  synterolink: "Claude · KPALabz",
   openai: "OpenAI",
   gemini: "Google Gemini",
   mistral: "Mistral AI",
