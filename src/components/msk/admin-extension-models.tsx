@@ -40,6 +40,7 @@ export function AdminExtensionModels() {
   const [newProvider, setNewProvider] = useState("groq");
   const [newModel, setNewModel] = useState("");
   const [newLabel, setNewLabel] = useState("");
+  const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
 
   const { data, isLoading } = useQuery({ queryKey: ["extension-models"], queryFn: () => listFn() });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["extension-models"] });
