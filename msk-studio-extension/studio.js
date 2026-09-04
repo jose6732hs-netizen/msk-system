@@ -326,7 +326,9 @@ const state = {
   theme: 'dark',
   currentDevice: 'desktop',
   aiCatalog: [],
-  aiModelByProvider: {}
+  aiModelByProvider: {},
+  selectedProvider: '',
+  selectedModel: ''
 };
 const $ = (id) => document.getElementById(id);
 const projectSelector = $('project-selector');
@@ -391,9 +393,6 @@ async function initStudio() {
   const saved = await new Promise(r => chrome.storage.local.get(['studio_projects_v5', 'studio_current_id_v5', 'theme'], r));
   applyTheme(saved.theme || 'dark');
   state.aiModelByProvider = {};
-  if (aiProviderSelect) { aiProviderSelect.value = 'msk-auto'; aiProviderSelect.disabled = true; }
-  if (aiModelSelect) { aiModelSelect.disabled = true; aiModelSelect.classList.add('hidden'); }
-  if (activeRoutingBadge) activeRoutingBadge.textContent = 'IA ativa do Super Admin';
   if (saved.studio_projects_v5 && saved.studio_projects_v5.length > 0) {
     state.projects = saved.studio_projects_v5;
     state.currentProjectId = saved.studio_current_id_v5 || state.projects[0].id;
@@ -453,8 +452,22 @@ function setupAgentPills() {
   });
 }
 function _0x9a8() {
-  if (aiProviderSelect) { aiProviderSelect.value = 'msk-auto'; aiProviderSelect.disabled = true; }
-  if (aiModelSelect) { aiModelSelect.innerHTML = '<option value="">Modelo definido no Admin</option>'; aiModelSelect.disabled = true; aiModelSelect.classList.add('hidden'); }
+  // Modelos liberados pelo Super Admin ficam disponíveis para escolha na extensão.
+  window.MSKModels?.attach({
+    providerSelect: aiProviderSelect,
+    modelSelect: aiModelSelect,
+    onChange: (sel) => {
+      state.selectedProvider = sel.provider;
+      state.selectedModel = sel.model;
+      const tag = document.getElementById('header-ai-model-tag');
+      if (tag) tag.textContent = sel.model ? sel.label : 'IA MSK Pronta';
+      if (activeRoutingBadge) {
+        activeRoutingBadge.textContent = sel.model
+          ? `${window.MSKModels.providerLabel(sel.provider)} • ${sel.label}`
+          : 'Nenhum modelo liberado no Admin';
+      }
+    },
+  });
 }
 function _0x9a9() { _0x9a8(); }
 async function _0x9a7() {
@@ -463,11 +476,8 @@ async function _0x9a7() {
 }
 async function _0x9aa() { _0x9a8(); return true; }
 function setupProviderSelect() {
+  if (activeRoutingBadge) activeRoutingBadge.style.color = 'var(--brand-success)';
   _0x9a8();
-  if (activeRoutingBadge) {
-    activeRoutingBadge.textContent = 'IA ativa do Super Admin';
-    activeRoutingBadge.style.color = 'var(--brand-success)';
-  }
 }
 function setupEmptyStateBtn() {
   btnEmptyStartChat?.addEventListener('click', () => {
@@ -1060,7 +1070,7 @@ Responda EXCLUSIVAMENTE com JSON válido neste formato:
 Não use markdown, comentários fora do JSON nem texto depois do fechamento do objeto. Cada arquivo alterado deve vir COMPLETO.
 CAMINHOS DO PROJETO:
 ${pathList}`;
-  onProgress('Conectando ao MSK SaaS...', 'Usando somente a IA ativa definida no Super Admin');
+  onProgress('Conectando ao MSK SaaS...', state.selectedModel ? `Modelo selecionado: ${state.selectedModel}` : 'Usando a IA ativa definida no Super Admin');
   const response = await fetch(_0x9a2, {
     method: 'POST',
     headers: {
@@ -1071,7 +1081,9 @@ ${pathList}`;
     },
     body: JSON.stringify({
       action: 'editor-chat',
-      routing_mode: 'active',
+      routing_mode: state.selectedModel ? 'explicit' : 'active',
+      provider: state.selectedProvider || undefined,
+      model: state.selectedModel || undefined,
       source: 'msk-system-studio',
       license_email: studioLicense?.email || '',
       messages: [

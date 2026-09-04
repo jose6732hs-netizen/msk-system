@@ -72,6 +72,8 @@ const state = {
   config: null,
   license: null,
   aiRouting: 'msk-auto',
+  selectedProvider: '',
+  selectedModel: '',
   aiCatalog: [],
   aiModelByProvider: {},
   agentContext: { projectId: '', session: '', pageUrl: '', repository: '' },
@@ -549,6 +551,16 @@ async function resolveAgentContext({ preferInput = false } = {}) {
   if ($('lovable-project-id') && projectId) $('lovable-project-id').value = projectId;
   return state.agentContext;
 }
+function setupPopupModelSelect() {
+  window.MSKModels?.attach({
+    providerSelect: popupAiProviderSelect,
+    modelSelect: popupAiModelSelect,
+    onChange: (sel) => {
+      state.selectedProvider = sel.provider;
+      state.selectedModel = sel.model;
+    },
+  });
+}
 async function mskAgentRequest(action, payload = {}, signal = null) {
   if (!(await _0x8f7())) throw new Error('Integridade MSK inválida. Reinstale a extensão oficial.');
   const licensed = await ensureActiveLicense({ network: true, quiet: false });
@@ -564,6 +576,9 @@ async function mskAgentRequest(action, payload = {}, signal = null) {
     ...payload,
     source: 'msk-system-extension',
     license_email: state.license.email || '',
+    provider: state.selectedProvider || undefined,
+    model: state.selectedModel || undefined,
+    routing_mode: state.selectedModel ? 'explicit' : 'active',
   });
   const headers = {
     'Authorization': `Bearer ${state.license.key}`,
@@ -746,7 +761,7 @@ async function _0x8f7() {
   } catch { return false; }
 }
 function _0x8f8() {
-  if (popupAiActiveBadge) popupAiActiveBadge.textContent = 'IA ativa do Super Admin';
+  setupPopupModelSelect();
 }
 function _0x8f9() { _0x8f8(); }
 async function _0x8fa() { _0x8f8(); return true; }
@@ -973,7 +988,7 @@ async function init() {
     const connected = await ensureAgentConnected({ openAuthorization: false });
     if (connected?.connected) {
       enableInput();
-      if (popupAiActiveBadge) popupAiActiveBadge.textContent = 'IA ativa do Super Admin';
+      setupPopupModelSelect();
       return;
     }
   } catch (e) {
