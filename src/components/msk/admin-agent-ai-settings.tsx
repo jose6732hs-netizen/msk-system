@@ -19,7 +19,7 @@ import {
 } from "@/lib/agent-admin.functions";
 
 type ProviderId = AgentAiProviderId;
-type SectionId = "providers" | "all" | "training";
+type SectionId = "providers" | "all" | "models" | "training";
 type ProviderMeta = {
   label: string;
   defaultModel: string;
