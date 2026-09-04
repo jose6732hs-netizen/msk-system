@@ -70,10 +70,13 @@ async function configFromRow(row: AiSettingsRow): Promise<ProviderConfig | null>
 }
 
 /**
- * Resolve a ÚNICA IA ativa a partir de public.msk_ai_settings (fonte oficial).
- * Sem fallback para BYOK, variável de ambiente ou outro provedor.
+ * Resolve TODAS as IAs utilizáveis de public.msk_ai_settings, em ordem de
+ * preferência: a principal do Super Admin primeiro e as demais como reserva.
+ * O revezamento só acontece quando a IA anterior falha (fora do ar, sem chave,
+ * limite atingido, resposta inválida) — nenhuma chamada extra é feita "para
+ * testar", então a busca pela IA que consegue atender não gasta créditos.
  */
-async function resolveActiveAI(): Promise<ProviderConfig> {
+async function resolveCandidates(): Promise<ProviderConfig[]> {
   const { data, error } = await db
     .from("msk_ai_settings")
     .select("id,provider,model,api_base_url,api_key_ciphertext,active,updated_at");
@@ -85,7 +88,7 @@ async function resolveActiveAI(): Promise<ProviderConfig> {
   const byId = new Map(rows.map((row) => [rowId(row), row]));
   const providerRows = rows.filter((row) => !RESERVED_ROWS.has(rowId(row)));
 
-  const candidates: AiSettingsRow[] = [];
+  const ordered: AiSettingsRow[] = [];
 
   // 1) Ponteiro __primary__ (aponta para o provedor escolhido no Super Admin).
   const pointer = byId.get("__primary__");
@@ -94,38 +97,91 @@ async function resolveActiveAI(): Promise<ProviderConfig> {
     if (target) {
       const wanted = normalizeProviderId(target);
       const match = providerRows.find((row) => normalizeProviderId(row.provider || row.id) === wanted);
-      if (match) candidates.push(match);
+      if (match) ordered.push(match);
     }
-    if (usableRow(pointer)) candidates.push(pointer);
+    if (usableRow(pointer)) ordered.push(pointer);
   }
 
-  // 2) Provedor marcado como ativo.
-  candidates.push(...providerRows.filter((row) => row.active === true));
+  // 2) Provedores marcados como ativos.
+  ordered.push(...providerRows.filter((row) => row.active === true));
 
-  // 3) Linha legada "default".
+  // 3) Demais provedores com chave salva (reserva automática).
+  ordered.push(...providerRows.filter((row) => row.active !== true));
+
+  // 4) Linha legada "default".
   const legacy = byId.get("default");
-  if (legacy) candidates.push(legacy);
+  if (legacy) ordered.push(legacy);
 
-  for (const row of candidates) {
+  const configs: ProviderConfig[] = [];
+  const seen = new Set<string>();
+  for (const row of ordered) {
     if (!usableRow(row)) continue;
     const cfg = await configFromRow(row);
-    if (cfg?.apiKey) return cfg;
+    if (!cfg?.apiKey) continue;
+    const key = `${cfg.provider}::${cfg.model}::${cfg.endpoint}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    configs.push(cfg);
   }
 
-  throw new AgentError("AI_CONFIGURATION_ERROR", "Nenhuma IA está ativa no Super Admin do MSK.", { stage: "auth", httpStatus: 503 });
+  if (!configs.length) {
+    throw new AgentError("AI_CONFIGURATION_ERROR", "Nenhuma IA está ativa no Super Admin do MSK.", { stage: "auth", httpStatus: 503 });
+  }
+  return configs;
 }
 
-/** Uma única resolução da IA ativa por execução/requisição. */
-const AI_PER_REQUEST = new WeakMap<Request, Promise<ProviderConfig>>();
+type AiPool = { configs: ProviderConfig[]; preferred: number };
 
-function activeAI(r: Request): Promise<ProviderConfig> {
+/** Uma única resolução do conjunto de IAs por execução/requisição. */
+const AI_PER_REQUEST = new WeakMap<Request, Promise<AiPool>>();
+
+function aiPool(r: Request): Promise<AiPool> {
   const cached = AI_PER_REQUEST.get(r);
   if (cached) return cached;
-  const pending = resolveActiveAI();
+  const pending = resolveCandidates().then((configs) => ({ configs, preferred: 0 }));
   AI_PER_REQUEST.set(r, pending);
   pending.catch(() => AI_PER_REQUEST.delete(r));
   return pending;
 }
+
+/** Ordem de tentativa: a última IA que funcionou primeiro, depois as demais. */
+function attemptOrder(pool: AiPool): ProviderConfig[] {
+  const list = pool.configs;
+  const start = Math.min(Math.max(pool.preferred, 0), Math.max(list.length - 1, 0));
+  return [...list.slice(start), ...list.slice(0, start)];
+}
+
+/** Falha que justifica trocar de IA em vez de devolver erro ao cliente. */
+function shouldFailover(error: unknown) {
+  if (!(error instanceof AgentError)) return true;
+  return error.code.startsWith("AI_");
+}
+
+/**
+ * Executa a operação na IA preferida e, se ela falhar por qualquer motivo,
+ * reveza automaticamente para a próxima IA disponível. O erro só volta para o
+ * cliente quando NENHUMA IA conseguiu atender.
+ */
+async function withFailover<T>(r: Request, run: (cfg: ProviderConfig) => Promise<T>): Promise<T> {
+  const pool = await aiPool(r);
+  const order = attemptOrder(pool);
+  let lastError: unknown = null;
+  for (const cfg of order) {
+    try {
+      const result = await run(cfg);
+      pool.preferred = pool.configs.indexOf(cfg);
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (!shouldFailover(error)) throw error;
+      console.warn("MSK AI failover", cfg.provider, cfg.model, error instanceof AgentError ? error.code : "unknown");
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new AgentError("AI_UPSTREAM_UNAVAILABLE", "Nenhuma IA disponível conseguiu atender ao pedido.", { stage: "analyzing", retryable: true, httpStatus: 503 });
+}
+
 
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
