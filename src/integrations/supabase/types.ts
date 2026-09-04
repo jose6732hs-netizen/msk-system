@@ -2326,6 +2326,39 @@ export type Database = {
         }
         Relationships: []
       }
+      msk_agent_skill_catalog: {
+        Row: {
+          created_at: string
+          id: string
+          instructions: string | null
+          label: string
+          max_files: number
+          risk: string
+          updated_at: string
+          validation: string | null
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          instructions?: string | null
+          label: string
+          max_files?: number
+          risk?: string
+          updated_at?: string
+          validation?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instructions?: string | null
+          label?: string
+          max_files?: number
+          risk?: string
+          updated_at?: string
+          validation?: string | null
+        }
+        Relationships: []
+      }
       msk_ai_global_training: {
         Row: {
           ai_acknowledgement: string | null
