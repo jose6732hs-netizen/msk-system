@@ -279,31 +279,34 @@ async function runPrompt(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
 }
 
 async function callBuiltPrompt(r: Request, built: BuiltPrompt, max = 4000) {
-  const cfg = await activeAI(r);
   const messages: ChatMessage[] = [{ role: "system", content: built.system }];
   if (built.assistantContext) messages.push({ role: "assistant", content: built.assistantContext });
   messages.push({ role: "user", content: built.user });
-  const { id, text: rawText } = await runPrompt(cfg, messages, max, built.jsonMode);
-  let text: string;
-  try {
-    text = normalizeOperationResponse(rawText, built.operation);
-  } catch (error) {
-    throw new AgentError("AI_RESPONSE_PARSE_ERROR", `${cfg.label} retornou dados fora do schema esperado para esta etapa.`, { stage: built.operation === "edit" || built.operation === "self_healing" ? "editing" : "analyzing", retryable: true, httpStatus: 422, cause: error, context: { operation: built.operation, provider: cfg.provider, model: cfg.model, preview: String(rawText).slice(0, 300) } });
-  }
-  if (built.operation === "edit" || built.operation === "self_healing") {
-    let parsed: any = null;
-    try { parsed = JSON.parse(text); } catch { parsed = null; }
-    if (!parsed || !Array.isArray(parsed.changes) || parsed.changes.length === 0) {
-      const reply = String(parsed?.reply || parsed?.summary || "").slice(0, 600);
-      throw new AgentError(
-        "AI_NO_OPERATIONS",
-        `${cfg.label} (${cfg.model}) respondeu sem nenhuma operação de arquivo.${reply ? ` Retorno da IA: ${reply}` : ""}`,
-        { stage: "editing", retryable: true, httpStatus: 422, context: { operation: built.operation, provider: cfg.provider, model: cfg.model, preview: String(rawText).slice(0, 300) } },
-      );
+
+  return withFailover(r, async (cfg) => {
+    const { id, text: rawText } = await runPrompt(cfg, messages, max, built.jsonMode);
+    let text: string;
+    try {
+      text = normalizeOperationResponse(rawText, built.operation);
+    } catch (error) {
+      throw new AgentError("AI_RESPONSE_PARSE_ERROR", `${cfg.label} retornou dados fora do schema esperado para esta etapa.`, { stage: built.operation === "edit" || built.operation === "self_healing" ? "editing" : "analyzing", retryable: true, httpStatus: 422, cause: error, context: { operation: built.operation, provider: cfg.provider, model: cfg.model, preview: String(rawText).slice(0, 300) } });
     }
-  }
-  return { id, text };
+    if (built.operation === "edit" || built.operation === "self_healing") {
+      let parsed: any = null;
+      try { parsed = JSON.parse(text); } catch { parsed = null; }
+      if (!parsed || !Array.isArray(parsed.changes) || parsed.changes.length === 0) {
+        const reply = String(parsed?.reply || parsed?.summary || "").slice(0, 600);
+        throw new AgentError(
+          "AI_NO_OPERATIONS",
+          `${cfg.label} (${cfg.model}) respondeu sem nenhuma operação de arquivo.${reply ? ` Retorno da IA: ${reply}` : ""}`,
+          { stage: "editing", retryable: true, httpStatus: 422, context: { operation: built.operation, provider: cfg.provider, model: cfg.model, preview: String(rawText).slice(0, 300) } },
+        );
+      }
+    }
+    return { id, text, provider: cfg.provider, model: cfg.model, label: cfg.label };
+  });
 }
+
 
 
 
