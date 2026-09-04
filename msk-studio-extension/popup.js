@@ -768,18 +768,36 @@ async function refreshGitHubConnectionStatus({ quiet = false } = {}) {
   try {
     const cfg = await saveProjectConfigFromSettings();
     if (!(await ensureActiveLicense({ network: true, quiet: true }))) return null;
-    const status = await mskAgentRequest('status', {});
+    let status = await mskAgentRequest('status', {});
+    if (status?.connected && cfg.repo && normalizeRepoInput(status.repository || '') !== cfg.repo) {
+      try {
+        const rebound = await bindRequestedRepository(cfg.repo, status.repository);
+        if (rebound?.repository) {
+          status = { ...status, repository: rebound.repository, branch: rebound.branch || status.branch };
+          if (!quiet) toast(`✓ Repositório vinculado a este projeto • ${rebound.repository}`, 'success');
+        }
+      } catch (repoError) {
+        const code = String(repoError?.code || '');
+        const message = code === 'REPOSITORY_NOT_AUTHORIZED'
+          ? `O repositório ${cfg.repo} não está autorizado no GitHub App MSK. Adicione-o na instalação do GitHub e salve novamente.`
+          : `Não foi possível vincular ${cfg.repo}: ${repoError.message}`;
+        if (!quiet) toast(message, 'error', 6000);
+        setGitHubConnectionUI({ ...(status || {}), repository: status?.repository || '' });
+        return status;
+      }
+    }
     if (status?.repository) {
       const repository = normalizeRepoInput(status.repository);
       state.agentContext.repository = repository;
       state.config = { ...(state.config || {}), repo: repository, projectId: cfg.projectId, branch: state.config?.branch || status.branch || 'main' };
       await store.set({ config: state.config });
-      if ($('gh-repo')) $('gh-repo').value = repository;
+      if ($('gh-repo') && (!cfg.repo || cfg.repo === repository)) $('gh-repo').value = repository;
       if ($('gh-branch')) $('gh-branch').value = state.config.branch || 'main';
     }
     setGitHubConnectionUI(status || {});
     if (status?.connected) enableInput();
     return status;
+
   } catch (e) {
     if (String(e?.code || '') === 'MSK_SESSION_REQUIRED') {
       setGitHubConnectionUI({ connected: false });
