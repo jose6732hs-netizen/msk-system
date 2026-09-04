@@ -80,7 +80,7 @@ function normalizeModel(provider: ProviderId, value: unknown) {
  * só roda depois de uma recusa real.
  */
 export const MODEL_FALLBACKS: Record<ProviderId, string[]> = {
-  synterolink: ["claude-sonnet-4-6", "claude-sonnet-4-5"],
+  synterolink: ["claude-sonnet-5", "claude-sonnet-4-6", "claude-sonnet-4-5"],
   omniroute: ["z-ai/glm-5.2"],
   openrouter: ["z-ai/glm-5.2", "meta-llama/llama-3.3-70b-instruct", "google/gemini-2.0-flash-001"],
   openai: ["gpt-5.5", "gpt-4.1", "gpt-4o"],
