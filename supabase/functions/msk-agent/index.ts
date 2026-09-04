@@ -56,6 +56,21 @@ const taskPatch = async (taskId: string, patch: Record<string, unknown>, userId:
   if (error) console.error("MSK task patch failed", error.message);
 };
 
+/** Histórico das etapas: alimenta o status em tempo real da extensão. */
+const checkpoint = async (taskId: string, userId: string, projectId: string, stageName: string, message: string, payload: Record<string, unknown> = {}) => {
+  if (!taskId || !userId) return;
+  const { error } = await db.from("msk_task_events").insert({
+    task_id: taskId,
+    user_id: userId,
+    lovable_project_id: projectId || null,
+    stage: stageName,
+    status: stageName,
+    message,
+    payload,
+  });
+  if (error) console.warn("MSK checkpoint failed", error.message);
+};
+
 const validatePreCommit = (changes: Array<{ path: string; content: string; create: boolean }>, analyzedFiles: Array<{ path: string; content: string }>) => {
   if (!changes.length) throw new AgentError("NO_CHANGES_APPLIED", "Nenhuma alteração real foi produzida.", { stage: "validating", retryable: true, httpStatus: 422 });
   const originals = new Map(analyzedFiles.map(file => [file.path.toLowerCase(), file.content]));
