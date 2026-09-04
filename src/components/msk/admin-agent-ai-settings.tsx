@@ -128,32 +128,59 @@ export function AdminAgentAiSettings() {
 
   const refresh = () => void qc.invalidateQueries({ queryKey: ["agent-ai-settings"] });
 
+  // Regra do MSK: somente UMA IA trabalha por vez. Ao ativar uma, todas as
+  // outras são desativadas e a ativada vira a principal.
+  async function enforceSingleActive(target: ProviderId) {
+    const others = (data?.providers ?? []).filter((row) => row.providerId !== target && row.active);
+    for (const row of others) {
+      try {
+        await toggleFn({ data: { provider: row.providerId, active: false } });
+      } catch {
+        /* a IA alvo continua sendo a única usada pelo roteador */
+      }
+    }
+    try {
+      await primaryFn({ data: { provider: target } });
+    } catch {
+      /* principal já definida pelo backend */
+    }
+  }
+
   const save = useMutation({
-    mutationFn: () => saveFn({
-      data: {
-        provider,
-        apiKey: apiKey.trim(),
-        model: model.trim(),
-        baseUrl: baseUrl.trim(),
-        makePrimary: provider === "synterolink" ? true : makePrimary,
-      },
-    }),
+    mutationFn: async () => {
+      const result = await saveFn({
+        data: {
+          provider,
+          apiKey: apiKey.trim(),
+          model: model.trim(),
+          baseUrl: baseUrl.trim(),
+          makePrimary: true,
+        },
+      });
+      await enforceSingleActive(provider);
+      return result;
+    },
     onSuccess: () => {
       setApiKey("");
-      toast.success(provider === "synterolink" ? "Claude salva, ativada e definida como principal." : `${meta.label} testada, salva e ativada.`);
+      toast.success(`${meta.label} salva, ativada e definida como a única IA em uso.`);
       refresh();
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
   const toggle = useMutation({
-    mutationFn: (active: boolean) => toggleFn({ data: { provider, active } }),
+    mutationFn: async (active: boolean) => {
+      const result = await toggleFn({ data: { provider, active } });
+      if (active) await enforceSingleActive(provider);
+      return result;
+    },
     onSuccess: (_data, active) => {
-      toast.success(`${meta.label} ${active ? "ativada" : "desativada"}.`);
+      toast.success(active ? `${meta.label} agora é a única IA ativa.` : `${meta.label} desativada.`);
       refresh();
     },
     onError: (error: Error) => toast.error(error.message),
   });
+
 
   const primary = useMutation({
     mutationFn: () => primaryFn({ data: { provider } }),
