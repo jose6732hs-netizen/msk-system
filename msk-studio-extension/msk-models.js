@@ -190,8 +190,18 @@
     const binding = { providerSelect, modelSelect, onChange };
     if (providerSelect) bindings.set(providerSelect, binding);
     if (modelSelect) bindings.set(modelSelect, binding);
-    fillProviderSelect(providerSelect);
-    fillModelSelect(modelSelect);
+    if (!state.loaded) {
+      if (providerSelect) {
+        providerSelect.innerHTML = '<option value="">Carregando catálogo…</option>';
+        providerSelect.disabled = true;
+        providerSelect.classList.remove('hidden');
+      }
+      if (modelSelect) {
+        modelSelect.innerHTML = '<option value="">Carregando modelos…</option>';
+        modelSelect.disabled = true;
+        modelSelect.classList.remove('hidden');
+      }
+    }
     if (providerSelect && providerSelect.dataset.mskModelsBound !== '1') {
       providerSelect.dataset.mskModelsBound = '1';
       providerSelect.addEventListener('change', () => {

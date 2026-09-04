@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MSK System Studio",
-  "version": "3.4.9",
+  "version": "3.4.10",
   "description": "MSK System Studio — backend MSK, seletor de IA/modelos liberados, GitHub OAuth/App e recuperação de execuções longas.",
   "permissions": [
     "storage",
@@ -35,5 +35,5 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "version_name": "3.4.9 PROTECTED · IA/Modelos do Admin · GitHub OAuth · Long Run Recovery"
+  "version_name": "3.4.10 PROTECTED · Catálogo Resiliente · Rota Visível · Status de Execução"
 }
