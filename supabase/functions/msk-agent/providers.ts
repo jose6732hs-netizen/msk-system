@@ -65,10 +65,31 @@ export function normalizeProviderId(value: unknown, fallback: ProviderId = "bai"
 }
 
 function normalizeModel(provider: ProviderId, value: unknown) {
-  const model = String(value ?? "").trim();
+  let model = String(value ?? "").trim();
+  // Sufixos de roteamento que NÃO funcionam em chamadas comuns de chat
+  // (ex.: ":batch" no OpenRouter exige a API de lotes e devolve 404).
+  model = model.replace(/:(batch|nitro)$/i, "");
   if (model && model.length <= 180 && /^[A-Za-z0-9._:/@+-]+$/.test(model)) return model;
   return PROVIDER_CATALOG[provider].defaultModel;
 }
+
+/**
+ * Modelos reserva por provedor, tentados NESTA ORDEM quando o modelo
+ * configurado é recusado pelo provedor (404/400/422 de modelo inválido,
+ * descontinuado ou exclusivo de outra API). Custo zero de descoberta:
+ * só roda depois de uma recusa real.
+ */
+export const MODEL_FALLBACKS: Record<ProviderId, string[]> = {
+  synterolink: ["claude-sonnet-4-6", "claude-sonnet-4-5"],
+  omniroute: ["z-ai/glm-5.2"],
+  openrouter: ["z-ai/glm-5.2", "meta-llama/llama-3.3-70b-instruct", "google/gemini-2.0-flash-001"],
+  openai: ["gpt-5.5", "gpt-4.1", "gpt-4o"],
+  gemini: ["gemini-2.5-flash", "gemini-2.0-flash"],
+  groq: ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "qwen/qwen3-32b"],
+  mistral: ["codestral-latest", "mistral-large-latest", "mistral-small-latest"],
+  manus: ["manus-agent-v1"],
+  bai: ["deepseek-v4-flash"],
+};
 
 /** Aceita raiz ("https://host/v1"), endpoint completo ou vazio e devolve o endpoint final. */
 export function resolveEndpoint(provider: ProviderId, value: unknown) {
