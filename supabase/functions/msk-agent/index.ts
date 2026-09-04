@@ -375,8 +375,9 @@ Deno.serve(async (req: Request) => {
     }
     if (!files.length) throw new AgentError("AGENT_TARGET_NOT_FOUND", "Os arquivos alvo são grandes demais para uma edição segura nesta execução.", { stage: "locating_files", retryable: false, httpStatus: 422 });
 
-    const highRisk = isHighRiskCommand(cmd);
-    const basePrompt = editPrompt(cmd, repository, files, highRisk);
+    const highRisk = isHighRiskCommand(cmd) || skill.risk === "high";
+    const basePrompt = editPrompt(cmd, repository, files, highRisk, taskContext);
+    await checkpoint(taskId, who.id, pid, "editing", "Editando", { files: files.map(f => f.path) });
     let out: any = {};
     let changes: Array<{ path: string; content: string; create: boolean }> = [];
     let feedback = "";
