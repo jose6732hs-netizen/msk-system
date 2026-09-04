@@ -82,6 +82,20 @@ const EDIT_FORMAT = [
   "O conteúdo final precisa ser diferente do original. Não use markdown, diff, TODO, reticências ou conteúdo truncado.",
 ].join("\n");
 
+const EXECUTOR_RULES = [
+  "Você é o executor técnico do MSK System.",
+  "Execute exatamente o pedido do cliente, modificando somente o necessário.",
+  "Preserve toda a lógica existente e não remova funcionalidades não relacionadas.",
+  "Não invente arquivos e não altere a arquitetura sem necessidade.",
+  "Não altere banco, autenticação, pagamentos ou APIs se o pedido não envolver isso.",
+  "Prefira editar arquivo existente. O projeto precisa continuar compilável.",
+  "Não explique como fazer nem diga que vai fazer: gere operações executáveis.",
+].join("\n");
+
+const withContext = (envelope: PromptEnvelope, ...blocks: Array<string | undefined | false>) =>
+  [envelope.context ? `CONTEXTO TÉCNICO MSK:\n${clean(envelope.context, 4000)}` : "", ...blocks]
+    .filter(Boolean)
+    .join("\n\n") || undefined;
 
 export class PromptBuilder {
   static interpretation(envelope: PromptEnvelope): BuiltPrompt {
@@ -93,7 +107,7 @@ export class PromptBuilder {
         "Campos: intent, confidence, requires_input, question, options, summary, target_files, edits, validation.",
         "Erros ortográficos simples não devem impedir a identificação do alvo quando o contexto estiver claro.",
       ].join("\n"),
-      assistantContext: envelope.candidates?.length ? `Arquivos candidatos:\n${candidatesBlock(envelope.candidates)}` : undefined,
+      assistantContext: withContext(envelope, envelope.candidates?.length ? `Arquivos candidatos:\n${candidatesBlock(envelope.candidates)}` : ""),
       user: exactClientCommand(envelope.command),
     };
   }
@@ -104,35 +118,35 @@ export class PromptBuilder {
       operation: "planning",
       jsonMode: true,
       system: "Gere um plano mínimo em JSON para executar exatamente o pedido.",
-      assistantContext: paths ? `Arquivos relevantes:\n${paths}` : undefined,
+      assistantContext: withContext(envelope, paths ? `Arquivos relevantes:\n${paths}` : ""),
       user: exactClientCommand(envelope.command),
     };
   }
 
   static edit(envelope: PromptEnvelope, plan?: string): BuiltPrompt {
-    const technicalContext = [
-      plan ? `Plano técnico:\n${clean(plan, 7000)}` : "",
-      filesBlock(envelope.files),
-    ].filter(Boolean).join("\n\n");
     return {
       operation: "edit",
       jsonMode: true,
-      system: `Edite somente o necessário.\n${EDIT_FORMAT}`,
-      assistantContext: technicalContext || undefined,
+      system: `${EXECUTOR_RULES}\n${EDIT_FORMAT}`,
+      assistantContext: withContext(
+        envelope,
+        plan ? `Plano técnico:\n${clean(plan, 7000)}` : "",
+        `CONTEÚDO RELEVANTE:\n${filesBlock(envelope.files)}`,
+      ),
       user: exactClientCommand(envelope.command),
     };
   }
 
   static selfHealing(envelope: PromptEnvelope, validationError: string): BuiltPrompt {
-    const technicalContext = [
-      `Erro de validação:\n${retryError(validationError)}`,
-      filesBlock(envelope.files),
-    ].filter(Boolean).join("\n\n");
     return {
       operation: "self_healing",
       jsonMode: true,
-      system: `Corrija somente o erro detectado, sem ampliar o escopo.\n${EDIT_FORMAT}`,
-      assistantContext: technicalContext,
+      system: `${EXECUTOR_RULES}\nCorrija somente o erro detectado, sem ampliar o escopo.\n${EDIT_FORMAT}`,
+      assistantContext: withContext(
+        envelope,
+        `Erro de validação:\n${retryError(validationError)}`,
+        `CONTEÚDO RELEVANTE:\n${filesBlock(envelope.files)}`,
+      ),
       user: exactClientCommand(envelope.command),
     };
   }
