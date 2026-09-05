@@ -103,7 +103,7 @@ function Index() {
               <HeroCarousel />
             </motion.div>
 
-            <motion.h1 variants={fadeInUp} className="text-3xl font-black tracking-tighter sm:text-6xl lg:text-7xl text-yellow-400 uppercase leading-[0.95] break-words text-center md:text-left py-2">
+            <motion.h1 variants={fadeInUp} className="text-3xl font-black tracking-tighter sm:text-6xl lg:text-7xl text-red-500 uppercase leading-[0.95] break-words text-center md:text-left py-2">
               {cms['hero']?.title || "Pare de ser interrompido no meio da criação"}
             </motion.h1>
             
@@ -228,7 +228,7 @@ function Index() {
               </motion.div>
               <motion.div {...slideInRight} className="bg-primary/5 p-8 rounded-[2.5rem] border border-primary/20">
                 <h3 className="text-xl font-bold mb-4 uppercase tracking-tighter">O Preço Invisível</h3>
-                <p className="text-muted-foreground">Cada vez que os créditos acabam, você paga um preço invisível: tempo perdido, energia desperdiçada e oportunidades que esfriam.</p>
+                <p className="text-muted-foreground">Cada vez que os créditos acaban, você paga um preço invisível: tempo perdido, energia desperdiçada e oportunidades que esfriam.</p>
               </motion.div>
             </section>
 
@@ -279,58 +279,71 @@ function Index() {
                 <h3 className="text-xl font-bold mb-4 text-green-500 uppercase tracking-tighter">É para você se:</h3>
                 <ul className="space-y-3 text-muted-foreground text-sm">
                   <li>• Já usa ou quer usar o Lovable com frequência</li>
-                  <li>• Se irrita quando os créditos acabam no meio do fluxo</li>
+                  <li>• Se irrita quando os créditos acabram no meio do fluxo</li>
                   <li>• Precisa criar com velocidade e consistência</li>
                 </ul>
               </motion.div>
               <motion.div {...slideInRight} className="bg-red-500/5 p-8 rounded-[2.5rem] border border-red-500/20">
                 <h3 className="text-xl font-bold mb-4 text-red-500 uppercase tracking-tighter">Não é para você se:</h3>
                 <ul className="space-y-3 text-muted-foreground text-sm">
-                  <li>• Nunca usou o Lovable e não pretende usar</li>
-                  <li>• Não tem interesse em criar projetos digitais</li>
-                  <li>• Prefere trabalhar com limitações e interrupções</li>
+                  <li>• Nunca usou e não pretende usar o Lovable</li>
+                  <li>• Prefere criar tudo manualmente do zero</li>
+                  <li>• Não precisa criar com frequência</li>
                 </ul>
               </motion.div>
             </section>
 
-            {/* CTA Final */}
-            <motion.section {...fadeInUp} className="text-center bg-gradient-to-b from-primary/10 to-transparent p-8 md:p-16 rounded-[3rem] border border-primary/20 relative overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(234,179,8,0.15),transparent_70%)]" />
-              <h2 className="text-3xl md:text-4xl font-black mb-6 uppercase tracking-tighter relative z-10">
-                Chega de parar no meio.
+            {/* Testimonials */}
+            <section className="space-y-8">
+              <motion.div {...fadeInUp} className="text-center">
+                <h2 className="text-3xl font-bold mb-4 text-primary uppercase tracking-tighter">Quem já usa, não volta atrás</h2>
+                <p className="text-muted-foreground text-lg">Milhares de criadores já transformaram seu fluxo de trabalho com a MSK Suite.</p>
+              </motion.div>
+
+              <motion.div 
+                variants={staggerContainer}
+                initial="initial"
+                whileInView="whileInView"
+                viewport={{ once: true }}
+                className="grid md:grid-cols-3 gap-6"
+              >
+                {[
+                  { quote: "Finalmente consigo entregar projetos inteiros sem parar no meio. A diferença no meu faturamento foi brutal.", author: "Carlos, Desenvolvedor" },
+                  { quote: "Usei por um mês e já renovei o plano anual. O ROI é absurdamente positivo.", author: "Ana, Designer" },
+                  { quote: "A extensão funciona perfeitamente. Recomendo pra qualquer pessoa que leva Lovable a sério.", author: "Rafael, Produtor" },
+                ].map((item, i) => (
+                  <motion.div 
+                    key={i} 
+                    variants={fadeInUp}
+                    className="bg-white/5 p-6 rounded-3xl border border-white/10"
+                  >
+                    <p className="text-foreground italic mb-4">"{item.quote}"</p>
+                    <p className="text-muted-foreground text-sm font-semibold">— {item.author}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </section>
+
+            {/* Final CTA */}
+            <motion.section {...fadeInUp} className="text-center space-y-8 bg-primary/5 p-12 rounded-[3rem] border border-primary/20">
+              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">
+                Pronto pra nunca mais ser interrompido?
               </h2>
-              <p className="text-muted-foreground text-lg mb-10 max-w-xl mx-auto relative z-10">
-                Comece hoje com acesso ilimitado e nunca mais seja interrompido por créditos.
+              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+                Comece agora e transforme seu fluxo de criação. Sem limites. Sem bloqueios. Sem frustração.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center relative z-10">
-                <Button asChild variant="neon" size="lg" className="px-8 h-14">
-                  <Link to="/auth">Quero começar agora</Link>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button asChild variant="neon" size="lg" className="px-10 h-16 text-lg">
+                  <Link to={cms['hero']?.cta_link || "/auth"}>
+                    {cms['hero']?.cta_text || "Quero créditos infinitos agora"}
+                  </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="px-8 h-14 border-white/10 bg-white/5 text-white hover:bg-white/10">
-                  <Link to="/planos">Ver planos</Link>
+                <Button asChild variant="outline" size="lg" className="px-10 h-16 text-lg border-white/10 bg-white/5 text-white hover:bg-white/10">
+                  <Link to="/planos" preload="intent">Ver Planos</Link>
                 </Button>
               </div>
             </motion.section>
 
-            {/* FAQ Section */}
-            <motion.section {...fadeInUp} className="space-y-8">
-              <h2 className="text-2xl md:text-3xl font-bold text-center uppercase tracking-tighter">
-                Perguntas Frequentes
-              </h2>
-              <div className="space-y-4">
-                {[
-                  { q: "Funciona com minha conta do Lovable?", a: "Sim! Você usa sua própria conta do Lovable. A extensão MSK remove apenas os limites de créditos, dando acesso ilimitado." },
-                  { q: "Posso cancelar a qualquer momento?", a: "Sim. Os planos são mensais e podem ser cancelados quando quiser, sem burocracia." },
-                  { q: "Como funciona a extensão?", a: "Após a ativação, você instala a extensão no navegador e ela automaticamente libera os créditos ilimitados na sua conta Lovable." },
-                  { q: "Funciona em todos os planos do Lovable?", a: "A extensão funciona com todos os planos pagos do Lovable que têm limite de créditos." },
-                ].map((faq, i) => (
-                  <div key={i} className="bg-white/5 p-6 rounded-2xl border border-white/10">
-                    <h4 className="font-bold mb-2">{faq.q}</h4>
-                    <p className="text-muted-foreground text-sm">{faq.a}</p>
-                  </div>
-                ))}
-              </div>
-            </motion.section>
         </div>
       </main>
       <SiteFooter />
