@@ -152,7 +152,7 @@ export class PromptBuilder {
     return {
       operation: "self_healing",
       jsonMode: true,
-      system: `${EXECUTOR_RULES}\nCorrija somente o erro detectado, sem ampliar o escopo.\n${EDIT_FORMAT}`,
+      system: executorSystem(envelope, "Corrija somente o erro detectado, sem ampliar o escopo."),
       assistantContext: withContext(
         envelope,
         `Erro de validação:\n${retryError(validationError)}`,
