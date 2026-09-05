@@ -138,7 +138,7 @@ export class PromptBuilder {
     return {
       operation: "edit",
       jsonMode: true,
-      system: `${EXECUTOR_RULES}\n${EDIT_FORMAT}`,
+      system: executorSystem(envelope),
       assistantContext: withContext(
         envelope,
         plan ? `Plano técnico:\n${clean(plan, 7000)}` : "",
