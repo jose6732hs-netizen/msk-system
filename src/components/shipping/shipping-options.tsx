@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { ShippingCard } from "./shipping-card";
-import type { ShippingMethod } from "~/types";
+import type { ShippingMethod } from "@/types";
 
 interface ShippingOptionsProps {
   methods: ShippingMethod[];

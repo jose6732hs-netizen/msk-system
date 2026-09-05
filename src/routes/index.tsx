@@ -26,7 +26,7 @@ function useCountUp(end: number, duration = 2000, startOnView = true) {
     const el = ref.current;
     if (!el) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setStarted(true); observer.disconnect(); } },
+      ([entry]) => { if (entry?.isIntersecting) { setStarted(true); observer.disconnect(); } },
       { threshold: 0.3 }
     );
     observer.observe(el);
@@ -55,7 +55,7 @@ const fadeInUp = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-80px" },
   transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
-};
+} as const;
 
 const staggerContainer = {
   initial: {},
@@ -67,14 +67,14 @@ const slideInLeft = {
   whileInView: { opacity: 1, x: 0 },
   viewport: { once: true },
   transition: { duration: 0.8, ease: "easeOut" },
-};
+} as const;
 
 const slideInRight = {
   initial: { opacity: 0, x: 50 },
   whileInView: { opacity: 1, x: 0 },
   viewport: { once: true },
   transition: { duration: 0.8, ease: "easeOut" },
-};
+} as const;
 
 function Index() {
   const getCms = useServerFn(getCmsContent);
