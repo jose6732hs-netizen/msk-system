@@ -1,3 +1,5 @@
+import { MSK_AGENT_PERSONA, MSK_SECURITY_RULES, MSK_CHAT_RULES, featureBlueprint } from "./behavior.ts";
+
 export type PromptOperation = "interpretation" | "planning" | "edit" | "self_healing" | "validation" | "chat";
 
 export type PromptFile = { path: string; content: string };
