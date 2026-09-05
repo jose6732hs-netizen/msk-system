@@ -213,8 +213,13 @@ Deno.serve(async (req: Request) => {
       const msg = String(body.message || body.command || "").trim();
       if (!msg) return json({ error: "Mensagem vazia.", code: "EMPTY_MESSAGE" }, 400);
       stage = "analyzing";
-      const answer = await ask(req, `${MSK_ENGINEERING_PROFILE}\nMODO CONSULTA: responda em português do Brasil de forma natural, educada e profissional, sempre pelo contexto de desenvolvimento. Use o contexto recente e a skill quando presentes. PROIBIDO afirmar ou sugerir que editou, alterou, aplicou, criou ou commitou qualquer coisa: nesta chamada NENHUM arquivo é tocado. Se o cliente pediu uma alteração, responda pedindo confirmação curta para executar.\nCliente/contexto: ${msg}`, false, 3000);
-      return json({ ok: true, connected: true, mode: "chat", no_edit: true, assistant_message: answer.text.trim(), message: answer.text.trim(), response_id: answer.id, model: "MSK-IA", provider: "MSK" });
+      const chatIntent = classifyIntent(msg);
+      if (chatIntent.kind === "greeting" || chatIntent.kind === "smalltalk") {
+        const quick = conversationalReply(msg, chatIntent, { repository: proj?.github_owner && proj?.github_repo ? `${proj.github_owner}/${proj.github_repo}` : "" });
+        return json({ ok: true, connected: true, mode: "chat", no_edit: true, intent: chatIntent.kind, assistant_message: quick, message: quick, model: "MSK-IA", provider: "MSK" });
+      }
+      const answer = await ask(req, `${MSK_CHAT_RULES}\nCliente/contexto: ${msg}`, false, 3000);
+      return json({ ok: true, connected: true, mode: "chat", no_edit: true, intent: chatIntent.kind, assistant_message: answer.text.trim(), message: answer.text.trim(), response_id: answer.id, model: "MSK-IA", provider: "MSK" });
     }
 
     const session = req.headers.get("x-msk-session") || "";
