@@ -58,6 +58,7 @@ import { Route as ApiSecurityChallengeRouteImport } from './routes/api/security/
 import { Route as ApiSecurityHandshakeRouteImport } from './routes/api/security/handshake'
 import { Route as ApiSecurityHeartbeatRouteImport } from './routes/api/security/heartbeat'
 import { Route as ExtRuntimeManifestRouteImport } from './routes/ext/runtime/manifest'
+import { Route as ApiAgentLicenseValidateRouteImport } from './routes/api/agent/license/validate'
 import { Route as ApiPublicCmsUploadRouteImport } from './routes/api/public/cms.upload'
 import { Route as ApiPublicCronReconcilePaymentsRouteImport } from './routes/api/public/cron/reconcile-payments'
 import { Route as ApiPublicCronRenewLicensesRouteImport } from './routes/api/public/cron/renew-licenses'
@@ -339,6 +340,11 @@ const ExtRuntimeManifestRoute = ExtRuntimeManifestRouteImport.update({
   path: '/ext/runtime/manifest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAgentLicenseValidateRoute = ApiAgentLicenseValidateRouteImport.update({
+  id: '/api/agent/license/validate',
+  path: '/api/agent/license/validate',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicCmsUploadRoute = ApiPublicCmsUploadRouteImport.update({
   id: '/upload',
   path: '/upload',
@@ -541,6 +547,7 @@ export interface FileRoutesByFullPath {
   '/api/security/handshake': typeof ApiSecurityHandshakeRoute
   '/api/security/heartbeat': typeof ApiSecurityHeartbeatRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/api/agent/license/validate': typeof ApiAgentLicenseValidateRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
@@ -617,6 +624,7 @@ export interface FileRoutesByTo {
   '/api/security/handshake': typeof ApiSecurityHandshakeRoute
   '/api/security/heartbeat': typeof ApiSecurityHeartbeatRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/api/agent/license/validate': typeof ApiAgentLicenseValidateRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
@@ -695,6 +703,7 @@ export interface FileRoutesById {
   '/api/security/handshake': typeof ApiSecurityHandshakeRoute
   '/api/security/heartbeat': typeof ApiSecurityHeartbeatRoute
   '/ext/runtime/manifest': typeof ExtRuntimeManifestRoute
+  '/api/agent/license/validate': typeof ApiAgentLicenseValidateRoute
   '/api/public/cms/upload': typeof ApiPublicCmsUploadRoute
   '/api/public/cron/reconcile-payments': typeof ApiPublicCronReconcilePaymentsRoute
   '/api/public/cron/renew-licenses': typeof ApiPublicCronRenewLicensesRoute
@@ -773,6 +782,7 @@ export interface FileRouteTypes {
     | '/api/security/handshake'
     | '/api/security/heartbeat'
     | '/ext/runtime/manifest'
+    | '/api/agent/license/validate'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
     | '/api/public/cron/renew-licenses'
@@ -849,6 +859,7 @@ export interface FileRouteTypes {
     | '/api/security/handshake'
     | '/api/security/heartbeat'
     | '/ext/runtime/manifest'
+    | '/api/agent/license/validate'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
     | '/api/public/cron/renew-licenses'
@@ -926,6 +937,7 @@ export interface FileRouteTypes {
     | '/api/security/handshake'
     | '/api/security/heartbeat'
     | '/ext/runtime/manifest'
+    | '/api/agent/license/validate'
     | '/api/public/cms/upload'
     | '/api/public/cron/reconcile-payments'
     | '/api/public/cron/renew-licenses'
@@ -999,6 +1011,7 @@ export interface RootRouteChildren {
   ApiSecurityHandshakeRoute: typeof ApiSecurityHandshakeRoute
   ApiSecurityHeartbeatRoute: typeof ApiSecurityHeartbeatRoute
   ExtRuntimeManifestRoute: typeof ExtRuntimeManifestRoute
+  ApiAgentLicenseValidateRoute: typeof ApiAgentLicenseValidateRoute
   ApiPublicCronReconcilePaymentsRoute: typeof ApiPublicCronReconcilePaymentsRoute
   ApiPublicCronRenewLicensesRoute: typeof ApiPublicCronRenewLicensesRoute
   ApiPublicExtensionActiveUsersRoute: typeof ApiPublicExtensionActiveUsersRoute
@@ -1371,6 +1384,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExtRuntimeManifestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/agent/license/validate': {
+      id: '/api/agent/license/validate'
+      path: '/api/agent/license/validate'
+      fullPath: '/api/agent/license/validate'
+      preLoaderRoute: typeof ApiAgentLicenseValidateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cms/upload': {
       id: '/api/public/cms/upload'
       path: '/upload'
@@ -1633,6 +1653,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSecurityHandshakeRoute: ApiSecurityHandshakeRoute,
   ApiSecurityHeartbeatRoute: ApiSecurityHeartbeatRoute,
   ExtRuntimeManifestRoute: ExtRuntimeManifestRoute,
+  ApiAgentLicenseValidateRoute: ApiAgentLicenseValidateRoute,
   ApiPublicCronReconcilePaymentsRoute: ApiPublicCronReconcilePaymentsRoute,
   ApiPublicCronRenewLicensesRoute: ApiPublicCronRenewLicensesRoute,
   ApiPublicExtensionActiveUsersRoute: ApiPublicExtensionActiveUsersRoute,
