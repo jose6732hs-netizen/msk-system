@@ -6,7 +6,7 @@ import { createFileRoute } from "@tanstack/react-router";
 // quando entra no sit ou na carteira os numeros de valores saldo etc devem comecar subir do centavo ate o valor total bem profissional
 // Saldo Disponível
 // R$ 0,00  esse cliente tem indicacoes e a carteira dele ta sem saldo mesmo ele ter feito vendas  e a barra de progresso n topo do sit nao ta subindo de acordo com as vendas e nem o valor de vendas na meta pra premiacao dele e aq Status da Conta
-// Verificada so deve aparecer isso se reamente ele stiver mandados os dcumentos e o admin tiver aprovado a conta como verificada
+// Verificada so deve aparecer isso se reamente ele stiver mandado os dcumentos e o admin tiver aprovado a conta como verificada
 // a carteira de afiliados nao siobe os saldos de acordo com as comicoes e nem fica disponive pra sacar e o saque minimo sera de 29
 // AS NOTIFICACOES DE TSTE NAO CAI EM PUSH FORA DO SIT RESOLVA ISSO E AS DE PIX AO GERA EX SE EU INDIQUEI UMA PESSOA ELA GERA A COMPRA  CHEGA PRA MIN PEDINDO PRA PAGAR E NAO CEGA MENSAGEM EX VENDA GERADA SUA COMICAO E DE E O VALOR ETC E NEM QUANDO APROVAA E A EXTENCAO DEVE ATIVAR ALTOMATIamente o time regressivo com os dados da licenca apos ela srr validada
 // a barra de origreso nao sobe de acordo com vendas e nem saldo da carteira em afiliados
@@ -104,7 +104,7 @@ function Index() {
             </motion.div>
 
             <motion.h1 variants={fadeInUp} className="text-3xl font-black tracking-tighter sm:text-6xl lg:text-7xl text-foreground uppercase leading-[0.95] break-words text-center md:text-left py-2">
-              {cms['hero']?.title || "Pare de ser interrompido no meio da criação"}
+              {cms['hero']?.title || "MUE ORA LARANJA ESSA COPY"}
             </motion.h1>
             
             <motion.p variants={fadeInUp} className="text-lg text-muted-foreground max-w-xl leading-relaxed text-center md:text-left mx-auto md:mx-0">
@@ -286,33 +286,33 @@ function Index() {
               <motion.div {...slideInRight} className="bg-red-500/5 p-8 rounded-[2.5rem] border border-red-500/20">
                 <h3 className="text-xl font-bold mb-4 text-red-500 uppercase tracking-tighter">Não é para você se:</h3>
                 <ul className="space-y-3 text-muted-foreground text-sm">
-                  <li>• Usa o Lovable só de vez em quando</li>
-                  <li>• Não se importa em parar no meio da criação</li>
-                  <li>• Prefere continuar limitado</li>
+                  <li>• Nunca usou e não pretende usar o Lovable</li>
+                  <li>• Está satisfeito com limitações de créditos</li>
+                  <li>• Prefere criar manualmente, sem assistentes</li>
                 </ul>
               </motion.div>
             </section>
 
-            {/* Risk Reversal & Final CTA */}
-            <motion.section 
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8 }}
-              className="text-center bg-primary/10 p-12 rounded-[3rem] border border-primary/20 space-y-8"
-            >
-              <div className="space-y-4">
-                <h2 className="text-3xl font-bold uppercase tracking-tighter">As vagas são controladas.</h2>
-                <p className="text-muted-foreground">Mantemos um número limitado de acessos ativos para preservar a estabilidade. Quem garante agora, usa agora.</p>
-              </div>
-              
-              <div className="flex flex-col items-center gap-6 w-full">
-                <Button asChild variant="neon" size="lg" className="px-6 sm:px-12 h-16 text-sm sm:text-xl w-full sm:w-auto whitespace-normal sm:whitespace-nowrap text-center leading-tight">
-                  <Link to="/auth">Quero meu acesso ilimitado agora</Link>
-                </Button>
-                <p className="text-sm text-muted-foreground">Teste com tranquilidade. Se não fizer sentido, basta cancelar.</p>
+            {/* CTA Final */}
+            <motion.section {...fadeInUp} className="text-center">
+              <div className="bg-gradient-to-br from-primary/20 via-primary/10 to-transparent p-10 md:p-16 rounded-[2.5rem] border border-primary/30 relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.15),transparent_60%)]" />
+                <div className="relative z-10">
+                  <h2 className="text-3xl md:text-4xl font-black mb-4 uppercase tracking-tighter">
+                    Chega de parar no meio do caminho.
+                  </h2>
+                  <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
+                    Acesso ilimitado, extensão oficial, suporte total e sem surpresas no cartão.
+                  </p>
+                  <Button asChild variant="neon" size="lg" className="px-10 h-16 text-lg">
+                    <Link to={cms['hero']?.cta_link || "/auth"}>
+                      {cms['hero']?.cta_text || "Quero créditos infinitos agora"}
+                    </Link>
+                  </Button>
+                  <p className="text-muted-foreground text-sm mt-4">Ativação imediata • Suporte 24/7</p>
+                </div>
               </div>
             </motion.section>
-
         </div>
       </main>
       <SiteFooter />
