@@ -113,7 +113,7 @@ function Index() {
 
 
             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 w-full justify-center md:justify-start">
-              <Button asChild size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center bg-green-500 text-black shadow-[0_0_20px_rgba(34,197,94,0.6)] hover:bg-green-400 hover:shadow-[0_0_30px_rgba(34,197,94,0.8)] transition-all duration-300">
+              <Button asChild size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center bg-pink-500 text-white shadow-[0_0_20px_rgba(236,72,153,0.6)] hover:bg-pink-400 hover:shadow-[0_0_30px_rgba(236,72,153,0.8)] transition-all duration-300">
                 <Link to={cms['hero']?.cta_link || "/auth"}>{cms['hero']?.cta_text || "Quero créditos infinitos agora"}</Link>
               </Button>
               <Button asChild variant="neonOutline" size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center">
@@ -286,28 +286,31 @@ function Index() {
               <motion.div {...slideInRight} className="bg-red-500/5 p-8 rounded-[2.5rem] border border-red-500/20">
                 <h3 className="text-xl font-bold mb-4 text-red-500 uppercase tracking-tighter">Não é para você se:</h3>
                 <ul className="space-y-3 text-muted-foreground text-sm">
-                  <li>• Nunca usou e não pretende usar o Lovable</li>
-                  <li>• Prefere fazer tudo manualmente sem ferramentas</li>
-                  <li>• Não cria projetos com frequência</li>
+                  <li>• Nunca usou o Lovable e não pretende usar</li>
+                  <li>• Cria apenas um projeto pontual e pronto</li>
+                  <li>• Não se importa com limites de criação</li>
                 </ul>
               </motion.div>
             </section>
 
             {/* CTA Final */}
-            <motion.section {...fadeInUp} className="text-center space-y-8">
-              <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">
+            <motion.section {...fadeInUp} className="text-center bg-gradient-to-b from-primary/10 to-transparent p-12 rounded-[3rem] border border-primary/20 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent -z-10" />
+              <h2 className="text-3xl md:text-4xl font-black mb-6 uppercase tracking-tighter">
                 Chega de parar no meio do caminho.
               </h2>
-              <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-                Comece hoje a criar sem limites. Seus projetos, seu ritmo, sua produtividade.
+              <p className="text-muted-foreground text-lg mb-10 max-w-xl mx-auto">
+                Acesso imediato, instalação simples e suporte para você nunca mais ficar travado por falta de créditos.
               </p>
-              <Button asChild variant="neon" size="lg" className="px-12 h-16 text-lg">
+              <Button asChild size="lg" className="px-10 h-16 text-lg bg-primary text-black font-bold shadow-[0_0_30px_rgba(217,70,239,0.6)] hover:bg-primary/90 hover:shadow-[0_0_50px_rgba(217,70,239,0.8)] transition-all duration-300">
                 <Link to={cms['hero']?.cta_link || "/auth"}>
-                  {cms['hero']?.cta_text || "Quero créditos infinitos agora"}
+                  QUERO CRÉDITOS ILIMITADOS AGORA
                 </Link>
               </Button>
+              <p className="text-muted-foreground text-sm mt-6">Acesso instantâneo • Suporte incluido • Instalação em 2 minutos</p>
             </motion.section>
         </div>
+
       </main>
       <SiteFooter />
     </div>
