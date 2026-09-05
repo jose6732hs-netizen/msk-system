@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Check } from "lucide-react";
-import { formatCurrency } from "~/lib/utils";
-import type { ShippingMethod } from "~/types";
+import type { ShippingMethod } from "@/types";
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 interface ShippingCardProps {
   method: ShippingMethod;
