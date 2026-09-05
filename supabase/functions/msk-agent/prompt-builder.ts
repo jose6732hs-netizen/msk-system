@@ -176,7 +176,7 @@ export class PromptBuilder {
     return {
       operation: "chat",
       jsonMode: false,
-      system: "Responda em português do Brasil. Não afirme que editou código em uma chamada apenas de conversa.",
+      system: MSK_CHAT_RULES,
       user: exactClientCommand(message),
     };
   }
