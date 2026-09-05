@@ -4,6 +4,7 @@ import { ask, parse, directCommit, activeProviderInfo } from "./ai.ts";
 import { classifySkill, loadSkillOverrides, literalTargets, locateFiles, searchLiteral, contextBlock } from "./skills.ts";
 import { MSK_ENGINEERING_PROFILE, normalizeRepo, isHighRiskCommand, selectionPrompt, editPrompt, validateChanges, professionalSummary } from "./professional.ts";
 import { AgentError, type AgentStage, acquireRepoLock, mapErrorToAgentError, recordAgentError, releaseRepoLock } from "./errors.ts";
+import { MSK_CHAT_RULES, clarificationFor, classifyIntent, conversationalReply } from "./behavior.ts";
 
 const normalize = (v: string) => String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 const ACTIVE = new Set(["locating_files", "analyzing", "editing", "self_correcting", "no_changes_retry", "validating", "committing", "verifying", "finalizing"]);
