@@ -106,7 +106,7 @@ function Index() {
 
             <motion.h1
               variants={fadeInUp}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter text-emerald-500 uppercase leading-[0.95] break-words text-center lg:text-left py-2 drop-shadow-[0_0_14px_rgba(16,185,129,0.88)]"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter text-primary uppercase leading-[0.95] break-words text-center lg:text-left py-2 drop-shadow-[0_0_14px_rgba(16,185,129,0.88)]"
             >
               {cms["hero"]?.title || "Pare de ser interrompido no meio da criação"}
             </motion.h1>
