@@ -354,6 +354,68 @@ Deno.serve(async (req: Request) => {
     lockHeld = await acquireRepoLock(lockKey, taskId, who.id, 210);
     if (!lockHeld) throw new AgentError("LOCK_ACQUISITION_FAILED", "Já existe outra edição ativa neste repositório e branch.", { stage: "locking", retryable: true, httpStatus: 409, context: { repository, branch } });
 
+    // ---- Reversão exata: restaura o conteúdo anterior ao último commit do MSK ----
+    if (intent.kind === "revert") {
+      stage = "editing";
+      const targetSha = String(body.revert_commit_sha || lastDone?.commit_sha || "").trim();
+      if (!/^[0-9a-f]{40}$/i.test(targetSha)) {
+        const text = "Ainda não encontrei uma alteração minha registrada neste projeto para desfazer. Me diga o que devo restaurar que eu faço a alteração.";
+        return json({ ok: true, connected: true, mode: "chat", no_edit: true, intent: "revert", assistant_message: text, message: text, repository });
+      }
+      await checkpoint(taskId, who.id, pid, "editing", "Revertendo alteração anterior", { commit_sha: targetSha });
+      const commitInfo = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/commits/${targetSha}`);
+      const parentSha = String(commitInfo?.parents?.[0]?.sha || "");
+      if (!parentSha) throw new AgentError("AGENT_TARGET_NOT_FOUND", "O commit anterior não possui histórico para restaurar.", { stage: "editing", httpStatus: 422 });
+
+      const restored: Array<{ path: string; content: string; create: boolean }> = [];
+      const skipped: string[] = [];
+      for (const file of (commitInfo?.files || []).slice(0, 20)) {
+        const path = String(file?.filename || "");
+        if (!path) continue;
+        if (String(file?.status || "") === "added") { skipped.push(path); continue; }
+        const previous = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/contents/${encodeURIComponent(path).replace(/%2F/g, "/")}?ref=${parentSha}`).catch(() => null);
+        const encoded = String(previous?.content || "").replace(/\n/g, "");
+        if (!encoded) { skipped.push(path); continue; }
+        const binary = atob(encoded);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+        restored.push({ path, content: dec.decode(bytes), create: false });
+      }
+      if (!restored.length) throw new AgentError("NO_CHANGES_APPLIED", "Não foi possível restaurar o conteúdo anterior com segurança.", { stage: "editing", retryable: false, httpStatus: 422, context: { skipped } });
+
+      stage = "committing";
+      await taskPatch(taskId, { status: "committing", branch_name: branch }, who.id);
+      const revertCommit = await directCommit(selected.token, owner, repoNameOnly, branch, restored, `MSK: reverter ${targetSha.slice(0, 8)} (pedido do cliente)`);
+      const revertSha = String(revertCommit?.sha || "");
+      const usedRevertBranch = String(revertCommit?.branch || branch);
+      const revertSummary = professionalSummary("Alteração anterior revertida exatamente como estava antes.", repository, restored.map(x => x.path), revertSha);
+      await taskPatch(taskId, { status: "verification_pending", preview_status: "pending", commit_sha: revertSha, commit_url: String(revertCommit?.html_url || ""), files_changed: restored.map(x => x.path), branch_name: usedRevertBranch, summary: revertSummary, error: null, error_code: null, error_stage: null }, who.id);
+      await checkpoint(taskId, who.id, pid, "verifying", "Reversão aplicada", { commit_sha: revertSha, files: restored.map(x => x.path) });
+      const revertMessage = `Pronto: voltei os arquivos exatamente como estavam antes da última alteração.${skipped.length ? ` Não removi arquivos criados naquela alteração (${skipped.slice(0, 5).join(", ")}).` : ""}`;
+      return json({
+        ok: true,
+        completed: false,
+        status: "verification_pending",
+        verification_pending: true,
+        preview_pending: true,
+        preview_ready: false,
+        intent: "revert",
+        assistant_message: revertMessage,
+        summary: revertSummary,
+        repository,
+        repository_locked: true,
+        branch: usedRevertBranch,
+        branch_used: usedRevertBranch,
+        commit_sha: revertSha,
+        commit_url: String(revertCommit?.html_url || ""),
+        files: restored.map(x => x.path),
+        files_changed: restored.map(x => x.path),
+        files_changed_count: restored.length,
+        task_id: taskId,
+      });
+    }
+
+
     stage = "locating_files";
     await taskPatch(taskId, { status: "locating_files" }, who.id);
     const tree = await gh(selected.token, `/repos/${owner}/${repoNameOnly}/git/trees/${encodeURIComponent(branch).replace(/%2F/g, "/")}?recursive=1`);
