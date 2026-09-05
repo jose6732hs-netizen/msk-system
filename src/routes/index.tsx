@@ -106,7 +106,7 @@ function Index() {
 
             <motion.h1
               variants={fadeInUp}
-              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter text-red-500 uppercase leading-[0.95] break-words text-center lg:text-left py-2"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tighter text-yellow-400 uppercase leading-[0.95] break-words text-center lg:text-left py-2"
             >
               {cms["hero"]?.title || "Pare de ser interrompido no meio da criação"}
             </motion.h1>
@@ -263,7 +263,7 @@ function Index() {
               </h2>
               <div className="space-y-4 text-muted-foreground text-sm sm:text-base">
                 <p>
-                  Está no meio de um projeto promissor e os créditos acabaram. A ideia estava fluindo… e de repente trava.
+                  Está no meio de um projeto promissor e os créditos acabram. A ideia estava fluindo… e de repente trava.
                 </p>
                 <p>
                   Você perde o momentum, a motivação e às vezes até o cliente. Precisa esperar, pagar de novo ou aceitar que não vai conseguir terminar hoje.
@@ -420,16 +420,14 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "A plataforma definitiva para gerenciar licenças, dispositivos e otimizar seu fluxo de trabalho com a MSK Suite.",
+          "Extensão Chrome oficial para Lovable. Créditos infinitos, criação sem limites e entrega acelerada.",
       },
+      { property: "og:title", content: "MSK SISTEM — Sua Assistente Premium para Lovable" },
       {
-        property: "og:image",
-        content: "https://msksystem.online/social-image.png",
+        property: "og:description",
+        content: "Extensão Chrome oficial para Lovable. Créditos infinitos, criação sem limites e entrega acelerada.",
       },
-      {
-        name: "twitter:image",
-        content: "https://msksystem.online/social-image.png",
-      },
+      { property: "og:type", content: "website" },
     ],
   }),
   component: Index,
