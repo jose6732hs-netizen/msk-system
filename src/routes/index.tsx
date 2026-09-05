@@ -113,7 +113,7 @@ function Index() {
 
 
             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row gap-4 w-full justify-center md:justify-start">
-              <Button asChild variant="neon" size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center">
+              <Button asChild size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center bg-green-500 text-black shadow-[0_0_20px_rgba(34,197,94,0.6)] hover:bg-green-400 hover:shadow-[0_0_30px_rgba(34,197,94,0.8)] transition-all duration-300">
                 <Link to={cms['hero']?.cta_link || "/auth"}>{cms['hero']?.cta_text || "Quero créditos infinitos agora"}</Link>
               </Button>
               <Button asChild variant="neonOutline" size="lg" className="px-6 h-14 text-sm sm:text-lg w-full sm:w-auto whitespace-normal text-center leading-tight flex items-center justify-center">
@@ -228,7 +228,7 @@ function Index() {
               </motion.div>
               <motion.div {...slideInRight} className="bg-primary/5 p-8 rounded-[2.5rem] border border-primary/20">
                 <h3 className="text-xl font-bold mb-4 uppercase tracking-tighter">O Preço Invisível</h3>
-                <p className="text-muted-foreground">Cada vez que os créditos acaban, você paga um preço invisível: tempo perdido, energia desperdiçada e oportunidades que esfriam.</p>
+                <p className="text-muted-foreground">Cada vez que os créditos acabram, você paga um preço invisível: tempo perdido, energia desperdiçada e oportunidades que esfriam.</p>
               </motion.div>
             </section>
 
@@ -287,63 +287,26 @@ function Index() {
                 <h3 className="text-xl font-bold mb-4 text-red-500 uppercase tracking-tighter">Não é para você se:</h3>
                 <ul className="space-y-3 text-muted-foreground text-sm">
                   <li>• Nunca usou e não pretende usar o Lovable</li>
-                  <li>• Prefere criar tudo manualmente do zero</li>
-                  <li>• Não precisa criar com frequência</li>
+                  <li>• Prefere fazer tudo manualmente sem ferramentas</li>
+                  <li>• Não cria projetos com frequência</li>
                 </ul>
               </motion.div>
             </section>
 
-            {/* Testimonials */}
-            <section className="space-y-8">
-              <motion.div {...fadeInUp} className="text-center">
-                <h2 className="text-3xl font-bold mb-4 text-primary uppercase tracking-tighter">Quem já usa, não volta atrás</h2>
-                <p className="text-muted-foreground text-lg">Milhares de criadores já transformaram seu fluxo de trabalho com a MSK Suite.</p>
-              </motion.div>
-
-              <motion.div 
-                variants={staggerContainer}
-                initial="initial"
-                whileInView="whileInView"
-                viewport={{ once: true }}
-                className="grid md:grid-cols-3 gap-6"
-              >
-                {[
-                  { quote: "Finalmente consigo entregar projetos inteiros sem parar no meio. A diferença no meu faturamento foi brutal.", author: "Carlos, Desenvolvedor" },
-                  { quote: "Usei por um mês e já renovei o plano anual. O ROI é absurdamente positivo.", author: "Ana, Designer" },
-                  { quote: "A extensão funciona perfeitamente. Recomendo pra qualquer pessoa que leva Lovable a sério.", author: "Rafael, Produtor" },
-                ].map((item, i) => (
-                  <motion.div 
-                    key={i} 
-                    variants={fadeInUp}
-                    className="bg-white/5 p-6 rounded-3xl border border-white/10"
-                  >
-                    <p className="text-foreground italic mb-4">"{item.quote}"</p>
-                    <p className="text-muted-foreground text-sm font-semibold">— {item.author}</p>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </section>
-
-            {/* Final CTA */}
-            <motion.section {...fadeInUp} className="text-center space-y-8 bg-primary/5 p-12 rounded-[3rem] border border-primary/20">
+            {/* CTA Final */}
+            <motion.section {...fadeInUp} className="text-center space-y-8">
               <h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter">
-                Pronto pra nunca mais ser interrompido?
+                Chega de parar no meio do caminho.
               </h2>
-              <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-                Comece agora e transforme seu fluxo de criação. Sem limites. Sem bloqueios. Sem frustração.
+              <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+                Comece hoje a criar sem limites. Seus projetos, seu ritmo, sua produtividade.
               </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button asChild variant="neon" size="lg" className="px-10 h-16 text-lg">
-                  <Link to={cms['hero']?.cta_link || "/auth"}>
-                    {cms['hero']?.cta_text || "Quero créditos infinitos agora"}
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="px-10 h-16 text-lg border-white/10 bg-white/5 text-white hover:bg-white/10">
-                  <Link to="/planos" preload="intent">Ver Planos</Link>
-                </Button>
-              </div>
+              <Button asChild variant="neon" size="lg" className="px-12 h-16 text-lg">
+                <Link to={cms['hero']?.cta_link || "/auth"}>
+                  {cms['hero']?.cta_text || "Quero créditos infinitos agora"}
+                </Link>
+              </Button>
             </motion.section>
-
         </div>
       </main>
       <SiteFooter />
