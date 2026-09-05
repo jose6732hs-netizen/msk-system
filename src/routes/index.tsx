@@ -56,16 +56,15 @@ export const Route = createFileRoute("/")({
       ],
     };
   },
-  component: Index,
+  component: IndexComponent,
 });
 
-function Index() {
+function IndexComponent() {
   const { cms, stats } = Route.useLoaderData() as any;
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSmartOffer, setShowSmartOffer] = useState(false);
   const [showPixModal, setShowPixModal] = useState(false);
   const [showCardPanel, setShowCardPanel] = useState(false);
-  const [offerAccepted, setOfferAccepted] = useState(false);
   const [currentOffer, setCurrentOffer] = useState<any>(null);
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -88,7 +87,6 @@ function Index() {
     } else if (offer?.type === "card") {
       setShowCardPanel(true);
     }
-    setOfferAccepted(true);
     setShowSmartOffer(false);
   };
 
@@ -150,7 +148,7 @@ function Index() {
                   className="h-14 min-w-[280px] rounded-2xl text-base font-bold"
                 >
                   <Globe2 className="mr-2 h-5 w-5" />
-                  Começar Agora
+                  <span>Começar Agora</span>
                 </Button>
                 <Button
                   size="lg"
@@ -272,7 +270,7 @@ function Index() {
                       onClick={() => setShowSmartOffer(true)}
                       className="h-14 min-w-[240px] rounded-2xl text-base font-bold"
                     >
-                      Começar Agora
+                      <span>Começar Agora</span>
                       <ChevronRight className="ml-2 h-5 w-5" />
                     </Button>
                   </div>
