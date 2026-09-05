@@ -15,6 +15,14 @@ export type OfficialExtensionRelease = Readonly<{
  * Não contém token, licença ou segredo.
  */
 export const OFFICIAL_EXTENSION_RELEASES: Readonly<Record<string, OfficialExtensionRelease>> = Object.freeze({
+  "4.4.0": Object.freeze({
+    version: "4.4.0",
+    channel: "stable",
+    integrityDigest: "2dab840879ba88028f33229f954b9a6a1430ae14c574d7ecacc66d0db43b4d1b",
+    zipSha256: "d03619bd673882a3ac41d2f46a82fc82001bab53e934a80844884b7547a8d732",
+    bridgeVersion: 1,
+    title: "MSK Agente v4.4.0 — Cirúrgico + Autocura + CI + Cofre MSK",
+  }),
   "4.2.37": Object.freeze({
     version: "4.2.37",
     channel: "stable",
