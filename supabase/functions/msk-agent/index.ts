@@ -294,6 +294,44 @@ Deno.serve(async (req: Request) => {
     const cmd = String(body.original_command || body.message || body.command || "").trim();
     const clientCmd = String(body.client_original_command || cmd).trim();
     if (!cmd) return json({ error: "Comando vazio.", code: "EMPTY_COMMAND" }, 400);
+
+    // ---- Camada de comportamento: conversa, perguntas, análise e reversão ----
+    const intent = classifyIntent(clientCmd);
+    const { data: lastDone } = await db
+      .from("msk_tasks")
+      .select("id,summary,commit_sha,files_changed,updated_at,status")
+      .eq("lovable_project_id", pid)
+      .eq("user_id", who.id)
+      .not("commit_sha", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (intent.kind === "greeting" || intent.kind === "smalltalk") {
+      const reply = conversationalReply(clientCmd, intent, { repository: selectedRepo, lastSummary: String(lastDone?.summary || "").slice(0, 240) });
+      return json({ ok: true, connected: true, mode: "chat", no_edit: true, intent: intent.kind, assistant_message: reply, message: reply, repository: selectedRepo, provider: "MSK", model: "MSK-IA" });
+    }
+
+    if (intent.kind === "status") {
+      const reply = lastDone?.commit_sha
+        ? `A última alteração já foi aplicada e confirmada em ${selectedRepo}: ${String(lastDone.summary || "alteração concluída").slice(0, 300)}`
+        : "Ainda não há nenhuma alteração aplicada neste projeto. Me diga o que devo fazer que eu executo agora.";
+      return json({ ok: true, connected: true, mode: "chat", no_edit: true, intent: "status", assistant_message: reply, message: reply, repository: selectedRepo });
+    }
+
+    if (intent.kind === "question") {
+      stage = "analyzing";
+      const answer = await ask(req, `${MSK_CHAT_RULES}\nRepositório do cliente: ${selectedRepo}.\nPergunta/análise do cliente: ${clientCmd}`, false, 2600);
+      const text = answer.text.trim();
+      return json({ ok: true, connected: true, mode: "chat", no_edit: true, intent: "question", assistant_message: text, message: text, repository: selectedRepo });
+    }
+
+    const clarify = body.confirm === true || body.skip_clarification === true ? null : clarificationFor(clientCmd);
+    if (clarify) {
+      const text = `${clarify.question}\n\n${clarify.options.map((option, index) => `${index + 1}. ${option}`).join("\n")}`;
+      return json({ ok: true, connected: true, mode: "chat", no_edit: true, requires_input: true, intent: "clarification", question: clarify.question, options: clarify.options, assistant_message: text, message: text, repository: selectedRepo });
+    }
+
     taskId = /^[0-9a-f-]{36}$/i.test(String(body.task_id || "")) ? String(body.task_id) : crypto.randomUUID();
     const taskWrite = await db.from("msk_tasks").upsert({ id: taskId, lovable_project_id: pid, user_id: who.id, command: clientCmd.slice(0, 12000), status: "locating_files", error: null, error_code: null, error_stage: null, retry_count: 0, last_error_id: null, updated_at: new Date().toISOString() }, { onConflict: "id" });
     if (taskWrite.error) throw new AgentError("TASK_PERSISTENCE_FAILED", "Não foi possível registrar a tarefa antes da execução.", { stage: "request", httpStatus: 500, cause: taskWrite.error });
