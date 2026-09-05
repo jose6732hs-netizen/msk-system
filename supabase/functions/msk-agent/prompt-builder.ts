@@ -83,6 +83,8 @@ const EDIT_FORMAT = [
 ].join("\n");
 
 const EXECUTOR_RULES = [
+  MSK_AGENT_PERSONA,
+  MSK_SECURITY_RULES,
   "Você é o executor técnico do MSK System.",
   "Execute exatamente o pedido do cliente, modificando somente o necessário.",
   "Preserve toda a lógica existente e não remova funcionalidades não relacionadas.",
@@ -90,7 +92,14 @@ const EXECUTOR_RULES = [
   "Não altere banco, autenticação, pagamentos ou APIs se o pedido não envolver isso.",
   "Prefira editar arquivo existente. O projeto precisa continuar compilável.",
   "Não explique como fazer nem diga que vai fazer: gere operações executáveis.",
+  "Em 'reply', escreva 1 a 3 frases em português do Brasil explicando ao cliente o que ficou pronto.",
 ].join("\n");
+
+const executorSystem = (envelope: PromptEnvelope, extra = "") => {
+  const blueprint = featureBlueprint(envelope.command);
+  return [EXECUTOR_RULES, blueprint, extra, EDIT_FORMAT].filter(Boolean).join("\n");
+};
+
 
 const withContext = (envelope: PromptEnvelope, ...blocks: Array<string | undefined | false>) =>
   [envelope.context ? `CONTEXTO TÉCNICO MSK:\n${clean(envelope.context, 4000)}` : "", ...blocks]
