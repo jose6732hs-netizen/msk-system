@@ -1,0 +1,52 @@
+name: MSK License Live Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/msk-license-live-probe.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe published license endpoints with fake credentials
+        shell: bash
+        run: |
+          set -u
+          for base in \
+            https://msksystem.online \
+            https://msk-system.lovable.app \
+            https://msk-sistem.lovable.app
+          do
+            echo "=== POST $base ==="
+            headers=$(mktemp)
+            body=$(mktemp)
+            code=$(curl -sS --max-time 15 -D "$headers" -o "$body" -w '%{http_code}' \
+              -X POST "$base/api/public/license/validate" \
+              -H 'Origin: chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+              -H 'Content-Type: application/json' \
+              -H 'X-MSK-Extension-Version: live-probe' \
+              --data '{"email":"probe-invalid@example.com","token":"MSK-PROBE-INVALID-0000","extension_version":"live-probe"}' || echo CURL_ERROR)
+            echo "HTTP=$code"
+            grep -iE '^(content-type|access-control-allow-origin|access-control-allow-headers|location):' "$headers" || true
+            python3 - "$body" <<'PY'
+          import json,sys
+          try:
+              d=json.load(open(sys.argv[1]))
+              print('JSON=', {k:d.get(k) for k in ('valid','ok','code','error','message') if k in d})
+          except Exception:
+              print('JSON=INVALID_OR_EMPTY')
+          PY
+            echo "=== OPTIONS $base ==="
+            curl -sS --max-time 15 -D - -o /dev/null \
+              -X OPTIONS "$base/api/public/license/validate" \
+              -H 'Origin: chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+              -H 'Access-Control-Request-Method: POST' \
+              -H 'Access-Control-Request-Headers: content-type,x-msk-extension-version' \
+              | grep -iE '^(HTTP/|access-control-allow-origin|access-control-allow-headers|access-control-allow-methods):' || true
+          done
