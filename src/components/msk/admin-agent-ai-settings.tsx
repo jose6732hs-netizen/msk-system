@@ -228,7 +228,10 @@ export function AdminAgentAiSettings() {
                       <span className="block text-xs font-black uppercase tracking-[0.14em]">{PROVIDERS[id].label}</span>
                       <span className="mt-1 block text-[0.64rem] leading-relaxed text-muted-foreground">{PROVIDERS[id].hint}</span>
                     </div>
-                    <span className={`h-2.5 w-2.5 rounded-full ${row?.configured && row.active ? "bg-emerald-400" : row?.configured ? "bg-amber-400" : "bg-white/20"}`} />
+                    <span className="flex items-center gap-2">
+                      {row?.configured ? <Pencil className="h-3.5 w-3.5 text-primary" aria-label={`Trocar chave da ${PROVIDERS[id].label}`} /> : null}
+                      <span className={`h-2.5 w-2.5 rounded-full ${row?.configured && row.active ? "bg-emerald-400" : row?.configured ? "bg-amber-400" : "bg-white/20"}`} />
+                    </span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1 text-[0.55rem] font-black uppercase tracking-widest">
                     <span className="rounded-full border border-white/10 px-2 py-1">{row?.configured ? (row.active ? "Ativa" : "Pausada") : "Sem key"}</span>
