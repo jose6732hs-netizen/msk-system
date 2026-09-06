@@ -1,0 +1,38 @@
+name: MSK Package Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'msk-agente-v3/**'
+      - '.github/workflows/msk-package-extension.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest and JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m json.tool msk-agente-v3/manifest.json >/dev/null
+          node --check msk-agente-v3/license-transport-shim.js
+          node --check msk-agente-v3/background-entry.js
+      - name: Build ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd msk-agente-v3
+          zip -qr ../MSK-Agente-v3.4.34-LICENSE-CONNECTION-FIX.zip .
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: MSK-Agente-v3.4.34-LICENSE-CONNECTION-FIX
+          path: MSK-Agente-v3.4.34-LICENSE-CONNECTION-FIX.zip
+          if-no-files-found: error
+          retention-days: 7
