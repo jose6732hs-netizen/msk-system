@@ -589,7 +589,7 @@ export async function createDepositCheckout(input: {
 
   return {
     transactionId: tx.id,
-    pixCode: result.pix?.code ?? null,
+    pixCode,
     qrCode: result.pix?.base64 ?? result.pix?.image ?? null,
     amount: input.amount,
   };
