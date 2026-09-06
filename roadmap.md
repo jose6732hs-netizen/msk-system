@@ -5,3 +5,4 @@
 - [x] Validar e exibir rota solicitada e executada
 - [x] Adicionar painel profissional de execução acima do chat
 - [x] Atualizar integridade, validar e empacotar ZIP
+- [ ] Corrigir salvamento e permanência das APIs de IA no painel
