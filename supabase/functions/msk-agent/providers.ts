@@ -85,7 +85,9 @@ export const MODEL_FALLBACKS: Record<ProviderId, string[]> = {
   openrouter: ["z-ai/glm-5.2", "meta-llama/llama-3.3-70b-instruct", "google/gemini-2.0-flash-001"],
   openai: ["gpt-5.5", "gpt-4.1", "gpt-4o"],
   gemini: ["gemini-2.5-flash", "gemini-2.0-flash"],
-  groq: ["llama-3.3-70b-versatile", "openai/gpt-oss-120b", "qwen/qwen3-32b"],
+  // Groq — cadeia oficial de programação/criação de sites (free plan).
+  // Whisper (áudio), Orpheus (voz), Prompt Guard e Safeguard NUNCA entram aqui.
+  groq: ["openai/gpt-oss-120b", "qwen/qwen3.8-27b", "qwen/qwen3.6-27b", "openai/gpt-oss-20b", "groq/compound", "groq/compound-mini"],
   mistral: ["codestral-latest", "mistral-large-latest", "mistral-small-latest"],
   manus: ["manus-agent-v1"],
   bai: ["deepseek-v4-flash"],
