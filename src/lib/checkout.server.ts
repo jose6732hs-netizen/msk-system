@@ -565,24 +565,27 @@ export async function createDepositCheckout(input: {
     .from("reseller_deposits")
     .insert({ reseller_id: reseller.id, transaction_id: tx.id, amount: input.amount });
 
-  const service = await AmploPayService.create();
-  const result = await service.createPix({
+  const { createPixWithFailover } = await import("./payments/gateway.server");
+  const { provider, result, pixCode } = await createPixWithFailover({
     identifier,
     amountCents,
     customer: { name: input.name || input.email, email: input.email },
     items: [{ title: "Depósito de saldo", unitPrice: amountCents, quantity: 1, tangible: false }],
+    metadata: { transactionId: tx.id, purpose: "deposit" },
   });
 
     await supabaseAdmin
       .from("transactions")
       .update({
+        provider,
         provider_transaction_id: result.transactionId ?? result.id ?? null,
-        pix_code: result.pix?.code ?? null,
+        pix_code: pixCode,
         pix_qrcode: result.pix?.base64 ?? result.pix?.image ?? null,
         expires_at: pixExpiryFromNow(),
         raw: result as any,
       } as any)
       .eq("id", tx.id);
+
 
   return {
     transactionId: tx.id,
