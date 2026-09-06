@@ -42,7 +42,7 @@ export const PROVIDER_CATALOG: Record<ProviderId, ProviderMeta> = {
   openrouter: { id: "openrouter", label: "OpenRouter", family: "openai", root: "https://openrouter.ai/api/v1", defaultModel: "z-ai/glm-5.2", customBase: false },
   openai: { id: "openai", label: "OpenAI", family: "openai", root: "https://api.openai.com/v1", defaultModel: "gpt-5.5", customBase: false },
   gemini: { id: "gemini", label: "Google Gemini", family: "openai", root: "https://generativelanguage.googleapis.com/v1beta/openai", defaultModel: "gemini-2.5-flash", customBase: false },
-  groq: { id: "groq", label: "Groq", family: "openai", root: "https://api.groq.com/openai/v1", defaultModel: "llama-3.3-70b-versatile", customBase: false },
+  groq: { id: "groq", label: "Groq", family: "openai", root: "https://api.groq.com/openai/v1", defaultModel: "openai/gpt-oss-120b", customBase: false },
   mistral: { id: "mistral", label: "Mistral AI", family: "openai", root: "https://api.mistral.ai/v1", defaultModel: "codestral-latest", customBase: false },
   manus: { id: "manus", label: "Manus AI", family: "responses", root: "https://api.manus.im/v1", defaultModel: "manus-agent-v1", customBase: true },
   bai: { id: "bai", label: "B.AI", family: "openai", root: "https://api.b.ai/v1", defaultModel: "deepseek-v4-flash", customBase: false },
