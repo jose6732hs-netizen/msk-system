@@ -17,13 +17,15 @@
     "https://api.synterolink.com/*",
     "https://lovable.dev/*",
     "https://msksystem.online/*",
+    "https://msk-system.lovable.app/*",
+    "https://msk-sistem.lovable.app/*",
     "https://chatgpt.com/*",
     "https://api.lovable.dev/*",
     "https://lovable-api.com/*",
     "https://grok.com/*"
   ],
   "background": {
-    "service_worker": "background.js",
+    "service_worker": "background-entry.js",
     "type": "module"
   },
   "content_scripts": [
