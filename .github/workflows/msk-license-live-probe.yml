@@ -23,30 +23,30 @@ jobs:
             https://msk-system.lovable.app \
             https://msk-sistem.lovable.app
           do
-            echo "=== POST $base ==="
-            headers=$(mktemp)
-            body=$(mktemp)
-            code=$(curl -sS --max-time 15 -D "$headers" -o "$body" -w '%{http_code}' \
-              -X POST "$base/api/public/license/validate" \
-              -H 'Origin: chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
-              -H 'Content-Type: application/json' \
-              -H 'X-MSK-Extension-Version: live-probe' \
-              --data '{"email":"probe-invalid@example.com","token":"MSK-PROBE-INVALID-0000","extension_version":"live-probe"}' || echo CURL_ERROR)
-            echo "HTTP=$code"
-            grep -iE '^(content-type|access-control-allow-origin|access-control-allow-headers|location):' "$headers" || true
-            python3 - "$body" <<'PY'
+            for path in /api/public/license/validate /api/public/agent/license/validate
+            do
+              echo "=== POST $base$path ==="
+              headers=$(mktemp)
+              body=$(mktemp)
+              code=$(curl -sS -L --max-time 15 -D "$headers" -o "$body" -w '%{http_code}' \
+                -X POST "$base$path" \
+                -H 'Origin: chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                -H 'X-MSK-Extension-Version: live-probe' \
+                --data '{"email":"probe-invalid@example.com","token":"MSK-PROBE-INVALID-0000","installation_id":"msk-probe-1234567890","device_fingerprint":"msk-probe-1234567890","deviceId":"msk-probe-1234567890","extension_version":"3.32.1"}' || echo CURL_ERROR)
+              echo "HTTP=$code"
+              grep -iE '^(content-type|access-control-allow-origin|access-control-allow-headers|location):' "$headers" || true
+              python3 - "$body" <<'PY'
           import json,sys
+          p=sys.argv[1]
+          raw=open(p,'rb').read(240)
           try:
-              d=json.load(open(sys.argv[1]))
-              print('JSON=', {k:d.get(k) for k in ('valid','ok','code','error','message') if k in d})
+              d=json.loads(open(p,encoding='utf-8').read())
+              print('JSON=', {k:d.get(k) for k in ('valid','success','ok','status','code','error','message') if k in d})
           except Exception:
               print('JSON=INVALID_OR_EMPTY')
+              print('PREFIX=', raw.decode('utf-8','replace').replace('\n',' ')[:220])
           PY
-            echo "=== OPTIONS $base ==="
-            curl -sS --max-time 15 -D - -o /dev/null \
-              -X OPTIONS "$base/api/public/license/validate" \
-              -H 'Origin: chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' \
-              -H 'Access-Control-Request-Method: POST' \
-              -H 'Access-Control-Request-Headers: content-type,x-msk-extension-version' \
-              | grep -iE '^(HTTP/|access-control-allow-origin|access-control-allow-headers|access-control-allow-methods):' || true
+            done
           done
