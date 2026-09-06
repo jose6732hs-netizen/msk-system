@@ -50,7 +50,6 @@ const PROVIDERS: Record<ProviderId, ProviderMeta> = {
     models: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
     hint: "Modelos Gemini disponíveis para sua chave.",
   },
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
   groq: {
     label: "Groq",
