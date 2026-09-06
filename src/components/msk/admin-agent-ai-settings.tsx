@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Bot, BrainCircuit, KeyRound, Layers, Loader2, Network, Power, Save, ShieldCheck, Star, Trash2 } from "lucide-react";
+import { Bot, BrainCircuit, KeyRound, Layers, Loader2, Network, Pencil, Power, Save, ShieldCheck, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,8 +104,6 @@ export function AdminAgentAiSettings() {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState(PROVIDERS.synterolink.defaultModel);
   const [baseUrl, setBaseUrl] = useState(PROVIDERS.synterolink.defaultBaseUrl || "");
-  const [makePrimary, setMakePrimary] = useState(true);
-  void makePrimary;
 
   const { data, isLoading } = useQuery({
     queryKey: ["agent-ai-settings"],
@@ -125,59 +123,33 @@ export function AdminAgentAiSettings() {
     setModel(provider === "synterolink" ? meta.defaultModel : row?.model || meta.defaultModel);
     setBaseUrl(provider === "synterolink" ? meta.defaultBaseUrl || "" : row?.baseUrl || meta.defaultBaseUrl || "");
     setApiKey("");
-    setMakePrimary(provider === "synterolink" ? true : !!row?.primary);
   }, [provider, current?.updatedAt]);
 
   const refresh = () => void qc.invalidateQueries({ queryKey: ["agent-ai-settings"] });
 
-  // Regra do MSK: somente UMA IA trabalha por vez. Ao ativar uma, todas as
-  // outras são desativadas e a ativada vira a principal.
-  async function enforceSingleActive(target: ProviderId) {
-    const others = (data?.providers ?? []).filter((row) => row.providerId !== target && row.active);
-    for (const row of others) {
-      try {
-        await toggleFn({ data: { provider: row.providerId, active: false } });
-      } catch {
-        /* a IA alvo continua sendo a única usada pelo roteador */
-      }
-    }
-    try {
-      await primaryFn({ data: { provider: target } });
-    } catch {
-      /* principal já definida pelo backend */
-    }
-  }
-
   const save = useMutation({
-    mutationFn: async () => {
-      const result = await saveFn({
+    mutationFn: () =>
+      saveFn({
         data: {
           provider,
           apiKey: apiKey.trim(),
           model: model.trim(),
           baseUrl: baseUrl.trim(),
-          makePrimary: true,
+          makePrimary: !data?.providers?.some((row) => row.configured && row.active),
         },
-      });
-      await enforceSingleActive(provider);
-      return result;
-    },
+      }),
     onSuccess: () => {
       setApiKey("");
-      toast.success(`${meta.label} salva, ativada e definida como a única IA em uso.`);
+      toast.success(`${meta.label} salva e ativada. Ela continuará disponível para uso automático.`);
       refresh();
     },
     onError: (error: Error) => toast.error(error.message),
   });
 
   const toggle = useMutation({
-    mutationFn: async (active: boolean) => {
-      const result = await toggleFn({ data: { provider, active } });
-      if (active) await enforceSingleActive(provider);
-      return result;
-    },
+    mutationFn: (active: boolean) => toggleFn({ data: { provider, active } }),
     onSuccess: (_data, active) => {
-      toast.success(active ? `${meta.label} agora é a única IA ativa.` : `${meta.label} desativada.`);
+      toast.success(active ? `${meta.label} ativada.` : `${meta.label} desativada.`);
       refresh();
     },
     onError: (error: Error) => toast.error(error.message),
@@ -234,7 +206,7 @@ export function AdminAgentAiSettings() {
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h4 className="text-sm font-black uppercase tracking-widest">Central Multi-IA do MSK System</h4>
-              <p className="mt-1 text-xs text-muted-foreground">Cadastre várias APIs. Somente UMA IA fica ativa por vez: ativar uma desativa as demais. A extensão recebe somente o catálogo, nunca as chaves.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Cadastre várias APIs e mantenha todas disponíveis. A principal atende primeiro; se ela falhar, o agente tenta outra ativa. A extensão nunca recebe as chaves.</p>
               <div className="mt-2 flex gap-2 text-[0.62rem] font-bold uppercase tracking-widest">
                 <span className="rounded-full border border-emerald-500/25 px-2 py-1 text-emerald-300">{activeCount} ativas</span>
                 <span className="rounded-full border border-white/10 px-2 py-1 text-muted-foreground">{configuredCount} configuradas</span>
@@ -270,7 +242,10 @@ export function AdminAgentAiSettings() {
           <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="flex items-center justify-between gap-2">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em]">Adicionar / editar {meta.label}</p>
+                <p className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em]">
+                  {current?.configured ? <Pencil className="h-3.5 w-3.5 text-primary" /> : <KeyRound className="h-3.5 w-3.5 text-primary" />}
+                  {current?.configured ? `Trocar API ${meta.label}` : `Adicionar API ${meta.label}`}
+                </p>
                 <p className="mt-1 text-[0.65rem] text-muted-foreground">{current?.configured ? `Key salva ${current.keyMasked || ""} · ${current.active ? "ATIVA" : "PAUSADA"}` : "Nenhuma API Key cadastrada"}</p>
               </div>
               {current?.primary ? <span className="flex items-center gap-1 text-xs text-primary"><Star className="h-4 w-4" /> Principal</span> : null}
@@ -280,7 +255,7 @@ export function AdminAgentAiSettings() {
               <div className="space-y-2">
                 <Label htmlFor="msk-ai-api-key">API Key</Label>
                 <Input id="msk-ai-api-key" type="password" autoComplete="new-password" value={apiKey} onChange={(event) => setApiKey(event.target.value)} placeholder={current?.configured ? current.keyMasked || "••••••••" : `Cole a API Key da ${meta.label}`} className="font-mono" />
-                <p className="text-[0.62rem] text-muted-foreground">A chave é testada antes de substituir uma configuração válida.</p>
+                <p className="text-[0.62rem] text-muted-foreground">A chave é salva com segurança. A chave anterior só é substituída depois da confirmação.</p>
               </div>
 
               <div className="space-y-2">
@@ -318,21 +293,14 @@ export function AdminAgentAiSettings() {
               </div>
             ) : null}
 
-            {provider !== "synterolink" ? (
-              <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-muted-foreground">
-                Ao salvar, <b className="text-primary">{meta.label}</b> vira a única IA ativa e principal. As outras são desativadas automaticamente.
-              </div>
-            ) : (
-
-              <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-muted-foreground">
-                Ao salvar Claude, o MSK já deixa <b className="text-primary">ativa e principal</b> automaticamente.
-              </div>
-            )}
+            <div className="mt-4 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs text-muted-foreground">
+              Ao salvar, <b className="text-primary">{meta.label}</b> fica ativa sem desligar nem esconder as outras APIs cadastradas.
+            </div>
 
             <div className="mt-4 flex flex-wrap gap-2">
               <Button variant="neon" disabled={apiKey.trim().length < 8 || save.isPending || !model.trim() || (meta.showBaseUrl && !baseUrl.trim())} onClick={() => save.mutate()}>
                 {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
-                {provider === "synterolink" ? "SALVAR CLAUDE + ATIVAR + PRINCIPAL" : "Testar, salvar e ativar"}
+                {current?.configured ? "Trocar chave e manter ativa" : "Salvar e ativar"}
               </Button>
 
               {current?.configured && !current.active ? (
