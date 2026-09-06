@@ -103,6 +103,23 @@ const PROVIDERS: Record<ProviderId, ProviderMeta> = {
   },
 };
 
+/** Selos exibidos ao lado de cada modelo no seletor. */
+const MODEL_BADGES: Record<string, string> = {
+  "openai/gpt-oss-120b": "GPT-OSS 120B — Recomendado para Código (padrão)",
+  "qwen/qwen3.8-27b": "Qwen 3.8 27B — Frontend / UI / CSS",
+  "qwen/qwen3.6-27b": "Qwen 3.6 27B — Código / Revisão",
+  "openai/gpt-oss-20b": "GPT-OSS 20B — Rápido",
+  "groq/compound": "Compound — Agente",
+  "groq/compound-mini": "Compound Mini — Agente Rápido",
+  "openai/gpt-oss-safeguard-20b": "Safeguard 20B — Moderação (não use para código)",
+  "meta-llama/llama-prompt-guard-2-22m": "Prompt Guard 22M — Segurança (não use para código)",
+  "meta-llama/llama-prompt-guard-2-86m": "Prompt Guard 86M — Segurança (não use para código)",
+  "whisper-large-v3": "Whisper Large v3 — Somente áudio/transcrição",
+  "whisper-large-v3-turbo": "Whisper Large v3 Turbo — Somente áudio/transcrição",
+  "canopylabs/orpheus-v1-english": "Orpheus v1 English — Somente voz",
+  "canopylabs/orpheus-arabic-saudi": "Orpheus Arabic (Saudi) — Somente voz",
+};
+
 const ALL_PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[];
 const MULTI_PROVIDER_IDS: ProviderId[] = ["synterolink", "openai", "openrouter", "groq", "gemini", "omniroute"];
 
