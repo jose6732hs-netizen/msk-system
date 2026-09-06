@@ -52,10 +52,25 @@ const PROVIDERS: Record<ProviderId, ProviderMeta> = {
   },
   groq: {
     label: "Groq",
-    defaultModel: "llama-3.3-70b-versatile",
-    models: ["openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
-    hint: "Inferência rápida para código e chat.",
+    defaultModel: "openai/gpt-oss-120b",
+    models: [
+      "openai/gpt-oss-120b",
+      "qwen/qwen3.8-27b",
+      "qwen/qwen3.6-27b",
+      "openai/gpt-oss-20b",
+      "groq/compound",
+      "groq/compound-mini",
+      "openai/gpt-oss-safeguard-20b",
+      "meta-llama/llama-prompt-guard-2-22m",
+      "meta-llama/llama-prompt-guard-2-86m",
+      "whisper-large-v3",
+      "whisper-large-v3-turbo",
+      "canopylabs/orpheus-v1-english",
+      "canopylabs/orpheus-arabic-saudi",
+    ],
+    hint: "Free plan da Groq. Padrão GPT-OSS 120B, com troca automática de modelo em caso de limite.",
   },
+
   manus: {
     label: "Manus AI",
     defaultModel: "manus-agent-v1",
