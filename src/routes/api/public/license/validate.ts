@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const INSTALLATION_RE = /^[A-Za-z0-9_-]{16,80}$/;
 const VERSION_RE = /^[0-9A-Za-z.+_-]{1,64}$/;
+const EXTENSION_ALLOW_HEADERS = "content-type, authorization, x-msk-installation-id, x-msk-extension-version";
 
 function browserExtensionOrigin(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
@@ -21,7 +22,7 @@ function extensionPreflight(request: Request) {
     status: 204,
     headers: {
       "access-control-allow-origin": origin,
-      "access-control-allow-headers": "content-type, authorization",
+      "access-control-allow-headers": EXTENSION_ALLOW_HEADERS,
       "access-control-allow-methods": "POST, GET, OPTIONS",
       "access-control-max-age": "86400",
       vary: "Origin",
@@ -34,7 +35,7 @@ function withExtensionCors(response: Response, request: Request) {
   if (!origin) return response;
   const headers = new Headers(response.headers);
   headers.set("access-control-allow-origin", origin);
-  headers.set("access-control-allow-headers", "content-type, authorization");
+  headers.set("access-control-allow-headers", EXTENSION_ALLOW_HEADERS);
   headers.set("access-control-allow-methods", "POST, GET, OPTIONS");
   headers.set("vary", "Origin");
   return new Response(response.body, {
