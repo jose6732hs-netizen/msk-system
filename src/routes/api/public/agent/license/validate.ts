@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { preflight, findLicenseByToken, jsonResponse } from "@/lib/license.server";
-import { handleValidation } from "@/lib/license-validate.server";
+import { handleUnifiedLicenseValidation } from "@/lib/unified-license-validate.server";
 import { isAgentUserRemotelyBlocked } from "@/lib/extension-remote-control.server";
 
 function browserExtensionOrigin(request: Request) {
@@ -44,12 +44,11 @@ function withExtensionCors(response: Response, request: Request) {
 /**
  * Endpoint oficial da tela de KEY do MSK Agente.
  *
- * Compatibilidade:
- * - não exige login/e-mail;
- * - aceita token + installation_id/device_fingerprint da extensão;
- * - aceita licenças MSK Agente novas e licenças MSK de extensão legadas;
- * - rejeita licenças de outros produtos (LIVE/Clonador/entrega);
- * - preserva limite de dispositivos, validade, expiração e bloqueio remoto.
+ * Usa a mesma política account-token do endpoint central e do heartbeat:
+ * - valida e-mail + token no banco central;
+ * - aceita escopo agent e extension legado;
+ * - preserva produto, status, validade/expiração e bloqueio remoto;
+ * - não prende a autorização a reinstalação/fingerprint/dispositivo.
  */
 export const Route = createFileRoute("/api/public/agent/license/validate")({
   server: {
@@ -57,11 +56,10 @@ export const Route = createFileRoute("/api/public/agent/license/validate")({
       OPTIONS: ({ request }) => extensionPreflight(request),
       POST: async ({ request }) => {
         const input = await request.clone().json().catch(() => null) as Record<string, unknown> | null;
-        const response = await handleValidation(
+        const response = await handleUnifiedLicenseValidation(
           request,
           "agent-validate",
           120,
-          ["agent", "extension"],
         );
         if (!response.ok) return withExtensionCors(response, request);
 
