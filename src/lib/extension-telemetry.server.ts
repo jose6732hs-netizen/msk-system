@@ -51,7 +51,51 @@ const repoSchema = z
   .nullable();
 const installationSchema = z.string().min(16).max(80).regex(/^[A-Za-z0-9_-]+$/);
 const versionSchema = z.string().trim().min(1).max(64).regex(/^[0-9A-Za-z.+_-]+$/);
-const providerSchema = z.enum(PROVIDERS).optional().nullable();
+
+/** Normaliza qualquer texto em um identificador seguro (minúsculo, com _). */
+function slugAction(value: unknown, fallback: string) {
+  const slug = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 80);
+  return slug || fallback;
+}
+
+/**
+ * A extensão envia ações e status livres (ex.: "license_check", "ok").
+ * Antes o servidor recusava tudo que não estivesse na lista fixa e o painel
+ * ficava sem métricas. Agora normalizamos em vez de descartar.
+ */
+const STATUS_ALIASES: Record<string, (typeof EVENT_STATUS)[number]> = {
+  ok: "success",
+  done: "success",
+  complete: "success",
+  completed: "success",
+  succeeded: "success",
+  warn: "info",
+  warning: "info",
+  error: "failed",
+  fail: "failed",
+  failure: "failed",
+  canceled: "cancelled",
+  running: "started",
+  start: "started",
+  queued: "pending",
+};
+
+const actionSchema = z.preprocess((value) => slugAction(value, "operation_status"), z.string().min(1).max(80));
+const statusSchema = z.preprocess((value) => {
+  const raw = slugAction(value, "success");
+  if ((EVENT_STATUS as readonly string[]).includes(raw)) return raw;
+  return STATUS_ALIASES[raw] ?? "info";
+}, z.enum(EVENT_STATUS));
+const providerSchema = z.preprocess((value) => {
+  if (value === null || value === undefined || value === "") return null;
+  const raw = slugAction(value, "other");
+  return (PROVIDERS as readonly string[]).includes(raw) ? raw : "other";
+}, z.enum(PROVIDERS).nullable().optional());
 
 const eventSchema = z.object({
   event_id: z.string().uuid().optional(),
@@ -61,8 +105,8 @@ const eventSchema = z.object({
   project_id: z.string().trim().max(180).optional().nullable(),
   repository: repoSchema,
   provider: providerSchema,
-  action: z.enum(EVENT_ACTIONS),
-  status: z.enum(EVENT_STATUS).default("success"),
+  action: actionSchema,
+  status: statusSchema.default("success"),
   duration_ms: z.number().int().min(0).max(3_600_000).optional().nullable(),
   metadata: z.record(z.unknown()).optional().default({}),
 });
@@ -72,19 +116,34 @@ const errorSchema = z.object({
   timestamp: z.string().datetime({ offset: true }).optional(),
   installation_id: installationSchema,
   extension_version: versionSchema,
-  error_code: z.string().trim().min(2).max(100).regex(/^[A-Z0-9_]+$/),
-  severity: z.enum(["info", "warning", "error", "critical"]).default("error"),
+  error_code: z.preprocess((value) => {
+    const code = String(value ?? "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 100);
+    return code.length >= 2 ? code : "EXTENSION_ERROR";
+  }, z.string().min(2).max(100)),
+  severity: z.preprocess((value) => {
+    const raw = slugAction(value, "error");
+    return ["info", "warning", "error", "critical"].includes(raw) ? raw : "error";
+  }, z.enum(["info", "warning", "error", "critical"])).default("error"),
   title: z.string().trim().min(1).max(180).optional(),
   technical_message: z.string().max(12_000).optional().nullable(),
   user_message: z.string().max(800).optional().nullable(),
   stack: z.string().max(12_000).optional().nullable(),
-  action: z.string().trim().max(80).regex(/^[a-z0-9_]+$/).optional().nullable(),
+  action: z.preprocess(
+    (value) => (value === null || value === undefined || value === "" ? null : slugAction(value, "extension_error")),
+    z.string().max(80).nullable().optional(),
+  ),
   provider: providerSchema,
   project_id: z.string().trim().max(180).optional().nullable(),
   repository: repoSchema,
   browser: z.string().trim().max(120).optional().nullable(),
   metadata: z.record(z.unknown()).optional().default({}),
 });
+
 
 const heartbeatSchema = z.object({
   installation_id: installationSchema,
