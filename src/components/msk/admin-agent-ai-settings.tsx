@@ -288,8 +288,9 @@ export function AdminAgentAiSettings() {
                   className="font-mono"
                 />
                 <datalist id={`msk-models-${provider}`}>
-                  {availableModels.map((id) => <option key={id} value={id} />)}
+                  {availableModels.map((id) => <option key={id} value={id} label={MODEL_BADGES[id] || undefined} />)}
                 </datalist>
+
                 <p className="text-[0.62rem] text-muted-foreground">
                   Cole o ID exato do modelo. Para Claude use <b className="text-foreground">claude-sonnet-5</b>.
                 </p>
