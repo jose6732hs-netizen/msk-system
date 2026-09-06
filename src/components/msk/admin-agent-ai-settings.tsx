@@ -50,12 +50,28 @@ const PROVIDERS: Record<ProviderId, ProviderMeta> = {
     models: ["gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
     hint: "Modelos Gemini disponíveis para sua chave.",
   },
+
   groq: {
     label: "Groq",
-    defaultModel: "llama-3.3-70b-versatile",
-    models: ["openai/gpt-oss-20b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"],
-    hint: "Inferência rápida para código e chat.",
+    defaultModel: "openai/gpt-oss-120b",
+    models: [
+      "openai/gpt-oss-120b",
+      "qwen/qwen3.8-27b",
+      "qwen/qwen3.6-27b",
+      "openai/gpt-oss-20b",
+      "groq/compound",
+      "groq/compound-mini",
+      "openai/gpt-oss-safeguard-20b",
+      "meta-llama/llama-prompt-guard-2-22m",
+      "meta-llama/llama-prompt-guard-2-86m",
+      "whisper-large-v3",
+      "whisper-large-v3-turbo",
+      "canopylabs/orpheus-v1-english",
+      "canopylabs/orpheus-arabic-saudi",
+    ],
+    hint: "Free plan da Groq. Padrão GPT-OSS 120B, com troca automática de modelo em caso de limite.",
   },
+
   manus: {
     label: "Manus AI",
     defaultModel: "manus-agent-v1",
@@ -85,6 +101,23 @@ const PROVIDERS: Record<ProviderId, ProviderMeta> = {
     showBaseUrl: true,
     lockBaseUrl: true,
   },
+};
+
+/** Selos exibidos ao lado de cada modelo no seletor. */
+const MODEL_BADGES: Record<string, string> = {
+  "openai/gpt-oss-120b": "GPT-OSS 120B — Recomendado para Código (padrão)",
+  "qwen/qwen3.8-27b": "Qwen 3.8 27B — Frontend / UI / CSS",
+  "qwen/qwen3.6-27b": "Qwen 3.6 27B — Código / Revisão",
+  "openai/gpt-oss-20b": "GPT-OSS 20B — Rápido",
+  "groq/compound": "Compound — Agente",
+  "groq/compound-mini": "Compound Mini — Agente Rápido",
+  "openai/gpt-oss-safeguard-20b": "Safeguard 20B — Moderação (não use para código)",
+  "meta-llama/llama-prompt-guard-2-22m": "Prompt Guard 22M — Segurança (não use para código)",
+  "meta-llama/llama-prompt-guard-2-86m": "Prompt Guard 86M — Segurança (não use para código)",
+  "whisper-large-v3": "Whisper Large v3 — Somente áudio/transcrição",
+  "whisper-large-v3-turbo": "Whisper Large v3 Turbo — Somente áudio/transcrição",
+  "canopylabs/orpheus-v1-english": "Orpheus v1 English — Somente voz",
+  "canopylabs/orpheus-arabic-saudi": "Orpheus Arabic (Saudi) — Somente voz",
 };
 
 const ALL_PROVIDER_IDS = Object.keys(PROVIDERS) as ProviderId[];
@@ -273,8 +306,9 @@ export function AdminAgentAiSettings() {
                   className="font-mono"
                 />
                 <datalist id={`msk-models-${provider}`}>
-                  {availableModels.map((id) => <option key={id} value={id} />)}
+                  {availableModels.map((id) => <option key={id} value={id} label={MODEL_BADGES[id] || undefined} />)}
                 </datalist>
+
                 <p className="text-[0.62rem] text-muted-foreground">
                   Cole o ID exato do modelo. Para Claude use <b className="text-foreground">claude-sonnet-5</b>.
                 </p>

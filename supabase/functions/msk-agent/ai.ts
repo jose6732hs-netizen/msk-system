@@ -211,13 +211,31 @@ async function requestAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens
 }
 
 
-type ModelOutcome = { response?: Response; status: number; error: string; modelError: boolean };
+type ModelOutcome = { response?: Response; status: number; error: string; modelError: boolean; capacity: boolean; retryAfterMs: number };
 
 /** Erro de MODELO: vale tentar outro modelo do mesmo provedor. */
 function isModelError(status: number, detail: string) {
   if (status === 404) return true;
   if (![400, 402, 422].includes(status)) return false;
   return /model|batch|no endpoints|not found|does not exist|unavailable|decommissioned|deprecated/i.test(detail);
+}
+
+/** Limite/capacidade: vale seguir para o PRÓXIMO modelo permitido do mesmo provedor. */
+function isCapacityError(status: number, detail: string) {
+  if (status === 429 || status === 503 || status === 529) return true;
+  return /rate.?limit|quota|capacity|over.?loaded|overloaded|temporarily unavailable|try again later/i.test(detail);
+}
+
+/** Lê o retry-after (segundos ou data) devolvido pelo provedor. */
+function retryAfterMs(response: Response, detail: string) {
+  const header = response.headers.get("retry-after") || response.headers.get("x-ratelimit-reset-requests") || "";
+  const seconds = Number.parseFloat(header);
+  if (Number.isFinite(seconds) && seconds > 0) return Math.min(seconds * 1000, 8000);
+  const parsed = header ? Date.parse(header) : Number.NaN;
+  if (Number.isFinite(parsed)) return Math.min(Math.max(parsed - Date.now(), 0), 8000);
+  const inline = /try again in ([\d.]+)s/i.exec(detail);
+  if (inline?.[1]) return Math.min(Number.parseFloat(inline[1]) * 1000, 8000);
+  return 0;
 }
 
 /** Loop de tentativas transitórias de UM modelo de UM provedor. */
@@ -227,6 +245,8 @@ async function resilientModel(cfg: ProviderConfig, messages: ChatMessage[], maxT
   let lastStatus = 0;
   let lastError = "";
   let modelError = false;
+  let capacity = false;
+  let waitMs = 0;
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       let x = await requestAI(cfg, messages, maxTokens, mode, 26000, reasoningStyle);
@@ -241,13 +261,15 @@ async function resilientModel(cfg: ProviderConfig, messages: ChatMessage[], maxT
         mode = false;
         x = await requestAI(cfg, messages, maxTokens, false, 26000, reasoningStyle);
       }
-      if (x.ok) return { response: x, status: 200, error: "", modelError: false };
+      if (x.ok) return { response: x, status: 200, error: "", modelError: false, capacity: false, retryAfterMs: 0 };
       lastStatus = x.status;
       const detail = await x.text().catch(() => "");
       lastError = detail.slice(0, 500);
       modelError = isModelError(x.status, detail);
+      capacity = !modelError && isCapacityError(x.status, detail);
+      waitMs = capacity ? retryAfterMs(x, detail) : 0;
 
-      if (modelError || !retryable(x.status) || attempt === 3) break;
+      if (modelError || capacity || !retryable(x.status) || attempt === 3) break;
     } catch (error) {
       if (error instanceof AgentError && !error.retryable) throw error;
       lastError = error instanceof AgentError ? error.code : "network";
@@ -255,16 +277,17 @@ async function resilientModel(cfg: ProviderConfig, messages: ChatMessage[], maxT
     }
     await sleep(350 * (2 ** (attempt - 1)));
   }
-  return { status: lastStatus, error: lastError, modelError };
+  return { status: lastStatus, error: lastError, modelError, capacity, retryAfterMs: waitMs };
 }
 
 /**
  * Chamada na IA recebida. Retry exponencial apenas para falhas transitórias
  * (429/5xx) do MESMO provedor; a troca de IA é decidida por withFailover.
  * Se o provedor recusar o MODELO (404/400/422 de modelo inválido,
- * descontinuado ou exclusivo de outra API, como ":batch"), tenta os modelos
- * reserva do MESMO provedor antes de desistir — sem custo de descoberta,
- * pois só roda após uma recusa real.
+ * descontinuado ou exclusivo de outra API, como ":batch") OU estourar
+ * limite/capacidade (429, rate_limit, unavailable), tenta os modelos
+ * reserva do MESMO provedor — respeitando o retry-after — antes de desistir.
+ * O comando original e o progresso são preservados: só a rota do modelo muda.
  */
 async function resilientAI(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean) {
   const models = [cfg.model, ...(MODEL_FALLBACKS[cfg.provider] || []).filter((m) => m !== cfg.model)];
@@ -278,9 +301,11 @@ async function resilientAI(cfg: ProviderConfig, messages: ChatMessage[], maxToke
     lastStatus = outcome.status;
     lastError = outcome.error;
     lastCfg = variant;
-    if (!outcome.modelError) break;
-    console.warn("MSK AI model fallback", cfg.provider, model, outcome.status);
+    if (!outcome.modelError && !outcome.capacity) break;
+    console.warn("MSK AI model fallback", cfg.provider, model, outcome.status, outcome.capacity ? "capacity" : "model");
+    if (outcome.capacity && outcome.retryAfterMs > 0) await sleep(outcome.retryAfterMs);
   }
+
   cfg = lastCfg;
 
   const context = { provider: cfg.provider, model: cfg.model, upstreamStatus: lastStatus, detail: lastError };
