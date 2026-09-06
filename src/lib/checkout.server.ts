@@ -102,39 +102,41 @@ export async function createSubscriptionCheckout(input: {
     });
   }
 
-  const service = await AmploPayService.create();
-  
-  // O ID do produtor deve vir das configurações ou do banco.
-  // Se 6922821c-f811-460f-8f31-3521bfe0a7e0 não for um ID válido na Amplo Pay, a transação falhará.
-  // Vamos garantir que se houver erro de "Produtor não encontrado", tentamos usar o fallback configurado no AmploPayService.
-  
   const customer = { name: input.name || input.email, email: input.email, phone: input.phone, document: { number: input.document, type: input.document.length === 14 ? "CNPJ" as const : "CPF" as const } };
 
   try {
-    const result =
-      input.method === "PIX"
-        ? await service.createPixSubscription({
-            identifier,
-            amountCents,
-            customer,
-            productName: plan.name,
-            periodicityType,
-            periodicity,
-            splits,
-            metadata: { transactionId: tx.id },
-          })
-        : await service.createCardSubscription({
-            identifier,
-            amountCents,
-            customer,
-            clientIp: input.clientIp || "0.0.0.0",
-            productName: plan.name,
-            periodicityType,
-            periodicity,
-            card: input.card!,
-            splits,
-            metadata: { transactionId: tx.id },
-          });
+    // PIX sempre passa pelo gateway ativo (o mesmo de todas as outras ofertas).
+    // Cartão continua no provedor que suporta recorrência com cartão.
+    let providerUsed = "amplopay";
+    let result: any;
+
+    if (input.method === "PIX") {
+      const { createPixWithFailover } = await import("./payments/gateway.server");
+      const pix = await createPixWithFailover({
+        identifier,
+        amountCents,
+        customer,
+        items: [{ title: plan.name, unitPrice: amountCents, quantity: 1, tangible: false }],
+        splits,
+        metadata: { transactionId: tx.id, subscriptionId: subscription.id, periodicityType, periodicity },
+      });
+      providerUsed = pix.provider;
+      result = { ...pix.result, pix: { ...(pix.result.pix ?? {}), code: pix.pixCode ?? pix.result.pix?.code } };
+    } else {
+      const service = await AmploPayService.create();
+      result = await service.createCardSubscription({
+        identifier,
+        amountCents,
+        customer,
+        clientIp: input.clientIp || "0.0.0.0",
+        productName: plan.name,
+        periodicityType,
+        periodicity,
+        card: input.card!,
+        splits,
+        metadata: { transactionId: tx.id },
+      });
+    }
 
     const providerId = result.transactionId ?? result.id ?? null;
     const status = mapGatewayStatus(result.status);
@@ -147,11 +149,14 @@ export async function createSubscriptionCheckout(input: {
     await supabaseAdmin
       .from("transactions")
       .update({
+        provider: providerUsed,
         provider_transaction_id: providerId,
         external_id: result.subscriptionId ?? null,
         pix_code: pixCode,
         pix_qrcode: qr,
-        status: status === "PAID" ? "PENDING" : "PENDING",
+        checkout_url: result.order?.url ?? null,
+        expires_at: input.method === "PIX" ? pixExpiryFromNow() : null,
+        status: "PENDING",
         raw: result as any,
         updated_at: new Date().toISOString(),
       } as any)
@@ -159,8 +164,9 @@ export async function createSubscriptionCheckout(input: {
 
     await supabaseAdmin
       .from("subscriptions")
-      .update({ provider_subscription_id: result.subscriptionId ?? providerId })
+      .update({ provider: providerUsed, provider_subscription_id: result.subscriptionId ?? providerId } as never)
       .eq("id", subscription.id);
+
 
     await recordPaymentEvent({
       transactionId: tx.id,
@@ -559,28 +565,31 @@ export async function createDepositCheckout(input: {
     .from("reseller_deposits")
     .insert({ reseller_id: reseller.id, transaction_id: tx.id, amount: input.amount });
 
-  const service = await AmploPayService.create();
-  const result = await service.createPix({
+  const { createPixWithFailover } = await import("./payments/gateway.server");
+  const { provider, result, pixCode } = await createPixWithFailover({
     identifier,
     amountCents,
     customer: { name: input.name || input.email, email: input.email },
     items: [{ title: "Depósito de saldo", unitPrice: amountCents, quantity: 1, tangible: false }],
+    metadata: { transactionId: tx.id, purpose: "deposit" },
   });
 
     await supabaseAdmin
       .from("transactions")
       .update({
+        provider,
         provider_transaction_id: result.transactionId ?? result.id ?? null,
-        pix_code: result.pix?.code ?? null,
+        pix_code: pixCode,
         pix_qrcode: result.pix?.base64 ?? result.pix?.image ?? null,
         expires_at: pixExpiryFromNow(),
         raw: result as any,
       } as any)
       .eq("id", tx.id);
 
+
   return {
     transactionId: tx.id,
-    pixCode: result.pix?.code ?? null,
+    pixCode,
     qrCode: result.pix?.base64 ?? result.pix?.image ?? null,
     amount: input.amount,
   };
