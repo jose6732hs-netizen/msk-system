@@ -36,9 +36,8 @@ async function uniqueOfferSlug(base: string, planId: string) {
 }
 
 /**
- * Mantém plano, oferta, transação e licença apontando para o mesmo produto.
- * MSK LIVE usa esta mesma sincronização com produto próprio; Clonador e MSK Agente
- * continuam em seus fluxos específicos e são deliberadamente ignorados.
+ * Mantém a oferta atual ligada ao produto correto. Reparos históricos de
+ * licenças/transações antigas não fazem parte do caminho crítico de Salvar.
  */
 export async function syncPrimaryPlanOffer(planId: string, plan: Record<string, any>) {
   const productSlug = targetProductSlug(plan);
@@ -61,8 +60,6 @@ export async function syncPrimaryPlanOffer(planId: string, plan: Record<string, 
 
   const rows = (offers ?? []) as Array<Record<string, any>>;
   const canonical = rows.find((row) => String(row["product_id"] ?? "") === String(product.id));
-  // Se existe uma única oferta antiga para este plano, ela é a própria oferta
-  // da aba Planos & Ofertas e pode ser reparada sem trocar seu id/slug.
   const target = canonical ?? (rows.length === 1 ? rows[0] : null);
 
   const durationValue = Math.max(1, Number(plan["duration_value"] ?? plan["duration_days"] ?? 1));
@@ -97,20 +94,29 @@ export async function syncPrimaryPlanOffer(planId: string, plan: Record<string, 
     offerId = String(created.id);
   }
 
-  // Repara registros legados do MESMO plano que ainda não tinham produto.
-  const { error: licenseError } = await supabaseAdmin
-    .from("licenses")
-    .update({ product_id: product.id } as never)
-    .eq("plan_id", planId)
-    .is("product_id", null);
-  if (licenseError) throw licenseError;
-
-  const { error: txError } = await supabaseAdmin
-    .from("transactions")
-    .update({ product_id: product.id, offer_id: offerId } as never)
-    .eq("plan_id", planId)
-    .is("product_id", null);
-  if (txError) throw txError;
+  // Estes updates existem apenas para registros legados. Eles podem afetar
+  // muitas linhas e antes seguravam o botão Salvar. Executam em paralelo e
+  // nunca transformam um plano já salvo em erro de tela.
+  void Promise.all([
+    supabaseAdmin
+      .from("licenses")
+      .update({ product_id: product.id } as never)
+      .eq("plan_id", planId)
+      .is("product_id", null),
+    supabaseAdmin
+      .from("transactions")
+      .update({ product_id: product.id, offer_id: offerId } as never)
+      .eq("plan_id", planId)
+      .is("product_id", null),
+  ])
+    .then((results) => {
+      for (const result of results) {
+        if (result.error) console.error("[plan-offer-sync] reparo legado falhou:", result.error.message);
+      }
+    })
+    .catch((error) => {
+      console.error("[plan-offer-sync] reparo legado falhou:", String((error as Error).message).slice(0, 200));
+    });
 
   return { synced: true as const, productId: String(product.id), offerId };
 }
