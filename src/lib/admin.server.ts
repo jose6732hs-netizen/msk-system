@@ -1,55 +1,59 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { logEvent } from "./license.server";
 
-const PAGE = 1000;
-const MAX_ROWS = 10000;
-
-async function fetchAll<T>(build: () => any): Promise<T[]> {
-  const rows: T[] = [];
-  for (let from = 0; from < MAX_ROWS; from += PAGE) {
-    const { data, error } = await build().range(from, from + PAGE - 1);
-    if (error) throw error;
-    const page = (data ?? []) as T[];
-    rows.push(...page);
-    if (page.length < PAGE) break;
-  }
-  return rows;
-}
+const OVERVIEW_ROW_LIMIT = 400;
+const METRIC_TX_LIMIT = 1200;
 
 export async function loadAdminOverview(search: string, userSearch: string = "") {
   const term = search.trim();
   const uTerm = userSearch.trim();
 
-  const licensesRaw = await fetchAll<any>(() => {
-    let q = supabaseAdmin
-      .from("licenses")
-      .select(
-        "id,user_id,status,type,expires_at,activated_at,created_at,transaction_id,max_devices,token_preview,token_last4,last_validation,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
-      )
-      .order("created_at", { ascending: false });
-    if (term) q = q.ilike("token_last4", `%${term.slice(-4)}%`);
-    return q;
-  });
+  let licensesQuery = supabaseAdmin
+    .from("licenses")
+    .select(
+      "id,user_id,status,type,expires_at,activated_at,created_at,transaction_id,max_devices,token_preview,token_last4,last_validation,metadata,plans(name,slug,is_lifetime,duration_label,duration_days,duration_value,duration_unit)",
+    )
+    .order("created_at", { ascending: false })
+    .limit(OVERVIEW_ROW_LIMIT);
+  if (term) licensesQuery = licensesQuery.ilike("token_last4", `%${term.slice(-4)}%`);
 
-  const users = await fetchAll<any>(() => {
-    let q = supabaseAdmin
-      .from("profiles")
-      .select("id,name,email,created_at,phone")
-      .order("created_at", { ascending: false });
-    if (uTerm) q = q.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
-    return q;
-  });
+  let usersQuery = supabaseAdmin
+    .from("profiles")
+    .select("id,name,email,created_at,phone")
+    .order("created_at", { ascending: false })
+    .limit(OVERVIEW_ROW_LIMIT);
+  if (uTerm) usersQuery = usersQuery.or(`email.ilike.%${uTerm}%,name.ilike.%${uTerm}%`);
 
+  // O dashboard antigo puxava até 10 mil licenças + 10 mil usuários em série.
+  // Agora listas e contagens independentes rodam em paralelo; a UI recebe só
+  // uma janela recente, e buscas continuam sendo filtradas no servidor.
+  const [
+    licensesResult,
+    usersResult,
+    licenseCountResult,
+    activeLicenseCountResult,
+    userCountResult,
+  ] = await Promise.all([
+    licensesQuery,
+    usersQuery,
+    supabaseAdmin.from("licenses").select("id", { count: "exact", head: true }),
+    supabaseAdmin.from("licenses").select("id", { count: "exact", head: true }).eq("status", "active"),
+    supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+  ]);
+  if (licensesResult.error) throw licensesResult.error;
+  if (usersResult.error) throw usersResult.error;
+
+  const licensesRaw = licensesResult.data ?? [];
+  const users = usersResult.data ?? [];
 
   const ownerIds = [...new Set((licensesRaw ?? []).map((l: any) => l.user_id).filter(Boolean))];
-  const owners: any[] = [];
-  for (let i = 0; i < ownerIds.length; i += 200) {
-    const chunk = ownerIds.slice(i, i + 200);
-    const { data } = await supabaseAdmin.from("profiles").select("id,name,email").in("id", chunk);
-    owners.push(...(data ?? []));
-  }
+  const ownerChunks: string[][] = [];
+  for (let i = 0; i < ownerIds.length; i += 200) ownerChunks.push(ownerIds.slice(i, i + 200) as string[]);
+  const ownerResults = await Promise.all(
+    ownerChunks.map((chunk) => supabaseAdmin.from("profiles").select("id,name,email").in("id", chunk)),
+  );
+  const owners = ownerResults.flatMap((result) => result.data ?? []);
   const ownerMap = new Map((owners ?? []).map((o: any) => [o.id, o]));
-
 
   const { licensePurpose, licenseRoleFromSlug } = await import("./license-purpose");
 
@@ -91,6 +95,9 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     { data: events },
     { data: devices },
     { data: affiliates },
+    { data: commissions },
+    { data: allTx },
+    { data: appSettings },
   ] = await Promise.all([
     supabaseAdmin.from("plans").select("*").order("sort_order"),
     supabaseAdmin
@@ -124,6 +131,19 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
       .select("id,verification_status")
       .eq("verification_status", "PENDING")
       .limit(50),
+    supabaseAdmin
+      .from("affiliate_commissions")
+      .select("id,amount,status,created_at")
+      .order("created_at", { ascending: false })
+      .limit(200),
+    // Métricas de método não precisam varrer milhares de registros em toda
+    // atualização do admin. Uma janela ampla e recente é suficiente para o painel.
+    supabaseAdmin
+      .from("transactions")
+      .select("id,amount,status,method,paid_at,created_at")
+      .order("created_at", { ascending: false })
+      .limit(METRIC_TX_LIMIT),
+    (supabaseAdmin as any).from("app_settings").select("*"),
   ]);
 
   const relatedIds = [
@@ -138,12 +158,6 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   const subsFull = withProfile(subs as any[]);
   const paymentsFull = withProfile(payments as any[]);
 
-  const { data: commissions } = await supabaseAdmin
-    .from("affiliate_commissions")
-    .select("id,amount,status,created_at")
-    .order("created_at", { ascending: false })
-    .limit(200);
-
   const isPaid = (t: any) =>
     ["PAID", "APPROVED", "COMPLETED"].includes(String(t.status ?? "").toUpperCase()) || !!t.paid_at;
   const paidTx = (payments ?? []).filter(isPaid);
@@ -155,12 +169,6 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     .filter((c: any) => new Date(c.created_at) >= monthStart)
     .reduce((s: number, c: any) => s + Number(c.amount ?? 0), 0);
 
-  // Métricas por método de pagamento (base ampla, não apenas as últimas 80)
-  const { data: allTx } = await supabaseAdmin
-    .from("transactions")
-    .select("id,amount,status,method,paid_at,created_at")
-    .order("created_at", { ascending: false })
-    .limit(5000);
   const txMethod = (t: any) => String(t?.method ?? "").toUpperCase();
   const isFailed = (t: any) =>
     ["FAILED", "REFUSED", "DECLINED", "ERROR", "CHARGEBACK", "CANCELED", "CANCELLED", "REFUNDED"].includes(
@@ -174,7 +182,6 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
   const pixPaid = pixTx.filter(isPaid);
   const sumAmt = (rows: any[]) => rows.reduce((s: number, t: any) => s + Number(t.amount ?? 0), 0);
 
-  const { data: appSettings } = await (supabaseAdmin as any).from("app_settings").select("*");
   const cms = (appSettings || []).reduce((acc: any, curr: any) => {
     acc[curr.key] = curr.value;
     return acc;
@@ -194,9 +201,10 @@ export async function loadAdminOverview(search: string, userSearch: string = "")
     commissions: (commissions ?? []) as Record<string, any>[],
     server_time: new Date().toISOString(),
     stats: {
-      users: users?.length ?? 0,
-      licenses: licenses.length,
-      activeLicenses: licenses.filter((l: any) => l.status === "active").length,
+      users: userCountResult.count ?? users.length,
+      licenses: licenseCountResult.count ?? licenses.length,
+      activeLicenses:
+        activeLicenseCountResult.count ?? licenses.filter((l: any) => l.status === "active").length,
       devices: devices?.length ?? 0,
       revenue,
       monthCommissions,
@@ -337,17 +345,18 @@ export async function savePlan(plan: Record<string, any>) {
     planId = String(data.id);
   }
 
+  // Mantém o vínculo interno consistente antes de confirmar o salvamento.
   const { syncPrimaryPlanOffer } = await import("./plan-offer-sync.server");
   await syncPrimaryPlanOffer(planId, payload);
 
-  // Espelha a oferta na AtomoPay para que ela apareça nos produtos do gateway.
-  // Falha aqui nunca bloqueia o salvamento do plano.
-  try {
-    const { syncPlanToAtomo } = await import("./payments/atomo-catalog-sync.server");
-    await syncPlanToAtomo(planId);
-  } catch (e) {
-    console.error("[plans] espelhamento AtomoPay falhou:", (e as Error).message);
-  }
+  // AtomoPay é um espelhamento externo e não pode travar o botão Salvar.
+  // O checkout também consegue resolver o catálogo se esta tarefa em segundo
+  // plano não terminar, então a persistência principal permanece segura.
+  void import("./payments/atomo-catalog-sync.server")
+    .then(({ syncPlanToAtomo }) => syncPlanToAtomo(planId))
+    .catch((e) => {
+      console.error("[plans] espelhamento AtomoPay em background falhou:", String((e as Error).message).slice(0, 240));
+    });
 
   return { ok: true, id: planId };
 }
