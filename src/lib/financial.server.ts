@@ -108,7 +108,7 @@ export async function createInvoice(input: {
   return data.id;
 }
 
-/** Monta os splits (em centavos) para revendedor. 
+/** Monta os splits (em centavos) para revendedor.
  * OBS: O split de afiliado AmploPay foi removido em favor da carteira interna.
  */
 export async function buildSplits(input: {
@@ -117,41 +117,42 @@ export async function buildSplits(input: {
   resellerId?: string | null;
   affiliateRate?: number | null;
 }): Promise<AmploSplit[]> {
+  // Compra comum não possui split externo. Evita uma consulta ao banco no
+  // caminho crítico entre o carrinho e a escolha do método de pagamento.
+  if (!input.resellerId) return [];
+
   const splits: AmploSplit[] = [];
-  
+
   const { data: appSettings } = await (supabaseAdmin as any)
     .from("app_settings")
     .select("value")
     .eq("key", "splits")
     .maybeSingle();
-  
+
   const config = (appSettings?.value as any) || {};
 
-  // O split de Afiliado AmploPay foi desativado. 
+  // O split de Afiliado AmploPay foi desativado.
   // O processamento agora é feito via processInternalCommission() no webhook.
+  const { data: rv } = await (supabaseAdmin as any)
+    .from("resellers")
+    .select("commission_rate,producer_id:user_id")
+    .eq("id", input.resellerId)
+    .maybeSingle();
 
-  if (input.resellerId) {
-    const { data: rv } = await (supabaseAdmin as any)
-      .from("resellers")
-      .select("commission_rate,producer_id:user_id")
-      .eq("id", input.resellerId)
-      .maybeSingle();
-    
-    let value = 0;
-    const type = config.reseller_type ?? 'percent';
-    const val = Number(config.reseller_value ?? 0);
+  let value = 0;
+  const type = config.reseller_type ?? "percent";
+  const val = Number(config.reseller_value ?? 0);
 
-    if (val > 0) {
-      if (type === 'fixed') value = Math.round(val * 100);
-      else value = Math.floor((input.amountCents * val) / 100);
-    } else {
-      const rate = Number(rv?.commission_rate ?? 0);
-      value = Math.floor((input.amountCents * rate) / 100);
-    }
-
-    const producerId = (rv as { producer_id?: string } | null)?.producer_id;
-    if (producerId && value > 0) splits.push({ producerId, amount: value });
+  if (val > 0) {
+    if (type === "fixed") value = Math.round(val * 100);
+    else value = Math.floor((input.amountCents * val) / 100);
+  } else {
+    const rate = Number(rv?.commission_rate ?? 0);
+    value = Math.floor((input.amountCents * rate) / 100);
   }
+
+  const producerId = (rv as { producer_id?: string } | null)?.producer_id;
+  if (producerId && value > 0) splits.push({ producerId, amount: value });
 
   const total = splits.reduce((s, x) => s + x.amount, 0);
   if (total > input.amountCents) throw new Error("SPLIT_EXCEDE_TRANSACAO");
