@@ -177,18 +177,22 @@ export async function handleAccountTokenValidation(
 
   let license = (await findLicenseByToken(parsed.data.token)) as LicenseRow | null;
   if (!license) {
-    const sentHash = await hashToken(parsed.data.token);
-    await logEvent({
-      event_type: "invalid_attempt",
-      metadata: {
-        bucket,
-        token_last4: parsed.data.token.slice(-4),
-        sent_hash: sentHash,
-        error: "Token not found in database",
-        policy: "account_token",
-        expected_role: primaryScope,
-      },
-    });
+    // O registro da tentativa não pode atrasar a resposta ao cliente.
+    void hashToken(parsed.data.token)
+      .then((sentHash) =>
+        logEvent({
+          event_type: "invalid_attempt",
+          metadata: {
+            bucket,
+            token_last4: parsed.data.token.slice(-4),
+            sent_hash: sentHash,
+            error: "Token not found in database",
+            policy: "account_token",
+            expected_role: primaryScope,
+          },
+        }),
+      )
+      .catch(() => {});
     return respond(
       {
         success: false,

@@ -36,15 +36,18 @@ export async function handleUnifiedLicenseValidation(
     ]);
   }
 
-  const agentResponse = await handleAccountTokenValidation(
+  // Sem produto informado, o mesmo executável atende Agente e Extensão.
+  // Uma única passagem cobre os dois escopos; antes a validação era feita duas
+  // vezes seguidas, dobrando o tempo de resposta de cada cliente.
+  const response = await handleAccountTokenValidation(
     request.clone(),
     `${bucket}-agent`,
     limit,
-    ["agent"],
+    ["agent", "extension"],
   );
 
-  if ((await responseCode(agentResponse)) !== "LICENSE_PRODUCT_MISMATCH") {
-    return agentResponse;
+  if ((await responseCode(response)) !== "LICENSE_PRODUCT_MISMATCH") {
+    return response;
   }
 
   return handleAccountTokenValidation(request, `${bucket}-extension`, limit, ["extension"]);
