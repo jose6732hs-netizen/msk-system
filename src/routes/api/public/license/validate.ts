@@ -113,7 +113,12 @@ export const Route = createFileRoute("/api/public/license/validate")({
       POST: async ({ request }) => {
         const body = (await request.clone().json().catch(() => null)) as Record<string, unknown> | null;
         const response = await handleUnifiedLicenseValidation(request, "validate", 60);
-        await registerAgentInstallation(body, response);
+
+        // Registrar instalação é telemetria/gestão e não faz parte da decisão de
+        // licença. O cliente recebe o JSON imediatamente; a Central é atualizada
+        // em segundo plano sem segurar a tela em "Validando licença…".
+        void registerAgentInstallation(body, response).catch(() => undefined);
+
         return withExtensionCors(response, request);
       },
     },
