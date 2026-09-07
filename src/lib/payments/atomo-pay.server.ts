@@ -12,6 +12,10 @@ import {
 import type { AmploCustomer, AmploSplit } from "./amplo-pay.server";
 
 const CATALOG_KEY = "atomopay_catalog";
+
+/** Catálogo aprovado por valor, guardado em memória por alguns minutos. */
+const ATOMO_CATALOG_MEMO = new Map<string, { at: number; value: AtomoPixCatalog }>();
+const ATOMO_CATALOG_MEMO_TTL_MS = 10 * 60 * 1000;
 /** A AtomoPay exige uma imagem de capa em todo produto cadastrado. */
 const DEFAULT_PRODUCT_COVER = "https://msksystem.online/favicon.png";
 
@@ -261,6 +265,11 @@ export class AtomoPayService {
     const amountKey = String(amount);
     const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
 
+    // Catálogo já resolvido para este valor: evita ida ao banco e ao gateway,
+    // que é o que fazia a geração do PIX demorar em cada pedido.
+    const memo = ATOMO_CATALOG_MEMO.get(amountKey);
+    if (memo && Date.now() - memo.at < ATOMO_CATALOG_MEMO_TTL_MS) return memo.value;
+
     const { data: saved } = await supabaseAdmin
       .from("app_settings")
       .select("value")
@@ -269,19 +278,24 @@ export class AtomoPayService {
     const cached = (saved?.value ?? {}) as AtomoCatalogState;
     let productHash = String(envProduct ?? cached.productHash ?? "");
 
+    const remember = (value: AtomoPixCatalog) => {
+      ATOMO_CATALOG_MEMO.set(amountKey, { at: Date.now(), value });
+      return value;
+    };
+
     const cachedEntry = cached.offersByAmount?.[amountKey];
     if (productHash && cachedEntry) {
       if (typeof cachedEntry === "string") {
         if (amount <= SAFE_OFFER_MAX) {
-          return { productHash, offerHash: cachedEntry, unitPrice: amount, quantity: 1 };
+          return remember({ productHash, offerHash: cachedEntry, unitPrice: amount, quantity: 1 });
         }
       } else if (cachedEntry?.hash && cachedEntry.unit * cachedEntry.quantity === amount) {
-        return {
+        return remember({
           productHash,
           offerHash: cachedEntry.hash,
           unitPrice: cachedEntry.unit,
           quantity: cachedEntry.quantity,
-        };
+        });
       }
     }
 
@@ -360,7 +374,7 @@ export class AtomoPayService {
       { onConflict: "key" },
     );
 
-    return { productHash, offerHash, unitPrice, quantity };
+    return remember({ productHash, offerHash, unitPrice, quantity });
   }
 
   /** Catálogo aprovado (com split de unidade/quantidade) para qualquer método. */
