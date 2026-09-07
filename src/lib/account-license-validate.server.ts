@@ -371,22 +371,25 @@ export async function handleAccountTokenValidation(
 
   const active = license.status === "active";
   const now = new Date().toISOString();
-  await supabaseAdmin.from("licenses").update({ last_validation: now }).eq("id", license.id);
+  if (shouldWriteRoutine(`license:${license.id}`)) {
+    await supabaseAdmin.from("licenses").update({ last_validation: now }).eq("id", license.id);
 
-  await logEvent({
-    license_id: license.id,
-    user_id: license.user_id,
-    event_type: bucket.includes("heartbeat") ? "heartbeat" : "validated",
-    device_hash: null,
-    metadata: {
-      product: parsed.data.product ?? null,
-      expected_role: primaryScope,
-      license_role: snapshot.role,
-      license_scope: scopeInfo.scope,
-      extension_version: parsed.data.extension_version ?? null,
-      policy: "account_token",
-    },
-  });
+    await logEvent({
+      license_id: license.id,
+      user_id: license.user_id,
+      event_type: bucket.includes("heartbeat") ? "heartbeat" : "validated",
+      device_hash: null,
+      metadata: {
+        product: parsed.data.product ?? null,
+        expected_role: primaryScope,
+        license_role: snapshot.role,
+        license_scope: scopeInfo.scope,
+        extension_version: parsed.data.extension_version ?? null,
+        policy: "account_token",
+      },
+    });
+  }
+
 
   if (!active) {
     const failure = inactiveLicenseResponse(license);
