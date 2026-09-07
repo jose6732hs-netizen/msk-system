@@ -51,9 +51,6 @@ export const adminGetLicenseDetails = createServerFn({ method: "GET" })
       .single();
     if (error) throw error;
 
-    // Antes de montar/copyar a mensagem, aplica a mesma reconciliação usada pela
-    // API da extensão. Isso corrige imediatamente trials antigos (ex.: FREE de
-    // 15 minutos que havia sido salvo incorretamente como 30 dias).
     const { decryptToken, applyExpiry } = await import("./license.server");
     await applyExpiry(license as unknown as Record<string, unknown>);
 
@@ -68,7 +65,6 @@ export const adminGetLicenseDetails = createServerFn({ method: "GET" })
     }
 
     const fullToken = license.token_encrypted ? await decryptToken(license.token_encrypted) : null;
-
     return { ...license, profiles, fullToken };
   });
 
@@ -78,10 +74,7 @@ export const adminRemoveDevice = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     await assertAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("license_devices")
-      .update({ status: "removed" })
-      .eq("id", data.deviceId);
+    await supabaseAdmin.from("license_devices").update({ status: "removed" }).eq("id", data.deviceId);
     return { ok: true };
   });
 
@@ -123,42 +116,22 @@ export const adminSaveGateway = createServerFn({ method: "POST" })
     const { saveCredentialsFor } = await import("./payments/credentials.server");
     const { getGatewayOverview } = await import("./payments/gateway.server");
     const { logAudit } = await import("./audit.server");
-    await saveCredentialsFor({ ...data, updatedBy: context.userId });
 
-    // Valida as chaves logo após salvar: credencial errada não pode ficar ativa
-    // e derrubar a geração de PIX depois.
-    let test: { ok: boolean; error?: string } = { ok: true };
-    if (data.publicKey || data.secretKey) {
-      try {
-        if (data.provider === "atomopay") {
-          const { testAtomoCredentials } = await import("./payments/atomo-pay.server");
-          test = await testAtomoCredentials();
-        } else if (data.provider === "sigilopay") {
-          const { testSigiloCredentials } = await import("./payments/sigilo-pay.server");
-          test = await testSigiloCredentials();
-        } else {
-          const { testCredentials } = await import("./payments/amplo-pay.server");
-          test = await testCredentials();
-        }
-      } catch (e) {
-        test = { ok: false, error: (e as Error).message };
-      }
-      if (!test.ok) {
-        await saveCredentialsFor({
-          provider: data.provider,
-          active: false,
-          updatedBy: context.userId,
-        });
-      }
-    }
-    await logAudit({
+    // Salvar precisa confirmar apenas persistência local. Testar um gateway é
+    // uma operação de rede separada (adminTestGateway) e não pode derrubar ou
+    // atrasar o botão Salvar quando o provedor estiver lento.
+    await saveCredentialsFor({ ...data, updatedBy: context.userId });
+    void logAudit({
       userId: context.userId,
       action: "gateway.settings_updated",
       resource: "payment_settings",
       metadata: { provider: data.provider, active: data.active ?? null },
+    }).catch((error) => {
+      console.error("[admin] auditoria de gateway falhou:", String((error as Error).message).slice(0, 200));
     });
+
     const overview = await getGatewayOverview();
-    return { ...overview, test };
+    return { ...overview, test: { ok: true, deferred: true } };
   });
 
 /** Define o gateway preferido e liga/desliga o failover automático. */
@@ -205,7 +178,6 @@ export const adminFinanceOverview = createServerFn({ method: "GET" })
     return loadFinanceOverview();
   });
 
-/** Reconcilia no gateway todas as transações em aberto (vendas aprovadas que não vieram por webhook). */
 export const adminSyncPayments = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -224,7 +196,9 @@ export const adminUpdateSettings = createServerFn({ method: "POST" })
     const { setSetting } = await import("./commerce.server");
     const { logAudit } = await import("./audit.server");
     await setSetting(data.key, data.value);
-    await logAudit({ userId: context.userId, action: `settings.${data.key}_updated`, resource: "app_settings" });
+    void logAudit({ userId: context.userId, action: `settings.${data.key}_updated`, resource: "app_settings" }).catch(
+      (error) => console.error("[admin] auditoria de configuração falhou:", String((error as Error).message).slice(0, 200)),
+    );
     return { ok: true };
   });
 
@@ -251,7 +225,6 @@ export const adminTokenPlans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
-
     const { loadTokenPlans } = await import("./admin-tokens.server");
     return { plans: await loadTokenPlans() };
   });
@@ -284,7 +257,6 @@ export const adminGenerateToken = createServerFn({ method: "POST" })
   )
   .handler(async ({ context, data }) => {
     await assertSuperAdmin(context.supabase, context.userId);
-
     const { generateManualToken } = await import("./admin-tokens.server");
     return generateManualToken(data, context.userId);
   });
@@ -306,8 +278,7 @@ export const adminUserAction = createServerFn({ method: "POST" })
       const { data: recovery, error } = await supabaseAdmin.auth.admin.generateLink({
         type: "recovery",
         email:
-          (await supabaseAdmin.from("profiles").select("email").eq("id", data.userId).single()).data?.email ||
-          "",
+          (await supabaseAdmin.from("profiles").select("email").eq("id", data.userId).single()).data?.email || "",
       });
       if (error) throw error;
       await logAudit({
@@ -387,17 +358,18 @@ export const adminSaveAtomoSettings = createServerFn({ method: "POST" })
     const { saveAtomoSettings } = await import("./payments/atomo-pay.server");
     const { logAudit } = await import("./audit.server");
     const saved = await saveAtomoSettings(data);
-    await logAudit({
+    void logAudit({
       userId: context.userId,
       action: "gateway.atomopay_methods_updated",
       resource: "atomopay",
       result: "success",
       metadata: saved as unknown as Record<string, unknown>,
+    }).catch((error) => {
+      console.error("[admin] auditoria AtomoPay falhou:", String((error as Error).message).slice(0, 200));
     });
     return saved;
   });
 
-/** Espelha todos os planos/ofertas do MSK como produtos na AtomoPay. */
 export const adminSyncAtomoCatalog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -406,7 +378,6 @@ export const adminSyncAtomoCatalog = createServerFn({ method: "POST" })
     return syncAllPlansToAtomo();
   });
 
-/** Lista o espelhamento atual MSK → AtomoPay. */
 export const adminAtomoCatalogMap = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
