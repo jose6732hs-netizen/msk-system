@@ -4,8 +4,11 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Clock3,
+  Headphones,
   Loader2,
   Minus,
+  PackageOpen,
   Plus,
   Share2,
   ShoppingCart,
@@ -26,6 +29,7 @@ import { SmartPixModal, type SmartPixState } from "@/components/msk/smart-pix-mo
 import { getClonerProduct, getSmartOffer } from "@/lib/cloner.functions";
 import { getCmsContent } from "@/lib/cms.functions";
 import { resolveSiteImage } from "@/lib/site-images";
+import { useSupportLink } from "@/lib/support-link";
 import {
   generatePurchasePixPayment,
   preparePurchasePayment,
@@ -420,6 +424,9 @@ function ChatGptOfferSection({
 
 function PlanosPage() {
   const navigate = useNavigate();
+  const supportLink = useSupportLink(
+    "Olá! Quero solicitar o teste grátis e receber o arquivo ZIP da extensão MSK.",
+  );
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [payer, setPayer] = useState<PayerState | null>(null);
   const [smartPix, setSmartPix] = useState<SmartPixState | null>(null);
@@ -912,6 +919,52 @@ function PlanosPage() {
     <div className="min-h-screen overflow-x-hidden">
       <SiteHeader />
       <main className="mx-auto w-full max-w-7xl min-w-0 px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
+        <aside
+          aria-labelledby="extension-access-title"
+          className="extension-access-banner mb-9 overflow-hidden rounded-2xl border border-primary/30 bg-card/80 shadow-[var(--shadow-neon)] backdrop-blur-xl sm:mb-12"
+        >
+          <div className="h-1 w-full bg-[image:var(--gradient-neon)]" />
+          <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[auto_1fr_auto] lg:items-center lg:gap-6">
+            <div className="extension-access-icon relative grid h-12 w-12 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary">
+              <span className="absolute inset-0 rounded-full border border-primary/50" aria-hidden="true" />
+              <PackageOpen className="relative h-6 w-6" aria-hidden="true" />
+            </div>
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-[.2em] text-primary">
+                  Acesso exclusivo via suporte
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-accent">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" />
+                  Atendimento online
+                </span>
+              </div>
+              <h2
+                id="extension-access-title"
+                className="mt-2 text-xl font-black leading-tight sm:text-2xl"
+              >
+                Teste grátis e arquivo ZIP da extensão
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                O arquivo não fica disponível para download direto. Fale com o agente no suporte
+                para solicitar o link do ZIP e liberar seu teste grátis com orientação de instalação.
+              </p>
+              <div className="mt-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                <Clock3 className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
+                Envio acompanhado pelo suporte
+              </div>
+            </div>
+
+            <Button asChild variant="neon" size="xl" className="w-full rounded-xl lg:w-auto">
+              <a href={supportLink ?? "#"} target="_blank" rel="noreferrer">
+                <Headphones className="h-5 w-5" aria-hidden="true" />
+                Solicitar no suporte
+              </a>
+            </Button>
+          </div>
+        </aside>
+
         <header className="flex min-w-0 flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0 max-w-3xl">
             <h1 className="break-words text-4xl font-black uppercase tracking-tighter sm:text-7xl">

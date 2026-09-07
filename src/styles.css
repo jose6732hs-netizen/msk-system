@@ -423,6 +423,37 @@ body[data-scroll-locked] {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(300%); }
 }
+
+@keyframes extension-access-pulse {
+  0%, 100% {
+    border-color: color-mix(in oklab, var(--primary) 28%, transparent);
+    box-shadow: 0 18px 60px -28px color-mix(in oklab, var(--primary) 48%, transparent);
+  }
+  50% {
+    border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+    box-shadow: 0 20px 70px -24px color-mix(in oklab, var(--accent) 42%, transparent);
+  }
+}
+
+@keyframes extension-access-ring {
+  0% { transform: scale(.86); opacity: .75; }
+  75%, 100% { transform: scale(1.35); opacity: 0; }
+}
+
+.extension-access-banner {
+  animation: extension-access-pulse 3.2s ease-in-out infinite;
+}
+
+.extension-access-icon > span {
+  animation: extension-access-ring 2s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .extension-access-banner,
+  .extension-access-icon > span {
+    animation: none;
+  }
+}
 @utility holo-bar {
   position: relative;
   overflow: hidden;
