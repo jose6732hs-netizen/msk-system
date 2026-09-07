@@ -287,15 +287,15 @@ export class AtomoPayService {
     if (productHash && cachedEntry) {
       if (typeof cachedEntry === "string") {
         if (amount <= SAFE_OFFER_MAX) {
-          return { productHash, offerHash: cachedEntry, unitPrice: amount, quantity: 1 };
+          return remember({ productHash, offerHash: cachedEntry, unitPrice: amount, quantity: 1 });
         }
       } else if (cachedEntry?.hash && cachedEntry.unit * cachedEntry.quantity === amount) {
-        return {
+        return remember({
           productHash,
           offerHash: cachedEntry.hash,
           unitPrice: cachedEntry.unit,
           quantity: cachedEntry.quantity,
-        };
+        });
       }
     }
 
