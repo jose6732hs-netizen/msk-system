@@ -218,6 +218,9 @@ export const publishCmsDraft = createServerFn({ method: "POST" })
 
     if (setErr) throw new Error(`Database error publishing to app_settings: ${setErr.message}`);
 
+    // Publicou: o conteúdo guardado em memória precisa ser recarregado.
+    publicCmsCache = null;
+
     await (supabaseAdmin as any)
       .from("cms_drafts")
       .update({
