@@ -45,6 +45,11 @@ export async function loadCredentialsFor(
     .eq("provider", provider)
     .maybeSingle();
 
+  // Um registro explicitamente desativado no banco sempre vence qualquer
+  // variável de ambiente antiga. Assim secrets legados de Sigilo/Amplo não
+  // conseguem reativar o gateway por acidente.
+  if (data && data.active === false) return null;
+
   const prefix = ENV_PREFIX[provider];
   const envPublic = process.env[`${prefix}_PUBLIC_KEY`];
   const envSecret = process.env[`${prefix}_SECRET_KEY`];
@@ -63,7 +68,6 @@ export async function loadCredentialsFor(
   const tokenOnly = provider === "atomopay";
   if (!secretKey) return null;
   if (!tokenOnly && !publicKey) return null;
-  if (data && data.active === false && !envPublic) return null;
 
   return {
     provider,
