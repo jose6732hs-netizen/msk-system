@@ -62,19 +62,15 @@ export async function saveGatewayConfig(config: {
   return next;
 }
 
-/**
- * Ordem de tentativa: primário e, em seguida, os demais provedores.
- * Mesmo com failover desligado, um provedor sem credenciais nunca pode
- * derrubar o checkout — o outro gateway configurado assume automaticamente.
- */
+/** Ordem de tentativa. Com failover desligado, somente o primário é consultado. */
 export async function resolveProviderOrder(preferred?: ProviderId | null) {
   const config = await getGatewayConfig();
   const primary = preferred ?? config.primary;
+  if (!config.failover) return { order: [primary] as ProviderId[], failover: false };
   const order: ProviderId[] = [primary];
   for (const p of PROVIDERS) if (p !== primary) order.push(p);
-  return { order, failover: config.failover };
+  return { order, failover: true };
 }
-
 
 export type PixServiceLike = {
   createPix(input: {
@@ -127,15 +123,11 @@ export async function createPixWithFailover(
   preferred?: ProviderId | null,
 ) {
   const { order: baseOrder, failover } = await resolveProviderOrder(preferred);
-  // Tickets altos: provedores com limite conhecido de valor vão para o fim da
-  // fila, para que a cobrança não falhe antes de tentar um gateway compatível.
   const order = [...baseOrder].sort((a, b) => {
     const penalty = (p: ProviderId) =>
       input.amountCents > (PROVIDER_MAX_AMOUNT_CENTS[p] ?? Number.POSITIVE_INFINITY) ? 1 : 0;
     const diff = penalty(a) - penalty(b);
     if (diff !== 0) return diff;
-    // Ticket alto: a AtomoPay é o provedor preferido (a SigiloPay recusa
-    // valores altos na adquirente).
     if (input.amountCents > HIGH_TICKET_CENTS) {
       return (a === "atomopay" ? 0 : 1) - (b === "atomopay" ? 0 : 1);
     }
@@ -152,12 +144,9 @@ export async function createPixWithFailover(
         errors.push(`${PROVIDER_LABEL[provider]}: não configurado`);
         continue;
       }
-      // Com failover desligado só o primeiro provedor configurado é usado.
       if (!failover && attempted > 0) break;
       attempted += 1;
       const service = await getService(provider);
-      // A AtomoPay não assina o postback: levamos o segredo na própria URL
-      // (além da verificação server-to-server feita no handler).
       const base = await absoluteUrl(webhookPathFor(provider)).catch(() => "");
       const callbackUrl =
         base && creds.webhookSecret
@@ -187,10 +176,9 @@ export async function createPixWithFailover(
     );
   }
   throw new Error(`GATEWAY_INDISPONIVEL — ${errors.join(" | ")}`);
-
 }
 
-/** Resumo dos dois provedores + preferência atual (para o painel admin). */
+/** Resumo dos provedores + preferência atual (para o painel admin). */
 export async function getGatewayOverview() {
   const config = await getGatewayConfig();
   const providers = await Promise.all(PROVIDERS.map((p) => getSummaryFor(p)));
