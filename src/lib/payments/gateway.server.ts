@@ -38,7 +38,7 @@ export async function getGatewayConfig(): Promise<GatewayConfig> {
   const value = (data?.value ?? {}) as { primary?: string; failover?: boolean };
   const primary = (PROVIDERS as string[]).includes(value.primary ?? "")
     ? (value.primary as ProviderId)
-    : "amplopay";
+    : "atomopay";
   return { primary, failover: value.failover !== false };
 }
 
