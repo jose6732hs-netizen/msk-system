@@ -498,8 +498,10 @@ function PlanosPage() {
     if (rv) storeResellerRef(rv);
   }, []);
 
-  const { data: plans, isLoading } = useQuery({
-    queryKey: ["plans", "extension"],
+  // Uma única leitura de planos alimenta todas as seções da página.
+  // Antes eram 5 consultas quase idênticas, o que deixava o carregamento lento.
+  const { data: allPlans, isLoading: plansLoading } = useQuery({
+    queryKey: ["plans", "all-active"],
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
     queryFn: async () => {
@@ -509,74 +511,29 @@ function PlanosPage() {
         .eq("active", true)
         .order("sort_order");
       if (error) throw error;
-      return (data ?? []).filter(
-        (plan: any) =>
-          !String(plan.slug ?? "").startsWith("page-cloner") &&
-          !String(plan.slug ?? "").startsWith("msk-agent") &&
-          !isMskLiveSlug(plan.slug) &&
-          !isChatGptSlug(plan.slug),
-      );
-    },
-  });
-
-  const { data: clonerPlans, isLoading: clonerLoading } = useQuery({
-    queryKey: ["plans", "page-cloner"],
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("plans")
-        .select("*")
-        .eq("active", true)
-        .like("slug", "page-cloner%")
-        .order("sort_order");
-      if (error) throw error;
       return data ?? [];
     },
   });
 
-  const { data: agentPlans, isLoading: agentLoading } = useQuery({
-    queryKey: ["plans", "msk-agent"],
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("plans")
-        .select("*")
-        .eq("active", true)
-        .like("slug", "msk-agent%")
-        .order("sort_order");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const isLoading = plansLoading;
+  const clonerLoading = plansLoading;
+  const agentLoading = plansLoading;
+  const liveLoading = plansLoading;
+  const chatgptLoading = plansLoading;
 
-  const { data: livePlans, isLoading: liveLoading } = useQuery({
-    queryKey: ["plans", "msk-live"],
-    staleTime: 5 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("plans")
-        .select("*")
-        .eq("active", true)
-        .like("slug", "msk-live%")
-        .order("sort_order");
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  const { data: chatgptPlan, isLoading: chatgptLoading } = useQuery({
-    queryKey: ["plans", "chatgpt-plus"],
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("plans")
-        .select("*")
-        .eq("active", true)
-        .order("sort_order");
-      if (error) throw error;
-      return (data ?? []).find((plan: any) => isChatGptSlug(plan.slug)) ?? null;
-    },
-  });
+  const rows = allPlans ?? [];
+  const slugOf = (plan: any) => String(plan?.slug ?? "");
+  const clonerPlans = rows.filter((plan: any) => slugOf(plan).startsWith("page-cloner"));
+  const agentPlans = rows.filter((plan: any) => slugOf(plan).startsWith("msk-agent"));
+  const livePlans = rows.filter((plan: any) => isMskLiveSlug(slugOf(plan)));
+  const chatgptPlan = rows.find((plan: any) => isChatGptSlug(slugOf(plan))) ?? null;
+  const plans = rows.filter(
+    (plan: any) =>
+      !slugOf(plan).startsWith("page-cloner") &&
+      !slugOf(plan).startsWith("msk-agent") &&
+      !isMskLiveSlug(slugOf(plan)) &&
+      !isChatGptSlug(slugOf(plan)),
+  );
 
   const recommendationSettings = {
     ...DEFAULT_CART_RECOMMENDATION,
