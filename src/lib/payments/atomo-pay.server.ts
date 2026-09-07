@@ -261,6 +261,11 @@ export class AtomoPayService {
     const amountKey = String(amount);
     const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
 
+    // Catálogo já resolvido para este valor: evita ida ao banco e ao gateway,
+    // que é o que fazia a geração do PIX demorar em cada pedido.
+    const memo = ATOMO_CATALOG_MEMO.get(amountKey);
+    if (memo && Date.now() - memo.at < ATOMO_CATALOG_MEMO_TTL_MS) return memo.value;
+
     const { data: saved } = await supabaseAdmin
       .from("app_settings")
       .select("value")
@@ -268,6 +273,11 @@ export class AtomoPayService {
       .maybeSingle();
     const cached = (saved?.value ?? {}) as AtomoCatalogState;
     let productHash = String(envProduct ?? cached.productHash ?? "");
+
+    const remember = (value: AtomoPixCatalog) => {
+      ATOMO_CATALOG_MEMO.set(amountKey, { at: Date.now(), value });
+      return value;
+    };
 
     const cachedEntry = cached.offersByAmount?.[amountKey];
     if (productHash && cachedEntry) {
