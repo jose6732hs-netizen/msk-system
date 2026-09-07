@@ -10,7 +10,7 @@ import { SiteFooter } from "@/components/msk/site-footer";
 import { Button } from "@/components/ui/button";
 import { HeroCarousel } from "@/components/msk/hero-carousel";
 import { HeroScene3D } from "@/components/msk/hero-scene-3d";
-import agentBannerAsset from "@/assets/banner-agente-msk.png.asset.json";
+import agentBannerAsset from "@/assets/banner-msk-agente-oferta-oficial.png.asset.json";
 
 // Animação: contagem animada de números (profissional, sobe do centavo ao valor total)
 function useCountUp(end: number, duration = 2000, startOnView = true) {
