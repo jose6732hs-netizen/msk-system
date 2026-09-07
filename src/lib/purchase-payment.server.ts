@@ -86,9 +86,52 @@ async function resolveAffiliate(userId: string, code?: string | null) {
   return affiliateForUser(userId);
 }
 
+async function recordPreparedCheckout(input: {
+  transactionId: string;
+  userId: string;
+  affiliateId: string | null;
+  planId: string | null;
+  amount: number;
+  bulk: boolean;
+  items: number;
+}) {
+  const jobs: Promise<unknown>[] = [
+    recordPaymentEvent({
+      transactionId: input.transactionId,
+      event: "CHECKOUT_PREPARED",
+      status: "PENDING",
+      amount: input.amount,
+      metadata: { bulk: input.bulk, items: input.items },
+    }),
+    logAudit({
+      userId: input.userId,
+      action: "checkout.purchase_prepared",
+      resource: "transactions",
+      resourceId: input.transactionId,
+      metadata: { amount: input.amount, bulk: input.bulk, items: input.items },
+    }),
+  ];
+
+  if (input.affiliateId) {
+    jobs.push(
+      import("./affiliate.server").then(({ registerPendingCommission }) =>
+        registerPendingCommission({
+          affiliateId: input.affiliateId!,
+          transactionId: input.transactionId,
+          planId: input.planId,
+          amount: input.amount,
+        }),
+      ),
+    );
+  }
+
+  await Promise.allSettled(jobs);
+}
+
 /**
  * Cria somente o pedido interno. Nenhum gateway é chamado aqui.
  * Também congela preço, duração e recursos de cada item no momento da compra.
+ * O caminho crítico é propositalmente curto para abrir a escolha PIX/cartão rápido.
  */
 export async function preparePurchasePaymentOrder(input: PrepareInput) {
   const { licenseRoleFromSlug } = await import("./license-purpose");
@@ -101,8 +144,10 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
   const lineItems: PreparedLine[] = [];
 
   if (!input.planId && input.items?.length) {
-    const byId = await loadPlans(input.items.map((item) => item.planId));
-    const reseller = await findResellerByCode(input.resellerCode ?? null);
+    const [byId, reseller] = await Promise.all([
+      loadPlans(input.items.map((item) => item.planId)),
+      findResellerByCode(input.resellerCode ?? null),
+    ]);
     const discountRate = reseller ? Math.max(0, Number(reseller.discount_rate ?? 0)) : 0;
     const priceRatio = Math.max(0, 1 - discountRate / 100);
     resellerId = reseller?.id ?? null;
@@ -127,15 +172,18 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
 
     title = lineItems.length === 1 ? lineItems[0]!.name : `${lineItems.length} produtos MSK`;
   } else if (input.planId) {
-    const { data: plan } = await supabaseAdmin
-      .from("plans")
-      .select(PLAN_COLUMNS)
-      .eq("id", input.planId)
-      .eq("active", true)
-      .maybeSingle();
+    const [planResult, reseller] = await Promise.all([
+      supabaseAdmin
+        .from("plans")
+        .select(PLAN_COLUMNS)
+        .eq("id", input.planId)
+        .eq("active", true)
+        .maybeSingle(),
+      findResellerByCode(input.resellerCode ?? null),
+    ]);
+    const plan = planResult.data;
     if (!plan) throw new Error("PLAN_UNAVAILABLE");
 
-    const reseller = await findResellerByCode(input.resellerCode ?? null);
     const discountRate = reseller ? Number(reseller.discount_rate ?? 0) : 0;
     resellerId = reseller?.id ?? null;
     amount = roundMoney(Math.max(0, Number(plan.price) * (1 - discountRate / 100)));
@@ -157,7 +205,10 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     amount = Number(cart.total);
     title = cart.lines.length === 1 ? cart.lines[0]!.name : `${cart.lines.length} produtos MSK`;
 
-    const byId = await loadPlans(cart.lines.map((line) => line.planId));
+    const [byId, reseller] = await Promise.all([
+      loadPlans(cart.lines.map((line) => line.planId)),
+      findResellerByCode(input.resellerCode ?? cart.resellerCode ?? null),
+    ]);
     const ratio = cart.subtotal > 0 ? cart.total / cart.subtotal : 1;
     for (const line of cart.lines) {
       const plan = byId.get(line.planId);
@@ -175,7 +226,6 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
       });
     }
 
-    const reseller = await findResellerByCode(input.resellerCode ?? cart.resellerCode ?? null);
     resellerId = reseller?.id ?? null;
   }
 
@@ -224,7 +274,10 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
   if (!(amount > 0) || !lineItems.length) throw new Error("INVALID_AMOUNT");
 
   const amountCents = Math.round(amount * 100);
-  const affiliateId = await resolveAffiliate(input.userId, input.affiliateCode ?? null);
+  const [affiliateId, splits] = await Promise.all([
+    resolveAffiliate(input.userId, input.affiliateCode ?? null),
+    buildSplits({ amountCents, affiliateId: null, resellerId }),
+  ]);
   const identifier = newIdentifier("MSK");
   const isBulk =
     !basePlanId ||
@@ -246,6 +299,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
       amount,
       currency: "BRL",
       status: "PENDING",
+      splits: splits as never,
       metadata: {
         payment_prepared: true,
         purchase_snapshot_version: 1,
@@ -258,28 +312,21 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
     .single();
   if (error) throw new Error(error.message);
 
-  const splits = await buildSplits({ amountCents, affiliateId: null, resellerId });
-  await supabaseAdmin.from("transactions").update({ splits: splits as never }).eq("id", tx.id);
-
-  if (affiliateId) {
-    const { registerPendingCommission } = await import("./affiliate.server");
-    await registerPendingCommission({ affiliateId, transactionId: tx.id, planId: transactionPlanId, amount });
-  }
-
-  await recordPaymentEvent({
+  // Auditoria/comissão não bloqueiam mais a abertura da escolha de método.
+  // A transação já contém affiliate_id, reseller_id e splits canônicos antes do retorno.
+  void recordPreparedCheckout({
     transactionId: tx.id,
-    event: "CHECKOUT_PREPARED",
-    status: "PENDING",
-    amount,
-    metadata: { bulk: isBulk, items: lineItems.length },
-  });
-
-  await logAudit({
     userId: input.userId,
-    action: "checkout.purchase_prepared",
-    resource: "transactions",
-    resourceId: tx.id,
-    metadata: { amount, bulk: isBulk, items: lineItems.length },
+    affiliateId,
+    planId: transactionPlanId,
+    amount,
+    bulk: isBulk,
+    items: lineItems.length,
+  }).catch((error) => {
+    console.error(
+      "[purchase-payment] housekeeping do checkout falhou:",
+      String((error as Error).message).slice(0, 240),
+    );
   });
 
   return {
