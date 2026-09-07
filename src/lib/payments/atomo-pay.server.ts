@@ -64,7 +64,7 @@ function sanitizeProviderText(value: string) {
   return String(value ?? "")
     .replace(/api_token=([^&\s]+)/gi, "api_token=[redacted]")
     .replace(/"?(?:number|card_number)"?\s*:\s*"?\d{12,19}"?/gi, '"number":"[card-redacted]"')
-    .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]")
+    .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]"')
     .replace(/\b\d{12,19}\b/g, "[card-redacted]")
     .slice(0, 500);
 }
@@ -79,7 +79,6 @@ function offerApproved(offer: any) {
   if (status === undefined || status === null) return true;
   return Number(status) === 1;
 }
-
 
 function customerData(customer: AmploCustomer) {
   const phone = onlyDigits(customer.phone);
@@ -152,7 +151,6 @@ export class AtomoPayService {
       `/products/${encodeURIComponent(productHash)}`,
     );
   }
-
 
   listCategories() {
     return this.call<Record<string, unknown>>("GET", "/products/categories");
@@ -323,9 +321,7 @@ export class AtomoPayService {
       const createdOffer = created?.data ?? created;
       const hash = String(createdOffer?.hash ?? createdOffer?.offer_hash ?? "");
       if (!hash) continue;
-      // Oferta criada em análise (status 2) não gera PIX: tenta o próximo corte.
       if (!offerApproved(createdOffer)) continue;
-      // Confirma no catálogo: a aprovação só vale quando persistida na AtomoPay.
       const checkRaw = (await this.call<Record<string, any>>(
         "GET",
         `/products/${encodeURIComponent(productHash)}`,
@@ -363,13 +359,9 @@ export class AtomoPayService {
     return { productHash, offerHash, unitPrice, quantity };
   }
 
-  /** Catálogo aprovado (com split de unidade/quantidade) para qualquer método. */
   async resolveApprovedCatalog(amountCents: number): Promise<AtomoPixCatalog> {
     return this.ensurePixCatalogForAmount(amountCents);
   }
-
-
-
 
   async createPix(input: {
     identifier: string;
@@ -391,7 +383,6 @@ export class AtomoPayService {
       offer_hash: catalog.offerHash,
       payment_method: "pix",
       customer,
-      // O carrinho precisa refletir a oferta usada: unidade × quantidade = total.
       cart: [
         {
           product_hash: catalog.productHash,
@@ -404,7 +395,6 @@ export class AtomoPayService {
           tangible: false,
         },
       ],
-
       expire_in_days: 1,
       transaction_origin: "api",
       ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
@@ -488,8 +478,6 @@ export class AtomoPayService {
       ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
     };
 
-    // Somente a partir daqui existe uma tentativa REAL de criar a cobrança.
-    // Falhas de catálogo/validação anteriores não podem deixar o checkout em loop.
     input.onTransactionRequestStart?.();
     const raw = ((await this.call<Record<string, any>>("POST", "/transactions", body)) ?? {}) as any;
     const tx = raw?.data ?? raw;
