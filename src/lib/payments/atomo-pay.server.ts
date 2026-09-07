@@ -30,7 +30,11 @@ type AtomoPixCatalog = AtomoCatalog & { unitPrice: number; quantity: number };
 const SAFE_OFFER_MAX = 7000;
 /** Ticket mínimo aceito pela AtomoPay. */
 const MIN_OFFER_PRICE = 500;
-const ATOMO_RATE_LIMIT_RETRIES = 4;
+/** Checkout não pode ficar minutos aguardando o gateway. */
+const ATOMO_RATE_LIMIT_RETRIES = 2;
+const ATOMO_REQUEST_TIMEOUT_MS = 7000;
+const ATOMO_TRANSACTION_TIMEOUT_MS = 12000;
+const ATOMO_MAX_RETRY_WAIT_MS = 1500;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -111,16 +115,34 @@ export class AtomoPayService {
   private async call<T>(method: "GET" | "POST" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T> {
     const sep = path.includes("?") ? "&" : "?";
     const url = `${this.creds.baseUrl}${path}${sep}api_token=${encodeURIComponent(this.creds.secretKey)}`;
+    const isTransactionCreate = method === "POST" && path === "/transactions";
+    const timeoutMs = isTransactionCreate ? ATOMO_TRANSACTION_TIMEOUT_MS : ATOMO_REQUEST_TIMEOUT_MS;
+
     for (let attempt = 0; attempt < ATOMO_RATE_LIMIT_RETRIES; attempt += 1) {
-      const res = await fetch(url, {
-        method,
-        headers: { "content-type": "application/json", accept: "application/json" },
-        ...(body ? { body: JSON.stringify(body) } : {}),
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          method,
+          signal: controller.signal,
+          headers: { "content-type": "application/json", accept: "application/json" },
+          ...(body ? { body: JSON.stringify(body) } : {}),
+        });
+      } catch (error) {
+        if (controller.signal.aborted || (error as Error)?.name === "AbortError") {
+          throw new Error(`ATOMOPAY_TIMEOUT_${timeoutMs}MS`);
+        }
+        throw new Error(`ATOMOPAY_NETWORK_ERROR: ${sanitizeProviderText(String((error as Error)?.message ?? error))}`);
+      } finally {
+        clearTimeout(timer);
+      }
+
       const text = await res.text();
       if (res.status === 429 && attempt < ATOMO_RATE_LIMIT_RETRIES - 1) {
         const retryAfter = Number(res.headers.get("retry-after") ?? 0);
-        await wait(retryAfter > 0 ? retryAfter * 1000 : 750 * 2 ** attempt);
+        const requestedWait = retryAfter > 0 ? retryAfter * 1000 : 750 * 2 ** attempt;
+        await wait(Math.min(ATOMO_MAX_RETRY_WAIT_MS, Math.max(250, requestedWait)));
         continue;
       }
       if (!res.ok) {
@@ -248,11 +270,8 @@ export class AtomoPayService {
 
   /**
    * Para PIX, resolve uma oferta compatível com o valor exato da cobrança.
-   *
-   * A AtomoPay coloca ofertas de ticket alto em análise manual (status 2) e
-   * recusa a transação com HTTP 403. Para que TODAS as ofertas do MSK gerem
-   * PIX, o valor é fracionado em N unidades de ticket baixo (mesma oferta,
-   * quantidade > 1), o que resulta no mesmo total cobrado.
+   * A primeira venda de um valor pode preparar uma oferta; depois o mapeamento
+   * fica em cache e as próximas cobranças pulam todo esse trabalho.
    */
   private async ensurePixCatalogForAmount(amountCents: number): Promise<AtomoPixCatalog> {
     const amount = Math.max(1, Math.round(amountCents));
@@ -322,14 +341,9 @@ export class AtomoPayService {
       const hash = String(createdOffer?.hash ?? createdOffer?.offer_hash ?? "");
       if (!hash) continue;
       if (!offerApproved(createdOffer)) continue;
-      const checkRaw = (await this.call<Record<string, any>>(
-        "GET",
-        `/products/${encodeURIComponent(productHash)}`,
-      ).catch(() => null)) as any;
-      const check = checkRaw?.data ?? checkRaw ?? {};
-      const checkOffers: any[] = Array.isArray(check?.offers) ? check.offers : [];
-      const persisted = checkOffers.find((offer) => String(offer?.hash ?? "") === hash);
-      if (persisted && !offerApproved(persisted)) continue;
+
+      // A resposta de criação já informa hash/status. Antes havia outro GET do
+      // produto somente para confirmar, duplicando latência no checkout.
       offerHash = hash;
       unitPrice = candidate.unit;
       quantity = candidate.quantity;
