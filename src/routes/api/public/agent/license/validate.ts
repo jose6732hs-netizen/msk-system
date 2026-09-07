@@ -10,6 +10,7 @@ import {
   signData,
 } from "@/lib/license.server";
 import { resolveLicenseSnapshot } from "@/lib/license-entitlements.server";
+import { resolvePlanDuration } from "@/lib/plan-duration";
 import { handleUnifiedLicenseValidation } from "@/lib/unified-license-validate.server";
 import { isAgentUserRemotelyBlocked } from "@/lib/extension-remote-control.server";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
@@ -59,15 +60,54 @@ function withExtensionCors(response: Response, request: Request) {
   });
 }
 
+function durationForFastActivation(license: any, snapshot: ReturnType<typeof resolveLicenseSnapshot>) {
+  const metadata =
+    license?.metadata && typeof license.metadata === "object" && !Array.isArray(license.metadata)
+      ? (license.metadata as Record<string, unknown>)
+      : {};
+
+  const pending = Number(metadata["pending_duration_ms"] ?? 0);
+  if (pending > 0) return { lifetime: false, milliseconds: pending };
+
+  if (metadata["plan_is_lifetime_snapshot"] === true || snapshot.isLifetime) {
+    return { lifetime: true, milliseconds: null };
+  }
+
+  const snapValue = Number(metadata["plan_duration_value_snapshot"] ?? 0);
+  const snapUnit = String(metadata["plan_duration_unit_snapshot"] ?? "").trim();
+  if (snapValue > 0 && snapUnit) {
+    const duration = resolvePlanDuration({ duration_value: snapValue, duration_unit: snapUnit });
+    return { lifetime: duration.lifetime, milliseconds: duration.milliseconds };
+  }
+
+  const snapDays = Number(metadata["plan_duration_snapshot"] ?? 0);
+  if (snapDays > 0) {
+    const duration = resolvePlanDuration({ duration_value: snapDays, duration_unit: "days" });
+    return { lifetime: duration.lifetime, milliseconds: duration.milliseconds };
+  }
+
+  const duration = resolvePlanDuration({
+    name: snapshot.name,
+    slug: snapshot.slug,
+    duration_label: snapshot.durationLabel,
+    duration_days: snapshot.durationDays,
+    duration_value: snapshot.durationValue,
+    duration_unit: snapshot.durationUnit,
+    is_lifetime: snapshot.isLifetime,
+    allow_trial: Boolean(license?.plans?.allow_trial),
+    price: snapshot.price,
+  });
+  return { lifetime: duration.lifetime, milliseconds: duration.milliseconds };
+}
+
 /**
- * Fast path para uma licença do MSK Agente que já está ACTIVE.
+ * Fast path para licenças inequivocamente do MSK Agente.
  *
- * A rota robusta continua existindo para primeira ativação, licenças legadas,
- * reconciliação de produto e qualquer caso ambíguo. O objetivo aqui é tirar do
- * caminho crítico as consultas e gravações extras que faziam clientes já ativos
- * esperar vários segundos só para abrir o Agente.
+ * ACTIVE e primeira ativação INACTIVE evitam o pipeline de compatibilidade,
+ * produto, telemetria e instalação que antes bloqueava a tela de KEY. Qualquer
+ * licença legada/ambígua continua caindo na política completa existente.
  */
-async function tryFastActiveAgentValidation(
+async function tryFastAgentValidation(
   request: Request,
   rawInput: Record<string, unknown> | null,
 ): Promise<Response | null> {
@@ -75,25 +115,32 @@ async function tryFastActiveAgentValidation(
   if (!parsed.success) return null;
 
   try {
-    const license: any = await findLicenseByToken(parsed.data.token);
-    if (!license || String(license.status ?? "").toLowerCase() !== "active") return null;
+    let license: any = await findLicenseByToken(parsed.data.token);
+    if (!license) return null;
 
-    const expiresAt = license.expires_at ? Date.parse(String(license.expires_at)) : Number.NaN;
-    if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) return null;
+    let status = String(license.status ?? "").toLowerCase();
+    if (status !== "active" && status !== "inactive") return null;
 
-    const snapshot = resolveLicenseSnapshot(license);
+    const currentExpiry = license.expires_at ? Date.parse(String(license.expires_at)) : Number.NaN;
+    if (Number.isFinite(currentExpiry) && currentExpiry <= Date.now()) return null;
+
+    let snapshot = resolveLicenseSnapshot(license);
     const role = String(snapshot.role ?? "").toLowerCase();
     const slug = String(snapshot.slug ?? license?.plans?.slug ?? "").toLowerCase();
+    const clearlyAgent =
+      role === "agent" ||
+      slug.startsWith("msk-agent") ||
+      snapshot.features?.["agent"] === true ||
+      snapshot.features?.["product_type"] === "agent";
 
-    // Só usa o atalho quando o snapshot é inequivocamente do Agente.
-    // Casos legados/ambíguos continuam na validação robusta abaixo.
-    if (role !== "agent" && !slug.startsWith("msk-agent")) return null;
+    if (!clearlyAgent) return null;
 
     const email = parsed.data.email.trim().toLowerCase();
     const credentialKey = await hashValue(
       `agent::${email}::${parsed.data.token.trim().toUpperCase()}`,
     );
 
+    // As três verificações independentes começam juntas.
     const [allowed, ownerResult, control] = await Promise.all([
       rateLimit("agent-fast-validate", `account:${credentialKey}`, 120),
       supabaseAdmin
@@ -157,6 +204,47 @@ async function tryFastActiveAgentValidation(
       );
     }
 
+    // Primeira ativação também usa caminho curto. O compare-and-set impede duas
+    // instalações simultâneas de reiniciarem a validade.
+    if (status === "inactive") {
+      const activatedAt = new Date();
+      const duration = durationForFastActivation(license, snapshot);
+      const patch: Record<string, unknown> = {
+        status: "active",
+        activated_at: activatedAt.toISOString(),
+      };
+      if (!license.expires_at && !duration.lifetime && Number(duration.milliseconds ?? 0) > 0) {
+        patch["expires_at"] = new Date(
+          activatedAt.getTime() + Number(duration.milliseconds),
+        ).toISOString();
+      }
+
+      const { data: activated, error: activationError } = await supabaseAdmin
+        .from("licenses")
+        .update(patch as never)
+        .eq("id", license.id)
+        .eq("status", "inactive")
+        .select("status,activated_at,expires_at")
+        .maybeSingle();
+
+      if (activationError) return null;
+
+      if (activated) {
+        license.status = String((activated as any).status ?? "active");
+        license.activated_at = (activated as any).activated_at ?? license.activated_at ?? null;
+        license.expires_at = (activated as any).expires_at ?? license.expires_at ?? null;
+      } else {
+        // Outra requisição venceu a ativação; apenas lê o estado oficial atual.
+        const refreshed: any = await findLicenseByToken(parsed.data.token);
+        if (!refreshed || String(refreshed.status ?? "").toLowerCase() !== "active") return null;
+        license = refreshed;
+        snapshot = resolveLicenseSnapshot(license);
+      }
+      status = "active";
+    }
+
+    if (status !== "active") return null;
+
     const responseData = {
       success: true,
       valid: true,
@@ -215,8 +303,8 @@ async function tryFastActiveAgentValidation(
 /**
  * Endpoint oficial da tela de KEY do MSK Agente.
  *
- * - ACTIVE inequívoca do Agente: fast path de poucas consultas em paralelo;
- * - primeira ativação, legado ou ambiguidade: política completa existente.
+ * - ACTIVE/INACTIVE inequívoca do Agente: caminho curto;
+ * - legado, conta antiga ou ambiguidade: política completa existente.
  */
 export const Route = createFileRoute("/api/public/agent/license/validate")({
   server: {
@@ -228,7 +316,7 @@ export const Route = createFileRoute("/api/public/agent/license/validate")({
           unknown
         > | null;
 
-        const fast = await tryFastActiveAgentValidation(request, input);
+        const fast = await tryFastAgentValidation(request, input);
         if (fast) return withExtensionCors(fast, request);
 
         const response = await handleUnifiedLicenseValidation(
