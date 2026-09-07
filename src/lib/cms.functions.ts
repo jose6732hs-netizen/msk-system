@@ -96,9 +96,22 @@ async function loadPublishedCmsSettings(options: { publicSafe?: boolean } = {}) 
   return settings;
 }
 
-/** Conteúdo publicado. Pode continuar sendo usado pelas telas públicas. */
-export const getCmsContent = createServerFn({ method: "GET" })
-  .handler(async () => loadPublishedCmsSettings({ publicSafe: true }));
+/**
+ * Conteúdo publicado. Pode continuar sendo usado pelas telas públicas.
+ * Guardado por alguns segundos em memória: várias partes do site pedem o mesmo
+ * conteúdo ao mesmo tempo e cada pedido ia ao banco separadamente.
+ */
+let publicCmsCache: { at: number; data: Record<string, any> } | null = null;
+const PUBLIC_CMS_TTL_MS = 30_000;
+
+export const getCmsContent = createServerFn({ method: "GET" }).handler(async () => {
+  if (publicCmsCache && Date.now() - publicCmsCache.at < PUBLIC_CMS_TTL_MS) {
+    return publicCmsCache.data;
+  }
+  const data = await loadPublishedCmsSettings({ publicSafe: true });
+  publicCmsCache = { at: Date.now(), data };
+  return data;
+});
 
 /**
  * Conteúdo específico do editor administrativo.

@@ -374,7 +374,7 @@ export class AtomoPayService {
       { onConflict: "key" },
     );
 
-    return { productHash, offerHash, unitPrice, quantity };
+    return remember({ productHash, offerHash, unitPrice, quantity });
   }
 
   /** Catálogo aprovado (com split de unidade/quantidade) para qualquer método. */
