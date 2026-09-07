@@ -1,15 +1,6 @@
 import { handleAccountTokenValidation } from "./account-license-validate.server";
 import { scopeFromProductIdentifier, type LicenseScope } from "./license-scope.server";
 
-async function responseCode(response: Response) {
-  try {
-    const body = (await response.clone().json()) as Record<string, unknown>;
-    return String(body?.["code"] ?? body?.["error"] ?? "").trim().toUpperCase();
-  } catch {
-    return "";
-  }
-}
-
 /**
  * Validação do banco central de licenças MSK com SEPARAÇÃO POR PRODUTO.
  *
@@ -17,8 +8,9 @@ async function responseCode(response: Response) {
  * licença precisa pertencer exatamente àquele produto — token do MSK LIVE não
  * valida no Agente, token do Clonador não valida no LIVE, e assim por diante.
  *
- * Sem produto informado, o endpoint continua servindo os clientes legados da
- * extensão/agente, que compartilham o mesmo executável.
+ * Sem produto informado, clientes antigos da extensão/agente são resolvidos em
+ * UMA única validação. Antes o backend fazia uma validação completa como agent
+ * e, em caso de mismatch, repetia todo o pipeline como extension.
  */
 export async function handleUnifiedLicenseValidation(
   request: Request,
@@ -36,16 +28,11 @@ export async function handleUnifiedLicenseValidation(
     ]);
   }
 
-  const agentResponse = await handleAccountTokenValidation(
-    request.clone(),
-    `${bucket}-agent`,
-    limit,
-    ["agent"],
-  );
-
-  if ((await responseCode(agentResponse)) !== "LICENSE_PRODUCT_MISMATCH") {
-    return agentResponse;
-  }
-
-  return handleAccountTokenValidation(request, `${bucket}-extension`, limit, ["extension"]);
+  // Compatibilidade histórica: Agent + Extensão Principal compartilhavam o
+  // mesmo executável. Resolver os dois escopos num único passe evita duplicar
+  // lookup de token, produto, perfil, status e telemetria.
+  return handleAccountTokenValidation(request, `${bucket}-legacy`, limit, [
+    "agent",
+    "extension",
+  ]);
 }
