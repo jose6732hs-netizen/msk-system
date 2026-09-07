@@ -64,7 +64,7 @@ function sanitizeProviderText(value: string) {
   return String(value ?? "")
     .replace(/api_token=([^&\s]+)/gi, "api_token=[redacted]")
     .replace(/"?(?:number|card_number)"?\s*:\s*"?\d{12,19}"?/gi, '"number":"[card-redacted]"')
-    .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]"')
+    .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]")
     .replace(/\b\d{12,19}\b/g, "[card-redacted]")
     .slice(0, 500);
 }
@@ -179,7 +179,7 @@ export class AtomoPayService {
     return this.call<Record<string, unknown>>("POST", `/products/${productHash}/offers`, {
       title: input.title,
       cover: DEFAULT_PRODUCT_COVER,
-      amount: input.amount,
+      price: input.amount,
     });
   }
 
