@@ -6,6 +6,8 @@ import {
   jsonResponse,
   logEvent,
   rateLimit,
+  shouldWriteRoutine,
+
 } from "./license.server";
 import { resolveLicenseSnapshot } from "./license-entitlements.server";
 import { resolveLicenseProductBinding, resolveProductIdentifier } from "./license-product.server";
@@ -378,28 +380,34 @@ export async function handleValidation(
   }
 
   const now = new Date().toISOString();
-  await supabaseAdmin
-    .from("license_devices")
-    .update({ last_seen: now, last_ip_hash: ipHash })
-    .eq("id", device.id);
-  await supabaseAdmin.from("licenses").update({ last_validation: now }).eq("id", license.id);
+  const routine = shouldWriteRoutine(`device:${device.id}`);
+  if (routine) {
+    await supabaseAdmin
+      .from("license_devices")
+      .update({ last_seen: now, last_ip_hash: ipHash })
+      .eq("id", device.id);
+    await supabaseAdmin.from("licenses").update({ last_validation: now }).eq("id", license.id);
+  }
 
   const active = license.status === "active";
-  await logEvent({
-    license_id: license.id,
-    user_id: license.user_id,
-    event_type: bucket === "heartbeat" ? "heartbeat" : "validated",
-    device_hash: deviceHash,
-    metadata: {
-      product: parsed.data.product ?? null,
-      product_id: productBinding.product?.id ?? null,
-      product_slug: productBinding.product?.slug ?? null,
-      product_binding_source: productBinding.source,
-      expected_role: primaryScope,
-      license_role: snapshot.role,
-      extension_version: parsed.data.extension_version ?? null,
-    },
-  });
+  if (routine) {
+    await logEvent({
+      license_id: license.id,
+      user_id: license.user_id,
+      event_type: bucket === "heartbeat" ? "heartbeat" : "validated",
+      device_hash: deviceHash,
+      metadata: {
+        product: parsed.data.product ?? null,
+        product_id: productBinding.product?.id ?? null,
+        product_slug: productBinding.product?.slug ?? null,
+        product_binding_source: productBinding.source,
+        expected_role: primaryScope,
+        license_role: snapshot.role,
+        extension_version: parsed.data.extension_version ?? null,
+      },
+    });
+  }
+
 
   const responseData = {
     success: active,

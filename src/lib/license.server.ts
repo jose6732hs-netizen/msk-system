@@ -136,6 +136,28 @@ export async function logEvent(input: {
   });
 }
 
+/**
+ * Escrita rotineira (heartbeat/validated e last_validation) só precisa acontecer
+ * de tempos em tempos. Sem isso, cada cliente grava a cada poucos segundos e a
+ * validação (e o painel) fica lenta por excesso de escrita no banco.
+ */
+const routineWrites = new Map<string, number>();
+const ROUTINE_WRITE_INTERVAL_MS = 5 * 60 * 1000;
+
+export function shouldWriteRoutine(key: string, intervalMs = ROUTINE_WRITE_INTERVAL_MS) {
+  const now = Date.now();
+  const last = routineWrites.get(key) ?? 0;
+  if (now - last < intervalMs) return false;
+  routineWrites.set(key, now);
+  if (routineWrites.size > 5000) {
+    for (const [k, t] of routineWrites) {
+      if (now - t > intervalMs) routineWrites.delete(k);
+    }
+  }
+  return true;
+}
+
+
 export async function rateLimit(bucket: string, identifier: string, limit: number) {
   const { data, error } = await supabaseAdmin.rpc("consume_rate_limit" as any, {
     _bucket: bucket,
