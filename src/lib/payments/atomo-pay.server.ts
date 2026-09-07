@@ -12,6 +12,10 @@ import {
 import type { AmploCustomer, AmploSplit } from "./amplo-pay.server";
 
 const CATALOG_KEY = "atomopay_catalog";
+
+/** Catálogo aprovado por valor, guardado em memória por alguns minutos. */
+const ATOMO_CATALOG_MEMO = new Map<string, { at: number; value: AtomoPixCatalog }>();
+const ATOMO_CATALOG_MEMO_TTL_MS = 10 * 60 * 1000;
 /** A AtomoPay exige uma imagem de capa em todo produto cadastrado. */
 const DEFAULT_PRODUCT_COVER = "https://msksystem.online/favicon.png";
 
