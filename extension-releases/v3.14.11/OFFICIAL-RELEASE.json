@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.11",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.11 — Bounded Autorecovery",
+  "build_id": "msk-agent-3.14.11-bounded-autorecovery-1b3fe0712cfbb2a1",
+  "integrity_root": "1b3fe0712cfbb2a193a18398dd9aa5a6468373645b0073d9f1068a3a1e93af3f",
+  "integrity_policy_sha256": "b70406fcf8ccf30fb72fe93d34e826abc2bd03d0bc7e6b6014dd836e9db53e24",
+  "package_sha256": "6b4b8aceb228ae92f971be0a533f8d6f6db28bd7238583f012cd499eb8ee4432",
+  "official_site": "https://msksystem.online",
+  "notes": "Validador JS/TSX corrigido para regex e JSX sem falso UNBALANCED_SYNTAX; recuperação final cirúrgica e reconstrução limitada; todos os loops de reparo são limitados; o status ativo é encerrado em falha/abort para não ficar preso em editando; nenhum patch inválido é commitado."
+}
