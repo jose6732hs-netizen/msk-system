@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "MSK Agente",
+  "version": "3.14.7",
+  "description": "MSK Agente — v3.14.7 FAST_EDIT TDZ FIX: corrige inicialização do executor rápido, preserva o fluxo oficial de integridade/licença e encaminha pedidos mistos de visual + funcionalidade para edição cirúrgica completa.",
+  "permissions": ["storage", "sidePanel", "tabs", "scripting"],
+  "host_permissions": ["https://sfghtpvqgyahhuetluxi.supabase.co/*", "https://gateway.a-tos.org/*", "https://api.github.com/*", "https://github.com/*", "https://msksystem.online/*", "https://msk-system.lovable.app/*", "https://*.lovable.dev/*", "https://lovable.dev/*"],
+  "action": {"default_popup": "popup.html"},
+  "background": {"service_worker": "background.js"},
+  "icons": {"16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png"},
+  "content_scripts": [{"matches": ["https://*.lovable.dev/*", "https://lovable.dev/*"], "js": ["lovable-content.js"], "run_at": "document_idle"}],
+  "web_accessible_resources": [{"resources": ["images/*", "icons/*"], "matches": ["<all_urls>"]}]
+}
