@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.8",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.8 — MSKSYSTEM File Names",
+  "build_id": "msk-agent-3.14.8-msksystem-file-names-98bd40be83e6e17a",
+  "integrity_root": "98bd40be83e6e17a28d933ba080837a20cfee3fac61ca6ea6994b23ff0c77921",
+  "integrity_policy_sha256": "9cb9625082ae4e9e6e6d60b8393170a00d3420905b7300e53b87f9730f414d63",
+  "package_sha256": "4eb2055a546da04fd2d6b01cc3fc0bc2ba6a6e704e3a5b1fe09249635bb23a9f",
+  "official_site": "https://msksystem.online",
+  "notes": "Renomeia os nove arquivos legados ghost_* para msksystem_* e atualiza todas as referências de carregamento/caminho, preservando identificadores globais internos para compatibilidade. Guardian e gateway atualizados para a nova identidade oficial."
+}
