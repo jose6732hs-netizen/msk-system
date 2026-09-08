@@ -4,6 +4,17 @@ import { findLicenseByToken } from "./license.server";
 
 const db = supabaseAdmin as any;
 
+const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: string }>([
+  [
+    "msk-agent-3.14.5-command-reset-resilient-aed98bd598b4f3dc",
+    { version: "3.14.5", integrity_root: "aed98bd598b4f3dc88e7855803c78cda8bd4e035246691dd1a43bc1a9e3db515" },
+  ],
+  [
+    "msk-agent-3.14.6-official-integrity-selfheal-c2ecd43f83d9a6f9",
+    { version: "3.14.6", integrity_root: "c2ecd43f83d9a6f93784481e3bed7f34f7088bf5582a9304e9da695760ca89d3" },
+  ],
+]);
+
 const baseSchema = z.object({
   email: z.string().email().max(160),
   token: z.string().min(8).max(64),
@@ -55,6 +66,31 @@ export function agentExtensionSecurityPreflight(request: Request) {
   return new Response(null, { status: 204, headers: cors(request) });
 }
 
+function officialBuildError(input: z.infer<typeof baseSchema>) {
+  const buildId = String(input.build_id || "").trim();
+  const root = String(input.integrity_root || "").trim().toLowerCase();
+  if (!buildId || !root) {
+    return {
+      code: "MSK_BUILD_IDENTITY_MISMATCH",
+      message: "A identidade criptográfica desta instalação está incompleta. Reinstale a build oficial do MSK Agente.",
+    };
+  }
+  const official = OFFICIAL_BUILDS.get(buildId);
+  if (!official) {
+    return {
+      code: "MSK_BUILD_NOT_OFFICIAL",
+      message: "Esta build não está registrada como uma versão oficial do MSK Agente.",
+    };
+  }
+  if (official.version !== input.extension_version || official.integrity_root !== root) {
+    return {
+      code: "MSK_INTEGRITY_ROOT_MISMATCH",
+      message: "A identidade da build não corresponde aos arquivos oficiais registrados no MSK System.",
+    };
+  }
+  return null;
+}
+
 async function authenticate(input: z.infer<typeof baseSchema>) {
   const license = (await findLicenseByToken(input.token)) as any;
   if (!license) return { error: "LICENSE_INVALID" as const, license: null };
@@ -76,7 +112,11 @@ async function authenticate(input: z.infer<typeof baseSchema>) {
   return { error: null, license };
 }
 
-async function ensureInstallation(input: z.infer<typeof baseSchema>, license: any) {
+async function ensureInstallation(
+  input: z.infer<typeof baseSchema>,
+  license: any,
+  options: { allowOfficialIdRotation?: boolean } = {},
+) {
   const now = new Date().toISOString();
   const { data: existing } = await db
     .from("extension_installations")
@@ -88,21 +128,49 @@ async function ensureInstallation(input: z.infer<typeof baseSchema>, license: an
     return { existing, clone: true, reason: "A instalação já pertence a outro usuário MSK." };
   }
 
-  if (existing?.first_extension_id && String(existing.first_extension_id) !== input.extension_id) {
-    const reason = "ID da extensão mudou em uma instalação protegida (possível clone da MSK Agente).";
-    await db.from("extension_installations").update({
-      suspicious: true,
-      suspicion_reason: reason,
-      extension_id: input.extension_id,
-      last_seen_at: now,
-      last_activity_at: now,
-    }).eq("id", existing.id).eq("user_id", license.user_id);
-    return { existing: { ...existing, suspicious: true, suspicion_reason: reason }, clone: true, reason };
-  }
-
   const metadata = existing?.metadata && typeof existing.metadata === "object" && !Array.isArray(existing.metadata)
     ? { ...existing.metadata }
     : {};
+
+  if (existing?.first_extension_id && String(existing.first_extension_id) !== input.extension_id) {
+    if (!options.allowOfficialIdRotation) {
+      const reason = "ID da extensão mudou sem uma build oficial validada (possível clone da MSK Agente).";
+      await db.from("extension_installations").update({
+        suspicious: true,
+        suspicion_reason: reason,
+        extension_id: input.extension_id,
+        last_seen_at: now,
+        last_activity_at: now,
+      }).eq("id", existing.id).eq("user_id", license.user_id);
+      return { existing: { ...existing, suspicious: true, suspicion_reason: reason }, clone: true, reason };
+    }
+
+    const rotations = Array.isArray(metadata.msk_extension_id_rotations)
+      ? metadata.msk_extension_id_rotations.slice(-7)
+      : [];
+    rotations.push({
+      from: String(existing.extension_id || existing.first_extension_id),
+      to: input.extension_id,
+      build_id: input.build_id ?? null,
+      integrity_root: input.integrity_root ?? null,
+      at: now,
+    });
+    metadata.msk_extension_id_rotations = rotations;
+
+    const wasLegacyFalsePositive = /ID da extensão mudou em uma instalação protegida/i.test(String(existing.suspicion_reason || ""));
+    const rotationPatch = {
+      extension_id: input.extension_id,
+      suspicious: wasLegacyFalsePositive ? false : existing.suspicious === true,
+      suspicion_reason: wasLegacyFalsePositive ? null : existing.suspicion_reason,
+      metadata,
+      last_seen_at: now,
+      last_activity_at: now,
+    };
+    const { error } = await db.from("extension_installations").update(rotationPatch).eq("id", existing.id).eq("user_id", license.user_id);
+    if (error) throw error;
+    Object.assign(existing, rotationPatch);
+  }
+
   metadata.msk_security_last_seen = {
     build_id: input.build_id ?? null,
     integrity_root: input.integrity_root ?? null,
@@ -154,7 +222,17 @@ export async function handleAgentExtensionSecurityStatus(request: Request) {
   const auth = await authenticate(parsed.data);
   if (!auth.license) return json(request, { ok: false, code: auth.error }, auth.error === "LICENSE_INVALID" ? 401 : 403);
 
-  const installation = await ensureInstallation(parsed.data, auth.license);
+  const buildError = officialBuildError(parsed.data);
+  if (buildError) {
+    return json(request, {
+      ok: false,
+      blocked: true,
+      code: buildError.code,
+      message: buildError.message,
+    }, 403);
+  }
+
+  const installation = await ensureInstallation(parsed.data, auth.license, { allowOfficialIdRotation: true });
   if (installation.clone) {
     return json(request, {
       ok: false,
@@ -180,6 +258,9 @@ export async function handleAgentExtensionSecurityStatus(request: Request) {
     blocked: false,
     suspicious: row?.suspicious === true,
     suspicion_reason: row?.suspicion_reason ?? null,
+    official_build: true,
+    build_id: parsed.data.build_id,
+    integrity_root: parsed.data.integrity_root,
     installation_id: parsed.data.installation_id,
     timestamp: Date.now(),
   });
@@ -194,7 +275,8 @@ export async function handleAgentExtensionSecurityReport(request: Request) {
   if (!auth.license) return json(request, { ok: false, code: auth.error }, auth.error === "LICENSE_INVALID" ? 401 : 403);
 
   const now = new Date().toISOString();
-  const ensured = await ensureInstallation(parsed.data, auth.license);
+  const buildError = officialBuildError(parsed.data);
+  const ensured = await ensureInstallation(parsed.data, auth.license, { allowOfficialIdRotation: !buildError });
   const row = ensured.existing as any;
   const reason = parsed.data.incident_type === "clone"
     ? "Possível extensão clonada ou identidade alterada detectada pelo Guardião MSK."
@@ -228,6 +310,7 @@ export async function handleAgentExtensionSecurityReport(request: Request) {
     ok: true,
     recorded: true,
     blocked: row?.blocked === true,
+    official_build: !buildError,
     installation_id: parsed.data.installation_id,
     code: parsed.data.incident_code,
     timestamp: Date.now(),
