@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.9",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.9 — Database Connect Fix",
+  "build_id": "msk-agent-3.14.9-database-connect-fix-4571d6d2d9a6443d",
+  "integrity_root": "4571d6d2d9a6443de8080e3c580c55f933a83e5529e405e9bdc28a90a5765a5a",
+  "integrity_policy_sha256": "a145187cafc75aa23f1e3db17b947726663b8bb4ff379e063db77a4c3f2d394a",
+  "package_sha256": "c8aaa14747647304463ccf5a9e049180ca6a0b2e3b0aacb082839711f9e8e562",
+  "official_site": "https://msksystem.online",
+  "notes": "Corrige os botões de conexão de Supabase e Lovable Cloud. Adiciona Supabase OAuth, Project URL + Publishable Key, PAT de gerenciamento, persistência real das conexões, rejeição de secret/service_role, detecção resiliente da sessão Lovable e salvamento do projeto Lovable por URL/ID."
+}
