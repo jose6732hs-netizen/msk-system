@@ -17,6 +17,10 @@ const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: strin
     "msk-agent-3.14.7-fast-edit-tdz-hotfix-cf531616fa6bf2bb",
     { version: "3.14.7", integrity_root: "cf531616fa6bf2bbcf46ccbb0a96f3fbfca21fdcdd02d9b4fcb99647cba4b64d" },
   ],
+  [
+    "msk-agent-3.14.8-msksystem-file-names-98bd40be83e6e17a",
+    { version: "3.14.8", integrity_root: "98bd40be83e6e17a28d933ba080837a20cfee3fac61ca6ea6994b23ff0c77921" },
+  ],
 ]);
 
 const baseSchema = z.object({
