@@ -13,6 +13,10 @@ const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: strin
     "msk-agent-3.14.6-official-integrity-selfheal-c2ecd43f83d9a6f9",
     { version: "3.14.6", integrity_root: "c2ecd43f83d9a6f93784481e3bed7f34f7088bf5582a9304e9da695760ca89d3" },
   ],
+  [
+    "msk-agent-3.14.7-fast-edit-tdz-hotfix-cf531616fa6bf2bb",
+    { version: "3.14.7", integrity_root: "cf531616fa6bf2bbcf46ccbb0a96f3fbfca21fdcdd02d9b4fcb99647cba4b64d" },
+  ],
 ]);
 
 const baseSchema = z.object({
