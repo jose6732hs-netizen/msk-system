@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.6",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.6 — Official Integrity + Exact Expiry + Preview Self-Heal",
+  "build_id": "msk-agent-3.14.6-official-integrity-selfheal-c2ecd43f83d9a6f9",
+  "integrity_root": "c2ecd43f83d9a6f93784481e3bed7f34f7088bf5582a9304e9da695760ca89d3",
+  "integrity_policy_sha256": "29714049ddcf7035382db64710da45984e619d5ac4a896d3188c271651f221de",
+  "package_sha256": "c8bdd94bd146c8ba2c9081412c9cda7bd829a8deb09e130ec1d3658affe652ce",
+  "official_site": "https://msksystem.online",
+  "notes": "Build oficial com correção de falso clone por runtime ID, validação de build/integridade no gateway, expiração exata, tela oficial de Key, FAST_EDIT v1.1 e reparo automático cirúrgico de erros de preview."
+}
