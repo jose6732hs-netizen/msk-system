@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.7",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.7 — FAST_EDIT TDZ Hotfix",
+  "build_id": "msk-agent-3.14.7-fast-edit-tdz-hotfix-cf531616fa6bf2bb",
+  "integrity_root": "cf531616fa6bf2bbcf46ccbb0a96f3fbfca21fdcdd02d9b4fcb99647cba4b64d",
+  "integrity_policy_sha256": "dd8e9b533a6d8fef1e0c0a48382b4989e41a45f8598dd09bf7baa7dec9d3f855",
+  "package_sha256": "10f413b8628aa4578eb7b8682ab5f338449d5147ae15c17912acf69d5dbd5ab5",
+  "official_site": "https://msksystem.online",
+  "notes": "Corrige TDZ de isHardExecutionStop e trace no FAST_EDIT resiliente. Pedidos mistos de visual + funcionamento geral passam ao editor cirúrgico completo; edições simples continuam no FAST_EDIT direto. Mantém anti-clone, expiração exata e preview self-heal."
+}
