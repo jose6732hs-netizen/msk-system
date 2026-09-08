@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.10",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.10 — Universal Self-Heal",
+  "build_id": "msk-agent-3.14.10-universal-self-heal-5962625475bdd2d7",
+  "integrity_root": "5962625475bdd2d79e62b7f3651a89b25812d42734c70210ace19c622af9ff2e",
+  "integrity_policy_sha256": "f1d07a173b8e55333124113068606006410be9417ee5fc87f9f7ee31ed533d64",
+  "package_sha256": "868ebe8bbfba6cf8206a16f0d7c7bf93bf8a19c3c6db9cd51b91703ccf0c8a5c",
+  "official_site": "https://msksystem.online",
+  "notes": "Correção global para todos os usuários e projetos: comandos explícitos de reparo executam sem perguntas técnicas repetidas; runtime/preview usa stack, rota e bundle como evidência; caminhos inexistentes propostos pela IA são reconciliados com a árvore real do repositório com confiança e sem adivinhação em casos ambíguos."
+}
