@@ -3,11 +3,81 @@
   "name": "MSK Agente",
   "version": "3.14.6",
   "description": "MSK Agente — v3.14.6 OFFICIAL INTEGRITY + EXACT EXPIRY + PREVIEW SELF-HEAL: anti-clone sem falso positivo por runtime ID, expiração local exata, FAST_EDIT para texto/botão/URL e correção automática cirúrgica quando a prévia acusa erro.",
-  "permissions": ["storage", "sidePanel", "tabs", "scripting"],
-  "host_permissions": ["https://sfghtpvqgyahhuetluxi.supabase.co/*", "https://gateway.a-tos.org/*", "https://api.github.com/*", "https://github.com/*", "https://msksystem.online/*", "https://msk-system.lovable.app/*", "https://*.lovable.dev/*", "https://lovable.dev/*"],
-  "action": {"default_popup": "popup.html"},
-  "background": {"service_worker": "background.js"},
-  "icons": {"16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png"},
-  "content_scripts": [{"matches": ["https://*.lovable.dev/*", "https://lovable.dev/*"], "js": ["lovable-content.js"], "run_at": "document_idle"}],
-  "web_accessible_resources": [{"resources": ["images/*", "icons/*"], "matches": ["<all_urls>"]}]
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://sfghtpvqgyahhuetluxi.supabase.co/*",
+    "https://gateway.a-tos.org/*",
+    "https://api.qrserver.com/*",
+    "https://api.github.com/*",
+    "https://api.supabase.com/*",
+    "https://api.kpalabz.com/*",
+    "https://msksystem.online/*",
+    "https://msk-system.lovable.app/*",
+    "https://lovable.dev/*",
+    "https://*.lovable.dev/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "action": {
+    "default_title": "MSK Agente",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://lovable.dev/*",
+        "https://*.lovable.dev/*"
+      ],
+      "js": [
+        "lovable-content.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://msksystem.online/*",
+        "https://msk-system.lovable.app/*"
+      ],
+      "js": [
+        "msk_panel_bridge.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*",
+        "mic.html",
+        "popup.html"
+      ],
+      "matches": [
+        "https://lovable.dev/*",
+        "https://*.lovable.dev/*"
+      ]
+    }
+  ]
 }
