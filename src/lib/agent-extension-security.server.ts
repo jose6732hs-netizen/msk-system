@@ -22,8 +22,8 @@ const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: strin
     { version: "3.14.8", integrity_root: "98bd40be83e6e17a28d933ba080837a20cfee3fac61ca6ea6994b23ff0c77921" },
   ],
   [
-    "msk-agent-3.14.9-database-connect-fix-bbc0980ecf81a039",
-    { version: "3.14.9", integrity_root: "bbc0980ecf81a0393ce27341fcc7732646605901bc535e7416774c0a9a780ec8" },
+    "msk-agent-3.14.9-database-connect-fix-4571d6d2d9a6443d",
+    { version: "3.14.9", integrity_root: "4571d6d2d9a6443de8080e3c580c55f933a83e5529e405e9bdc28a90a5765a5a" },
   ],
 ]);
 
