@@ -29,6 +29,10 @@ const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: strin
     "msk-agent-3.14.10-universal-self-heal-5962625475bdd2d7",
     { version: "3.14.10", integrity_root: "5962625475bdd2d79e62b7f3651a89b25812d42734c70210ace19c622af9ff2e" },
   ],
+  [
+    "msk-agent-3.14.11-bounded-autorecovery-1b3fe0712cfbb2a1",
+    { version: "3.14.11", integrity_root: "1b3fe0712cfbb2a193a18398dd9aa5a6468373645b0073d9f1068a3a1e93af3f" },
+  ],
 ]);
 
 const baseSchema = z.object({
