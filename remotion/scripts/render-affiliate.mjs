@@ -4,15 +4,14 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const out = process.env.OUT ?? "/mnt/documents/MSK-Afiliados.mp4";
+const range = process.env.RANGE ? process.env.RANGE.split("-").map(Number) : null;
 
-const bundled = await bundle({
-  entryPoint: path.resolve(__dirname, "../src/index.ts"),
-  webpackOverride: (c) => c,
-});
+const bundled = await bundle({ entryPoint: path.resolve(__dirname, "../src/index.ts"), webpackOverride: (c) => c });
 
 const browser = await openBrowser("chrome", {
   browserExecutable: process.env.PUPPETEER_EXECUTABLE_PATH ?? "/bin/chromium",
-  chromiumOptions: { args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"] },
+  chromiumOptions: { gl: "swangle", args: ["--no-sandbox", "--disable-dev-shm-usage"] },
   chromeMode: "chrome-for-testing",
 });
 
@@ -23,9 +22,11 @@ await renderMedia({
   serveUrl: bundled,
   codec: "h264",
   audioCodec: "mp3",
-  outputLocation: "/mnt/documents/MSK-Afiliados.mp4",
+  outputLocation: out,
   puppeteerInstance: browser,
-  concurrency: 4,
+  concurrency: 2,
+  delayRenderTimeoutInMilliseconds: 120000,
+  ...(range ? { frameRange: [range[0], range[1]] } : {}),
   onProgress: ({ progress }) => {
     if (Math.round(progress * 100) % 10 === 0) console.log("progress", Math.round(progress * 100));
   },
