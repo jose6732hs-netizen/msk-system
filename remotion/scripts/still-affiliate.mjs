@@ -5,11 +5,12 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frames = process.argv.slice(2).map(Number);
+const scale = Number(process.env.SCALE ?? "1");
 
 const serveUrl = await bundle({ entryPoint: path.resolve(__dirname, "../src/index.ts") });
 const browser = await openBrowser("chrome", {
   browserExecutable: process.env.PUPPETEER_EXECUTABLE_PATH ?? "/bin/chromium",
-  chromiumOptions: { args: ["--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage"] },
+  chromiumOptions: { gl: "swangle", args: ["--no-sandbox", "--disable-dev-shm-usage"] },
   chromeMode: "chrome-for-testing",
 });
 const composition = await selectComposition({ serveUrl, id: "afiliados", puppeteerInstance: browser });
@@ -20,6 +21,7 @@ for (const f of frames) {
     serveUrl,
     frame: f,
     output: `/tmp/afl/f${f}.png`,
+    scale,
     puppeteerInstance: browser,
   });
   console.log("still", f);
