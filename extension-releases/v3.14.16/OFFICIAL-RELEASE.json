@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.16",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.16 — Stable AI Transport",
+  "build_id": "msk-agent-3.14.16-stable-ai-transport-4a6d915c9e2e8f81",
+  "integrity_root": "4a6d915c9e2e8f819dabfce956c66d9bdae3e6ce2641967a5f71846fed530c3f",
+  "integrity_policy_sha256": "d2f938bd93d46e04328d4a214b92d04231114a46d35cbde524cdf4455deb4829",
+  "package_sha256": "8d3f31a974036bb1af71e5708ba46a5252fcf055300e0090d238710590698418",
+  "official_site": "https://msksystem.online",
+  "notes": "Corrige a regressão da v3.14.15 que interrompia edições por timeout agressivo. Remove o deadline global de 22s/50s, centraliza transporte de IA, usa KPA OpenAI-compatible e Anthropic-native com fallback limitado, descarta HTML/404 como rota inválida e evita rotação infinita de modelos pela mesma rota quebrada. Mantém estados universais, Fast Edit, Guardião, antifraude, GitHub retry, validação e recuperação limitada."
+}
