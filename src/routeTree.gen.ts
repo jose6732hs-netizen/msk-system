@@ -51,6 +51,10 @@ import { Route as ApiExtensionVersionRouteImport } from './routes/api/extension/
 import { Route as ApiLicenseValidateRouteImport } from './routes/api/license/validate'
 import { Route as ApiPublicCmsRouteImport } from './routes/api/public/cms'
 import { Route as ApiPublicExtensionModelsRouteImport } from './routes/api/public/extension-models'
+import { Route as ApiPublicLvSupabaseRouteImport } from './routes/api/public/lv-supabase'
+import { Route as ApiPublicMskAiProxyRouteImport } from './routes/api/public/msk-ai-proxy'
+import { Route as ApiPublicMskCloudBridgeRouteImport } from './routes/api/public/msk-cloud-bridge'
+import { Route as ApiPublicMskSupabaseOauthRouteImport } from './routes/api/public/msk-supabase-oauth'
 import { Route as ApiPublicOpenapiRouteImport } from './routes/api/public/openapi'
 import { Route as ApiPublicPixSelftestRouteImport } from './routes/api/public/pix-selftest'
 import { Route as ApiPublicPresenceRouteImport } from './routes/api/public/presence'
@@ -69,6 +73,7 @@ import { Route as ApiPublicLicenseDeactivateRouteImport } from './routes/api/pub
 import { Route as ApiPublicLicenseHeartbeatRouteImport } from './routes/api/public/license/heartbeat'
 import { Route as ApiPublicLicenseMeRouteImport } from './routes/api/public/license/me'
 import { Route as ApiPublicLicenseValidateRouteImport } from './routes/api/public/license/validate'
+import { Route as ApiPublicLvSupabaseCallbackRouteImport } from './routes/api/public/lv-supabase.callback'
 import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/public/webhooks/amplopay'
 import { Route as ApiPublicWebhooksAtomopayRouteImport } from './routes/api/public/webhooks/atomopay'
 import { Route as ApiPublicWebhooksPaymentRouteImport } from './routes/api/public/webhooks/payment'
@@ -305,6 +310,27 @@ const ApiPublicExtensionModelsRoute =
     path: '/api/public/extension-models',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicLvSupabaseRoute = ApiPublicLvSupabaseRouteImport.update({
+  id: '/api/public/lv-supabase',
+  path: '/api/public/lv-supabase',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMskAiProxyRoute = ApiPublicMskAiProxyRouteImport.update({
+  id: '/api/public/msk-ai-proxy',
+  path: '/api/public/msk-ai-proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMskCloudBridgeRoute = ApiPublicMskCloudBridgeRouteImport.update({
+  id: '/api/public/msk-cloud-bridge',
+  path: '/api/public/msk-cloud-bridge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicMskSupabaseOauthRoute =
+  ApiPublicMskSupabaseOauthRouteImport.update({
+    id: '/api/public/msk-supabase-oauth',
+    path: '/api/public/msk-supabase-oauth',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicOpenapiRoute = ApiPublicOpenapiRouteImport.update({
   id: '/api/public/openapi',
   path: '/api/public/openapi',
@@ -402,6 +428,12 @@ const ApiPublicLicenseValidateRoute =
     id: '/api/public/license/validate',
     path: '/api/public/license/validate',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicLvSupabaseCallbackRoute =
+  ApiPublicLvSupabaseCallbackRouteImport.update({
+    id: '/callback',
+    path: '/callback',
+    getParentRoute: () => ApiPublicLvSupabaseRoute,
   } as any)
 const ApiPublicWebhooksAmplopayRoute =
   ApiPublicWebhooksAmplopayRouteImport.update({
@@ -540,6 +572,10 @@ export interface FileRoutesByFullPath {
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/extension-models': typeof ApiPublicExtensionModelsRoute
+  '/api/public/lv-supabase': typeof ApiPublicLvSupabaseRouteWithChildren
+  '/api/public/msk-ai-proxy': typeof ApiPublicMskAiProxyRoute
+  '/api/public/msk-cloud-bridge': typeof ApiPublicMskCloudBridgeRoute
+  '/api/public/msk-supabase-oauth': typeof ApiPublicMskSupabaseOauthRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
@@ -558,6 +594,7 @@ export interface FileRoutesByFullPath {
   '/api/public/license/heartbeat': typeof ApiPublicLicenseHeartbeatRoute
   '/api/public/license/me': typeof ApiPublicLicenseMeRoute
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
+  '/api/public/lv-supabase/callback': typeof ApiPublicLvSupabaseCallbackRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
@@ -617,6 +654,10 @@ export interface FileRoutesByTo {
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/extension-models': typeof ApiPublicExtensionModelsRoute
+  '/api/public/lv-supabase': typeof ApiPublicLvSupabaseRouteWithChildren
+  '/api/public/msk-ai-proxy': typeof ApiPublicMskAiProxyRoute
+  '/api/public/msk-cloud-bridge': typeof ApiPublicMskCloudBridgeRoute
+  '/api/public/msk-supabase-oauth': typeof ApiPublicMskSupabaseOauthRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
@@ -635,6 +676,7 @@ export interface FileRoutesByTo {
   '/api/public/license/heartbeat': typeof ApiPublicLicenseHeartbeatRoute
   '/api/public/license/me': typeof ApiPublicLicenseMeRoute
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
+  '/api/public/lv-supabase/callback': typeof ApiPublicLvSupabaseCallbackRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
@@ -696,6 +738,10 @@ export interface FileRoutesById {
   '/api/license/validate': typeof ApiLicenseValidateRoute
   '/api/public/cms': typeof ApiPublicCmsRouteWithChildren
   '/api/public/extension-models': typeof ApiPublicExtensionModelsRoute
+  '/api/public/lv-supabase': typeof ApiPublicLvSupabaseRouteWithChildren
+  '/api/public/msk-ai-proxy': typeof ApiPublicMskAiProxyRoute
+  '/api/public/msk-cloud-bridge': typeof ApiPublicMskCloudBridgeRoute
+  '/api/public/msk-supabase-oauth': typeof ApiPublicMskSupabaseOauthRoute
   '/api/public/openapi': typeof ApiPublicOpenapiRoute
   '/api/public/pix-selftest': typeof ApiPublicPixSelftestRoute
   '/api/public/presence': typeof ApiPublicPresenceRoute
@@ -714,6 +760,7 @@ export interface FileRoutesById {
   '/api/public/license/heartbeat': typeof ApiPublicLicenseHeartbeatRoute
   '/api/public/license/me': typeof ApiPublicLicenseMeRoute
   '/api/public/license/validate': typeof ApiPublicLicenseValidateRoute
+  '/api/public/lv-supabase/callback': typeof ApiPublicLvSupabaseCallbackRoute
   '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/atomopay': typeof ApiPublicWebhooksAtomopayRoute
   '/api/public/webhooks/payment': typeof ApiPublicWebhooksPaymentRoute
@@ -775,6 +822,10 @@ export interface FileRouteTypes {
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/extension-models'
+    | '/api/public/lv-supabase'
+    | '/api/public/msk-ai-proxy'
+    | '/api/public/msk-cloud-bridge'
+    | '/api/public/msk-supabase-oauth'
     | '/api/public/openapi'
     | '/api/public/pix-selftest'
     | '/api/public/presence'
@@ -793,6 +844,7 @@ export interface FileRouteTypes {
     | '/api/public/license/heartbeat'
     | '/api/public/license/me'
     | '/api/public/license/validate'
+    | '/api/public/lv-supabase/callback'
     | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
@@ -852,6 +904,10 @@ export interface FileRouteTypes {
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/extension-models'
+    | '/api/public/lv-supabase'
+    | '/api/public/msk-ai-proxy'
+    | '/api/public/msk-cloud-bridge'
+    | '/api/public/msk-supabase-oauth'
     | '/api/public/openapi'
     | '/api/public/pix-selftest'
     | '/api/public/presence'
@@ -870,6 +926,7 @@ export interface FileRouteTypes {
     | '/api/public/license/heartbeat'
     | '/api/public/license/me'
     | '/api/public/license/validate'
+    | '/api/public/lv-supabase/callback'
     | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
@@ -930,6 +987,10 @@ export interface FileRouteTypes {
     | '/api/license/validate'
     | '/api/public/cms'
     | '/api/public/extension-models'
+    | '/api/public/lv-supabase'
+    | '/api/public/msk-ai-proxy'
+    | '/api/public/msk-cloud-bridge'
+    | '/api/public/msk-supabase-oauth'
     | '/api/public/openapi'
     | '/api/public/pix-selftest'
     | '/api/public/presence'
@@ -948,6 +1009,7 @@ export interface FileRouteTypes {
     | '/api/public/license/heartbeat'
     | '/api/public/license/me'
     | '/api/public/license/validate'
+    | '/api/public/lv-supabase/callback'
     | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/atomopay'
     | '/api/public/webhooks/payment'
@@ -1004,6 +1066,10 @@ export interface RootRouteChildren {
   ApiLicenseValidateRoute: typeof ApiLicenseValidateRoute
   ApiPublicCmsRoute: typeof ApiPublicCmsRouteWithChildren
   ApiPublicExtensionModelsRoute: typeof ApiPublicExtensionModelsRoute
+  ApiPublicLvSupabaseRoute: typeof ApiPublicLvSupabaseRouteWithChildren
+  ApiPublicMskAiProxyRoute: typeof ApiPublicMskAiProxyRoute
+  ApiPublicMskCloudBridgeRoute: typeof ApiPublicMskCloudBridgeRoute
+  ApiPublicMskSupabaseOauthRoute: typeof ApiPublicMskSupabaseOauthRoute
   ApiPublicOpenapiRoute: typeof ApiPublicOpenapiRoute
   ApiPublicPixSelftestRoute: typeof ApiPublicPixSelftestRoute
   ApiPublicPresenceRoute: typeof ApiPublicPresenceRoute
@@ -1335,6 +1401,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicExtensionModelsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/lv-supabase': {
+      id: '/api/public/lv-supabase'
+      path: '/api/public/lv-supabase'
+      fullPath: '/api/public/lv-supabase'
+      preLoaderRoute: typeof ApiPublicLvSupabaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/msk-ai-proxy': {
+      id: '/api/public/msk-ai-proxy'
+      path: '/api/public/msk-ai-proxy'
+      fullPath: '/api/public/msk-ai-proxy'
+      preLoaderRoute: typeof ApiPublicMskAiProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/msk-cloud-bridge': {
+      id: '/api/public/msk-cloud-bridge'
+      path: '/api/public/msk-cloud-bridge'
+      fullPath: '/api/public/msk-cloud-bridge'
+      preLoaderRoute: typeof ApiPublicMskCloudBridgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/msk-supabase-oauth': {
+      id: '/api/public/msk-supabase-oauth'
+      path: '/api/public/msk-supabase-oauth'
+      fullPath: '/api/public/msk-supabase-oauth'
+      preLoaderRoute: typeof ApiPublicMskSupabaseOauthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/openapi': {
       id: '/api/public/openapi'
       path: '/api/public/openapi'
@@ -1460,6 +1554,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/license/validate'
       preLoaderRoute: typeof ApiPublicLicenseValidateRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/public/lv-supabase/callback': {
+      id: '/api/public/lv-supabase/callback'
+      path: '/callback'
+      fullPath: '/api/public/lv-supabase/callback'
+      preLoaderRoute: typeof ApiPublicLvSupabaseCallbackRouteImport
+      parentRoute: typeof ApiPublicLvSupabaseRoute
     }
     '/api/public/webhooks/amplopay': {
       id: '/api/public/webhooks/amplopay'
@@ -1607,6 +1708,17 @@ const ApiPublicCmsRouteWithChildren = ApiPublicCmsRoute._addFileChildren(
   ApiPublicCmsRouteChildren,
 )
 
+interface ApiPublicLvSupabaseRouteChildren {
+  ApiPublicLvSupabaseCallbackRoute: typeof ApiPublicLvSupabaseCallbackRoute
+}
+
+const ApiPublicLvSupabaseRouteChildren: ApiPublicLvSupabaseRouteChildren = {
+  ApiPublicLvSupabaseCallbackRoute: ApiPublicLvSupabaseCallbackRoute,
+}
+
+const ApiPublicLvSupabaseRouteWithChildren =
+  ApiPublicLvSupabaseRoute._addFileChildren(ApiPublicLvSupabaseRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
@@ -1646,6 +1758,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiLicenseValidateRoute: ApiLicenseValidateRoute,
   ApiPublicCmsRoute: ApiPublicCmsRouteWithChildren,
   ApiPublicExtensionModelsRoute: ApiPublicExtensionModelsRoute,
+  ApiPublicLvSupabaseRoute: ApiPublicLvSupabaseRouteWithChildren,
+  ApiPublicMskAiProxyRoute: ApiPublicMskAiProxyRoute,
+  ApiPublicMskCloudBridgeRoute: ApiPublicMskCloudBridgeRoute,
+  ApiPublicMskSupabaseOauthRoute: ApiPublicMskSupabaseOauthRoute,
   ApiPublicOpenapiRoute: ApiPublicOpenapiRoute,
   ApiPublicPixSelftestRoute: ApiPublicPixSelftestRoute,
   ApiPublicPresenceRoute: ApiPublicPresenceRoute,
