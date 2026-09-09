@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.19",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.19 — Large Prompt Recovery",
+  "build_id": "msk-agent-3.14.19-large-prompt-recovery-21305c64754d5fae",
+  "integrity_root": "21305c64754d5faea6bc89f4eb39550aff4cdebc80d213227a766e400b7a411e",
+  "integrity_policy_sha256": "9e3f8a6875c7fa16ba5e3ea1b90f3713d1e4e36f5ac21957766bc69b273438be",
+  "package_sha256": "e8e27226c9245bb3a5c4fb093a40d752cd644565d835d62f68f53148289a9786",
+  "official_site": "https://msksystem.online",
+  "notes": "Mantém a base estável v3.14.18 e corrige falhas de execução em prompts médios/grandes. Normaliza attachments/images/preflight antes de slice/iteração; normaliza respostas files/edits mesmo quando o modelo devolve mapa, item singular ou tipos alternativos; aumenta contexto autoritativo e recuperação cirúrgica somente em tarefas grandes. O pré-commit permanece ativo e continua bloqueando sintaxe quebrada, truncamento real, imports inválidos e exports perdidos. A v3.14.18 permanece oficial." 
+}
