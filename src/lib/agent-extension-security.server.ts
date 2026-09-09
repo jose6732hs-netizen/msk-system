@@ -65,6 +65,10 @@ const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: strin
     "msk-agent-3.14.19-large-prompt-recovery-21305c64754d5fae",
     { version: "3.14.19", integrity_root: "21305c64754d5faea6bc89f4eb39550aff4cdebc80d213227a766e400b7a411e" },
   ],
+  [
+    "msk-agent-3.14.20-guardian-selfhash-hotfix-a708413a5b0703b7",
+    { version: "3.14.20", integrity_root: "a708413a5b0703b774ab228c8774f162f389810371172d81ba41e9f14117e05c" },
+  ],
 ]);
 
 const baseSchema = z.object({
