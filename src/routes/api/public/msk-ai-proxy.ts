@@ -1,15 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const UPSTREAM = "https://api.kpalabz.com/v1/messages";
+const UPSTREAM_TIMEOUT_MS = 25_000;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "content-type, x-api-key, anthropic-version, authorization",
   "Cache-Control": "no-store",
 };
-
-const TRANSIENT = new Set([408, 425, 429, 500, 502, 503, 504]);
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function normalizeModel(model: unknown) {
   const value = String(model || "").trim().toLowerCase();
@@ -26,61 +24,6 @@ function normalizeModel(model: unknown) {
     return "claude-sonnet-4-5";
   }
   return String(model);
-}
-
-function modelCandidates(model: unknown) {
-  return [...new Set([
-    normalizeModel(model),
-    "claude-sonnet-4-5",
-    "claude-opus-4-5",
-    "claude-haiku-4-5",
-  ].filter(Boolean))];
-}
-
-async function callUpstream(apiKey: string, anthropicVersion: string, body: Record<string, unknown>, model: string) {
-  let lastStatus = 503;
-  let lastPayload = "AI upstream unavailable";
-
-  for (let attempt = 1; attempt <= 2; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 110_000);
-    try {
-      const response = await fetch(UPSTREAM, {
-        method: "POST",
-        headers: {
-          "x-api-key": apiKey,
-          "anthropic-version": anthropicVersion,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({ ...body, model }),
-        signal: controller.signal,
-      });
-
-      const payload = await response.text();
-      lastStatus = response.status;
-      lastPayload = payload;
-
-      if (response.ok) {
-        return { response, payload, attempt };
-      }
-      if ([401, 402, 403].includes(response.status)) {
-        return { response, payload, attempt };
-      }
-      if (!TRANSIENT.has(response.status)) break;
-    } catch (error) {
-      lastStatus = 503;
-      lastPayload = error instanceof Error ? error.message : String(error);
-    } finally {
-      clearTimeout(timer);
-    }
-    await sleep(300 * attempt);
-  }
-
-  return {
-    response: new Response(lastPayload, { status: lastStatus }),
-    payload: lastPayload,
-    attempt: 2,
-  };
 }
 
 async function upstreamFetch(request: Request) {
@@ -102,41 +45,62 @@ async function upstreamFetch(request: Request) {
   }
 
   const requestedModel = String(body.model || "");
-  const candidates = modelCandidates(requestedModel);
+  const resolvedModel = normalizeModel(requestedModel);
   const anthropicVersion = request.headers.get("anthropic-version") || "2023-06-01";
-  let lastPayload = "AI upstream unavailable";
-  let lastStatus = 503;
+  const controller = new AbortController();
+  const abortFromClient = () => controller.abort(request.signal.reason);
+  if (request.signal.aborted) controller.abort(request.signal.reason);
+  else request.signal.addEventListener("abort", abortFromClient, { once: true });
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
 
-  for (const model of candidates) {
-    const result = await callUpstream(apiKey, anthropicVersion, body, model);
-    lastPayload = result.payload;
-    lastStatus = result.response.status;
+  try {
+    const response = await fetch(UPSTREAM, {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": anthropicVersion,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ ...body, model: resolvedModel }),
+      signal: controller.signal,
+    });
 
-    if (result.response.ok || [401, 402, 403].includes(result.response.status)) {
-      return new Response(result.payload, {
-        status: result.response.status,
-        headers: {
-          ...CORS,
-          "Content-Type": result.response.headers.get("content-type") || "application/json; charset=utf-8",
-          "X-MSK-AI-Route": "proxy",
-          "X-MSK-AI-Requested-Model": requestedModel || "default",
-          "X-MSK-AI-Resolved-Model": model,
-          "X-MSK-AI-Attempt": String(result.attempt),
-        },
-      });
+    const payload = await response.text();
+    const contentType = String(response.headers.get("content-type") || "").toLowerCase();
+    if (contentType.includes("text/html") || contentType.includes("application/xhtml")) {
+      return Response.json({
+        error: "MSK_AI_UPSTREAM_INVALID_RESPONSE",
+        status: response.status,
+        requested_model: requestedModel || null,
+        resolved_model: resolvedModel,
+      }, { status: 502, headers: CORS });
     }
-  }
 
-  return Response.json(
-    {
-      error: "MSK_AI_UPSTREAM_UNAVAILABLE",
-      status: lastStatus,
-      message: lastPayload.slice(0, 500),
+    return new Response(payload, {
+      status: response.status,
+      headers: {
+        ...CORS,
+        "Content-Type": response.headers.get("content-type") || "application/json; charset=utf-8",
+        "X-MSK-AI-Route": "proxy-fast-fallback",
+        "X-MSK-AI-Requested-Model": requestedModel || "default",
+        "X-MSK-AI-Resolved-Model": resolvedModel,
+      },
+    });
+  } catch (error) {
+    if (request.signal.aborted) {
+      return Response.json({ error: "MSK_AI_CLIENT_ABORTED" }, { status: 499, headers: CORS });
+    }
+    const timedOut = controller.signal.aborted;
+    return Response.json({
+      error: timedOut ? "MSK_AI_UPSTREAM_TIMEOUT" : "MSK_AI_UPSTREAM_UNAVAILABLE",
+      message: timedOut ? `Upstream timeout after ${Math.round(UPSTREAM_TIMEOUT_MS / 1000)}s` : (error instanceof Error ? error.message : String(error)),
       requested_model: requestedModel || null,
-      tried_models: candidates,
-    },
-    { status: 503, headers: CORS },
-  );
+      resolved_model: resolvedModel,
+    }, { status: 503, headers: CORS });
+  } finally {
+    clearTimeout(timer);
+    request.signal.removeEventListener("abort", abortFromClient);
+  }
 }
 
 export const Route = createFileRoute("/api/public/msk-ai-proxy")({
@@ -146,7 +110,9 @@ export const Route = createFileRoute("/api/public/msk-ai-proxy")({
       GET: async () => Response.json({
         ok: true,
         service: "msk-ai-proxy",
+        mode: "fast-fallback",
         upstream: "kpa-anthropic",
+        upstream_timeout_ms: UPSTREAM_TIMEOUT_MS,
         default_model: "claude-sonnet-4-5",
       }, { headers: CORS }),
       POST: async ({ request }) => upstreamFetch(request),
