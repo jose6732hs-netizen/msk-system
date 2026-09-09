@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.13",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.13 — Resilient Requests",
+  "build_id": "msk-agent-3.14.13-resilient-requests-13cb7c59eab25281",
+  "integrity_root": "13cb7c59eab2528177a2741fef0e43186653e8e0562863181b60bdcf6c6a7670",
+  "integrity_policy_sha256": "eab940ff3d2495659493e8907b4fefa52e7f16bbcd7ea68094f003e556e58149",
+  "package_sha256": "f9c101d1b2c16ae8e3cef7870671761a8ef3532ee5bf9587fcf537c8d907e431",
+  "official_site": "https://msksystem.online",
+  "notes": "Baseada na v3.14.12. Corrige failover que parava em HTTP 404/HTML, adiciona rota alternativa msk-system.lovable.app antes da KPA direta, atualiza modelos Claude para Sonnet/Opus/Haiku 4.5 com rotação, aplica retry controlado em chamadas GitHub críticas e mantém execução direta de criação, edição, melhoria, implementação, correção, bugs, integrações e full-stack sem loop infinito."
+}
