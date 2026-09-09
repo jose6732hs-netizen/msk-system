@@ -6,6 +6,8 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const out = process.env.OUT ?? "/mnt/documents/MSK-Afiliados.mp4";
 const range = process.env.RANGE ? process.env.RANGE.split("-").map(Number) : null;
+const scale = Number(process.env.SCALE ?? "0.5");
+let lastReported = -1;
 
 const bundled = await bundle({ entryPoint: path.resolve(__dirname, "../src/index.ts"), webpackOverride: (c) => c });
 
@@ -25,10 +27,15 @@ await renderMedia({
   outputLocation: out,
   puppeteerInstance: browser,
   concurrency: 1,
+  scale,
   delayRenderTimeoutInMilliseconds: 120000,
   ...(range ? { frameRange: [range[0], range[1]] } : {}),
   onProgress: ({ progress }) => {
-    if (Math.round(progress * 100) % 10 === 0) console.log("progress", Math.round(progress * 100));
+    const percent = Math.floor(progress * 100);
+    if (percent !== lastReported) {
+      lastReported = percent;
+      console.log("progress", percent);
+    }
   },
 });
 
