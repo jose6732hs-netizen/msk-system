@@ -77,7 +77,7 @@ async function validateAgentLicense(body: any) {
 }
 
 async function latestConnection(userId: string) {
-  const { data } = await supabaseAdmin
+  const { data } = await (supabaseAdmin as any)
     .from("agent_connections")
     .select("id,user_id,connector_id,credential_ciphertext,provider_user_id,scopes,revoked_at,updated_at")
     .eq("user_id", userId)
@@ -99,7 +99,7 @@ async function readCredential(connection: any): Promise<Credential | null> {
 
 async function writeCredential(connectionId: string, credential: Credential) {
   const encrypted = await encryptToken(JSON.stringify(credential));
-  const { error } = await supabaseAdmin
+  const { error } = await (supabaseAdmin as any)
     .from("agent_connections")
     .update({ credential_ciphertext: textToBytea(encrypted), last_validated_at: new Date().toISOString(), updated_at: new Date().toISOString() } as never)
     .eq("id", connectionId);
@@ -190,8 +190,8 @@ export const Route = createFileRoute("/api/public/lv-supabase")({
           const verifier = randomString(48);
           const challenge = await sha256Base64Url(verifier);
           const encryptedPending = await encryptToken(JSON.stringify({ verifier, createdAt: Date.now() }));
-          await supabaseAdmin.from("agent_connections").delete().eq("user_id", auth.userId).eq("connector_id", "supabase_pending");
-          const { error } = await supabaseAdmin.from("agent_connections").insert({
+          await (supabaseAdmin as any).from("agent_connections").delete().eq("user_id", auth.userId).eq("connector_id", "supabase_pending");
+          const { error } = await (supabaseAdmin as any).from("agent_connections").insert({
             user_id: auth.userId,
             connector_id: "supabase_pending",
             credential_ciphertext: textToBytea(encryptedPending),
@@ -216,7 +216,7 @@ export const Route = createFileRoute("/api/public/lv-supabase")({
         }
 
         if (action === "disconnect") {
-          await supabaseAdmin.from("agent_connections").update({ revoked_at: new Date().toISOString(), updated_at: new Date().toISOString() } as never).eq("user_id", auth.userId).eq("connector_id", "supabase").is("revoked_at", null);
+          await (supabaseAdmin as any).from("agent_connections").update({ revoked_at: new Date().toISOString(), updated_at: new Date().toISOString() } as never).eq("user_id", auth.userId).eq("connector_id", "supabase").is("revoked_at", null);
           return respond({ ok: true, connected: false });
         }
 

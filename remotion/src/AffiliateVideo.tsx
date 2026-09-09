@@ -459,7 +459,6 @@ const S8: React.FC = () => {
 };
 
 const PLAQUES = [
-  { src: "afl/award-1k.png", label: "1K" },
   { src: "afl/award-10k-new.png", label: "10K" },
   { src: "afl/award-100k-new.png", label: "100K" },
   { src: "afl/award-500k.png", label: "500K" },
@@ -475,7 +474,7 @@ const S9: React.FC = () => {
       <Title size={72}>Cada marca batida,{"\n"}uma placa sua</Title>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 22 }}>
         {PLAQUES.map((p, i) => {
-          const s = spring({ frame: frame - 20 - i * 14, fps, config: { damping: 16, stiffness: 130 } });
+          const s = spring({ frame: frame - 18 - i * 16, fps, config: { damping: 16, stiffness: 130 } });
           return (
             <div
               key={p.label}
