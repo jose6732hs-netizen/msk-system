@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.18",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.18 — Direct KPA Stable",
+  "build_id": "msk-agent-3.14.18-direct-kpa-stable-7e3f2d8cfecd7efa",
+  "integrity_root": "7e3f2d8cfecd7efacd75d5f870be405f045439abb7fa5681b09b86fb583092e9",
+  "integrity_policy_sha256": "8bbc771b7c4270ae97dee63238729cdd7c06cbf989784ef19955d9166fb81fae",
+  "package_sha256": "bd659618d43f3f2bb150ea1aafc7a7b7234738b1753cd8b8acec3c0658751ca5",
+  "official_site": "https://msksystem.online",
+  "notes": "Mantém byte a byte o motor/runtime da v3.14.17 Stable Engine Restore. A única mudança funcional dentro da extensão é no msksystem_keystore.js: https://api.kpalabz.com/v1/messages volta a ser a rota primária, como nas builds anteriores à regressão de proxy; os proxies MSK ficam como fallback. O backend msk-ai-proxy foi ajustado separadamente para fail-fast em 25s, sem retry de 110s e sem rotação interna de modelos."
+}
