@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.12",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.12 — Network Failover",
+  "build_id": "msk-agent-3.14.12-network-failover-b2df966cc5b1b93e",
+  "integrity_root": "b2df966cc5b1b93e17231c92350a420e7a20e66c62592a11d01667f74bac0a96",
+  "integrity_policy_sha256": "42a4c02eb8d41698a83bb6672b2878ff9312c8c97852948983ce6bfc044cfbdb",
+  "package_sha256": "b0c18caaec436727e36d1281344d154c9a13faf434829e0b4654bc0980ca0a85",
+  "official_site": "https://msksystem.online",
+  "notes": "Baseada na v3.14.11. Adiciona failover de rede MSK System + KPA direta, retry controlado para IA e GitHub, proteção contra Failed to fetch transitório, e execução direta de rotas de criação/edição/correção/database/fullstack sem etapa de clarificação. Mantém autorecovery limitado para evitar loop infinito."
+}
