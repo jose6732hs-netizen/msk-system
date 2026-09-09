@@ -53,6 +53,10 @@ const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: strin
     "msk-agent-3.14.16-stable-ai-transport-4a6d915c9e2e8f81",
     { version: "3.14.16", integrity_root: "4a6d915c9e2e8f819dabfce956c66d9bdae3e6ce2641967a5f71846fed530c3f" },
   ],
+  [
+    "msk-agent-3.14.17-stable-engine-restore-f49c50f7a9e02795",
+    { version: "3.14.17", integrity_root: "f49c50f7a9e02795024a6ff3b5f0a7bfa3f5ee9ee725cfdfe679d2f756127ceb" },
+  ],
 ]);
 
 const baseSchema = z.object({
