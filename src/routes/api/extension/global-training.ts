@@ -4,7 +4,7 @@ import { compileGlobalTraining } from "@/lib/ai-global-training.server";
 import { findLicenseByToken, isTrustedExtensionOrigin, rateLimit } from "@/lib/license.server";
 
 const DEFAULT_POLICY = {
-  version: 2,
+  version: 3,
   editBudgets: {
     fast: { maxFiles: 1, maxChangedLines: 24, maxReplacementRatio: 0.08 },
     medium: { maxFiles: 4, maxChangedLines: 180, maxReplacementRatio: 0.32 },
@@ -26,6 +26,54 @@ const DEFAULT_POLICY = {
     continueAfterSafeRollback: true,
   },
 };
+
+const V31418_COMPAT_TRAINING = `
+MSK AGENTE v3.14.18 — RUNTIME COMPATIBILITY RULES
+
+These rules are mandatory for every code creation, edit, implementation, improvement and bug fix.
+
+1. OUTPUT FORMAT
+- Return exactly ONE valid JSON object and nothing before or after it.
+- Never wrap JSON in markdown fences.
+- Never return prose outside the JSON object.
+- The top-level field "files" MUST ALWAYS be a JSON ARRAY, never an object/map and never a string.
+- Every files[] item MUST be an object with exactly the compatible shape:
+  {"action":"modify|create|delete","path":"real/project/path","content":"FULL FILE CONTENT"}
+- For delete, content may be an empty string. For modify/create, content MUST be the complete final source file.
+- Never return files as {"path":"content"}.
+- Never return nested arrays, null, booleans or objects where the runtime expects a string or array.
+- "thought" and "summary" MUST be strings.
+
+2. SURGICAL EDIT MODE
+- If the system prompt explicitly requests an edits[] response, return exactly:
+  {"thought":"...","summary":"...","edits":[{"path":"existing/path","find":"EXACT UNIQUE CURRENT SOURCE","replace":"COMPLETE REPLACEMENT SNIPPET"}]}
+- edits MUST be an array. find and replace MUST be strings.
+- Do not mix edits[] and files[] unless the system prompt explicitly asks for both.
+
+3. PRESERVE WORKING CODE
+- Never replace a large existing page with a small placeholder implementation.
+- Preserve imports, routes, components, state, handlers, styles and unrelated working behavior.
+- For an existing file, modify only what the user requested while returning the COMPLETE resulting file when files[] is requested.
+- Do not invent paths when the project map provides real paths.
+
+4. VISUAL / FEATURE REQUESTS
+- For requests such as banners, carousels, countdown timers, sections, cards, buttons, text/color/layout changes, locate the existing rendered page/component and integrate the feature there.
+- A carousel/banner request must include all state/hooks/imports/JSX/CSS needed to compile.
+- A countdown request must include cleanup for timers/intervals and must not reference undefined symbols.
+- If a feature needs more than one existing file, return all required files in files[] rather than forcing an incomplete one-file patch.
+
+5. VALID JSON
+- Escape every newline, quote and backslash correctly inside JSON strings.
+- Do not truncate file contents.
+- Do not use comments outside JSON, ellipses, placeholders such as "existing code here", or partial snippets in files[].
+- Before emitting the answer, internally verify JSON.parse compatibility and that Array.isArray(files) or Array.isArray(edits) is true for the requested schema.
+
+6. SAFETY VALIDATOR COMPATIBILITY
+- Keep the patch proportional to the request.
+- Do not delete unrelated code.
+- Do not rewrite the entire application for a localized feature.
+- If the requested feature genuinely requires multiple coordinated edits, make them complete and internally consistent in the same response.
+`;
 
 function cors(request: Request) {
   const origin = request.headers.get("origin")?.trim() ?? "";
@@ -94,19 +142,31 @@ async function handle(request: Request) {
   ]);
 
   if (trainingResult.error) {
-    console.error("[MSK AI] training runtime query failed", trainingResult.error.message);
-    return json(request, { ok: false, code: "GLOBAL_TRAINING_UNAVAILABLE" }, 503);
+    console.error("[MSK AI] training runtime query failed; using built-in compatibility training", trainingResult.error.message);
   }
   if (policyResult.error) console.error("[MSK Extension] runtime policy query failed", policyResult.error.message);
 
-  const compiled = compileGlobalTraining((trainingResult.data ?? []) as any[]);
+  let compiled = { count: 0, versions: [] as string[], text: "" };
+  if (!trainingResult.error) {
+    try {
+      const data = Array.isArray(trainingResult.data) ? trainingResult.data : [];
+      compiled = compileGlobalTraining(data as any[]) as any;
+    } catch (error) {
+      console.error("[MSK AI] training compile failed; using compatibility training", error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  const training = [String(compiled.text || "").trim(), V31418_COMPAT_TRAINING.trim()].filter(Boolean).join("\n\n");
+  const versions = Array.isArray(compiled.versions) ? compiled.versions : [];
+
   return json(request, {
     ok: true,
-    count: compiled.count,
-    versions: compiled.versions,
-    training: compiled.text,
+    count: Number(compiled.count || 0) + 1,
+    versions: [...versions, "v3.14.18-structured-output-compat"],
+    training,
     policy: mergePolicy(policyResult.data?.value),
     policy_updated_at: policyResult.data?.updated_at ?? null,
+    compatibility_training: true,
     updated_at: new Date().toISOString(),
   });
 }
