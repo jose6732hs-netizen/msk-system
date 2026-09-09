@@ -33,7 +33,7 @@ export const Route = createFileRoute("/api/public/lv-supabase/callback")({
         if (oauthError) return page("Autorização cancelada", oauthError, false);
         if (!code || !state) return page("Autorização inválida", "O retorno do Supabase não contém os dados esperados.", false);
 
-        const { data: pending } = await supabaseAdmin
+        const { data: pending } = await (supabaseAdmin as any)
           .from("agent_connections")
           .select("id,user_id,credential_ciphertext,provider_user_id,created_at")
           .eq("connector_id", "supabase_pending")
@@ -46,7 +46,7 @@ export const Route = createFileRoute("/api/public/lv-supabase/callback")({
         let verifier = "", createdAt = 0;
         try { const parsed = JSON.parse(plain || "{}"); verifier = String(parsed.verifier || ""); createdAt = Number(parsed.createdAt || 0); } catch (_) {}
         if (!verifier || !createdAt || Date.now() - createdAt > 10 * 60_000) {
-          await supabaseAdmin.from("agent_connections").delete().eq("id", (pending as any).id);
+          await (supabaseAdmin as any).from("agent_connections").delete().eq("id", (pending as any).id);
           return page("Sessão expirada", "A autorização demorou demais. Inicie novamente pelo MSK Agente.", false);
         }
 
@@ -74,11 +74,11 @@ export const Route = createFileRoute("/api/public/lv-supabase/callback")({
           selectedProjectRef: null,
         };
         const secured = await encryptToken(JSON.stringify(credential));
-        await supabaseAdmin
+        await (supabaseAdmin as any)
           .from("agent_connections")
           .update({ connector_id: "supabase", credential_ciphertext: textToBytea(secured), provider_user_id: null, last_validated_at: new Date().toISOString(), updated_at: new Date().toISOString(), revoked_at: null } as never)
           .eq("id", (pending as any).id);
-        await supabaseAdmin
+        await (supabaseAdmin as any)
           .from("agent_connections")
           .update({ revoked_at: new Date().toISOString() } as never)
           .eq("user_id", (pending as any).user_id)

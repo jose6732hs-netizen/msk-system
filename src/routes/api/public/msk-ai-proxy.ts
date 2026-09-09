@@ -27,7 +27,7 @@ function normalizeModel(model: unknown) {
 }
 
 async function upstreamFetch(request: Request) {
-  const apiKey = String(request.headers.get("x-api-key") || process.env.KPALABZ_API_KEY || process.env.KPA_API_KEY || "").trim();
+  const apiKey = String(request.headers.get("x-api-key") || process.env['KPALABZ_API_KEY'] || process.env['KPA_API_KEY'] || "").trim();
   if (!apiKey) {
     return Response.json({ error: "MSK_AI_KEY_REQUIRED" }, { status: 401, headers: CORS });
   }
@@ -44,7 +44,7 @@ async function upstreamFetch(request: Request) {
     return Response.json({ error: "MSK_AI_JSON_INVALID" }, { status: 400, headers: CORS });
   }
 
-  const requestedModel = String(body.model || "");
+  const requestedModel = String(body['model'] || "");
   const resolvedModel = normalizeModel(requestedModel);
   const anthropicVersion = request.headers.get("anthropic-version") || "2023-06-01";
   const controller = new AbortController();
