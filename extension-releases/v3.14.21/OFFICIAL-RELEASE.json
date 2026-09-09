@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.21",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.21 — License-Gated Guardian",
+  "build_id": "msk-agent-3.14.21-license-gated-guardian-0e078937b467db8e",
+  "integrity_root": "0e078937b467db8e22810331ea2e87165113c9c4094c60ef203733b35f59782f",
+  "integrity_policy_sha256": "82ebabbafd5a49d0e5cc73956a71c008caf4fb7d67796b36c1ba2efd8d615e70",
+  "package_sha256": "cd9724d191f0942e8679231d874442953597d05e7612d4c29ad6e50f1515d855",
+  "official_site": "https://msksystem.online",
+  "notes": "Hotfix cirúrgico sobre o ZIP v3.14.19 enviado pelo usuário. Não altera o motor de IA, execução, criação, edição, planner, fast edit, Project Brain ou GitHub. Corrige somente o Guardião: a tela grande de clone/integridade só pode aparecer após licença autorizada; sem key/licença válida permanece apenas o gate de licença. Corrige também o auto-hash canônico do msk_guardian.js usando 64 zeros. As versões anteriores permanecem oficiais."
+}
