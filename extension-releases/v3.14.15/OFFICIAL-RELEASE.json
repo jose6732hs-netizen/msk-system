@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.15",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.15 — Universal Execution States",
+  "build_id": "msk-agent-3.14.15-universal-execution-states-811e166e8230e97c",
+  "integrity_root": "811e166e8230e97cb82fc3c70902642be23a0fceb136c5f3cd6e016b086b4e0a",
+  "integrity_policy_sha256": "483e69e615914ba282e8c34adcdfc19fbef41ca72962a1393086af81c98f68cc",
+  "package_sha256": "f7ba8bfb3356198be094be1845b4c6ab8c54ef047f47656b6405e1e8afb46b78",
+  "official_site": "https://msksystem.online",
+  "notes": "Baseada na v3.14.14 + Integrity Hotfix. A velocidade passa a ser decidida por estados técnicos e impacto real do patch, não por palavras específicas do prompt. PATCH_LOCAL usa patch determinístico e, se necessário, Haiku->Sonnet em até 50s; PATCH_MULTI usa Sonnet->Haiku em até 58s; CREATE_SURFACE usa Sonnet com orçamento de 90s; criação estrutural, banco/API/config, diagnóstico pesado ou patch de alto impacto escalam automaticamente para DEEP_BUILD/DEEP_REPAIR. KPA /v1/messages é a rota primária; proxies MSK são fallback e respostas HTML/404 recebem failover e cache temporário de rota ruim. Guardião, antifraude, validação determinística e recuperação limitada permanecem ativos."
+}
