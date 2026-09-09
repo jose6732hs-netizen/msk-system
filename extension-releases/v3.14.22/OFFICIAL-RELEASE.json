@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.22",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.22 — No Clone Overlay",
+  "build_id": "msk-agent-3.14.22-no-clone-overlay-4656003bf4807269",
+  "integrity_root": "4656003bf4807269bc48d5a9c7721c23174558d5f6f880088f5608f8c95adc8c",
+  "integrity_policy_sha256": "babd63642534772d15176c3220d29774ebfb0346009a4faacd8409891ee2de28",
+  "package_sha256": "7daaa6007e60d0f55ad8bf47c9ff5c7f5b085ea84d5c1a45a943b9c2fe0aeb31",
+  "official_site": "https://msksystem.online",
+  "notes": "Hotfix cirúrgico sobre a v3.14.21. Remove somente overlays/bloqueios visuais para clone, integridade e identidade/build não oficial ou mismatch; esses eventos permanecem como diagnóstico silencioso. Licença/key continua obrigatória e bloqueio administrativo explícito INSTALLATION_BLOCKED continua ativo. Motor IA, executor, fast edit, planner, Project Brain, GitHub, Studio e recuperação de prompts permanecem inalterados. Esta é a única build oficial aceita pelo gateway."
+}
