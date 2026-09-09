@@ -13,7 +13,7 @@ const bundled = await bundle({ entryPoint: path.resolve(__dirname, "../src/index
 
 const browser = await openBrowser("chrome", {
   browserExecutable: process.env.PUPPETEER_EXECUTABLE_PATH ?? "/bin/chromium",
-  chromiumOptions: { args: ["--no-sandbox", "--disable-dev-shm-usage"] },
+  chromiumOptions: { gl: "swangle", args: ["--no-sandbox", "--disable-dev-shm-usage"] },
   chromeMode: "chrome-for-testing",
 });
 
