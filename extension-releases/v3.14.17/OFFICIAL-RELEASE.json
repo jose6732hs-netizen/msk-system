@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.17",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.17 — Stable Engine Restore",
+  "build_id": "msk-agent-3.14.17-stable-engine-restore-f49c50f7a9e02795",
+  "integrity_root": "f49c50f7a9e02795024a6ff3b5f0a7bfa3f5ee9ee725cfdfe679d2f756127ceb",
+  "integrity_policy_sha256": "ee1ef03a9a3a89e097022fd82be34fbfdaa401db0dfa819a1f9363eba41cdbc2",
+  "package_sha256": "1e18c70c60463e7142ee44837e0bde6a24952b9829eca912e8855640cdc1b35b",
+  "official_site": "https://msksystem.online",
+  "notes": "Restaura integralmente o motor/runtime funcional da v3.14.13 Integrity Hotfix. msksystem_ai_engine.js, popup.js, msk_core.js, msk_network.js, msk_fast_edit.js, msk_change_planner.js, msk_project_brain.js, msk_multimodal.js e studio.js permanecem byte a byte iguais à base estável. Remove as regressões introduzidas pelas experiências de velocidade/transporte das v3.14.14-v3.14.16 sem alterar o motor que funcionava."
+}
