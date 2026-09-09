@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.14",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.14 — Speed Tiers",
+  "build_id": "msk-agent-3.14.14-speed-tiers-3ff9c6593d40471a",
+  "integrity_root": "3ff9c6593d40471ae0207e7333eb81489fedc8f540343be34aa12e177aff12ac",
+  "integrity_policy_sha256": "a3ab0a4aa3eca399ccfdca12a7b4f5881bcf77028b4c84b57e73183bc81a6577",
+  "package_sha256": "cef91ae2e6d3618350dd254b437a3016be12de73ed2c7c2488d380c475d9a82a",
+  "official_site": "https://msksystem.online",
+  "notes": "Baseada na v3.14.13 Integrity Hotfix. Introduz perfis de execução INSTANT, PAGE/FAST_CREATE e DEEP. Edições/correções simples priorizam Claude Haiku 4.5 com fallback Sonnet/Opus e contexto reduzido; páginas, telas, seções e etapas novas usam Sonnet 4.5 sem extended thinking com fallback Haiku/Opus; criação do zero, full-stack, banco, integrações complexas e diagnóstico pesado preservam o modo profundo anterior. Mantém failover de rede, retry GitHub, validação determinística, Guardião, antifraude e recuperação limitada sem loop infinito."
+}
