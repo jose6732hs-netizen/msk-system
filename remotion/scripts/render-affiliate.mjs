@@ -11,7 +11,7 @@ const bundled = await bundle({ entryPoint: path.resolve(__dirname, "../src/index
 
 const browser = await openBrowser("chrome", {
   browserExecutable: process.env.PUPPETEER_EXECUTABLE_PATH ?? "/bin/chromium",
-  chromiumOptions: { gl: "swangle", args: ["--no-sandbox", "--disable-dev-shm-usage"] },
+  chromiumOptions: { args: ["--no-sandbox", "--disable-dev-shm-usage"] },
   chromeMode: "chrome-for-testing",
 });
 
@@ -24,7 +24,7 @@ await renderMedia({
   audioCodec: "mp3",
   outputLocation: out,
   puppeteerInstance: browser,
-  concurrency: 2,
+  concurrency: 1,
   delayRenderTimeoutInMilliseconds: 120000,
   ...(range ? { frameRange: [range[0], range[1]] } : {}),
   onProgress: ({ progress }) => {
