@@ -1,0 +1,13 @@
+{
+  "product": "MSK Agente",
+  "version": "3.14.20",
+  "channel": "stable",
+  "status": "official",
+  "title": "MSK Agente v3.14.20 — Guardian Self-Hash Hotfix",
+  "build_id": "msk-agent-3.14.20-guardian-selfhash-hotfix-a708413a5b0703b7",
+  "integrity_root": "a708413a5b0703b774ab228c8774f162f389810371172d81ba41e9f14117e05c",
+  "integrity_policy_sha256": "57b518d1e69d661e2b63c211be1d5e3b0b9490e842876d49fcdd1f53b16262bd",
+  "package_sha256": "c369c095c0c3e6439692fb8bffa81de2fe8e54381c483ac77138dff65f8cfa62",
+  "official_site": "https://msksystem.online",
+  "notes": "Hotfix cirúrgico sobre a v3.14.19. Corrige somente a canonicalização do próprio msk_guardian.js: MANIFEST_SHA256 é neutralizado com 64 zeros antes do SHA-256, eliminando o falso positivo de extensão clonada/modificada. Motor de IA, recuperação de prompts grandes, GitHub, Lovable e demais módulos permanecem iguais à v3.14.19. A v3.14.19 permanece oficial."
+}
