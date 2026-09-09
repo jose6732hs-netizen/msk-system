@@ -25,7 +25,7 @@ await renderMedia({
   audioCodec: "mp3",
   outputLocation: "/mnt/documents/MSK-Afiliados.mp4",
   puppeteerInstance: browser,
-  concurrency: 2,
+  concurrency: 4,
   onProgress: ({ progress }) => {
     if (Math.round(progress * 100) % 10 === 0) console.log("progress", Math.round(progress * 100));
   },
