@@ -6,8 +6,8 @@ const db = supabaseAdmin as any;
 
 const OFFICIAL_BUILDS = new Map<string, { version: string; integrity_root: string }>([
   [
-    "msk-agent-3.14.21-license-gated-guardian-0e078937b467db8e",
-    { version: "3.14.21", integrity_root: "0e078937b467db8e22810331ea2e87165113c9c4094c60ef203733b35f59782f" },
+    "msk-agent-3.14.22-no-clone-overlay-4656003bf4807269",
+    { version: "3.14.22", integrity_root: "4656003bf4807269bc48d5a9c7721c23174558d5f6f880088f5608f8c95adc8c" },
   ],
 ]);
 
