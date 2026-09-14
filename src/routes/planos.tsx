@@ -499,8 +499,8 @@ function PlanosPage() {
         amount: order.amount,
         expiresAt: null,
         title: `${order.quantity} créditos MSK`,
-        subtitle: "Pague por PIX. Após a aprovação, solicite sua key no suporte.",
-        pixOnly: true,
+        subtitle: "Escolha Pix ou cartão. Após a aprovação, solicite sua key no suporte.",
+        pixOnly: false,
       });
     } catch (error) {
       toast.error((error as Error).message);
@@ -1186,7 +1186,7 @@ function PlanosPage() {
                 <div className="text-right"><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Valor total</p><p className="mt-1 text-2xl font-black text-primary">{formatPrice(creditPrice.total)}</p></div>
               </div>
               {creditOverview?.profile ? <p className="mt-4 text-xs text-muted-foreground">👤 {creditOverview.profile.name || "Nome não preenchido"} · 📧 {creditOverview.profile.email}</p> : null}
-              <Button variant="neon" size="xl" className="mt-5 w-full rounded-2xl" disabled={creditBusy} onClick={() => void startCreditPix()}>{creditBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Gerar PIX</Button>
+               <Button variant="neon" size="xl" className="mt-5 w-full rounded-2xl" disabled={creditBusy} onClick={() => void startCreditPix()}>{creditBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Continuar pagamento</Button>
               <p className="mt-3 text-center text-[10px] text-muted-foreground">O pagamento não gera créditos ou key automaticamente. Após a aprovação, solicite a entrega ao suporte.</p>
             </div>
           </div>
