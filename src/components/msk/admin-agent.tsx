@@ -17,6 +17,7 @@ import {
   adminRegisterBuild,
   adminSetBuildPublished,
 } from "@/lib/extension.functions";
+import { supabase } from "@/integrations/supabase/client";
 
 const brl = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(v || 0));
@@ -93,12 +94,10 @@ export function AdminAgentTab() {
     setUploading(true);
     try {
       const signed = await createUploadUrl({ data: { version: v, fileName: file.name } });
-      const res = await fetch(signed.signedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": "application/zip" },
-        body: file,
-      });
-      if (!res.ok) throw new Error("Falha ao enviar o arquivo para o storage.");
+      const { error: uploadError } = await supabase.storage
+        .from("extension-builds")
+        .uploadToSignedUrl(signed.path, signed.token, file, { contentType: "application/zip" });
+      if (uploadError) throw new Error(uploadError.message || "Falha ao enviar o ZIP.");
       await registerBuild({
         data: {
           version: v,

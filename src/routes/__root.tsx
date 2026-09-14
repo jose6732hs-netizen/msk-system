@@ -287,38 +287,38 @@ function MobileNavigation() {
   }, []);
 
   async function downloadExtension() {
-    // A opção de baixar a extensão agora é livre (não precisa de login)
+    if (!signedIn) {
+      toast.error("Entre na sua conta para baixar a extensão.");
+      await navigate({ to: "/auth" });
+      return;
+    }
+
     setDownloading(true);
     setProgress(0);
+    let interval: number | undefined;
     try {
-      // Simulação de progresso para UX profissional
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return prev + 5;
-        });
+      interval = window.setInterval(() => {
+        setProgress((current) => Math.min(current + 5, 90));
       }, 100);
 
       const res = await getExtensionDownload({ data: {} });
-      
-      // Espera o progresso chegar a 100 antes de iniciar o download real
-      while (progress < 100) {
-        await new Promise(r => setTimeout(r, 50));
-      }
+      if (interval) window.clearInterval(interval);
+      setProgress(100);
 
-      const a = window.document.createElement("a");
-      a.href = res.url;
-      a.download = res.fileName;
-      a.rel = "noopener";
-      a.click();
+      const iframe = window.document.createElement("iframe");
+      iframe.src = res.url;
+      iframe.title = `Download ${res.channelName} v${res.version}`;
+      iframe.setAttribute("aria-hidden", "true");
+      iframe.style.display = "none";
+      window.document.body.appendChild(iframe);
+      window.setTimeout(() => iframe.remove(), 30_000);
       toast.success(`${res.channelName} v${res.version}: download iniciado.`);
     } catch (e) {
-      toast.error((e as Error).message);
+      if (interval) window.clearInterval(interval);
+      const message = e instanceof Error ? e.message : "Não foi possível preparar o download.";
+      toast.error(message || "Não foi possível preparar o download.");
     } finally {
-      setTimeout(() => {
+      window.setTimeout(() => {
         setDownloading(false);
         setProgress(0);
       }, 500);

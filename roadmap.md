@@ -1,3 +1,9 @@
+## Correções atuais
+
+- [ ] Corrigir download de ZIP que fica carregando no menu e preservar o painel do cliente.
+- [ ] Padronizar o envio de ZIP do MSK Agente.
+- [ ] Impedir que falhas temporárias em Modelos de IA derrubem a área administrativa.
+
 # Roadmap
 
 - [x] Incorporar a base oficial 3.4.9 sem alterar licença/GitHub

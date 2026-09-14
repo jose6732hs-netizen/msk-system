@@ -138,9 +138,10 @@ export function AdminAgentAiSettings() {
   const [model, setModel] = useState(PROVIDERS.synterolink.defaultModel);
   const [baseUrl, setBaseUrl] = useState(PROVIDERS.synterolink.defaultBaseUrl || "");
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["agent-ai-settings"],
     queryFn: () => statusFn(),
+    retry: 1,
   });
 
   const rows = useMemo(() => new Map((data?.providers ?? []).map((row) => [row.providerId, row])), [data?.providers]);
@@ -234,7 +235,17 @@ export function AdminAgentAiSettings() {
         </Button>
       </div>
 
-      {section === "models" ? <AdminExtensionModels /> : section === "training" ? <AdminAiGlobalTraining /> : (
+      {isError ? (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+          <p className="text-xs font-bold text-destructive">Não foi possível carregar as configurações de IA.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{error instanceof Error ? error.message : "Falha temporária no serviço de IA."}</p>
+          <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetch()}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : null}
+
+      {!isError && (section === "models" ? <AdminExtensionModels /> : section === "training" ? <AdminAiGlobalTraining /> : (
         <section className="rounded-[1.75rem] border border-primary/25 bg-gradient-to-br from-primary/[0.08] via-background to-background p-5 sm:p-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -368,7 +379,7 @@ export function AdminAgentAiSettings() {
 
           {isLoading ? <p className="mt-3 text-xs text-muted-foreground">Carregando configurações…</p> : null}
         </section>
-      )}
+      ))}
     </div>
   );
 }
