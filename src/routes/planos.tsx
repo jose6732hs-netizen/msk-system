@@ -1191,6 +1191,100 @@ function PlanosPage() {
             </div>
           </div>
         </section>
+
+        <ChatGptOfferSection
+          imageUrl={chatgptCard}
+          plan={chatgptPlan}
+          loadingPlan={loadingPlan}
+          onAdd={(plan) => void addToCart(plan)}
+          onShare={(plan) => void sharePlan(plan)}
+        />
+
+        <div className="mt-10 flex flex-wrap gap-2">
+          {categoryFilters.map((filter) => {
+            const active = category === filter.id;
+            return (
+              <Button
+                key={filter.id}
+                type="button"
+                size="sm"
+                variant={active ? "neon" : "outline"}
+                onClick={() => setCategory(filter.id)}
+                className="rounded-full px-4 text-[10px] font-black uppercase tracking-widest"
+              >
+                {filter.label}
+              </Button>
+            );
+          })}
+        </div>
+
+        {offersLoading ? (
+          <div className="mt-16 flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {showAgent ? (
+              <OfferCarouselSection
+                sectionId="msk-agente"
+                eyebrow="Assistente do projeto"
+                title="MSK Agente"
+                description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
+                bannerUrl={agentBanner}
+                plans={agentPlans ?? []}
+                highlightSlug="msk-agent-2"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
+
+            {showLive ? (
+              <OfferCarouselSection
+                sectionId="msk-live"
+                eyebrow="Produto exclusivo para TikTok Live"
+                title="MSK LIVE · TikTok"
+                description="Planos exclusivos da extensão MSK LIVE para TikTok. Licenças, dispositivos e acesso são separados da extensão principal, do MSK Agente e do Clonador."
+                bannerUrl={liveBanner}
+                plans={livePlans ?? []}
+                highlightSlug="msk-live-oferta-2"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
+
+            {showCloner ? (
+              <OfferCarouselSection
+                sectionId="clonagem-msk"
+                eyebrow="Ferramenta independente"
+                title="Clonagem"
+                description="Capture e recrie páginas com o Clonador MSK. A licença do Clonador é independente da extensão principal."
+                bannerUrl={clonerBanner}
+                plans={clonerPlans ?? []}
+                highlightSlug="page-cloner-monthly"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
+
+            {showExtension ? (
+              <OfferCarouselSection
+                sectionId="extensao-msk"
+                eyebrow="Produto principal MSK"
+                title="MSK · Extensão Principal"
+                description="Planos exclusivos da extensão principal MSK. MSK LIVE/TikTok possui uma seção e uma licença próprias."
+                bannerUrl={extensionBanner}
+                plans={plans ?? []}
+                highlightSlug="monthly"
+                loadingPlan={loadingPlan}
+                onAdd={(plan) => void addToCart(plan)}
+                onShare={(plan) => void sharePlan(plan)}
+              />
+            ) : null}
+          </>
+        )}
       </main>
       <SiteFooter />
 
