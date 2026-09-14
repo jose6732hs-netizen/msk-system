@@ -442,9 +442,18 @@ function PlanosPage() {
   const [creditBusy, setCreditBusy] = useState(false);
   const { billing, complete } = useBilling();
   const creditPrice = calculateCreditPrice(creditQuantity);
+  const { data: creditAuthSession, isPending: creditAuthPending } = useQuery({
+    queryKey: ["credit-purchase-auth-session"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getSession();
+      return data.session ?? null;
+    },
+    staleTime: 30_000,
+  });
   const { data: creditOverview, refetch: refetchCredits } = useQuery({
     queryKey: ["credit-purchase-overview"],
     queryFn: () => getCreditPurchaseOverview(),
+    enabled: !creditAuthPending && Boolean(creditAuthSession),
     retry: false,
   });
 
