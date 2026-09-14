@@ -13,6 +13,8 @@ import {
   Share2,
   ShoppingCart,
   Sparkles,
+  Gem,
+  ShieldCheck,
   Trash2,
   X,
 } from "lucide-react";
@@ -30,6 +32,8 @@ import { getClonerProduct, getSmartOffer } from "@/lib/cloner.functions";
 import { getCmsContent } from "@/lib/cms.functions";
 import { resolveSiteImage } from "@/lib/site-images";
 import { useSupportLink } from "@/lib/support-link";
+import { calculateCreditPrice, CREDIT_MAX, CREDIT_MIN, CREDIT_STEP } from "@/lib/credit-pricing";
+import { createCreditPurchase, getCreditPurchaseOverview, requestCreditTrial } from "@/lib/credit-purchases.functions";
 import {
   generatePurchasePixPayment,
   preparePurchasePayment,
@@ -434,7 +438,67 @@ function PlanosPage() {
   const [offerAccepted, setOfferAccepted] = useState(false);
   const [offerLoading, setOfferLoading] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [creditQuantity, setCreditQuantity] = useState(150);
+  const [creditBusy, setCreditBusy] = useState(false);
   const { billing, complete } = useBilling();
+  const creditPrice = calculateCreditPrice(creditQuantity);
+  const { data: creditOverview, refetch: refetchCredits } = useQuery({
+    queryKey: ["credit-purchase-overview"],
+    queryFn: () => getCreditPurchaseOverview(),
+    retry: false,
+  });
+
+  async function claimTrial() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      navigate({ to: "/auth", search: { next: "/planos" } });
+      return;
+    }
+    setCreditBusy(true);
+    try {
+      await requestCreditTrial();
+      await refetchCredits();
+      toast.success("Teste grátis liberado: 4 créditos por 24 horas.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setCreditBusy(false);
+    }
+  }
+
+  async function startCreditPix() {
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      navigate({ to: "/auth", search: { next: "/planos" } });
+      return;
+    }
+    if (!complete) {
+      setPayer({ planId: "__credits__", planName: `${creditQuantity} créditos MSK` });
+      return;
+    }
+    await createCreditPixOrder();
+  }
+
+  async function createCreditPixOrder() {
+    setCreditBusy(true);
+    try {
+      const order = await createCreditPurchase({ data: { quantity: creditQuantity } });
+      setSmartPix({
+        transactionId: order.transactionId,
+        pixCode: null,
+        qrCode: null,
+        amount: order.amount,
+        expiresAt: null,
+        title: `${order.quantity} créditos MSK`,
+        subtitle: "Pague por PIX. Após a aprovação, solicite sua key no suporte.",
+        pixOnly: true,
+      });
+    } catch (error) {
+      toast.error((error as Error).message);
+    } finally {
+      setCreditBusy(false);
+    }
+  }
 
   const { data: clonerProduct } = useQuery({
     queryKey: ["cloner-product"],
@@ -841,7 +905,11 @@ function PlanosPage() {
     setInlineOffer(null);
     setOfferAccepted(false);
     setSmartPix(null);
-    navigate({ to: "/obrigado", search: { transactionId } });
+    if (smartPix.title.includes("créditos MSK")) {
+      navigate({ to: "/painel" });
+    } else {
+      navigate({ to: "/obrigado", search: { transactionId } });
+    }
   }
 
   useEffect(() => {
@@ -1076,101 +1144,44 @@ function PlanosPage() {
           ) : null}
         </header>
 
-        <ChatGptOfferSection
-          imageUrl={chatgptCard}
-          plan={chatgptPlan}
-          loadingPlan={loadingPlan}
-          onAdd={(plan) => void addToCart(plan)}
-          onShare={(plan) => void sharePlan(plan)}
-        />
+        <section className="relative mt-12 overflow-hidden rounded-[2rem] border border-primary/25 bg-[#080b09]/90 p-5 shadow-[0_0_80px_-35px_hsl(var(--primary))] sm:p-9">
+          <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+          <div className="relative grid gap-8 lg:grid-cols-[.72fr_1.28fr]">
+            <div className="rounded-3xl border border-primary/20 bg-primary/[.045] p-6">
+              <div className="flex items-center gap-3"><ShieldCheck className="h-6 w-6 text-primary" /><span className="text-xs font-black uppercase tracking-[.2em] text-primary">Teste grátis</span></div>
+              <p className="mt-5 text-5xl font-black">4 <span className="text-lg text-muted-foreground">créditos</span></p>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">Validado com segurança pelo seu usuário e e-mail. Atualizar a página ou trocar de dispositivo não duplica o teste.</p>
+              {creditOverview?.trial.available !== false ? (
+                <Button variant="neonOutline" className="mt-6 w-full" disabled={creditBusy} onClick={() => void claimTrial()}>
+                  {creditBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Liberar teste grátis
+                </Button>
+              ) : (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-black/30 p-4 text-xs text-muted-foreground">Teste já utilizado. Nova liberação em {new Date(creditOverview?.trial.nextAvailableAt ?? "").toLocaleString("pt-BR")}.</div>
+              )}
+            </div>
 
-        <div className="mt-10 flex flex-wrap gap-2">
-          {categoryFilters.map((filter) => {
-            const active = category === filter.id;
-            return (
-              <button
-                key={filter.id}
-                type="button"
-                onClick={() => setCategory(filter.id)}
-                className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest transition ${
-                  active
-                    ? "border-primary bg-primary/15 text-primary shadow-[0_0_25px_-6px_hsl(var(--primary))]"
-                    : "border-white/10 bg-white/[.03] text-muted-foreground hover:border-primary/40 hover:text-primary"
-                }`}
-              >
-                {filter.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {offersLoading ? (
-          <div className="mt-16 flex justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-3"><Gem className="h-6 w-6 text-fuchsia-400" /><span className="text-xs font-black uppercase tracking-[.2em] text-fuchsia-300">Compra personalizada</span></div>
+              <h2 className="mt-3 text-2xl font-black uppercase sm:text-4xl">Escolha quantos créditos deseja</h2>
+              <div className="mt-7 flex items-center justify-center gap-3 sm:gap-5">
+                <Button size="icon" variant="neonOutline" className="h-12 w-12 rounded-2xl" onClick={() => setCreditQuantity((q) => Math.max(CREDIT_MIN, q - CREDIT_STEP))}><Minus /></Button>
+                <div className="min-w-0 text-center">
+                  <input aria-label="Quantidade de créditos" type="number" min={CREDIT_MIN} max={CREDIT_MAX} step={CREDIT_STEP} value={creditQuantity} onChange={(event) => setCreditQuantity(Math.max(CREDIT_MIN, Math.min(CREDIT_MAX, Number(event.target.value) || CREDIT_MIN)))} onBlur={() => setCreditQuantity(calculateCreditPrice(creditQuantity).quantity)} className="w-36 bg-transparent text-center text-4xl font-black text-primary outline-none sm:w-52 sm:text-6xl" />
+                  <p className="text-[10px] font-black uppercase tracking-[.25em] text-muted-foreground">créditos</p>
+                </div>
+                <Button size="icon" variant="neonOutline" className="h-12 w-12 rounded-2xl" onClick={() => setCreditQuantity((q) => Math.min(CREDIT_MAX, q + CREDIT_STEP))}><Plus /></Button>
+              </div>
+              <input aria-label="Seletor de créditos" type="range" min={CREDIT_MIN} max={CREDIT_MAX} step={CREDIT_STEP} value={creditQuantity} onChange={(event) => setCreditQuantity(Number(event.target.value))} className="mt-7 w-full accent-[hsl(var(--primary))]" />
+              <div className="mt-6 grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-black/35 p-4">
+                <div><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Por crédito</p><p className="mt-1 text-lg font-bold">{formatPrice(creditPrice.unitPrice)}</p></div>
+                <div className="text-right"><p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">Valor total</p><p className="mt-1 text-2xl font-black text-primary">{formatPrice(creditPrice.total)}</p></div>
+              </div>
+              {creditOverview?.profile ? <p className="mt-4 text-xs text-muted-foreground">👤 {creditOverview.profile.name || "Nome não preenchido"} · 📧 {creditOverview.profile.email}</p> : null}
+              <Button variant="neon" size="xl" className="mt-5 w-full rounded-2xl" disabled={creditBusy} onClick={() => void startCreditPix()}>{creditBusy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Gerar PIX</Button>
+              <p className="mt-3 text-center text-[10px] text-muted-foreground">O pagamento não gera créditos ou key automaticamente. Após a aprovação, solicite a entrega ao suporte.</p>
+            </div>
           </div>
-        ) : (
-          <>
-            {showAgent ? (
-              <OfferCarouselSection
-                sectionId="msk-agente"
-                eyebrow="Assistente do projeto"
-                title="MSK Agente"
-                description="Assistente técnico do seu projeto: analisa, planeja e prepara alterações no seu projeto."
-                bannerUrl={agentBanner}
-                plans={agentPlans ?? []}
-                highlightSlug="msk-agent-2"
-                loadingPlan={loadingPlan}
-                onAdd={(plan) => void addToCart(plan)}
-                onShare={(plan) => void sharePlan(plan)}
-              />
-            ) : null}
-
-            {showLive ? (
-              <OfferCarouselSection
-                sectionId="msk-live"
-                eyebrow="Produto exclusivo para TikTok Live"
-                title="MSK LIVE · TikTok"
-                description="Planos exclusivos da extensão MSK LIVE para TikTok. Licenças, dispositivos e acesso são separados da extensão principal, do MSK Agente e do Clonador."
-                bannerUrl={liveBanner}
-                plans={livePlans ?? []}
-                highlightSlug="msk-live-oferta-2"
-                loadingPlan={loadingPlan}
-                onAdd={(plan) => void addToCart(plan)}
-                onShare={(plan) => void sharePlan(plan)}
-              />
-            ) : null}
-
-            {showCloner ? (
-              <OfferCarouselSection
-                sectionId="clonagem-msk"
-                eyebrow="Ferramenta independente"
-                title="Clonagem"
-                description="Capture e recrie páginas com o Clonador MSK. A licença do Clonador é independente da extensão principal."
-                bannerUrl={clonerBanner}
-                plans={clonerPlans ?? []}
-                highlightSlug="page-cloner-monthly"
-                loadingPlan={loadingPlan}
-                onAdd={(plan) => void addToCart(plan)}
-                onShare={(plan) => void sharePlan(plan)}
-              />
-            ) : null}
-
-            {showExtension ? (
-              <OfferCarouselSection
-                sectionId="extensao-msk"
-                eyebrow="Produto principal MSK"
-                title="MSK · Extensão Principal"
-                description="Planos exclusivos da extensão principal MSK. MSK LIVE/TikTok possui uma seção e uma licença próprias e não aparece mais neste bloco."
-                bannerUrl={extensionBanner}
-                plans={plans ?? []}
-                highlightSlug="monthly"
-                loadingPlan={loadingPlan}
-                onAdd={(plan) => void addToCart(plan)}
-                onShare={(plan) => void sharePlan(plan)}
-              />
-            ) : null}
-          </>
-        )}
+        </section>
       </main>
       <SiteFooter />
 
@@ -1202,7 +1213,9 @@ function PlanosPage() {
                   onSaved={(nextBilling) => {
                     const current = payer;
                     setPayer(null);
-                    if (current) {
+                    if (current?.planId === "__credits__") {
+                      void createCreditPixOrder();
+                    } else if (current) {
                       void subscribe(
                         current.planId,
                         current.planName,

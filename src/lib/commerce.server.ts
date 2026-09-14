@@ -425,7 +425,14 @@ export async function settlePaidTransaction(transactionId: string) {
 
   await supabaseAdmin
     .from("transactions")
-    .update({ status: "PAID", paid_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({
+      status: "PAID",
+      paid_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...(tx.purpose === "credit_purchase"
+        ? { metadata: { ...objectMeta(tx.metadata), delivery_status: "awaiting_key" } }
+        : {}),
+    } as never)
     .eq("id", tx.id);
 
   const amount = Number(tx.amount);

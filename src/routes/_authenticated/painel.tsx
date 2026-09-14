@@ -31,6 +31,8 @@ import { NotificationSettings } from "@/components/msk/notification-settings";
 import { LicenseCard } from "@/components/msk/license-card";
 import { AgentAccessCard } from "@/components/msk/agent-access-card";
 import { AffiliateRequestCard } from "@/components/msk/affiliate-request-card";
+import { getCreditPurchaseOverview } from "@/lib/credit-purchases.functions";
+import { buildWhatsappLink } from "@/lib/support-link";
 
 export const Route = createFileRoute("/_authenticated/painel")({
   head: () => ({
@@ -112,6 +114,10 @@ function Painel() {
   const { data, isLoading } = useQuery({
     queryKey: ["account"],
     queryFn: () => fetchAccount(),
+  });
+  const { data: creditData } = useQuery({
+    queryKey: ["credit-purchase-overview"],
+    queryFn: () => getCreditPurchaseOverview(),
   });
 
   const license = data?.license as any;
@@ -337,6 +343,27 @@ function Painel() {
         </div>
 
         <AgentAccessCard />
+
+        {creditData?.purchases?.length ? (
+          <section className="glass mb-8 rounded-[2rem] border border-primary/20 p-6 md:p-8">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-primary">Minhas compras</p><h2 className="mt-1 text-2xl font-black uppercase">Créditos e entrega da key</h2></div>
+              <Button asChild variant="neonOutline" size="sm"><Link to="/planos">Comprar créditos</Link></Button>
+            </div>
+            <div className="mt-5 grid gap-3">
+              {creditData.purchases.map((purchase) => {
+                const approved = Boolean(purchase.paidAt);
+                const delivered = purchase.deliveryStatus === "key_delivered";
+                const message = `Olá! Meu pagamento do MSK System foi aprovado e preciso receber minha chave.\n\n🧾 Pedido: #${purchase.identifier}\n👤 Nome: ${creditData.profile?.name ?? ""}\n📧 E-mail: ${creditData.profile?.email ?? ""}\n💎 Créditos comprados: ${purchase.credits}\n💰 Valor pago: ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(purchase.amount)}\n✅ Status: Pagamento aprovado\n\nGostaria de receber minha key/licença.`;
+                const purchaseSupport = buildWhatsappLink((cms as any)?.config?.support_whatsapp || (cms as any)?.config?.support_phone || "64999117113", message);
+                return <article key={purchase.id} className="rounded-2xl border border-white/10 bg-black/30 p-4 sm:flex sm:items-center sm:justify-between sm:gap-4">
+                  <div><p className="font-mono text-xs font-bold text-primary">Pedido #{purchase.identifier}</p><p className="mt-1 font-bold">{purchase.credits} créditos · {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(purchase.amount)}</p><p className="mt-1 text-xs text-muted-foreground">{fmt(purchase.createdAt)}</p></div>
+                  <div className="mt-3 text-left sm:mt-0 sm:text-right"><p className={`text-xs font-black uppercase ${delivered ? "text-primary" : approved ? "text-amber-300" : "text-muted-foreground"}`}>{delivered ? "✓ Key entregue" : approved ? "Pagamento confirmado · aguardando key" : "Aguardando pagamento"}</p>{approved && !delivered && purchaseSupport ? <Button asChild variant="neon" size="sm" className="mt-2"><a href={purchaseSupport} target="_blank" rel="noreferrer">Falar com o suporte</a></Button> : null}</div>
+                </article>;
+              })}
+            </div>
+          </section>
+        ) : null}
 
 
 

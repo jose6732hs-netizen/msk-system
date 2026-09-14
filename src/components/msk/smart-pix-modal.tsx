@@ -75,6 +75,7 @@ export type SmartPixState = {
   expiresAt?: string | null;
   title: string;
   subtitle?: string | null;
+  pixOnly?: boolean;
 };
 
 type CheckoutItem = {
@@ -320,8 +321,8 @@ export function SmartPixModal({
         </header>
 
         <div className="relative z-20 shrink-0 border-b border-white/10 bg-[#0B0B0B] px-3 py-3 sm:px-7 sm:py-4">
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-black/30 p-1.5">
-            <button
+          <div className={`grid ${pix.pixOnly ? "grid-cols-1" : "grid-cols-2"} gap-2 rounded-2xl border border-white/10 bg-black/30 p-1.5`}>
+            {!pix.pixOnly ? <button
               type="button"
               onClick={() => {
                 setMethod("pix");
@@ -330,7 +331,7 @@ export function SmartPixModal({
               className={`flex min-h-11 items-center justify-center gap-2 rounded-xl text-xs font-black uppercase transition ${method === "pix" ? "bg-primary text-black shadow-[0_0_22px_rgba(57,255,20,.18)]" : "text-white/55 hover:bg-white/5 hover:text-white"}`}
             >
               <QrCode className="h-4 w-4" /> PIX
-            </button>
+            </button> : null}
             <button
               type="button"
               onClick={() => {

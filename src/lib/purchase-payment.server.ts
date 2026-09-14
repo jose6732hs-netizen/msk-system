@@ -344,7 +344,7 @@ export async function generatePurchasePixForTransaction(userId: string, transact
     .select("id,identifier,user_id,plan_id,amount,status,method,metadata,splits,pix_code,pix_qrcode,provider,provider_transaction_id,checkout_url,expires_at")
     .eq("id", transactionId)
     .eq("user_id", userId)
-    .eq("purpose", "purchase")
+    .in("purpose", ["purchase", "credit_purchase"])
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!tx) throw new Error("PAYMENT_NOT_FOUND");
@@ -404,7 +404,13 @@ export async function generatePurchasePixForTransaction(userId: string, transact
       .filter((line: any) => line.unitPrice > 0);
 
     if (!items.length) {
-      items = [{ title: "MSK SISTEM", unitPrice: Math.round(Number(tx.amount) * 100), quantity: 1, tangible: false }];
+      const creditQuantity = Number(metadata["credit_quantity"] ?? 0);
+      items = [{
+        title: creditQuantity > 0 ? `${creditQuantity} créditos MSK` : "MSK SISTEM",
+        unitPrice: Math.round(Number(tx.amount) * 100),
+        quantity: 1,
+        tangible: false,
+      }];
     }
 
     const { createPixWithFailover } = await import("./payments/gateway.server");
