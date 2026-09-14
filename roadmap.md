@@ -1,8 +1,8 @@
 ## Correções atuais
 
-- [ ] Corrigir download de ZIP que fica carregando no menu e preservar o painel do cliente.
-- [ ] Padronizar o envio de ZIP do MSK Agente.
-- [ ] Impedir que falhas temporárias em Modelos de IA derrubem a área administrativa.
+- [x] Corrigir download de ZIP que fica carregando no menu e preservar o painel do cliente.
+- [x] Padronizar o envio de ZIP do MSK Agente.
+- [x] Impedir que falhas temporárias em Modelos de IA derrubem a área administrativa.
 
 # Roadmap
 
