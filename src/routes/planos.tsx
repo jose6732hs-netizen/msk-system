@@ -425,7 +425,7 @@ function ChatGptOfferSection({
 function PlanosPage() {
   const navigate = useNavigate();
   const supportLink = useSupportLink(
-    "Olá! Quero solicitar o teste grátis e receber o arquivo ZIP da extensão MSK.",
+    "Olá! Quero solicitar o teste grátis e receber a key de ativação da extensão MSK.",
   );
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [payer, setPayer] = useState<PayerState | null>(null);
@@ -901,11 +901,11 @@ function PlanosPage() {
                 id="extension-access-title"
                 className="mt-2 text-xl font-black leading-tight sm:text-2xl"
               >
-                Teste grátis e arquivo ZIP da extensão
+                Teste grátis e chave de ativação
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-                O arquivo não fica disponível para download direto. Fale com o agente no suporte
-                para solicitar o link do ZIP e liberar seu teste grátis com orientação de instalação.
+                O arquivo ZIP da extensão fica disponível para download dentro do seu painel após a compra.
+                Fale com o agente no suporte para receber sua key de ativação e liberar seu teste grátis com orientação de instalação.
               </p>
               <div className="mt-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 <Clock3 className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
