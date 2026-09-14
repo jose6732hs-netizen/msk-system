@@ -42,7 +42,11 @@ export function AdminExtensionModels() {
   const [newLabel, setNewLabel] = useState("");
   const [openProviders, setOpenProviders] = useState<Record<string, boolean>>({});
 
-  const { data, isLoading } = useQuery({ queryKey: ["extension-models"], queryFn: () => listFn() });
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ["extension-models"],
+    queryFn: () => listFn(),
+    retry: 1,
+  });
   const refresh = () => void qc.invalidateQueries({ queryKey: ["extension-models"] });
 
   const grouped = useMemo(() => {
@@ -119,8 +123,17 @@ export function AdminExtensionModels() {
       </div>
 
       {isLoading ? <p className="mt-4 text-xs text-muted-foreground">Carregando catálogo…</p> : null}
+      {isError ? (
+        <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/10 p-4">
+          <p className="text-xs font-bold text-destructive">Não foi possível carregar os modelos agora.</p>
+          <p className="mt-1 text-xs text-muted-foreground">{error instanceof Error ? error.message : "Falha temporária no catálogo."}</p>
+          <Button className="mt-3" size="sm" variant="outline" onClick={() => void refetch()}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : null}
 
-      <div className="mt-5 space-y-4">
+      {!isError ? <div className="mt-5 space-y-4">
         {grouped.map(([providerIdKey, models]) => {
           const activeInProvider = models.filter((m) => m.visible).length;
           const open = openProviders[providerIdKey] ?? true;
@@ -184,7 +197,7 @@ export function AdminExtensionModels() {
             </div>
           );
         })}
-      </div>
+      </div> : null}
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
         <p className="text-xs font-black uppercase tracking-[0.16em]">Adicionar modelo manualmente</p>
