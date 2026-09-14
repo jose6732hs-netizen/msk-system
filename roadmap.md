@@ -6,3 +6,4 @@
 - [x] Adicionar painel profissional de execução acima do chat
 - [x] Atualizar integridade, validar e empacotar ZIP
 - [ ] Corrigir salvamento e permanência das APIs de IA no painel
+- [ ] Substituir os cards de /planos por seletor de créditos e teste grátis seguro
