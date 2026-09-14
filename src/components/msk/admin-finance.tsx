@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { adminFinanceOverview, adminSyncPayments, adminWithdrawalAction } from "@/lib/admin.functions";
+import { adminCreditPurchases, adminMarkCreditKeyDelivered } from "@/lib/credit-purchases.functions";
 import { FilterChips } from "@/components/msk/filter-chips";
 import { Money } from "@/components/msk/money";
 
@@ -24,6 +25,8 @@ export function AdminFinanceTab() {
   const loadFn = useServerFn(adminFinanceOverview);
   const actionFn = useServerFn(adminWithdrawalAction);
   const syncFn = useServerFn(adminSyncPayments);
+  const creditKeysFn = useServerFn(adminCreditPurchases);
+  const markKeyFn = useServerFn(adminMarkCreditKeyDelivered);
   const [syncing, setSyncing] = useState(false);
   const [txFilter, setTxFilter] = useState("all");
 
@@ -32,6 +35,20 @@ export function AdminFinanceTab() {
     queryFn: () => loadFn(),
     refetchInterval: 60_000,
   });
+  const { data: creditPurchases } = useQuery({
+    queryKey: ["admin-credit-purchases"],
+    queryFn: () => creditKeysFn(),
+  });
+
+  async function deliverKey(transactionId: string) {
+    try {
+      await markKeyFn({ data: { transactionId } });
+      await qc.invalidateQueries({ queryKey: ["admin-credit-purchases"] });
+      toast.success("Pedido marcado como key entregue.");
+    } catch (error) {
+      toast.error((error as Error).message);
+    }
+  }
 
   async function sync() {
     setSyncing(true);
@@ -81,6 +98,19 @@ export function AdminFinanceTab() {
           Sincronizar pagamentos
         </Button>
       </div>
+
+      <Section title="Compras pagas aguardando key">
+        {(creditPurchases ?? []).filter((row: any) => row.metadata?.delivery_status !== "key_delivered").map((row: any) => (
+          <div key={row.id} className="grid gap-2 border-t border-border/50 py-4 text-sm md:grid-cols-[1.2fr_1.4fr_.7fr_.7fr_auto] md:items-center">
+            <span><b>{row.profile?.name ?? "Cliente"}</b><br /><small className="text-muted-foreground">{row.profile?.email ?? "—"}</small></span>
+            <span className="font-mono text-xs text-primary">#{row.identifier}</span>
+            <span>{Number(row.metadata?.credit_quantity ?? 0)} créditos</span>
+            <span>{brl(row.amount)}</span>
+            <Button size="sm" variant="neon" onClick={() => void deliverKey(row.id)}>Marcar key entregue</Button>
+          </div>
+        ))}
+        {!(creditPurchases ?? []).some((row: any) => row.metadata?.delivery_status !== "key_delivered") && <Empty />}
+      </Section>
       <div className="overflow-hidden rounded-lg border border-primary/30 bg-background/40 shadow-[0_0_28px_hsl(var(--primary)/0.12)]">
         {([
           [["Receita aprovada", <Money value={s?.revenue} />], ["Receita gerada", <Money value={s?.generatedRevenue} />], ["Receita líquida", <Money value={s?.netRevenue} />], ["Ticket médio", <Money value={s?.averageTicket} />]],

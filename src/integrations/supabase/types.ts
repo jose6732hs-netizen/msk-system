@@ -988,6 +988,56 @@ export type Database = {
         }
         Relationships: []
       }
+      credit_trials: {
+        Row: {
+          allowance_id: string | null
+          available_again_at: string
+          created_at: string
+          email: string
+          email_hash: string
+          id: string
+          name: string
+          quantity: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allowance_id?: string | null
+          available_again_at: string
+          created_at?: string
+          email: string
+          email_hash: string
+          id?: string
+          name: string
+          quantity?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allowance_id?: string | null
+          available_again_at?: string
+          created_at?: string
+          email?: string
+          email_hash?: string
+          id?: string
+          name?: string
+          quantity?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_trials_allowance_id_fkey"
+            columns: ["allowance_id"]
+            isOneToOne: false
+            referencedRelation: "token_allowances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           created_at: string
@@ -4744,6 +4794,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_credit_trial: {
+        Args: {
+          p_email: string
+          p_email_hash: string
+          p_name: string
+          p_user_id: string
+        }
+        Returns: {
+          allowance_id: string
+          available_again_at: string
+          trial_id: string
+        }[]
+      }
       consume_rate_limit: {
         Args: { _bucket: string; _identifier: string; _limit: number }
         Returns: boolean

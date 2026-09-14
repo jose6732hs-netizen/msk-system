@@ -35,7 +35,7 @@ export async function loadFinanceOverview() {
     fetchAll(() =>
       supabaseAdmin
         .from("transactions")
-        .select("id,user_id,identifier,amount,status,method,purpose,created_at,paid_at")
+        .select("id,user_id,identifier,amount,status,method,purpose,created_at,paid_at,metadata")
         .order("created_at", { ascending: false }),
     ),
     fetchAll(() =>

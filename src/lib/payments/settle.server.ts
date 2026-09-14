@@ -166,22 +166,25 @@ async function ensureTransactionLicenses(tx: {
 export async function finalizePaidTransaction(transactionId: string) {
   const { data: tx } = await supabaseAdmin
     .from("transactions")
-    .select("id,user_id,plan_id,amount,identifier,affiliate_id,metadata")
+    .select("id,user_id,plan_id,amount,identifier,affiliate_id,metadata,purpose")
     .eq("id", transactionId)
     .maybeSingle();
   if (!tx) return;
 
   const metadata = asMeta(tx.metadata);
+  const isManualCreditPurchase = tx.purpose === "credit_purchase";
   const lines = deliveryLines(metadata, (tx as { plan_id?: string | null }).plan_id ?? null);
   const configuredDelivery = lines.map((line) => ({ line, delivery: deliveryConfig(line) }));
 
-  console.info("[settle] entregando licenças do pedido", tx.identifier);
-  await ensureTransactionLicenses({
-    id: tx.id,
-    user_id: tx.user_id,
-    plan_id: (tx as { plan_id?: string | null }).plan_id ?? null,
-    metadata,
-  });
+  if (!isManualCreditPurchase) {
+    console.info("[settle] entregando licenças do pedido", tx.identifier);
+    await ensureTransactionLicenses({
+      id: tx.id,
+      user_id: tx.user_id,
+      plan_id: (tx as { plan_id?: string | null }).plan_id ?? null,
+      metadata,
+    });
+  }
 
   if (metadata["settled_notified"] === true) return;
 
@@ -193,7 +196,7 @@ export async function finalizePaidTransaction(transactionId: string) {
         (item) => item.delivery.method === "email" || item.delivery.method === "panel_email",
       );
 
-    if (shouldSendStandardEmail) {
+    if (shouldSendStandardEmail && !isManualCreditPurchase) {
       const { sendPurchaseApprovedEmail } = await import("@/lib/transactional-email.server");
       await sendPurchaseApprovedEmail(tx.id).catch((e) =>
         console.error("[settle] e-mail de compra aprovada falhou:", e),
@@ -242,7 +245,9 @@ export async function finalizePaidTransaction(transactionId: string) {
       userId: tx.user_id,
       type: "pix_approved",
       title: "Pagamento confirmado",
-      body: isSmartBundle
+      body: isManualCreditPurchase
+        ? `✅ Pagamento aprovado\n💎 ${Number(metadata["credit_quantity"] ?? 0)} créditos comprados\n🕐 Aguardando entrega manual da key pelo suporte`
+        : isSmartBundle
         ? `✅ Pagamento aprovado\n💵 Valor pago: ${paidLabel}\n🎁 Suas licenças do pedido já estão liberadas`
         : `✅ Pagamento aprovado\n💵 Valor pago: ${paidLabel}\n🔑 Sua licença já está liberada`,
       link: "/painel",
@@ -253,8 +258,10 @@ export async function finalizePaidTransaction(transactionId: string) {
 
   await notifyAdmins({
     type: "sale_approved",
-    title: isSmartBundle ? "Combo aprovado" : "Venda aprovada",
-    body: cardChargedTotal !== null && Math.abs(customerAmount - Number(tx.amount)) > 0.009
+    title: isManualCreditPurchase ? "Créditos aguardando key" : isSmartBundle ? "Combo aprovado" : "Venda aprovada",
+    body: isManualCreditPurchase
+      ? `✅ Pagamento aprovado\n💎 ${Number(metadata["credit_quantity"] ?? 0)} créditos\n🔑 Entrega manual da key pendente`
+      : cardChargedTotal !== null && Math.abs(customerAmount - Number(tx.amount)) > 0.009
       ? `✅ ${isSmartBundle ? "Combo inteligente" : "Venda"} aprovado\n💵 Produto: ${baseLabel}\n💳 Total cobrado: ${paidLabel}`
       : `✅ ${isSmartBundle ? "Combo inteligente" : "Venda"} aprovado\n💵 Valor: ${paidLabel}`,
     link: "/admin",
