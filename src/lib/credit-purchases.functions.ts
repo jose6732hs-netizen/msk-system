@@ -19,7 +19,7 @@ export const requestCreditTrial = createServerFn({ method: "POST" })
 
 export const createCreditPurchase = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ quantity: z.number().int().min(10).max(1000) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ quantity: z.number().int().min(40).max(1000) }).parse(input))
   .handler(async ({ context, data }) => {
     const { prepareCreditPurchase } = await import("./credit-purchases.server");
     return prepareCreditPurchase(context.userId, data.quantity);
