@@ -15,21 +15,14 @@ const CATALOG_KEY = "atomopay_catalog";
 /** A AtomoPay exige uma imagem de capa em todo produto cadastrado. */
 const DEFAULT_PRODUCT_COVER = "https://msksystem.online/favicon.png";
 
-type AtomoOfferEntry = { hash: string; unit: number; quantity: number };
-
 type AtomoCatalogState = {
   productHash?: string;
   offerHash?: string;
-  offersByAmount?: Record<string, string | AtomoOfferEntry>;
 };
 
 type AtomoCatalog = { productHash: string; offerHash: string };
 type AtomoPixCatalog = AtomoCatalog & { unitPrice: number; quantity: number };
 
-/** Acima deste ticket a AtomoPay envia a oferta para análise manual. */
-const SAFE_OFFER_MAX = 7000;
-/** Ticket mínimo aceito pela AtomoPay. */
-const MIN_OFFER_PRICE = 500;
 /** Checkout não pode ficar minutos aguardando o gateway. */
 const ATOMO_RATE_LIMIT_RETRIES = 2;
 const ATOMO_REQUEST_TIMEOUT_MS = 7000;
@@ -38,26 +31,6 @@ const ATOMO_MAX_RETRY_WAIT_MS = 1500;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Frações possíveis do valor total: unidade × quantidade = total exato,
- * sempre dentro dos limites aceitos automaticamente pela AtomoPay.
- */
-function splitCandidates(amount: number): { unit: number; quantity: number }[] {
-  const out: { unit: number; quantity: number }[] = [];
-  if (amount <= SAFE_OFFER_MAX) out.push({ unit: amount, quantity: 1 });
-  for (let quantity = 2; quantity <= 200; quantity += 1) {
-    if (amount % quantity !== 0) continue;
-    const unit = amount / quantity;
-    if (unit > SAFE_OFFER_MAX || unit < MIN_OFFER_PRICE) continue;
-    out.push({ unit, quantity });
-  }
-  // Ofertas de ticket baixo são aprovadas automaticamente pela AtomoPay:
-  // tenta primeiro os cortes menores.
-  out.sort((a, b) => a.unit - b.unit);
-  if (out.length === 0) out.push({ unit: amount, quantity: 1 });
-  return out;
 }
 
 function onlyDigits(v: string | undefined | null) {
@@ -71,17 +44,6 @@ function sanitizeProviderText(value: string) {
     .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]"')
     .replace(/\b\d{12,19}\b/g, "[card-redacted]")
     .slice(0, 500);
-}
-
-function offerPrice(offer: any) {
-  return Number(offer?.price ?? offer?.amount ?? offer?.value ?? 0);
-}
-
-/** status 1 = liberada; status 2 = aguardando aprovação manual. */
-function offerApproved(offer: any) {
-  const status = offer?.status;
-  if (status === undefined || status === null) return true;
-  return Number(status) === 1;
 }
 
 function customerData(customer: AmploCustomer) {

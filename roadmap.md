@@ -3,6 +3,7 @@
 - [x] Corrigir download de ZIP que fica carregando no menu e preservar o painel do cliente.
 - [x] Padronizar o envio de ZIP do MSK Agente.
 - [x] Impedir que falhas temporárias em Modelos de IA derrubem a área administrativa.
+- [x] Corrigir o Pix dinâmico da Átomo Pay sem criar ofertas para cada valor.
 
 # Roadmap
 
@@ -12,4 +13,4 @@
 - [x] Adicionar painel profissional de execução acima do chat
 - [x] Atualizar integridade, validar e empacotar ZIP
 - [ ] Corrigir salvamento e permanência das APIs de IA no painel
-- [ ] Substituir os cards de /planos por seletor de créditos e teste grátis seguro
+- [x] Adicionar seletor de créditos e teste grátis seguro sem remover as outras ofertas
