@@ -68,7 +68,7 @@ export async function getCardOptionsForTransaction(userId: string, transactionId
     .eq("id", transactionId)
     .maybeSingle();
 
-  if (!tx || tx.user_id !== userId || tx.purpose !== "purchase") {
+  if (!tx || tx.user_id !== userId || !["purchase", "credit_purchase"].includes(String(tx.purpose))) {
     throw new Error("Pedido não encontrado.");
   }
 
@@ -145,7 +145,9 @@ export async function payTransactionWithCard(input: {
     .maybeSingle();
 
   if (!tx) throw new Error("Pedido não encontrado.");
-  if (tx.user_id !== input.userId || tx.purpose !== "purchase") throw new Error("Pedido não encontrado.");
+  if (tx.user_id !== input.userId || !["purchase", "credit_purchase"].includes(String(tx.purpose))) {
+    throw new Error("Pedido não encontrado.");
+  }
 
   let currentStatus = String(tx.status ?? "").toUpperCase();
   let currentMethod = String(tx.method ?? "PENDING").toUpperCase();
@@ -271,7 +273,18 @@ export async function payTransactionWithCard(input: {
         ? `${base}?secret=${encodeURIComponent(creds.webhookSecret)}`
         : base;
 
-    const amounts = calculateCardAmounts(Number(tx.amount));
+    let canonicalBaseAmount = Number(tx.amount);
+    if (tx.purpose === "credit_purchase") {
+      const { calculateCreditPrice } = await import("../credit-pricing");
+      const quantity = Number(initialMeta["credit_quantity"] ?? 0);
+      const canonicalPrice = calculateCreditPrice(quantity);
+      if (canonicalPrice.quantity !== quantity) throw new Error("INVALID_CREDIT_QUANTITY");
+      canonicalBaseAmount = canonicalPrice.total;
+      if (Math.round(canonicalBaseAmount * 100) !== Math.round(Number(tx.amount) * 100)) {
+        throw new Error("PAYMENT_AMOUNT_MISMATCH");
+      }
+    }
+    const amounts = calculateCardAmounts(canonicalBaseAmount);
     const amountCents = Math.round(amounts.totalAmount * 100);
     const installments = Math.min(
       currentSettings.maxInstallments,

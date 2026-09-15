@@ -341,7 +341,7 @@ export async function preparePurchasePaymentOrder(input: PrepareInput) {
 export async function generatePurchasePixForTransaction(userId: string, transactionId: string) {
   const { data: tx, error } = await supabaseAdmin
     .from("transactions")
-    .select("id,identifier,user_id,plan_id,amount,status,method,metadata,splits,pix_code,pix_qrcode,provider,provider_transaction_id,checkout_url,expires_at")
+    .select("id,identifier,user_id,plan_id,amount,status,method,purpose,metadata,splits,pix_code,pix_qrcode,provider,provider_transaction_id,checkout_url,expires_at")
     .eq("id", transactionId)
     .eq("user_id", userId)
     .in("purpose", ["purchase", "credit_purchase"])
@@ -393,6 +393,17 @@ export async function generatePurchasePixForTransaction(userId: string, transact
     }
 
     const metadata = objectMeta(tx.metadata);
+    let canonicalAmountCents = Math.round(Number(tx.amount) * 100);
+    if (tx.purpose === "credit_purchase") {
+      const { calculateCreditPrice } = await import("./credit-pricing");
+      const quantity = Number(metadata["credit_quantity"] ?? 0);
+      const canonicalPrice = calculateCreditPrice(quantity);
+      if (canonicalPrice.quantity !== quantity) throw new Error("INVALID_CREDIT_QUANTITY");
+      canonicalAmountCents = Math.round(canonicalPrice.total * 100);
+      if (canonicalAmountCents !== Math.round(Number(tx.amount) * 100)) {
+        throw new Error("PAYMENT_AMOUNT_MISMATCH");
+      }
+    }
     const rawLines = Array.isArray(metadata["line_items"]) ? metadata["line_items"] : [];
     let items = rawLines
       .map((line: any) => ({
@@ -407,7 +418,7 @@ export async function generatePurchasePixForTransaction(userId: string, transact
       const creditQuantity = Number(metadata["credit_quantity"] ?? 0);
       items = [{
         title: creditQuantity > 0 ? `${creditQuantity} créditos MSK` : "MSK SISTEM",
-        unitPrice: Math.round(Number(tx.amount) * 100),
+        unitPrice: canonicalAmountCents,
         quantity: 1,
         tangible: false,
       }];
@@ -416,7 +427,7 @@ export async function generatePurchasePixForTransaction(userId: string, transact
     const { createPixWithFailover } = await import("./payments/gateway.server");
     const { provider, result, pixCode } = await createPixWithFailover({
       identifier: tx.identifier,
-      amountCents: Math.round(Number(tx.amount) * 100),
+      amountCents: canonicalAmountCents,
       customer: {
         name: profile?.name || profile?.email || "Cliente MSK",
         email: profile?.email || "cliente@msksystem.online",
