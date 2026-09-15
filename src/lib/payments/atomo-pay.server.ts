@@ -269,108 +269,13 @@ export class AtomoPayService {
   }
 
   /**
-   * Para PIX, resolve uma oferta compatível com o valor exato da cobrança.
-   * A primeira venda de um valor pode preparar uma oferta; depois o mapeamento
-   * fica em cache e as próximas cobranças pulam todo esse trabalho.
+   * O PIX dinâmico reutiliza a oferta aprovada do catálogo e envia o valor
+   * exato da compra em amount e cart[0].price. Não cria ofertas por preço.
    */
   private async ensurePixCatalogForAmount(amountCents: number): Promise<AtomoPixCatalog> {
     const amount = Math.max(1, Math.round(amountCents));
-    const amountKey = String(amount);
-    const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
-
-    const { data: saved } = await supabaseAdmin
-      .from("app_settings")
-      .select("value")
-      .eq("key", CATALOG_KEY)
-      .maybeSingle();
-    const cached = (saved?.value ?? {}) as AtomoCatalogState;
-    let productHash = String(envProduct ?? cached.productHash ?? "");
-
-    const cachedEntry = cached.offersByAmount?.[amountKey];
-    if (productHash && cachedEntry) {
-      if (typeof cachedEntry === "string") {
-        if (amount <= SAFE_OFFER_MAX) {
-          return { productHash, offerHash: cachedEntry, unitPrice: amount, quantity: 1 };
-        }
-      } else if (cachedEntry?.hash && cachedEntry.unit * cachedEntry.quantity === amount) {
-        return {
-          productHash,
-          offerHash: cachedEntry.hash,
-          unitPrice: cachedEntry.unit,
-          quantity: cachedEntry.quantity,
-        };
-      }
-    }
-
-    if (!productHash) {
-      const base = await this.ensureCatalog();
-      productHash = base.productHash;
-    }
-
-    const productRaw = (await this.call<Record<string, any>>(
-      "GET",
-      `/products/${encodeURIComponent(productHash)}`,
-    )) as any;
-    const product = productRaw?.data ?? productRaw ?? {};
-    const offers: any[] = Array.isArray(product?.offers)
-      ? product.offers
-      : Array.isArray(product?.offer)
-        ? product.offer
-        : [];
-
-    let offerHash = "";
-    let unitPrice = amount;
-    let quantity = 1;
-
-    for (const candidate of splitCandidates(amount)) {
-      const approved = offers.find(
-        (offer) => offer?.hash && offerPrice(offer) === candidate.unit && offerApproved(offer),
-      );
-      if (approved) {
-        offerHash = String(approved.hash);
-        unitPrice = candidate.unit;
-        quantity = candidate.quantity;
-        break;
-      }
-
-      const created = (await this.createOffer(productHash, {
-        title: `MSK unit ${candidate.unit}`,
-        amount: candidate.unit,
-      }).catch(() => null)) as any;
-      const createdOffer = created?.data ?? created;
-      const hash = String(createdOffer?.hash ?? createdOffer?.offer_hash ?? "");
-      if (!hash) continue;
-      if (!offerApproved(createdOffer)) continue;
-
-      // A resposta de criação já informa hash/status. Antes havia outro GET do
-      // produto somente para confirmar, duplicando latência no checkout.
-      offerHash = hash;
-      unitPrice = candidate.unit;
-      quantity = candidate.quantity;
-      break;
-    }
-
-    if (!offerHash) throw new Error("ATOMOPAY_CATALOG_OFFER_MISSING");
-
-    const offersByAmount = {
-      ...(cached.offersByAmount ?? {}),
-      [amountKey]: { hash: offerHash, unit: unitPrice, quantity },
-    };
-    await supabaseAdmin.from("app_settings").upsert(
-      {
-        key: CATALOG_KEY,
-        value: {
-          ...cached,
-          productHash,
-          offerHash: cached.offerHash ?? offerHash,
-          offersByAmount,
-        } as never,
-        updated_at: new Date().toISOString(),
-      } as never,
-      { onConflict: "key" },
-    );
-
-    return { productHash, offerHash, unitPrice, quantity };
+    const catalog = await this.ensureCatalog();
+    return { ...catalog, unitPrice: amount, quantity: 1 };
   }
 
   async resolveApprovedCatalog(amountCents: number): Promise<AtomoPixCatalog> {
