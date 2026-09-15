@@ -53,6 +53,11 @@ type GatewayWebhook = {
   [k: string]: unknown;
 };
 
+function providerAmountCents(value: unknown) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount) : null;
+}
+
 const PAID_EVENTS = [
   "TRANSACTION_PAID",
   "PAGO",
@@ -147,13 +152,15 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
      * oficial como fonte da verdade. Um POST forjado nunca marca como pago.
      */
     let verifiedStatus: string | null = null;
+    let verifiedTransaction: Record<string, unknown> | null = null;
     if (!isMatch) {
       if (provider === "atomopay" && providerTxId) {
         try {
           const { AtomoPayService } = await import("./atomo-pay.server");
           const service = await AtomoPayService.create();
-          const remote = (await service.getTransaction(providerTxId)) as Record<string, unknown>;
-          verifiedStatus = String(remote?.["status"] ?? "") || null;
+           const remote = (await service.getTransaction(providerTxId)) as Record<string, unknown>;
+           verifiedTransaction = remote;
+           verifiedStatus = String(remote?.["status"] ?? "") || null;
         } catch (e) {
           console.error("[atomopay] falha ao verificar transação:", (e as Error).message);
         }
@@ -221,7 +228,7 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
       ).data?.id;
 
     try {
-      let query = supabaseAdmin.from("transactions").select("id,status,amount,identifier,user_id");
+       let query = supabaseAdmin.from("transactions").select("id,status,amount,identifier,user_id,metadata");
       query = identifier
         ? query.eq("identifier", identifier)
         : query.eq("provider_transaction_id", providerTxId ?? "");
@@ -229,7 +236,7 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
       if (!tx && providerTxId) {
         const { data: byProvider } = await supabaseAdmin
           .from("transactions")
-          .select("id,status,amount,identifier,user_id")
+           .select("id,status,amount,identifier,user_id,metadata")
           .eq("provider_transaction_id", providerTxId)
           .maybeSingle();
         tx = byProvider;
@@ -258,6 +265,23 @@ export async function handleGatewayWebhook(provider: ProviderId, request: Reques
       });
 
       if (PAID_EVENTS.includes(eventType)) {
+        if (provider === "atomopay" && providerTxId) {
+          if (!verifiedTransaction) {
+            const { AtomoPayService } = await import("./atomo-pay.server");
+            verifiedTransaction = await (await AtomoPayService.create()).getTransaction(providerTxId);
+          }
+          const metadata = tx.metadata && typeof tx.metadata === "object" && !Array.isArray(tx.metadata)
+            ? (tx.metadata as Record<string, unknown>)
+            : {};
+          const expectedReais = Number(metadata["card_charged_total"] ?? tx.amount);
+          const expectedCents = Math.round(expectedReais * 100);
+          const confirmedCents = providerAmountCents(
+            verifiedTransaction["amount"] ?? verifiedTransaction["total_amount"] ?? verifiedTransaction["price"],
+          );
+          if (confirmedCents === null || confirmedCents !== expectedCents) {
+            throw new Error(`ATOMOPAY_AMOUNT_MISMATCH:${confirmedCents ?? "missing"}:${expectedCents}`);
+          }
+        }
         // Idempotência financeira: um reenvio de webhook nunca reprocessa a venda.
         if (String(tx.status).toUpperCase() === "PAID") {
           await supabaseAdmin

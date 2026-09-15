@@ -92,11 +92,14 @@ export async function createAtomoCardTransaction(input: {
   if (document.length !== 11 && document.length !== 14) throw new Error("ATOMOPAY_CUSTOMER_DOCUMENT_INVALID");
 
   const installments = Math.max(1, Math.round(input.installments));
-  const expMonth = String(input.card.expMonth).padStart(2, "0");
-  const expYear4 = String(input.card.expYear).length === 2
-    ? `20${input.card.expYear}`
-    : String(input.card.expYear);
-  const expYear2 = expYear4.slice(-2);
+  const expMonth = Math.round(input.card.expMonth);
+  const expYear = Math.round(input.card.expYear < 100 ? 2000 + input.card.expYear : input.card.expYear);
+  const now = new Date();
+  const currentMonth = now.getUTCMonth() + 1;
+  const currentYear = now.getUTCFullYear();
+  if (expMonth < 1 || expMonth > 12 || expYear < currentYear || (expYear === currentYear && expMonth < currentMonth)) {
+    throw new Error("ATOMOPAY_CARD_EXPIRY_INVALID");
+  }
   const holder = input.card.holderName.trim();
 
   const commonBody: Record<string, unknown> = {
@@ -129,64 +132,21 @@ export async function createAtomoCardTransaction(input: {
     ...(input.callbackUrl ? { postback_url: input.callbackUrl } : {}),
   };
 
-  // A AtomoPay já rejeitou (HTTP 400 genérico) o formato aninhado `card`.
-  // Enviamos os formatos aceitos pela família de API em ordem, parando no
-  // primeiro que o gateway aceitar — um 400 significa que nada foi cobrado.
-  const variants: Record<string, unknown>[] = [
-    {
-      ...commonBody,
-      card: {
-        number: pan,
-        holder_name: holder,
-        exp_month: Number(expMonth),
-        exp_year: Number(expYear4),
-        cvv,
-      },
-      card_number: pan,
-      card_holder_name: holder,
-      card_expiration_month: Number(expMonth),
-      card_expiration_year: Number(expYear4),
-      card_cvv: cvv,
+  const body: Record<string, unknown> = {
+    ...commonBody,
+    card: {
+      number: pan,
+      holder_name: holder,
+      exp_month: expMonth,
+      exp_year: expYear,
+      cvv,
     },
-    {
-      ...commonBody,
-      card_number: pan,
-      card_holder_name: holder,
-      card_expiration_month: expMonth,
-      card_expiration_year: expYear2,
-      card_cvv: cvv,
-    },
-    {
-      ...commonBody,
-      credit_card: {
-        number: pan,
-        holder_name: holder,
-        expiration_month: Number(expMonth),
-        expiration_year: Number(expYear4),
-        cvv,
-      },
-    },
-  ];
+  };
 
   // A marca no banco precisa existir antes do POST real, evitando estado ambíguo.
   await input.onTransactionRequestStart?.();
 
-  let raw: any = null;
-  let lastError: unknown = null;
-  for (let i = 0; i < variants.length; i += 1) {
-    try {
-      raw = unwrap(await callAtomo<any>(creds, "POST", "/transactions", variants[i]));
-      lastError = null;
-      break;
-    } catch (error) {
-      lastError = error;
-      const status = (error as { httpStatus?: number }).httpStatus;
-      // Só tentamos outro formato quando o gateway recusou o payload (400/422).
-      if (status !== 400 && status !== 422) throw error;
-      console.error(`[atomopay-card] formato ${i + 1} recusado, tentando próximo`);
-    }
-  }
-  if (lastError) throw lastError;
+  const raw = unwrap(await callAtomo<any>(creds, "POST", "/transactions", body));
 
   const providerStatus = String(raw?.payment_status ?? raw?.status ?? "prossessing");
   const transactionHash = String(
