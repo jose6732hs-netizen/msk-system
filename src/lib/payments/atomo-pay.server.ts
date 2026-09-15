@@ -23,6 +23,26 @@ type AtomoCatalogState = {
 type AtomoCatalog = { productHash: string; offerHash: string };
 type AtomoPixCatalog = AtomoCatalog & { unitPrice: number; quantity: number };
 
+function catalogItems(value: any): any[] {
+  return Array.isArray(value) ? value : (value?.data ?? value?.products ?? []);
+}
+
+function productOffers(value: any): any[] {
+  const product = value?.data ?? value ?? {};
+  if (Array.isArray(product?.offers)) return product.offers;
+  if (Array.isArray(product?.offer)) return product.offer;
+  return [];
+}
+
+function offerHashOf(value: any) {
+  return String(value?.hash ?? value?.offer_hash ?? "");
+}
+
+function isApprovedOffer(value: any) {
+  const status = value?.status ?? value?.approval_status ?? value?.active;
+  return status === 1 || status === "1" || status === true || String(status ?? "").toLowerCase() === "approved";
+}
+
 /** Checkout não pode ficar minutos aguardando o gateway. */
 const ATOMO_RATE_LIMIT_RETRIES = 2;
 const ATOMO_REQUEST_TIMEOUT_MS = 7000;
@@ -180,10 +200,22 @@ export class AtomoPayService {
 
     let productHash = String(envProduct ?? cached.productHash ?? "");
     let offerHash = String(envOffer ?? cached.offerHash ?? "");
-    if (productHash && offerHash) return { productHash, offerHash };
+
+    // A oferta pode continuar salva depois de ser substituída ou entrar em
+    // análise na AtomoPay. Confirme o estado atual antes de cada cobrança.
+    if (productHash && offerHash) {
+      const detail = await this.getProduct(productHash).catch(() => null);
+      const offers = productOffers(detail);
+      const configured = offers.find((offer) => offerHashOf(offer) === offerHash);
+      if (configured && isApprovedOffer(configured)) return { productHash, offerHash };
+
+      const approved = offers.find((offer) => offerHashOf(offer) && isApprovedOffer(offer));
+      if (approved) offerHash = offerHashOf(approved);
+      else offerHash = "";
+    }
 
     const listed = (await this.listProducts()) as any;
-    const items: any[] = Array.isArray(listed) ? listed : (listed?.data ?? listed?.products ?? []);
+    const items: any[] = catalogItems(listed);
     let product = productHash
       ? items.find((p) => String(p?.hash ?? p?.product_hash ?? "") === productHash)
       : items.find((p) => String(p?.title ?? p?.name ?? "").trim().toUpperCase() === "MSK SISTEM");
@@ -201,12 +233,10 @@ export class AtomoPayService {
     if (!productHash) throw new Error("ATOMOPAY_CATALOG_PRODUCT_MISSING");
 
     if (!offerHash) {
-      const offers: any[] = Array.isArray(product?.offers)
-        ? product.offers
-        : Array.isArray(product?.offer)
-          ? product.offer
-          : [];
-      offerHash = String(offers.find((o) => o?.hash)?.hash ?? "");
+      const detail = await this.getProduct(productHash).catch(() => product);
+      const offers = productOffers(detail);
+      const approved = offers.find((offer) => offerHashOf(offer) && isApprovedOffer(offer));
+      offerHash = approved ? offerHashOf(approved) : "";
     }
 
     if (!offerHash) {
