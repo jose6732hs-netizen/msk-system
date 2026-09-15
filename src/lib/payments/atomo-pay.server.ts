@@ -15,21 +15,14 @@ const CATALOG_KEY = "atomopay_catalog";
 /** A AtomoPay exige uma imagem de capa em todo produto cadastrado. */
 const DEFAULT_PRODUCT_COVER = "https://msksystem.online/favicon.png";
 
-type AtomoOfferEntry = { hash: string; unit: number; quantity: number };
-
 type AtomoCatalogState = {
   productHash?: string;
   offerHash?: string;
-  offersByAmount?: Record<string, string | AtomoOfferEntry>;
 };
 
 type AtomoCatalog = { productHash: string; offerHash: string };
 type AtomoPixCatalog = AtomoCatalog & { unitPrice: number; quantity: number };
 
-/** Acima deste ticket a AtomoPay envia a oferta para análise manual. */
-const SAFE_OFFER_MAX = 7000;
-/** Ticket mínimo aceito pela AtomoPay. */
-const MIN_OFFER_PRICE = 500;
 /** Checkout não pode ficar minutos aguardando o gateway. */
 const ATOMO_RATE_LIMIT_RETRIES = 2;
 const ATOMO_REQUEST_TIMEOUT_MS = 7000;
@@ -38,26 +31,6 @@ const ATOMO_MAX_RETRY_WAIT_MS = 1500;
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Frações possíveis do valor total: unidade × quantidade = total exato,
- * sempre dentro dos limites aceitos automaticamente pela AtomoPay.
- */
-function splitCandidates(amount: number): { unit: number; quantity: number }[] {
-  const out: { unit: number; quantity: number }[] = [];
-  if (amount <= SAFE_OFFER_MAX) out.push({ unit: amount, quantity: 1 });
-  for (let quantity = 2; quantity <= 200; quantity += 1) {
-    if (amount % quantity !== 0) continue;
-    const unit = amount / quantity;
-    if (unit > SAFE_OFFER_MAX || unit < MIN_OFFER_PRICE) continue;
-    out.push({ unit, quantity });
-  }
-  // Ofertas de ticket baixo são aprovadas automaticamente pela AtomoPay:
-  // tenta primeiro os cortes menores.
-  out.sort((a, b) => a.unit - b.unit);
-  if (out.length === 0) out.push({ unit: amount, quantity: 1 });
-  return out;
 }
 
 function onlyDigits(v: string | undefined | null) {
@@ -71,17 +44,6 @@ function sanitizeProviderText(value: string) {
     .replace(/"?cvv"?\s*:\s*"?\d{3,4}"?/gi, '"cvv":"[redacted]"')
     .replace(/\b\d{12,19}\b/g, "[card-redacted]")
     .slice(0, 500);
-}
-
-function offerPrice(offer: any) {
-  return Number(offer?.price ?? offer?.amount ?? offer?.value ?? 0);
-}
-
-/** status 1 = liberada; status 2 = aguardando aprovação manual. */
-function offerApproved(offer: any) {
-  const status = offer?.status;
-  if (status === undefined || status === null) return true;
-  return Number(status) === 1;
 }
 
 function customerData(customer: AmploCustomer) {
@@ -269,108 +231,13 @@ export class AtomoPayService {
   }
 
   /**
-   * Para PIX, resolve uma oferta compatível com o valor exato da cobrança.
-   * A primeira venda de um valor pode preparar uma oferta; depois o mapeamento
-   * fica em cache e as próximas cobranças pulam todo esse trabalho.
+   * O PIX dinâmico reutiliza a oferta aprovada do catálogo e envia o valor
+   * exato da compra em amount e cart[0].price. Não cria ofertas por preço.
    */
   private async ensurePixCatalogForAmount(amountCents: number): Promise<AtomoPixCatalog> {
     const amount = Math.max(1, Math.round(amountCents));
-    const amountKey = String(amount);
-    const envProduct = process.env["ATOMOPAY_PRODUCT_HASH"];
-
-    const { data: saved } = await supabaseAdmin
-      .from("app_settings")
-      .select("value")
-      .eq("key", CATALOG_KEY)
-      .maybeSingle();
-    const cached = (saved?.value ?? {}) as AtomoCatalogState;
-    let productHash = String(envProduct ?? cached.productHash ?? "");
-
-    const cachedEntry = cached.offersByAmount?.[amountKey];
-    if (productHash && cachedEntry) {
-      if (typeof cachedEntry === "string") {
-        if (amount <= SAFE_OFFER_MAX) {
-          return { productHash, offerHash: cachedEntry, unitPrice: amount, quantity: 1 };
-        }
-      } else if (cachedEntry?.hash && cachedEntry.unit * cachedEntry.quantity === amount) {
-        return {
-          productHash,
-          offerHash: cachedEntry.hash,
-          unitPrice: cachedEntry.unit,
-          quantity: cachedEntry.quantity,
-        };
-      }
-    }
-
-    if (!productHash) {
-      const base = await this.ensureCatalog();
-      productHash = base.productHash;
-    }
-
-    const productRaw = (await this.call<Record<string, any>>(
-      "GET",
-      `/products/${encodeURIComponent(productHash)}`,
-    )) as any;
-    const product = productRaw?.data ?? productRaw ?? {};
-    const offers: any[] = Array.isArray(product?.offers)
-      ? product.offers
-      : Array.isArray(product?.offer)
-        ? product.offer
-        : [];
-
-    let offerHash = "";
-    let unitPrice = amount;
-    let quantity = 1;
-
-    for (const candidate of splitCandidates(amount)) {
-      const approved = offers.find(
-        (offer) => offer?.hash && offerPrice(offer) === candidate.unit && offerApproved(offer),
-      );
-      if (approved) {
-        offerHash = String(approved.hash);
-        unitPrice = candidate.unit;
-        quantity = candidate.quantity;
-        break;
-      }
-
-      const created = (await this.createOffer(productHash, {
-        title: `MSK unit ${candidate.unit}`,
-        amount: candidate.unit,
-      }).catch(() => null)) as any;
-      const createdOffer = created?.data ?? created;
-      const hash = String(createdOffer?.hash ?? createdOffer?.offer_hash ?? "");
-      if (!hash) continue;
-      if (!offerApproved(createdOffer)) continue;
-
-      // A resposta de criação já informa hash/status. Antes havia outro GET do
-      // produto somente para confirmar, duplicando latência no checkout.
-      offerHash = hash;
-      unitPrice = candidate.unit;
-      quantity = candidate.quantity;
-      break;
-    }
-
-    if (!offerHash) throw new Error("ATOMOPAY_CATALOG_OFFER_MISSING");
-
-    const offersByAmount = {
-      ...(cached.offersByAmount ?? {}),
-      [amountKey]: { hash: offerHash, unit: unitPrice, quantity },
-    };
-    await supabaseAdmin.from("app_settings").upsert(
-      {
-        key: CATALOG_KEY,
-        value: {
-          ...cached,
-          productHash,
-          offerHash: cached.offerHash ?? offerHash,
-          offersByAmount,
-        } as never,
-        updated_at: new Date().toISOString(),
-      } as never,
-      { onConflict: "key" },
-    );
-
-    return { productHash, offerHash, unitPrice, quantity };
+    const catalog = await this.ensureCatalog();
+    return { ...catalog, unitPrice: amount, quantity: 1 };
   }
 
   async resolveApprovedCatalog(amountCents: number): Promise<AtomoPixCatalog> {
