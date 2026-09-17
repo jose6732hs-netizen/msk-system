@@ -505,13 +505,14 @@ Deno.serve(async (req: Request) => {
     let changes: Array<{ path: string; content: string; create: boolean }> = [];
     let feedback = "";
 
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    const maxEditAttempts = fast ? 1 : 2;
+    for (let attempt = 1; attempt <= maxEditAttempts; attempt++) {
       retryCount = attempt - 1;
       stage = attempt === 1 ? "editing" : "self_correcting";
       await taskPatch(taskId, { status: stage, retry_count: retryCount }, who.id);
       const rejections: string[] = [];
       try {
-        const prompt = attempt === 1 ? basePrompt : `${basePrompt}\n\nAUTO-CORREÇÃO CONTROLADA — tentativa ${attempt}/3. Corrija somente os problemas abaixo, sem ampliar o escopo e sem trocar o alvo.\n${feedback.slice(0, 5000)}`;
+        const prompt = attempt === 1 ? basePrompt : `${basePrompt}\n\nAUTO-CORREÇÃO FINAL — tentativa ${attempt}/${maxEditAttempts}. Corrija somente os problemas abaixo, sem ampliar o escopo e sem trocar o alvo.\n${feedback.slice(0, 5000)}`;
         const response = await ask(req, prompt, true, fast ? 12000 : highRisk ? 18000 : 16000);
         out = parse(response.text);
         changes = validateChanges(out.changes, files, paths, rejections);
@@ -519,13 +520,13 @@ Deno.serve(async (req: Request) => {
         const mapped = mapErrorToAgentError(error, stage);
         feedback = `${mapped.code}: ${mapped.message}`;
         changes = [];
-        if (!mapped.retryable || attempt === 3) throw mapped;
+        if (!mapped.retryable || attempt === maxEditAttempts) throw mapped;
       }
 
       if (!changes.length) {
         const detail = rejections.length ? `Motivos exatos da rejeição:\n- ${rejections.join("\n- ")}` : "A saída não trouxe nenhuma alteração utilizável.";
         feedback = `NO_CHANGES_APPLIED: nenhuma alteração válida foi produzida.\n${detail}\nObrigatório na próxima tentativa: usar exatamente um dos caminhos analisados (${files.map(f => f.path).join(", ")}) e, se o "find" falhar novamente, devolver o arquivo inteiro em "content" já com a alteração aplicada.`;
-        if (attempt < 3) {
+        if (attempt < maxEditAttempts) {
           await taskPatch(taskId, { status: "no_changes_retry", retry_count: attempt }, who.id);
           continue;
         }
@@ -537,11 +538,11 @@ Deno.serve(async (req: Request) => {
       await checkpoint(taskId, who.id, pid, "validating", "Validando", { files: changes.map(x => x.path), attempt });
       await taskPatch(taskId, { status: "validating", retry_count: retryCount }, who.id);
       validatePreCommit(changes, files);
-      const review = await semanticReview(req, cmd, repository, files, changes);
+      const review = fast ? { ok: true, issues: [] as string[] } : await semanticReview(req, cmd, repository, files, changes);
       if (review.ok) break;
       feedback = `VALIDATION_FAILED: ${review.issues.join(" | ") || "o resultado não correspondeu ao pedido com segurança."}`;
       changes = [];
-      if (attempt < 3) {
+      if (attempt < maxEditAttempts) {
         await taskPatch(taskId, { status: "self_correcting", retry_count: attempt }, who.id);
         continue;
       }
@@ -643,6 +644,8 @@ Deno.serve(async (req: Request) => {
       provider: activeProvider.provider || undefined,
       model: activeProvider.model || undefined,
       retryable: mapped.retryable,
+      retry_count: retryCount,
+      attempts_used: retryCount + 1,
       error_id: logged.errorId || undefined,
       task_id: taskId || undefined,
     }, mapped.httpStatus);

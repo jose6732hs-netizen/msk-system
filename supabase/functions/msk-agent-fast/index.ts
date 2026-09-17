@@ -97,11 +97,20 @@ Deno.serve(async (req: Request) => {
         payload: parsedBody,
       });
 
-      const preflight = await fetch(`${base}/functions/v1/msk-agent-preflight?action=preflight`, {
+      const preflightStartedAt = Date.now();
+      const preflightController = new AbortController();
+      const preflightTimer = setTimeout(() => preflightController.abort(), 9000);
+      let preflight: Response;
+      try {
+        preflight = await fetch(`${base}/functions/v1/msk-agent-preflight?action=preflight`, {
         method: "POST",
         headers,
         body,
-      });
+          signal: preflightController.signal,
+        });
+      } finally {
+        clearTimeout(preflightTimer);
+      }
       const preflightText = await preflight.text();
       let preflightData: any = {};
       try { preflightData = preflightText ? JSON.parse(preflightText) : {}; } catch {}
@@ -116,6 +125,11 @@ Deno.serve(async (req: Request) => {
           headers: { ...cors, "Content-Type": "application/json" },
         });
       }
+      log("info", "task_preflight_completed", {
+        task_id: parsedBody.task_id || null,
+        lovable_project_id: parsedBody.lovable_project_id,
+        duration_ms: Date.now() - preflightStartedAt,
+      });
       // Branch protegida NÃO muda o modo da tarefa aqui. O motor principal sempre
       // tenta o PATCH direto e, somente se o GitHub rejeitar por proteção, cria PR
       // temporário e faz squash automático para o branch padrão.
