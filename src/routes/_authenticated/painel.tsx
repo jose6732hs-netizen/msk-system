@@ -130,6 +130,7 @@ function Painel() {
   useEffect(() => {
     if (!highlightedId || highlightedTokenLoaded.current || !licenses.some((item) => item.id === highlightedId)) return;
     highlightedTokenLoaded.current = true;
+    window.setTimeout(() => licensesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
     void reveal(highlightedId);
   }, [highlightedId, licenses]);
 
