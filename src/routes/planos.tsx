@@ -725,8 +725,7 @@ function PlanosPage() {
     if (!sessionData.session) {
       if (isFree) {
         localStorage.setItem("selected_free_plan", planId);
-        localStorage.setItem("msk_open_trial", "1");
-        navigate({ to: "/auth", search: { next: "/painel" } });
+        navigate({ to: "/auth", search: { next: "/planos" } });
       } else {
         navigate({ to: "/auth", search: { next: "/planos" } });
       }
@@ -737,9 +736,9 @@ function PlanosPage() {
       setLoadingPlan(planId);
       try {
         const { requestTrial } = await import("@/lib/commerce.functions");
-        await requestTrial({ data: { planId } });
+        const trial = await requestTrial({ data: { planId } });
         toast.success("Teste gratuito liberado.");
-        localStorage.setItem("msk_open_trial", "1");
+        localStorage.setItem("msk_highlight_license", trial.licenseId);
         navigate({ to: "/painel" });
       } catch (e) {
         toast.error((e as Error).message);

@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getCmsContent } from "@/lib/cms.functions";
 import { normalizeTutorials } from "@/lib/tutorials";
 import { TutorialPlayer } from "@/components/msk/tutorial-player";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import {
   Copy,
@@ -91,11 +91,14 @@ function Painel() {
   const [busy, setBusy] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const licensesRef = useRef<HTMLDivElement | null>(null);
+  const highlightedTokenLoaded = useRef(false);
 
   useEffect(() => {
     const hid = localStorage.getItem("msk_highlight_license");
     if (hid) {
       setHighlightedId(hid);
+      window.setTimeout(() => licensesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
       // Limpar após alguns segundos para não ficar destacado para sempre
       setTimeout(() => {
         localStorage.removeItem("msk_highlight_license");
@@ -123,6 +126,13 @@ function Painel() {
   const license = data?.license as any;
   const licenses = ((data as any)?.licenses ?? (license ? [license] : [])) as any[];
   const plan = license?.plans;
+
+  useEffect(() => {
+    if (!highlightedId || highlightedTokenLoaded.current || !licenses.some((item) => item.id === highlightedId)) return;
+    highlightedTokenLoaded.current = true;
+    window.setTimeout(() => licensesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    void reveal(highlightedId);
+  }, [highlightedId, licenses]);
 
   async function reveal(licenseId?: string) {
     const targetId = licenseId ?? license?.id;
@@ -387,7 +397,7 @@ function Painel() {
         ) : (
           <div className="mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 
-            <div className="md:col-span-2 lg:col-span-3">
+            <div ref={licensesRef} className="scroll-mt-6 md:col-span-2 lg:col-span-3">
               <div className="mb-4 flex items-end justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-black uppercase tracking-tight">Minhas licenças</h2>

@@ -221,7 +221,7 @@ function AuthPage() {
           password,
           options: {
             data: { name, phone: (window as any)._signup_phone },
-            emailRedirectTo: `${window.location.origin}/auth`,
+            emailRedirectTo: `${window.location.origin}/auth${search.next ? `?next=${encodeURIComponent(search.next)}` : ""}`,
           },
         });
         if (error) throw error;
@@ -278,7 +278,7 @@ function AuthPage() {
   async function social(provider: (typeof PROVIDERS)[number]["id"]) {
     try {
       try {
-        sessionStorage.setItem("post-auth-redirect", "/painel");
+        sessionStorage.setItem("post-auth-redirect", search.next || "/painel");
       } catch {
         /* storage indisponível */
       }
