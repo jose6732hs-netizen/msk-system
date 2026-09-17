@@ -83,7 +83,7 @@ export const requestTrial = createServerFn({ method: "POST" })
       planId: data.planId ?? null,
       resellerId: reseller?.id ?? null,
     });
-    return { token: result.token };
+    return { token: result.token, licenseId: result.licenseId };
   });
 
 export const getAffiliateDashboard = createServerFn({ method: "GET" })

@@ -6,7 +6,7 @@
 - [x] Corrigir o Pix dinâmico da Átomo Pay sem criar ofertas para cada valor.
 - [x] Corrigir cartão Átomo Pay, aceitar compras de créditos e validar valor confirmado antes da entrega.
 - [x] Ocultar a compra personalizada de créditos e manter as ofertas antigas do MSK Agente.
-- [ ] Direcionar o cliente após login ou geração do teste até a licença disponível para copiar.
+- [x] Direcionar o cliente após login ou geração do teste até a licença disponível para copiar.
 
 # Roadmap
 
