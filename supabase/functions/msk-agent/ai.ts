@@ -238,7 +238,7 @@ function retryAfterMs(response: Response, detail: string) {
   return 0;
 }
 
-/** Loop de tentativas transitórias de UM modelo de UM provedor. */
+/** Uma tentativa por rota. O failover ordenado decide a próxima rota sem multiplicar chamadas. */
 async function resilientModel(cfg: ProviderConfig, messages: ChatMessage[], maxTokens: number, jsonMode: boolean): Promise<ModelOutcome> {
   let mode = jsonMode;
   let reasoningStyle = false;
@@ -247,7 +247,7 @@ async function resilientModel(cfg: ProviderConfig, messages: ChatMessage[], maxT
   let modelError = false;
   let capacity = false;
   let waitMs = 0;
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 1; attempt++) {
     try {
       let x = await requestAI(cfg, messages, maxTokens, mode, 26000, reasoningStyle);
       if (!x.ok && [400, 422].includes(x.status) && !reasoningStyle) {
@@ -269,13 +269,12 @@ async function resilientModel(cfg: ProviderConfig, messages: ChatMessage[], maxT
       capacity = !modelError && isCapacityError(x.status, detail);
       waitMs = capacity ? retryAfterMs(x, detail) : 0;
 
-      if (modelError || capacity || !retryable(x.status) || attempt === 3) break;
+      if (modelError || capacity || !retryable(x.status) || attempt === 1) break;
     } catch (error) {
       if (error instanceof AgentError && !error.retryable) throw error;
       lastError = error instanceof AgentError ? error.code : "network";
-      if (attempt === 3) break;
+      if (attempt === 1) break;
     }
-    await sleep(350 * (2 ** (attempt - 1)));
   }
   return { status: lastStatus, error: lastError, modelError, capacity, retryAfterMs: waitMs };
 }
@@ -406,9 +405,9 @@ export async function ask(r: Request, prompt: string, jsonMode = false, max = 40
   if (decoded) {
     if (decoded.envelope.operation === "interpretation") return callBuiltPrompt(r, PromptBuilder.interpretation(decoded.envelope), Math.min(max, 3000));
     if (decoded.extra) return callBuiltPrompt(r, PromptBuilder.selfHealing(decoded.envelope, decoded.extra), max);
-    let plan: string | undefined;
-    if (decoded.envelope.complex) plan = (await callBuiltPrompt(r, PromptBuilder.planning(decoded.envelope), 2600)).text;
-    return callBuiltPrompt(r, PromptBuilder.edit(decoded.envelope, plan), max);
+    // O envelope já contém a análise determinística do projeto. Evita uma segunda
+    // chamada apenas para narrar um plano que seria imediatamente repetido na edição.
+    return callBuiltPrompt(r, PromptBuilder.edit(decoded.envelope), max);
   }
 
   const validation = legacyValidationPrompt(prompt);

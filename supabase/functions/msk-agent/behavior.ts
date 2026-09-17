@@ -28,6 +28,8 @@ const RE_SMALLTALK = /^(obrigad[oa]|valeu|vlw|ok+|okay|blz|show|perfeito|top|leg
 const RE_REVERT = /\b(desfaz(er)?|desfa[cç]a|revert(er|a)?|volt(a|e|ar)|restaur(a|e|ar)|cancel(a|e|ar) (a )?(ultima|alteracao)|como (era|estava) antes|do jeito que estava|remov(a|er) (a )?(ultima|essa) (alteracao|mudanca))\b/;
 const RE_QUESTION = /^(o que|oque|qual|quais|quando|onde|como|por que|porque|pra que|para que|tem como|da pra|voce (pode|consegue)|cade|explica|explique|me explica|analis(a|e|ar)|revis(a|e|ar)|verific(a|e|ar)|confer(e|ir)|diagnostic)/;
 const RE_EDIT_VERB = /\b(mud(a|e|ar)|troc(a|e|ar)|alter(a|e|ar)|ajust(a|e|ar)|coloc(a|e|ar)|adicion(a|e|ar)|cri(a|e|ar)|implement(a|e|ar)|remov(a|er)|apag(a|ue|ar)|corrig(e|ir|a)|arrum(a|e|ar)|deix(a|e|ar)|aument(a|e|ar)|diminu(i|a|ir)|traduz(a|ir)|renome(ia|ar)|refator(a|e|ar)|integr(a|e|ar)|conect(a|e|ar))\b/;
+const RE_ACTIONABLE_TARGET = /\b(cor|fundo|background|texto|copy|titulo|botao|link|imagem|logo|banner|tamanho|fonte|espacamento|margem|borda|menu|header|cabecalho|footer|rodape|card|pagina|tela|site|layout|css|erro|bug|rota|formulario|checkout|login|api|banco)\b/;
+const RE_ACTIONABLE_CHANGE = /\b(para|pra|ficar|deve|precisa|quero|laranja|azul|verde|vermelh|amarel|rox|rosa|preto|branco|maior|menor|novo|nova|funcion|rapido|lento|quebrad|sumir|aparecer)\b/;
 
 export function classifyIntent(command: string): AgentIntent {
   const q = norm(command);
@@ -38,7 +40,9 @@ export function classifyIntent(command: string): AgentIntent {
   if (/\b(status|andamento|ja terminou|terminou\??|acabou\??|em que pe)\b/.test(q) && q.length <= 60) {
     return { kind: "status", confidence: 0.8, reason: "consulta de andamento" };
   }
-  if (RE_QUESTION.test(q) && !RE_EDIT_VERB.test(q)) return { kind: "question", confidence: 0.85, reason: "pergunta/análise" };
+  const actionableQuestion = RE_QUESTION.test(q) && RE_ACTIONABLE_TARGET.test(q) && RE_ACTIONABLE_CHANGE.test(q);
+  if (RE_QUESTION.test(q) && !RE_EDIT_VERB.test(q) && !actionableQuestion) return { kind: "question", confidence: 0.85, reason: "pergunta/análise" };
+  if (actionableQuestion) return { kind: "edit", confidence: 0.82, reason: "pedido acionável em formato de pergunta" };
   return { kind: "edit", confidence: RE_EDIT_VERB.test(q) ? 0.9 : 0.6, reason: "pedido de execução" };
 }
 
