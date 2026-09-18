@@ -1,5 +1,6 @@
 ## Correções atuais
 
+- [ ] Corrigir lentidão geral, falhas ao abrir menus e excesso de verificações globais.
 - [x] Acelerar o MSK Agente v3.15.00, eliminar loops, executar pedidos grandes por etapas e confirmar cada commit real.
 - [x] Corrigir download de ZIP que fica carregando no menu e preservar o painel do cliente.
 - [x] Padronizar o envio de ZIP do MSK Agente.
