@@ -206,8 +206,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <NightSky
+        enabled={!isBoard}
         intensity={isAuth ? 1 : isBoard ? 0.4 : 0.7}
-        starCount={isAuth ? 300 : isBoard ? 140 : 220}
+        starCount={isAuth ? 140 : 100}
         meteorInterval={isAuth ? 1.6 : isBoard ? 9 : 4.5}
         birdInterval={isAuth ? 9 : 22}
       />
@@ -215,8 +216,6 @@ function RootComponent() {
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <PwaInstallBanner />
       <PushPermissionPrompt />
-      <PresenceTracker />
-
       <Outlet />
       {!isBoard && !isAuth && <MobileNavigation />}
       <Toaster position="top-right" />
@@ -229,7 +228,6 @@ import { Home, CreditCard, LayoutDashboard, Share2, Menu, X, Download, ShieldChe
 import { PwaInstallBanner } from "@/components/msk/pwa-install-banner";
 import { PushPermissionPrompt } from "@/components/msk/push-permission-prompt";
 import { WhatsappSupportButton } from "@/components/msk/whatsapp-support";
-import { PresenceTracker } from "@/components/msk/presence-tracker";
 
 
 import { MskLogo } from "@/components/msk/logo";
